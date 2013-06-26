@@ -85,13 +85,19 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
       Get() ~> getFromResource("nonExistingResource") ~> check { handled must beFalse }
     }
     "return the resource content with the MediaType matching the file extension" in {
-      Get() ~> getFromResource("sample.html") ~> check {
-        mediaType === `text/html`
-        body.asString === "<p>Lorem ipsum!</p>"
-        headers must have {
-          case `Last-Modified`(dt) ⇒ DateTime(2011, 7, 1) < dt && dt.clicks < System.currentTimeMillis()
+      val route = getFromResource("sample.html")
+
+      def runCheck =
+        Get() ~> route ~> check {
+          mediaType === `text/html`
+          body.asString === "<p>Lorem ipsum!</p>"
+          headers must have {
+            case `Last-Modified`(dt) ⇒ DateTime(2011, 7, 1) < dt && dt.clicks < System.currentTimeMillis()
+          }
         }
-      }
+
+      runCheck
+      runCheck // additional test to check that no internal state is kept
     }
     "return the file content with MediaType 'application/octet-stream' on unknown file extensions" in {
       Get() ~> getFromResource("sample.xyz") ~> check {

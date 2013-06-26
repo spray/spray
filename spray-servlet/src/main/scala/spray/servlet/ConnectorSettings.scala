@@ -19,6 +19,7 @@ package spray.servlet
 import com.typesafe.config.{ ConfigFactory, Config }
 import scala.concurrent.duration.Duration
 import akka.actor.ActorSystem
+import spray.http.Uri
 import spray.util._
 
 case class ConnectorSettings(
@@ -26,7 +27,7 @@ case class ConnectorSettings(
     requestTimeout: Duration,
     timeoutTimeout: Duration,
     timeoutHandler: String,
-    rootPath: String,
+    rootPath: Uri.Path,
     remoteAddressHeader: Boolean,
     verboseErrorMessages: Boolean,
     maxContentLength: Long) {
@@ -36,6 +37,8 @@ case class ConnectorSettings(
   requirePositiveOrUndefined(requestTimeout)
   requirePositiveOrUndefined(timeoutTimeout)
   require(maxContentLength > 0, "max-content-length must be > 0")
+
+  val rootPathCharCount = rootPath.charCount
 }
 
 object ConnectorSettings {
@@ -49,7 +52,7 @@ object ConnectorSettings {
       c getDuration "request-timeout",
       c getDuration "timeout-timeout",
       c getString "timeout-handler",
-      c getString "root-path",
+      Uri.Path(c getString "root-path"),
       c getBoolean "remote-address-header",
       c getBoolean "verbose-error-messages",
       c getBytes "max-content-length")

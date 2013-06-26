@@ -6,7 +6,7 @@ Unmarshalling
 "Unmarshalling" is the process of converting some kind of a lower-level representation, often a "wire format", into a
 higher-level (object) structure. Other popular names for it are "Deserialization" or "Unpickling".
 
-In *spray* "Unmarshalling" means the conversion of an ``HttpEntity``, the model class for the "entity body" of an HTTP
+In *spray* "Unmarshalling" means the conversion of an ``HttpEntity``, the model class for the entity body of an HTTP
 request or response (depending on whether used on the client or server side), into an object of type ``T``.
 
 Unmarshalling for instances of type ``T`` is performed by an ``Unmarshaller[T]``, which is defined like this::
@@ -92,7 +92,7 @@ Deriving Unmarshallers
 Unmarshaller.delegate
 ~~~~~~~~~~~~~~~~~~~~~
 
-Sometimes you can save yourself some work by reusing existing Marshallers for your custom ones.
+Sometimes you can save yourself some work by reusing existing Unmarshallers for your custom ones.
 The idea is to "wrap" an existing ``Unmarshaller`` with come logic to "re-target" it to your type.
 
 In this regard "wrapping" a ``Unmarshaller`` can mean one or both of the following two things:

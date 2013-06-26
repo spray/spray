@@ -16,25 +16,42 @@
 
 package spray.http
 
-class HttpMethod private[http] (val value: String,
-                                val isSafe: Boolean, // true if the resource should not be altered on the server
-                                val isIdempotent: Boolean, // true if requests can be safely (& automatically) repeated
-                                val entityAccepted: Boolean // true if meaning of request entities is properly defined
-                                ) {
-  override def toString = value
+/**
+ * @param isSafe true if the resource should not be altered on the server
+ * @param isIdempotent true if requests can be safely (& automatically) repeated
+ * @param entityAccepted true if meaning of request entities is properly defined
+ */
+case class HttpMethod private[http] (value: String,
+                                     isSafe: Boolean,
+                                     isIdempotent: Boolean,
+                                     entityAccepted: Boolean) extends LazyValueBytesRenderable {
+  // for faster equality checks we use the hashcode of the method name (and make sure it's distinct during registration)
+  private[http] val fingerprint = value.##
 
-  HttpMethods.register(value, this)
+  def name = value
+
+  override def hashCode(): Int = fingerprint
+  override def equals(obj: Any): Boolean =
+    obj match {
+      case m: HttpMethod ⇒ fingerprint == m.fingerprint
+      case _             ⇒ false
+    }
 }
 
 object HttpMethods extends ObjectRegistry[String, HttpMethod] {
+  private def register(method: HttpMethod): HttpMethod = {
+    registry.values foreach { m ⇒ if (m.fingerprint == method.fingerprint) sys.error("Method fingerprint collision") }
+    register(method.value, method)
+  }
+
   // format: OFF
-  val DELETE  = new HttpMethod("DELETE" , isSafe = false, isIdempotent = true , entityAccepted = false)
-  val GET     = new HttpMethod("GET"    , isSafe = true , isIdempotent = true , entityAccepted = false)
-  val HEAD    = new HttpMethod("HEAD"   , isSafe = true , isIdempotent = true , entityAccepted = false)
-  val OPTIONS = new HttpMethod("OPTIONS", isSafe = false, isIdempotent = true , entityAccepted = true)
-  val PATCH   = new HttpMethod("PATCH"  , isSafe = false, isIdempotent = false, entityAccepted = true)
-  val POST    = new HttpMethod("POST"   , isSafe = false, isIdempotent = false, entityAccepted = true)
-  val PUT     = new HttpMethod("PUT"    , isSafe = false, isIdempotent = true , entityAccepted = true)
-  val TRACE   = new HttpMethod("TRACE"  , isSafe = false, isIdempotent = true , entityAccepted = false)
+  val DELETE  = register(HttpMethod("DELETE" , isSafe = false, isIdempotent = true , entityAccepted = false))
+  val GET     = register(HttpMethod("GET"    , isSafe = true , isIdempotent = true , entityAccepted = false))
+  val HEAD    = register(HttpMethod("HEAD"   , isSafe = true , isIdempotent = true , entityAccepted = false))
+  val OPTIONS = register(HttpMethod("OPTIONS", isSafe = true , isIdempotent = true , entityAccepted = true))
+  val PATCH   = register(HttpMethod("PATCH"  , isSafe = false, isIdempotent = false, entityAccepted = true))
+  val POST    = register(HttpMethod("POST"   , isSafe = false, isIdempotent = false, entityAccepted = true))
+  val PUT     = register(HttpMethod("PUT"    , isSafe = false, isIdempotent = true , entityAccepted = true))
+  val TRACE   = register(HttpMethod("TRACE"  , isSafe = true , isIdempotent = true , entityAccepted = false))
   // format: ON
 }

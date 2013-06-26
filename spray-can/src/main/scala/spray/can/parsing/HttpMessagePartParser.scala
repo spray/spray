@@ -143,19 +143,26 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
     def parseChunkBody(chunkSize: Int, extension: String, cursor: Int): Result[Part] =
       if (chunkSize > 0) {
         val chunkBodyEnd = cursor + chunkSize
-        if (chunkBodyEnd + 2 <= input.length)
-          if (input(chunkBodyEnd).toChar == '\r' && input(chunkBodyEnd + 1).toChar == '\n')
-            Result.Ok(MessageChunk(input.iterator.slice(cursor, chunkBodyEnd).toArray[Byte], extension).asInstanceOf[Part],
-              drop(input, chunkBodyEnd + 2), closeAfterResponseCompletion)
-          else fail("Illegal chunk termination")
-        else throw NotEnoughDataException
+        def result(terminatorLen: Int) = {
+          parse = parseChunk(closeAfterResponseCompletion)
+          val chunk = MessageChunk(input.iterator.slice(cursor, chunkBodyEnd).toArray[Byte], extension)
+          Result.Ok(chunk.asInstanceOf[Part], drop(input, chunkBodyEnd + terminatorLen), closeAfterResponseCompletion)
+        }
+        byteChar(input, chunkBodyEnd) match {
+          case '\r' if byteChar(input, chunkBodyEnd + 1) == '\n' ⇒ result(2)
+          case '\n' ⇒ result(1)
+          case x ⇒ fail("Illegal chunk termination")
+        }
       } else parseTrailer(extension, cursor)
 
     @tailrec def parseChunkExtensions(chunkSize: Int, cursor: Int)(startIx: Int = cursor): Result[Part] =
       if (cursor - startIx <= settings.maxChunkExtLength) {
-        if (byteChar(input, cursor) == '\r' && byteChar(input, cursor + 1) == '\n')
-          parseChunkBody(chunkSize, asciiString(input, startIx, cursor), cursor + 2)
-        else parseChunkExtensions(chunkSize, cursor + 1)(startIx)
+        def extension = asciiString(input, startIx, cursor)
+        byteChar(input, cursor) match {
+          case '\r' if byteChar(input, cursor + 1) == '\n' ⇒ parseChunkBody(chunkSize, extension, cursor + 2)
+          case '\n' ⇒ parseChunkBody(chunkSize, extension, cursor + 1)
+          case _ ⇒ parseChunkExtensions(chunkSize, cursor + 1)(startIx)
+        }
       } else fail(s"HTTP chunk extension length exceeds configured limit of ${settings.maxChunkExtLength} characters")
 
     @tailrec def parseSize(cursor: Int = 0, size: Long = 0): Result[Part] =
@@ -181,7 +188,7 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
   def entity(cth: Option[`Content-Type`], body: Array[Byte]): HttpEntity = {
     val contentType = cth match {
       case Some(x) ⇒ x.contentType
-      case None    ⇒ ContentType.`application/octet-stream`
+      case None    ⇒ ContentTypes.`application/octet-stream`
     }
     HttpEntity(contentType, body)
   }

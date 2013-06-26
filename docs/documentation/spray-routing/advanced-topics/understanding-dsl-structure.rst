@@ -31,15 +31,12 @@ Now let's look at this slightly more complex structure::
 This is equivalent to::
 
     val route: Route = {
-      val inner = {
-        val expr = "yeah"
-        { ctx => ctx.complete(expr) }
-      }
+      val inner = { ctx => ctx.complete("yeah") }
       get.apply(inner)
     }
 
-First the completion expression is evaluated. Its result is used for constructing a function object. This function is
-passed to the apply function of the object named "``get`` directive", which wraps its argument route (the inner route
+All that the :ref:`-complete-` directive is doing is creating a function instance, which is then passed to the apply
+method of the object named ":ref:`-get-` directive", which wraps its argument route (the inner route
 of the ``get`` directive) with some filter logic and produces the final route.
 
 Now let's look at this code::
@@ -54,19 +51,20 @@ This is equivalent to::
     val route: Route = {
       val inner = {
         println("MARK")
-        val expr = "yeah"
-        { ctx => ctx.complete(expr) }
+        { ctx => ctx.complete("yeah") }
       }
       get.apply(inner)
     }
 
 As you can see from this different representation of the same code the ``println`` statement is executed when the route
 val is *created*, not when a request comes in and the route is *executed*! In order to execute the ``println`` at
-request processing time it must be *inside* of the leaf-level route function literal::
+request processing time it must be *inside* of the leaf-level :ref:`-complete-` directive::
 
-    val route: Route = get { ctx =>
-      println("MARK")
-      ctx.complete("yeah")
+    val route: Route = get {
+      complete {
+        println("MARK")
+        "yeah"
+      }
     }
 
 The mistake of putting custom logic inside of the route structure, but *outside* of a leaf-level route, and expecting
@@ -89,11 +87,11 @@ Let's take a look at this example::
       get {
         println("MARK 2")
         path("abc" / PathElement) { x =>
-          println("MARK 3");      //
-          { ctx =>                // code "inside"
-            println("MARK 4")     // of the
-            ctx.complete("yeah")  // extraction
-          }                       //
+          println("MARK 3")   //
+          complete {          // code "inside"
+            println("MARK 4") // of the
+            "yeah"            // extraction
+          }                   //
         }
       }
     }

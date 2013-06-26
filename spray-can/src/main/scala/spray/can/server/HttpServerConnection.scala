@@ -18,11 +18,12 @@ package spray.can.server
 
 import java.net.InetSocketAddress
 import scala.concurrent.duration.Duration
-import akka.actor.{ Terminated, ReceiveTimeout, ActorRef }
+import akka.actor.{ SupervisorStrategy, Terminated, ReceiveTimeout, ActorRef }
 import akka.io.Tcp
 import spray.can.server.StatsSupport.StatsHolder
 import spray.io._
 import spray.can.Http
+import spray.http.{ SetTimeoutTimeout, SetRequestTimeout }
 
 private[can] class HttpServerConnection(tcpConnection: ActorRef,
                                         userLevelListener: ActorRef,
@@ -36,13 +37,13 @@ private[can] class HttpServerConnection(tcpConnection: ActorRef,
 
   context.setReceiveTimeout(settings.registrationTimeout)
 
+  // we cannot sensibly recover from crashes
+  override def supervisorStrategy = SupervisorStrategy.stoppingStrategy
+
   def receive: Receive = {
-    case Http.Register(handler, _) ⇒
-      context.setReceiveTimeout(Duration.Undefined)
-      tcpConnection ! Tcp.Register(self)
-      context.watch(tcpConnection)
-      context.watch(handler)
-      context.become(running(tcpConnection, pipelineStage, pipelineContext(handler)))
+    case Tcp.Register(handler, keepOpenOnPeerClosed, _)         ⇒ register(handler, keepOpenOnPeerClosed)
+
+    case Http.Register(handler, keepOpenOnPeerClosed, fastPath) ⇒ register(handler, keepOpenOnPeerClosed, fastPath)
 
     case ReceiveTimeout ⇒
       log.warning("Configured registration timeout of {} expired, stopping", settings.registrationTimeout)
@@ -55,14 +56,29 @@ private[can] class HttpServerConnection(tcpConnection: ActorRef,
       }
   }
 
-  def pipelineContext(_handler: ActorRef) = new SslTlsContext with ServerFrontend.Context {
+  def register(handler: ActorRef, keepOpenOnPeerClosed: Boolean, fastPath: Http.FastPath = Http.EmptyFastPath): Unit = {
+    context.setReceiveTimeout(Duration.Undefined)
+    tcpConnection ! Tcp.Register(self, keepOpenOnPeerClosed)
+    context.watch(tcpConnection)
+    context.watch(handler)
+    context.become(running(tcpConnection, pipelineStage, pipelineContext(handler, fastPath)))
+  }
+
+  def pipelineContext(_handler: ActorRef, _fastPath: Http.FastPath) = new SslTlsContext with ServerFrontend.Context {
     def handler = _handler
+    def fastPath = _fastPath
     def actorContext = context
     def remoteAddress = actor.remoteAddress
     def localAddress = actor.localAddress
     def log = actor.log
     def sslEngine = sslEngineProvider(this)
   }
+
+  override def running(tcpConnection: ActorRef, pipelines: Pipelines): Receive =
+    super.running(tcpConnection, pipelines) orElse {
+      case x: SetRequestTimeout ⇒ pipelines.commandPipeline(CommandWrapper(x))
+      case x: SetTimeoutTimeout ⇒ pipelines.commandPipeline(CommandWrapper(x))
+    }
 }
 
 private[can] object HttpServerConnection {
@@ -185,6 +201,7 @@ private[can] object HttpServerConnection {
       ResponseRendering(settings) >>
       ConnectionTimeouts(idleTimeout) ? (reapingCycle.isFinite && idleTimeout.isFinite) >>
       SslTlsSupport ? sslEncryption >>
-      TickGenerator(reapingCycle) ? (reapingCycle.isFinite && (idleTimeout.isFinite || requestTimeout.isFinite))
+      TickGenerator(reapingCycle) ? (reapingCycle.isFinite && (idleTimeout.isFinite || requestTimeout.isFinite)) >>
+      BackPressureHandling(backpressureSettings.get.noAckRate, backpressureSettings.get.readingLowWatermark) ? backpressureSettings.isDefined
   }
 }

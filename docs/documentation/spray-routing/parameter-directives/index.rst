@@ -8,4 +8,6 @@ ParameterDirectives
 
    parameter
    parameterMap
+   parameterMultiMap
    parameters
+   parameterSeq

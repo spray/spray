@@ -17,14 +17,15 @@
 package spray.can.server
 
 import scala.annotation.tailrec
+import scala.util.control.NonFatal
 import akka.io.Tcp
 import akka.util.{ CompactByteString, ByteString }
-import spray.can.rendering.HttpResponsePartRenderingContext
+import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.Http
 import spray.can.parsing._
 import spray.http._
+import spray.util._
 import spray.io._
-import scala.util.control.NonFatal
 
 object RequestParsing {
 
@@ -38,7 +39,8 @@ object RequestParsing {
           import context.log
           val https = settings.sslEncryption && context.sslEngine.isDefined
           val parser = rootParser.copyWith { errorInfo ⇒
-            log.warning(errorInfo.withSummaryPrepended("Illegal request header").formatPretty)
+            if (settings.parserSettings.illegalHeaderWarnings)
+              log.warning(errorInfo.withSummaryPrepended("Illegal request header").formatPretty)
           }
 
           @tailrec def parse(data: CompactByteString): Unit =
@@ -67,9 +69,9 @@ object RequestParsing {
             }
 
           def handleError(status: StatusCode, info: ErrorInfo): Unit = {
-            log.warning("Illegal request, responding with status '{}': {}", status.formatPretty, info.formatPretty)
+            log.warning("Illegal request, responding with status '{}': {}", status, info.formatPretty)
             val msg = if (settings.verboseErrorMessages) info.formatPretty else info.summary
-            commandPL(HttpResponsePartRenderingContext(HttpResponse(status, msg)))
+            commandPL(ResponsePartRenderingContext(HttpResponse(status, msg)))
             commandPL(Http.Close)
           }
 
@@ -79,7 +81,7 @@ object RequestParsing {
             case Tcp.Received(data: CompactByteString) ⇒
               try parse(data)
               catch {
-                case NonFatal(e) ⇒ handleError(StatusCodes.BadRequest, ErrorInfo(e.getMessage))
+                case NonFatal(e) ⇒ handleError(StatusCodes.BadRequest, ErrorInfo(e.getMessage.nullAsEmpty))
               }
 
             case ev ⇒ eventPL(ev)

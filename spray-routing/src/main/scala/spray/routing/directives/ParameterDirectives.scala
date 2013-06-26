@@ -29,6 +29,18 @@ trait ParameterDirectives extends ToNameReceptaclePimps {
     BasicDirectives.extract(_.request.uri.query.toMap)
 
   /**
+   * Extracts the requests query parameters as a Map[String, List[String]].
+   */
+  def parameterMultiMap: Directive[Map[String, List[String]] :: HNil] =
+    BasicDirectives.extract(_.request.uri.query.toMultiMap)
+
+  /**
+   * Extracts the requests query parameters as a Seq[(String, String)].
+   */
+  def parameterSeq: Directive[Seq[(String, String)] :: HNil] =
+    BasicDirectives.extract(_.request.uri.query.toSeq)
+
+  /**
    * Rejects the request if the query parameter matcher(s) defined by the definition(s) don't match.
    * Otherwise the parameter value(s) are extracted and passed to the inner route.
    */

@@ -4,28 +4,28 @@ spray-caching
 =============
 
 *spray-caching* provides a lightweight and fast in-memory caching functionality based on Akka Futures and
-concurrentlinkedhashmap_. The key idea is to not store the actual values of type ``T`` themselves in the cache
-but rather corresponding Akka Futures, i.e. instances of type ``Future[T]``.
+concurrentlinkedhashmap_. The primary use-case is the "wrapping" of an expensive operation with a caching layer that,
+based on a certain key of type ``K``, runs the wrapped operation only once and returns the the cached value for all
+future accesses for the same key (as long as the respective entry has not expired).
 
-This approach has the advantage of nicely taking care of the thundering herds problem, where many requests to a
-particular cache key (e.g. a resource URI) arrive, before the first one could be completed. Normally (without special
-guarding techniques, like so-called "cowboy" entries) this can cause many requests to compete for system resources
-while trying to compute the same result, thereby greatly reducing overall system performance.
-When you use a *spray-caching* cache the very first request that arrived for a certain cache key causes a future to
-be put into the cache, which all later requests "hook into". As soon as the first request completes all other
-ones complete as well. This minimizes processing time and server load for all requests.
+The central idea of a *spray-caching* cache is to not store the actual values of type ``T`` themselves in the cache
+but rather corresponding Akka Futures, i.e. instances of type ``Future[T]``. This approach has the advantage of nicely
+taking care of the thundering herds problem where many requests to a particular cache key (e.g. a resource URI) arrive
+before the first one could be completed. Normally (without special guarding techniques, like so-called "cowboy" entries)
+this can cause many requests to compete for system resources while trying to compute the same result thereby greatly
+reducing overall system performance. When you use a *spray-caching* cache the very first request that arrives for a
+certain cache key causes a future to be put into the cache which all later requests then "hook into". As soon as the
+first request completes all other ones complete as well. This minimizes processing time and server load for all requests.
 
 
 Dependencies
 ------------
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-caching* depends on
+Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-caching* depends on
 
 - :ref:`spray-util`
-- `concurrentlinkedhashmap 1.3.1`__
-- akka-actor (with 'provided' scope, i.e. you need to pull it in yourself)
-
-__ http://code.google.com/p/concurrentlinkedhashmap/
+- concurrentlinkedhashmap_
+- akka-actor 2.1.x (with 'provided' scope, i.e. you need to pull it in yourself)
 
 
 Installation
@@ -46,7 +46,7 @@ in through six methods:
 
 - ``def apply(key: Any)(expr: => V): Future[V]`` wraps an "expensive" expression with caching support.
 
-- ``def fromFuture(key: Any)(future: => Future[V]): Future[V]`` is similar, but allows the expression to produce
+- ``def apply(key: Any)(future: => Future[V]): Future[V]`` is similar, but allows the expression to produce
   the future itself.
 
 - ``def apply(key: Any)(func: Promise[V] => Unit): Future[V]`` provides a "push-style" alternative.
@@ -59,8 +59,7 @@ in through six methods:
 
 - ``def clear()`` clears the cache by removing all entries.
 
-Note that the ``apply`` and ``fromFuture`` methods require an implicit ``ExecutionContext`` to be in scope,
-as is the case within an ``Actor`` implementation. Otherwise you need to bring an implicit ``ActorSystem`` into scope.
+Note that the ``apply`` overloads require an implicit ``ExecutionContext`` to be in scope.
 
 
 Example
@@ -79,14 +78,10 @@ They difference between the two only consists of whether they support time-based
 
 The easiest way to construct a cache instance is via the ``apply`` method of the ``LruCache`` object, which has the
 following signature and creates a new ``ExpiringLruCache`` or ``SimpleLruCache`` depending on whether a non-zero and
-finite ``timeToLive`` and/or ``timeToIdle`` is set or not::
+finite ``timeToLive`` and/or ``timeToIdle`` is set or not:
 
-  def apply[V](
-    maxCapacity: Int = 500,
-    initialCapacity: Int = 16,
-    timeToLive: Duration = Duration.Zero,
-    timeToIdle: Duration = Duration.Zero
-  ): Cache[V]
+.. includecode:: /../spray-caching/src/main/scala/spray/caching/LruCache.scala
+   :snippet: source-quote-LruCache-apply
 
 
 SimpleLruCache

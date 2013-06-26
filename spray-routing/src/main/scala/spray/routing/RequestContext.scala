@@ -88,7 +88,7 @@ case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPa
     }
 
   /**
-   * Returns a copy of this context with the given rejection handling function chained into the response chain.
+   * Returns a copy of this context with the given response handling function chained into the response chain.
    */
   def withRouteResponseRouting(f: PartialFunction[Any, Route]) =
     withRouteResponseHandling(f.andThen(_(this)))
@@ -185,6 +185,12 @@ case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPa
     withHttpResponseMapped(_.mapHeaders(f))
 
   /**
+   * Removes a potentially existing Accept header from the request headers.
+   */
+  def withContentNegotiationDisabled =
+    copy(request = request.withHeaders(request.headers filterNot (_.isInstanceOf[Accept])))
+
+  /**
    * Rejects the request with the given rejections.
    */
   def reject(rejection: Rejection): Unit =
@@ -198,14 +204,16 @@ case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPa
 
   /**
    * Completes the request with redirection response of the given type to the given URI.
-   * The default redirectionType is a temporary `302 Found`.
    */
-  def redirect(uri: String, redirectionType: Redirection = Found): Unit =
+  def redirect(uri: Uri, redirectionType: Redirection): Unit =
     complete {
       HttpResponse(
         status = redirectionType,
         headers = Location(uri) :: Nil,
-        entity = redirectionType.htmlTemplate.toOption.map(s ⇒ HttpEntity(`text/html`, s format uri)))
+        entity = redirectionType.htmlTemplate match {
+          case ""       ⇒ EmptyEntity
+          case template ⇒ HttpEntity(`text/html`, template format uri)
+        })
     }
 
   /**
@@ -269,9 +277,9 @@ case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPa
   def marshallingContext(status: StatusCode, headers: List[HttpHeader]): MarshallingContext =
     new MarshallingContext {
       def tryAccept(contentType: ContentType) = request.acceptableContentType(contentType)
-      def rejectMarshalling(onlyTo: Seq[ContentType]) { reject(UnacceptedResponseContentTypeRejection(onlyTo)) }
-      def marshalTo(entity: HttpEntity) { complete(response(entity)) }
-      def handleError(error: Throwable) { failWith(error) }
+      def rejectMarshalling(onlyTo: Seq[ContentType]): Unit = { reject(UnacceptedResponseContentTypeRejection(onlyTo)) }
+      def marshalTo(entity: HttpEntity): Unit = { complete(response(entity)) }
+      def handleError(error: Throwable): Unit = { failWith(error) }
       def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) = {
         val chunkStart = ChunkedResponseStart(response(entity))
         val wrapper = if (sentAck.isEmpty) chunkStart else Confirmed(chunkStart, sentAck.get)

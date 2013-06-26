@@ -57,10 +57,10 @@ trait MultipartUnmarshallers {
   implicit val MultipartContentUnmarshaller = Unmarshaller[MultipartContent](`multipart/*`) {
     case HttpBody(contentType, buffer) ⇒
       contentType.mediaType.asInstanceOf[MultipartMediaType].boundary match {
-        case Some(boundary) ⇒
+        case "" ⇒ sys.error("Content-Type with a multipart media type must have a 'boundary' parameter")
+        case boundary ⇒
           val mimeMsg = new MIMEMessage(new ByteArrayInputStream(buffer), boundary, mimeParsingConfig)
           MultipartContent(convertMimeMessage(mimeMsg))
-        case None ⇒ sys.error("Content-Type with a multipart media type must have a 'boundary' parameter")
       }
     case EmptyEntity ⇒ MultipartContent.Empty
   }
@@ -68,23 +68,21 @@ trait MultipartUnmarshallers {
   implicit val MultipartFormDataUnmarshaller = new SimpleUnmarshaller[MultipartFormData] {
     val canUnmarshalFrom = ContentTypeRange(`multipart/form-data`) :: Nil
 
-    def unmarshal(entity: HttpEntity) = {
+    def unmarshal(entity: HttpEntity) =
       MultipartContentUnmarshaller(entity).right.flatMap { mpContent ⇒
         try Right(MultipartFormData(mpContent.parts.map(part ⇒ nameOf(part) -> part)(collection.breakOut)))
         catch {
-          case NonFatal(ex) ⇒ Left(MalformedContent("Illegal multipart/form-data content: " + ex.getMessage, ex))
+          case NonFatal(ex) ⇒
+            Left(MalformedContent("Illegal multipart/form-data content: " + ex.getMessage.nullAsEmpty, ex))
         }
       }
-    }
 
-    def nameOf(part: BodyPart): String = {
+    def nameOf(part: BodyPart): String =
       part.headers.mapFind {
         case `Content-Disposition`("form-data", parms) ⇒ parms.get("name")
         case _                                         ⇒ None
-      }.getOrElse(sys.error("unnamed body part (no Content-Disposition header or no 'name' parameter)"))
-    }
+      } getOrElse sys.error("unnamed body part (no Content-Disposition header or no 'name' parameter)")
   }
-
 }
 
 object MultipartUnmarshallers extends MultipartUnmarshallers

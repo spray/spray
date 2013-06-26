@@ -20,6 +20,8 @@ package spray.http
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import java.nio.charset.Charset
 import scala.annotation.tailrec
+import scala.collection.{ mutable, LinearSeqOptimized }
+import scala.collection.immutable.LinearSeq
 import spray.http.parser.{ ParserInput, UriParser }
 import UriParser._
 import Uri._
@@ -29,15 +31,13 @@ import Uri._
  * All members of this class represent the *decoded* URI elements (i.e. without percent-encoding).
  */
 sealed abstract case class Uri(scheme: String, authority: Authority, path: Path, query: Query,
-                               fragment: Option[String]) {
+                               fragment: Option[String]) extends ToStringRenderable {
 
   def isAbsolute: Boolean = !isRelative
   def isRelative: Boolean = scheme.isEmpty
   def isEmpty: Boolean
 
-  def toString(charset: Charset): String = render(charset = charset).toString
-  override def toString: String = toString(UTF8)
-  def inspect: String = s"Uri($scheme,$authority,$path,$query,$fragment)"
+  def inspect: String = s"Uri(scheme=$scheme, authority=$authority, path=$path, query=$query, fragment=$fragment)"
 
   /**
    * Returns a copy of this Uri with the given components.
@@ -54,19 +54,33 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
   def resolvedAgainst(base: Uri): Uri =
     resolve(scheme, authority.userinfo, authority.host, authority.port, path, query, fragment, base)
 
+  def render[R <: Rendering](r: R): r.type = render(r, UTF8)
+
   /**
-   * Renders this Uri into a String as defined by http://tools.ietf.org/html/rfc3986.
+   * Renders this Uri into the given Renderer as defined by http://tools.ietf.org/html/rfc3986.
    * All Uri components are encoded and joined as required by the spec. The given charset is used to
    * produce percent-encoded representations of potentially existing non-ASCII characters in the
    * different components.
    */
-  def render(sb: JStringBuilder = new JStringBuilder, charset: Charset = UTF8): JStringBuilder = {
-    if (isAbsolute) sb.append(scheme).append(':')
-    authority.render(sb, scheme, charset)
-    path.render(sb, charset, encodeFirstSegmentColons = isRelative)
-    if (!query.isEmpty) query.render(sb.append('?'), charset)
-    if (fragment.isDefined) sb.append('#').append(encode(fragment.get, charset, QUERY_FRAGMENT_CHARS))
-    sb
+  def render[R <: Rendering](r: R, charset: Charset): r.type = {
+    renderWithoutFragment(r, charset)
+    if (fragment.isDefined) encode(r ~~ '#', fragment.get, charset, QUERY_FRAGMENT_CHAR)
+    r
+  }
+
+  /**
+   * Renders this Uri (without the fragment component) into the given Renderer as defined by
+   * http://tools.ietf.org/html/rfc3986.
+   * All Uri components are encoded and joined as required by the spec. The given charset is used to
+   * produce percent-encoded representations of potentially existing non-ASCII characters in the
+   * different components.
+   */
+  def renderWithoutFragment[R <: Rendering](r: R, charset: Charset): r.type = {
+    if (isAbsolute) r ~~ scheme ~~ ':'
+    authority.render(r, scheme, charset)
+    path.render(r, charset, encodeFirstSegmentColons = isRelative)
+    if (!query.isEmpty) query.render(r ~~ '?', charset)
+    r
   }
 
   /**
@@ -90,27 +104,38 @@ object Uri {
    * Parses a valid URI string into a normalized URI reference as defined
    * by http://tools.ietf.org/html/rfc3986#section-4.1.
    * Percent-encoded octets are UTF-8 decoded.
+   * Accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  implicit def apply(input: String): Uri = apply(input: ParserInput)
+  implicit def apply(input: String): Uri = apply(input: ParserInput, UTF8, Uri.ParsingMode.Relaxed)
 
   /**
    * Parses a valid URI string into a normalized URI reference as defined
    * by http://tools.ietf.org/html/rfc3986#section-4.1.
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * Accepts unencoded visible 7-bit ASCII characters in addition to the rfc.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def apply(input: ParserInput): Uri =
-    apply(input, UTF8)
+  def apply(input: ParserInput): Uri = apply(input, UTF8, Uri.ParsingMode.Relaxed)
 
   /**
    * Parses a valid URI string into a normalized URI reference as defined
    * by http://tools.ietf.org/html/rfc3986#section-4.1.
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def apply(input: ParserInput, charset: Charset): Uri =
-    new UriParser(input, charset).parseReference()
+  def apply(input: ParserInput, mode: Uri.ParsingMode): Uri = apply(input, UTF8, mode)
+
+  /**
+   * Parses a valid URI string into a normalized URI reference as defined
+   * by http://tools.ietf.org/html/rfc3986#section-4.1.
+   * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
+   * If the given string is not a valid URI the method throws an `IllegalUriException`.
+   */
+  def apply(input: ParserInput, charset: Charset, mode: Uri.ParsingMode): Uri =
+    new UriParser(input, charset, mode).parseReference()
 
   /**
    * Creates a new Uri instance from the given components.
@@ -136,34 +161,40 @@ object Uri {
    * http://tools.ietf.org/html/rfc3986 the method throws an `IllegalUriException`.
    */
   def from(scheme: String = "", userinfo: String = "", host: String = "", port: Int = 0, path: String = "",
-           query: Query = Query.Empty, fragment: Option[String] = None): Uri =
-    apply(scheme, Authority(Host(host), normalizePort(port, scheme), userinfo), Path(path), query, fragment)
+           query: Query = Query.Empty, fragment: Option[String] = None,
+           mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Uri =
+    apply(scheme, Authority(Host(host, mode), normalizePort(port, scheme), userinfo), Path(path), query, fragment)
 
   /**
    * Parses a string into a normalized absolute URI as defined by http://tools.ietf.org/html/rfc3986#section-4.3.
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseAbsolute(input: ParserInput, charset: Charset = UTF8): Uri =
-    new UriParser(input, charset).parseAbsolute()
+  def parseAbsolute(input: ParserInput, charset: Charset = UTF8, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Uri =
+    new UriParser(input, charset, mode).parseAbsolute()
 
   /**
    * Parses a string into a normalized URI reference that is immediately resolved against the given base URI as
    * defined by http://tools.ietf.org/html/rfc3986#section-5.2.
    * Note that the given base Uri must be absolute (i.e. define a scheme).
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseAndResolve(input: ParserInput, base: Uri, charset: Charset = UTF8): Uri =
-    new UriParser(input, charset).parseAndResolveReference(base)
+  def parseAndResolve(string: ParserInput, base: Uri, charset: Charset = UTF8,
+                      mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Uri =
+    new UriParser(string, charset, mode).parseAndResolveReference(base)
 
   /**
    * Parses the given string into an HTTP request target URI as defined by
    * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.3.
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseHttpRequestTarget(input: ParserInput, charset: Charset = UTF8): Uri =
-    new UriParser(input, charset).parseHttpRequestTarget()
+  def parseHttpRequestTarget(requestTarget: ParserInput, charset: Charset = UTF8,
+                             mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Uri =
+    new UriParser(requestTarget, charset, mode).parseHttpRequestTarget()
 
   /**
    * Normalizes the given URI string by performing the following normalizations:
@@ -172,10 +203,11 @@ object Uri {
    * - percent-encoded octets are decoded if allowed, otherwise they are converted to uppercase hex notation
    * - `.` and `..` path segments are resolved as far as possible
    *
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def normalize(input: ParserInput, charset: Charset = UTF8): String =
-    Uri(input, charset).toString(charset)
+  def normalize(uri: ParserInput, charset: Charset = UTF8, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): String =
+    apply(uri, charset, mode).render(new StringRendering, charset).get
 
   /**
    * Converts a set of URI components to an "effective HTTP request URI" as defined by
@@ -202,21 +234,20 @@ object Uri {
     Impl(_scheme, "", _host, _port, collapseDotSegments(path), query, fragment)
   }
 
-  case class Authority(host: Host, port: Int = 0, userinfo: String = "") {
+  case class Authority(host: Host, port: Int = 0, userinfo: String = "") extends ToStringRenderable {
     def isEmpty = host.isEmpty
-    def render(sb: JStringBuilder, scheme: String = "", charset: Charset = UTF8): JStringBuilder =
-      if (isEmpty) sb else {
-        sb.append('/').append('/')
-        if (!userinfo.isEmpty) sb.append(encode(userinfo, charset, UNRESERVED | SUB_DELIM | COLON)).append('@')
-        host.render(sb)
+    def render[R <: Rendering](r: R): r.type = render(r, "", UTF8)
+    def render[R <: Rendering](r: R, scheme: String, charset: Charset): r.type =
+      if (isEmpty) r else {
+        r ~~ '/' ~~ '/'
+        if (!userinfo.isEmpty) encode(r, userinfo, charset, UNRESERVED | SUB_DELIM | COLON) ~~ '@'
+        r ~~ host
         if (port != 0) normalizePort(port, scheme) match {
-          case 0 ⇒ sb
-          case x ⇒ sb.append(':').append(port)
+          case 0 ⇒ r
+          case x ⇒ r ~~ ':' ~~ port
         }
-        else sb
+        else r
       }
-    def toString(charset: Charset): String = render(new JStringBuilder).toString
-    override def toString: String = toString(UTF8)
     def normalizedFor(scheme: String): Authority = {
       val normalizedPort = normalizePort(port, scheme)
       if (normalizedPort == port) this else copy(port = normalizedPort)
@@ -226,45 +257,43 @@ object Uri {
     val Empty = Authority(Host.Empty)
   }
 
-  sealed abstract class Host {
+  sealed abstract class Host extends Renderable {
     def address: String
     def isEmpty: Boolean
     def toOption: Option[NonEmptyHost]
-    def render(sb: JStringBuilder): JStringBuilder
-    override def toString: String = render(new JStringBuilder).toString
   }
   object Host {
     case object Empty extends Host {
       def address: String = ""
       def isEmpty = true
       def toOption = None
-      def render(sb: JStringBuilder) = sb
+      def render[R <: Rendering](r: R): r.type = r
     }
-    def apply(string: String): Host =
+    def apply(string: String, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Host =
       if (!string.isEmpty) {
-        val parser = new UriParser(string, UTF8)
+        val parser = new UriParser(string, UTF8, mode)
         import parser._
         complete("URI host", host)
         _host
       } else Empty
   }
-  sealed abstract class NonEmptyHost extends Host {
+  sealed abstract class NonEmptyHost extends Host with ToStringRenderable {
     def isEmpty = false
     def toOption = Some(this)
   }
   case class IPv4Host(address: String) extends NonEmptyHost {
     require(!address.isEmpty, "address must not be empty")
-    def render(sb: JStringBuilder) = sb.append(address)
+    def render[R <: Rendering](r: R): r.type = r ~~ address
   }
   case class IPv6Host(address: String) extends NonEmptyHost {
     require(!address.isEmpty, "address must not be empty")
-    def render(sb: JStringBuilder) = sb.append('[').append(address).append(']')
+    def render[R <: Rendering](r: R): r.type = r ~~ '[' ~~ address ~~ ']'
   }
   case class NamedHost(address: String) extends NonEmptyHost {
-    def render(sb: JStringBuilder) = sb.append(encode(address, UTF8, UNRESERVED | SUB_DELIM))
+    def render[R <: Rendering](r: R): r.type = encode(r, address, UTF8, UNRESERVED | SUB_DELIM)
   }
 
-  sealed abstract class Path {
+  sealed abstract class Path extends ToStringRenderable {
     type Head
     def isEmpty: Boolean
     def startsWithSlash: Boolean
@@ -272,17 +301,18 @@ object Uri {
     def head: Head
     def tail: Path
     def length: Int
-    def charCount: Int
-    def render(sb: JStringBuilder, charset: Charset = UTF8, encodeFirstSegmentColons: Boolean = false): JStringBuilder
+    def charCount: Int // count of decoded (!) chars, i.e. the ones contained directly in this high-level model
+    def render[R <: Rendering](r: R): r.type = render(r, UTF8, encodeFirstSegmentColons = false)
+    def render[R <: Rendering](r: R, charset: Charset, encodeFirstSegmentColons: Boolean): r.type
     def ::(c: Char): Path = { require(c == '/'); Path.Slash(this) }
     def ::(segment: String): Path
     def +(pathString: String): Path = this ++ Path(pathString)
     def ++(suffix: Path): Path
     def reverse: Path = reverseAndPrependTo(Path.Empty)
     def reverseAndPrependTo(prefix: Path): Path
-    def toString(charset: Charset) = render(new JStringBuilder, charset).toString
-    override def toString = toString(UTF8)
     def /(segment: String): Path = this ++ Path.Slash(segment :: Path.Empty)
+    def startsWith(that: Path): Boolean
+    def dropChars(count: Int): Path
   }
   object Path {
     val SingleSlash = Slash(Empty)
@@ -290,7 +320,7 @@ object Uri {
     def /(path: Path): Path = Slash(path)
     def /(segment: String): Path = Slash(segment :: Empty)
     def apply(string: String, charset: Charset = UTF8): Path = {
-      @tailrec def build(path: Path = Empty, ix: Int = string.length - 1, segmentEnd: Int = 0): Path = {
+      @tailrec def build(path: Path = Empty, ix: Int = string.length - 1, segmentEnd: Int = 0): Path =
         if (ix >= 0)
           if (string.charAt(ix) == '/')
             if (segmentEnd == 0) build(Slash(path), ix - 1)
@@ -298,7 +328,6 @@ object Uri {
           else if (segmentEnd == 0) build(path, ix - 1, ix + 1)
           else build(path, ix - 1, segmentEnd)
         else if (segmentEnd == 0) path else decode(string.substring(0, segmentEnd), charset) :: path
-      }
       build()
     }
     def unapply(path: Path): Option[String] = Some(path.toString)
@@ -314,10 +343,12 @@ object Uri {
       def tail: Path = throw new UnsupportedOperationException("tail of empty path")
       def length = 0
       def charCount = 0
-      def render(sb: JStringBuilder, charset: Charset = UTF8, encodeFirstSegmentColons: Boolean = false) = sb
+      def render[R <: Rendering](r: R, charset: Charset, encodeFirstSegmentColons: Boolean): r.type = r
       def ::(segment: String) = if (segment.isEmpty) this else Segment(segment, this)
       def ++(suffix: Path) = suffix
       def reverseAndPrependTo(prefix: Path) = prefix
+      def startsWith(that: Path): Boolean = that.isEmpty
+      def dropChars(count: Int) = this
     }
     case class Slash(tail: Path) extends SlashOrEmpty {
       type Head = Char
@@ -326,11 +357,13 @@ object Uri {
       def isEmpty = false
       def length: Int = tail.length + 1
       def charCount: Int = tail.charCount + 1
-      def render(sb: JStringBuilder, charset: Charset = UTF8, encodeFirstSegmentColons: Boolean = false) =
-        tail.render(sb.append('/'), charset)
+      def render[R <: Rendering](r: R, charset: Charset, encodeFirstSegmentColons: Boolean): r.type =
+        tail.render(r ~~ '/', charset, encodeFirstSegmentColons = false)
       def ::(segment: String) = if (segment.isEmpty) this else Segment(segment, this)
       def ++(suffix: Path) = Slash(tail ++ suffix)
       def reverseAndPrependTo(prefix: Path) = tail.reverseAndPrependTo(Slash(prefix))
+      def startsWith(that: Path): Boolean = that.isEmpty || that.startsWithSlash && tail.startsWith(that.tail)
+      def dropChars(count: Int): Path = if (count < 1) this else tail.dropChars(count - 1)
     }
     case class Segment(head: String, tail: SlashOrEmpty) extends Path {
       if (head.isEmpty) throw new IllegalArgumentException("Path segment must not be empty")
@@ -340,13 +373,22 @@ object Uri {
       def startsWithSegment = true
       def length: Int = tail.length + 1
       def charCount: Int = head.length + tail.charCount
-      def render(sb: JStringBuilder, charset: Charset = UTF8, encodeFirstSegmentColons: Boolean = false) = {
-        val keep = if (encodeFirstSegmentColons) PATH_SEGMENT_CHARS & ~COLON else PATH_SEGMENT_CHARS
-        tail.render(sb.append(encode(head, charset, keep)), charset)
+      def render[R <: Rendering](r: R, charset: Charset, encodeFirstSegmentColons: Boolean): r.type = {
+        val keep = if (encodeFirstSegmentColons) PATH_SEGMENT_CHAR & ~COLON else PATH_SEGMENT_CHAR
+        tail.render(encode(r, head, charset, keep), charset, encodeFirstSegmentColons = false)
       }
       def ::(segment: String) = if (segment.isEmpty) this else Segment(segment + head, tail)
       def ++(suffix: Path) = head :: (tail ++ suffix)
       def reverseAndPrependTo(prefix: Path): Path = tail.reverseAndPrependTo(head :: prefix)
+      def startsWith(that: Path): Boolean = that match {
+        case Segment(`head`, t) ⇒ tail.startsWith(t)
+        case Segment(h, Empty)  ⇒ head.startsWith(h)
+        case x                  ⇒ x.isEmpty
+      }
+      def dropChars(count: Int): Path =
+        if (count < 1) this
+        else if (count >= head.length) tail.dropChars(count - head.length)
+        else head.substring(count) :: tail
     }
     object ~ {
       def unapply(cons: Segment): Option[(String, Path)] = Some((cons.head, cons.tail))
@@ -354,77 +396,95 @@ object Uri {
     }
   }
 
-  sealed abstract class Query {
-    def isEmpty: Boolean
+  sealed abstract class Query extends LinearSeq[(String, String)] with LinearSeqOptimized[(String, String), Query]
+      with ToStringRenderable {
     def key: String
     def value: String
-    def tail: Query
-    def length: Int
+    def isRaw: Boolean
     def +:(kvp: (String, String)) = Query.Cons(kvp._1, kvp._2, this)
-    def get(key: String): Option[String]
-    def getOrElse(key: String, default: ⇒ String): String
-    def getAll(key: String): List[String]
-    def toMap: Map[String, String]
-    def toList: List[(String, String)] = {
-      val builder = List.newBuilder[(String, String)]
-      @tailrec def toList(q: Query): List[(String, String)] =
-        if (q.isEmpty) builder.result() else { builder += ((q.key, q.value)); toList(q.tail) }
-      toList(this)
+    def get(key: String): Option[String] = {
+      @tailrec def g(q: Query): Option[String] = if (q.isEmpty) None else if (q.key == key) Some(q.value) else g(q.tail)
+      g(this)
     }
-    def render(sb: JStringBuilder, charset: Charset = UTF8): JStringBuilder = {
-      def enc(s: String) = encode(s, charset, QUERY_FRAGMENT_CHARS & ~(AMP | EQUAL | PLUS) | SPACE).replace(' ', '+')
-      @tailrec def append(q: Query): JStringBuilder = if (q.isEmpty) sb else {
-        if (q ne this) sb.append('&')
-        sb.append(enc(q.key))
-        if (!q.value.isEmpty) sb.append('=').append(enc(q.value))
-        append(q.tail)
-      }
+    def getOrElse(key: String, default: ⇒ String): String = {
+      @tailrec def g(q: Query): String = if (q.isEmpty) default else if (q.key == key) q.value else g(q.tail)
+      g(this)
+    }
+    def getAll(key: String): List[String] = {
+      @tailrec def fetch(q: Query, result: List[String] = Nil): List[String] =
+        if (q.isEmpty) result else fetch(q.tail, if (q.key == key) q.value :: result else result)
+      fetch(this)
+    }
+    def toMultiMap: Map[String, List[String]] = {
+      @tailrec def append(map: Map[String, List[String]], q: Query): Map[String, List[String]] =
+        if (q.isEmpty) map else append(map.updated(q.key, q.value :: map.getOrElse(q.key, Nil)), q.tail)
+      append(Map.empty, this)
+    }
+    def render[R <: Rendering](r: R): r.type = render(r, UTF8)
+    def render[R <: Rendering](r: R, charset: Charset): r.type = {
+      def enc(s: String): Unit = encode(r, s, charset, QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS), replaceSpaces = true)
+      @tailrec def append(q: Query): r.type =
+        q match {
+          case Query.Empty ⇒ r
+          case Query.Cons(key, value, tail) ⇒
+            if (q ne this) r ~~ '&'
+            enc(key)
+            if (!value.isEmpty) { r ~~ '='; enc(value) }
+            append(tail)
+          case Query.Raw(value) ⇒ r ~~ value
+        }
       append(this)
     }
-    def toString(charset: Charset) = render(new JStringBuilder, charset).toString
-    override def toString = toString(UTF8)
+    override def newBuilder: mutable.Builder[(String, String), Query] = Query.newBuilder
   }
   object Query {
     /**
      * Parses the given String into a Query instance.
      * Note that this method will never return Query.Empty, even for the empty String.
      * Empty strings will be parsed to `("", "") +: Query.Empty`
+     * If you want to allow for Query.Empty creation use the apply overload taking an `Option[String`.
      */
-    def apply(string: String): Query = {
-      val parser = new UriParser(string, UTF8)
+    def apply(string: String, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Query = {
+      val parser = new UriParser(string, UTF8, mode)
       import parser._
       complete("Query", query)
       _query
     }
-    def apply(input: Option[String]): Query = input match {
+    def apply(input: Option[String]): Query = apply(input, Uri.ParsingMode.Relaxed)
+    def apply(input: Option[String], mode: Uri.ParsingMode): Query = input match {
       case None         ⇒ Query.Empty
-      case Some(string) ⇒ apply(string)
+      case Some(string) ⇒ apply(string, mode)
     }
-    def apply(list: List[(String, String)]): Query = {
-      @tailrec def queryFrom(l: List[(String, String)], query: Query = Query.Empty): Query =
-        if (l.isEmpty) query else queryFrom(l.tail, Cons(query.key, query.value, query))
-      queryFrom(list)
-    }
-    def apply(map: Map[String, String]): Query = apply(map.toList)
+    def apply(kvp: (String, String)*): Query =
+      kvp.foldRight(Query.Empty: Query) { case ((key, value), acc) ⇒ Cons(key, value, acc) }
+    def apply(map: Map[String, String]): Query = apply(map.toSeq: _*)
 
-    object Empty extends Query {
-      def isEmpty = true
+    def newBuilder: mutable.Builder[(String, String), Query] = new mutable.Builder[(String, String), Query] {
+      val b = mutable.ArrayBuffer.newBuilder[(String, String)]
+      def +=(elem: (String, String)): this.type = { b += elem; this }
+      def clear() = b.clear()
+      def result() = apply(b.result(): _*)
+    }
+
+    case object Empty extends Query {
       def key = throw new NoSuchElementException("key of empty path")
       def value = throw new NoSuchElementException("value of empty path")
-      def tail = throw new UnsupportedOperationException("tail of empty query")
-      def length: Int = 0
-      def get(key: String): Option[String] = None
-      def getOrElse(key: String, default: ⇒ String): String = default
-      def getAll(key: String): List[String] = Nil
-      def toMap: Map[String, String] = Map.empty
+      def isRaw = true
+      override def isEmpty = true
+      override def head = throw new NoSuchElementException("head of empty list")
+      override def tail = throw new UnsupportedOperationException("tail of empty query")
     }
-    case class Cons(key: String, value: String, tail: Query) extends Query {
-      def isEmpty = false
-      def length = tail.length + 1
-      def get(key: String) = if (this.key == key) Some(value) else tail.get(key)
-      def getOrElse(key: String, default: ⇒ String) = if (this.key == key) value else tail.getOrElse(key, default)
-      def getAll(key: String) = if (this.key == key) value :: tail.getAll(key) else tail.getAll(key)
-      def toMap: Map[String, String] = tail.toMap.updated(key, value)
+    case class Cons(key: String, value: String, override val tail: Query) extends Query {
+      def isRaw = false
+      override def isEmpty = false
+      override def head = (key, value)
+    }
+    case class Raw(value: String) extends Query {
+      def key = ""
+      def isRaw = true
+      override def isEmpty = false
+      override def head = ("", value)
+      override def tail = Empty
     }
   }
 
@@ -432,6 +492,22 @@ object Uri {
     Map("ftp" -> 21, "ssh" -> 22, "telnet" -> 23, "smtp" -> 25, "domain" -> 53, "tftp" -> 69, "http" -> 80,
       "pop3" -> 110, "nntp" -> 119, "imap" -> 143, "snmp" -> 161, "ldap" -> 389, "https" -> 443, "imaps" -> 993,
       "nfs" -> 2049).withDefaultValue(-1)
+
+  sealed trait ParsingMode
+
+  object ParsingMode {
+    case object Strict extends ParsingMode
+    case object Relaxed extends ParsingMode
+    case object RelaxedWithRawQuery extends ParsingMode
+
+    def apply(string: String): ParsingMode =
+      string match {
+        case "strict"                 ⇒ Strict
+        case "relaxed"                ⇒ Relaxed
+        case "relaxed-with-raw-query" ⇒ RelaxedWithRawQuery
+        case x                        ⇒ throw new IllegalArgumentException(x + " is not a legal UriParsingMode")
+      }
+  }
 
   /////////////////////////////////// PRIVATE //////////////////////////////////////////
 
@@ -464,26 +540,21 @@ object Uri {
     else Impl(scheme, userinfo, host, port, collapseDotSegments(path), query, fragment)
   }
 
-  private[http] def encode(string: String, charset: Charset, keep: Int): String = {
-    @tailrec def firstToBeEncoded(ix: Int = 0): Int =
-      if (ix == string.length) -1 else if (is(string.charAt(ix), keep)) firstToBeEncoded(ix + 1) else ix
-
-    firstToBeEncoded() match {
-      case -1 ⇒ string
-      case first ⇒
-        @tailrec def process(sb: JStringBuilder, ix: Int = first): String = {
-          def appendEncoded(byte: Byte): Unit = sb.append('%').append(hexDigit(byte >>> 4)).append(hexDigit(byte))
-          if (ix < string.length) {
-            string.charAt(ix) match {
-              case c if is(c, keep) ⇒ sb.append(c)
-              case c if c <= 127    ⇒ appendEncoded(c.toByte)
-              case c                ⇒ c.toString.getBytes(charset).foreach(appendEncoded)
-            }
-            process(sb, ix + 1)
-          } else sb.toString
+  private[http] def encode(r: Rendering, string: String, charset: Charset, keep: Int,
+                           replaceSpaces: Boolean = false): r.type = {
+    @tailrec def rec(ix: Int = 0): r.type = {
+      def appendEncoded(byte: Byte): Unit = r ~~ '%' ~~ hexDigit(byte >>> 4) ~~ hexDigit(byte)
+      if (ix < string.length) {
+        string.charAt(ix) match {
+          case c if is(c, keep)     ⇒ r ~~ c
+          case ' ' if replaceSpaces ⇒ r ~~ '+'
+          case c if c <= 127        ⇒ appendEncoded(c.toByte)
+          case c                    ⇒ c.toString.getBytes(charset).foreach(appendEncoded)
         }
-        process(new JStringBuilder(string.length * 2).append(string, 0, first))
+        rec(ix + 1)
+      } else r
     }
+    rec()
   }
 
   private[http] def decode(string: String, charset: Charset): String = {
@@ -510,13 +581,12 @@ object Uri {
         val bytesCount = (lastPercentSignIndexPlus3 - ix) / 3
         val bytes = new Array[Byte](bytesCount)
 
-        @tailrec def decodeBytes(i: Int = 0, oredBytes: Int = 0): Int = {
+        @tailrec def decodeBytes(i: Int = 0, oredBytes: Int = 0): Int =
           if (i < bytesCount) {
             val byte = intValueOfHexWord(ix + 3 * i + 1)
             bytes(i) = byte.toByte
             decodeBytes(i + 1, oredBytes | byte)
           } else oredBytes
-        }
 
         if ((decodeBytes() >> 7) != 0) { // if non-ASCII chars are present we need to involve the charset for decoding
           sb.append(new String(bytes, charset))

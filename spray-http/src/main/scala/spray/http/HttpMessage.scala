@@ -21,6 +21,7 @@ import scala.annotation.tailrec
 import scala.reflect.{ classTag, ClassTag }
 import HttpHeaders._
 import HttpCharsets._
+import java.util
 
 sealed trait HttpMessagePartWrapper {
   def messagePart: HttpMessagePart
@@ -82,6 +83,7 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   def entity: HttpEntity
   def protocol: HttpProtocol
 
+  def withHeaders(headers: HttpHeader*): Self = withHeaders(headers.toList)
   def withHeaders(headers: List[HttpHeader]): Self
   def withEntity(entity: HttpEntity): Self
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity): Self
@@ -250,6 +252,11 @@ case class MessageChunk(body: Array[Byte], extension: String) extends HttpReques
   def bodyAsString(charset: HttpCharset): String = bodyAsString(charset.nioCharset)
   def bodyAsString(charset: Charset): String = if (body.isEmpty) "" else new String(body, charset)
   def bodyAsString(charset: String): String = if (body.isEmpty) "" else new String(body, charset)
+  override def hashCode = extension.## * 31 + util.Arrays.hashCode(body)
+  override def equals(obj: Any) = obj match {
+    case x: MessageChunk ⇒ (this eq x) || extension == x.extension && util.Arrays.equals(body, x.body)
+    case _               ⇒ false
+  }
 }
 
 object MessageChunk {
@@ -274,6 +281,7 @@ case class ChunkedResponseStart(response: HttpResponse) extends HttpMessageStart
   def message = response
 }
 
+object ChunkedMessageEnd extends ChunkedMessageEnd("", Nil)
 case class ChunkedMessageEnd(extension: String = "",
                              trailer: List[HttpHeader] = Nil) extends HttpRequestPart with HttpResponsePart with HttpMessageEnd {
   if (!trailer.isEmpty) {

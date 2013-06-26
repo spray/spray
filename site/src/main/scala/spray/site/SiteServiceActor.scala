@@ -33,17 +33,23 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
   def receive = runRoute {
     dynamicIf(settings.devMode) { // for proper support of twirl + sbt-revolver during development
       (get & encodeResponse(Gzip)) {
-        (host("repo.spray.io", "repo.spray.cc")) {
+        host("repo.spray.io") {
           logRequestResponse(showRepoResponses("repo") _) {
             getFromBrowseableDirectories(settings.repoDirs: _*) ~
             complete(NotFound)
           }
+        } ~
+        (host("repo.spray.cc") & unmatchedPath) { ump =>
+          redirect("http://repo.spray.io" + ump, Found)
         } ~
         host("nightlies.spray.io") {
           logRequestResponse(showRepoResponses("nightlies") _) {
             getFromBrowseableDirectories(settings.nightliesDir) ~
             complete(NotFound)
           }
+        } ~
+        (host("nightlies.spray.cc") & unmatchedPath) { ump =>
+          redirect("http://nightlies.spray.io" + ump, Found)
         } ~
         host("spray.io", "localhost", "127.0.0.1") {
           path("favicon.ico") {
@@ -60,7 +66,7 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
               } ~
               pathSuffixTest(Slash) {
                 path("home") {
-                  redirect("/")
+                  redirect("/", MovedPermanently)
                 } ~
                 path("index") {
                   complete(page(index()))
@@ -69,10 +75,10 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
                   path("blog") {
                     complete(page(blogIndex(Main.blog.root.children), Main.blog.root))
                   } ~
-                  path("blog/feed") {
+                  path("blog" / "feed") {
                     complete(xml.blogAtomFeed())
                   } ~
-                  path("blog/category" / Segment) { tag =>
+                  path("blog" / "category" / Segment) { tag =>
                     Main.blog.posts(tag) match {
                       case Nil => complete(NotFound, page(error404()))
                       case posts => complete(page(blogIndex(posts, tag), Main.blog.root))
@@ -82,18 +88,21 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
                     complete(page(blogPost(node), node))
                   }
                 } ~
+                pathPrefixTest("documentation" / !IntNumber ~ !PathEnd ~ Rest) { subUri =>
+                  redirect("/documentation/" + Main.settings.mainVersion + '/' + subUri, MovedPermanently)
+                } ~
                 sphinxNode { node =>
                   complete(page(document(node), node))
                 }
               } ~
               unmatchedPath { ump =>
-                redirect(ump.toString + "/")
+                redirect(ump.toString + "/", MovedPermanently)
               }
             }
           }
         } ~
         unmatchedPath { ump =>
-          redirect("http://spray.io" + ump)
+          redirect("http://spray.io" + ump, Found)
         }
       }
     }
@@ -110,6 +119,8 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
   def showErrorResponses(request: HttpRequest): Any ⇒ Option[LogEntry] = {
     case HttpResponse(OK, _, _, _)       ⇒ None
     case HttpResponse(NotFound, _, _, _) ⇒ Some(LogEntry("404: " + request.uri, WarningLevel))
+    case r @ HttpResponse(Found | MovedPermanently, _, _, _) ⇒
+      Some(LogEntry(s"${r.status.intValue}: ${request.uri} -> ${r.header[HttpHeaders.Location].map(_.uri.toString).getOrElse("")}", WarningLevel))
     case response ⇒ Some(
       LogEntry("Non-200 response for\n  Request : " + request + "\n  Response: " + response, WarningLevel))
   }

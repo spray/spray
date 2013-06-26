@@ -25,17 +25,12 @@ trait ConnectionHandler extends Actor with SprayActorLogging {
 
   //# final-stages
   def baseCommandPipeline(tcpConnection: ActorRef): Pipeline[Command] = {
-    case x: Tcp.Write ⇒
-      val write =
-        if (!x.wantsAck || x.ack.isInstanceOf[Event]) x
-        else x.copy(ack = Pipeline.AckEvent(x.ack))
-      tcpConnection ! write
-
-    case Pipeline.Tell(receiver, msg, sender)      ⇒ receiver.tell(msg, sender)
-    case x: Tcp.CloseCommand                       ⇒ tcpConnection ! x
-    case x @ (Tcp.StopReading | Tcp.ResumeReading) ⇒ tcpConnection ! x
-    case _: Droppable                              ⇒ // don't warn
-    case cmd                                       ⇒ log.warning("command pipeline: dropped {}", cmd)
+    case x: Tcp.Write ⇒ tcpConnection ! x
+    case Pipeline.Tell(receiver, msg, sender) ⇒ receiver.tell(msg, sender)
+    case x: Tcp.CloseCommand ⇒ tcpConnection ! x
+    case x @ (Tcp.SuspendReading | Tcp.ResumeReading | Tcp.ResumeWriting) ⇒ tcpConnection ! x
+    case _: Droppable ⇒ // don't warn
+    case cmd ⇒ log.warning("command pipeline: dropped {}", cmd)
   }
 
   def baseEventPipeline(keepOpenOnPeerClosed: Boolean): Pipeline[Event] = {

@@ -21,9 +21,9 @@ import akka.actor._
 import spray.util.SprayActorLogging
 import spray.io.ClientSSLEngineProvider
 import spray.http.{ HttpHeaders, HttpRequest }
-import spray.can.{ Http, HostConnectorSetup }
+import spray.can.Http
 
-private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
+private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
     extends Actor with SprayActorLogging {
 
   import HttpHostConnector._
@@ -44,6 +44,9 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
   }
 
   context.setReceiveTimeout(settings.idleTimeout)
+
+  // we cannot sensibly recover from crashes
+  override def supervisorStrategy = SupervisorStrategy.stoppingStrategy
 
   def receive: Receive = {
     case request: HttpRequest ⇒
@@ -68,11 +71,11 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
         context.stop(self)
       } else context.become(closing(stillConnected, Set(sender)))
 
-    case Disconnected(openRequestCount) ⇒
+    case Disconnected(rescheduledRequestCount) ⇒
       val oldCount = openRequestCounts(sender)
       val newCount =
-        if (oldCount == openRequestCount) -1 // "normal" case when a connection was closed
-        else oldCount - openRequestCount // we have already scheduled a new request onto this connection
+        if (oldCount == rescheduledRequestCount) -1 // "normal" case when a connection was closed
+        else oldCount - rescheduledRequestCount // we have already scheduled a new request onto this connection
       openRequestCounts = openRequestCounts.updated(sender, newCount)
       dispatchStrategy.onConnectionStateChange()
 
@@ -120,7 +123,7 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
   def newConnectionChild(): ActorRef = {
     val child = context.watch {
       context.actorOf(
-        props = Props(new HttpHostConnection(remoteAddress, options, settings.idleTimeout,
+        props = Props(new HttpHostConnectionSlot(remoteAddress, options, settings.idleTimeout,
           clientConnectionSettingsGroup)),
         name = counter.next().toString)
     }
@@ -181,13 +184,13 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
       dispatch(ctx, connection)
     }
 
-    def onConnectionStateChange() {}
+    def onConnectionStateChange(): Unit = {}
   }
 }
 
 private[can] object HttpHostConnector {
   case class RequestContext(request: HttpRequest, retriesLeft: Int, commander: ActorRef)
-  case class Disconnected(openRequestCount: Int)
+  case class Disconnected(rescheduledRequestCount: Int)
   case object RequestCompleted
   case object DemandIdleShutdown
 }

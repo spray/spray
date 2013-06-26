@@ -20,15 +20,15 @@ package spray.http
  * Immutable, fast and efficient Date + Time implementation without any dependencies.
  * Does not support TimeZones, all DateTime values are always GMT based.
  */
-final class DateTime private (val year: Int, // the year
-                              val month: Int, // the month of the year. January is 1.
-                              val day: Int, // the day of the month. The first day is 1.
-                              val hour: Int, // the hour of the day. The first hour is 0.
-                              val minute: Int, // the minute of the hour. The first minute is 0.
-                              val second: Int, // the second of the minute. The first second is 0.
-                              val weekday: Int, // the day of the week. Sunday is 0.
-                              val clicks: Long, // milliseconds since January 1, 1970, 00:00:00 GMT
-                              val isLeapYear: Boolean) extends Ordered[DateTime] {
+case class DateTime private (year: Int, // the year
+                             month: Int, // the month of the year. January is 1.
+                             day: Int, // the day of the month. The first day is 1.
+                             hour: Int, // the hour of the day. The first hour is 0.
+                             minute: Int, // the minute of the hour. The first minute is 0.
+                             second: Int, // the second of the minute. The first second is 0.
+                             weekday: Int, // the day of the week. Sunday is 0.
+                             clicks: Long, // milliseconds since January 1, 1970, 00:00:00 GMT
+                             isLeapYear: Boolean) extends Ordered[DateTime] with Renderable {
   /**
    * The day of the week as a 3 letter abbreviation:
    * `Sun`, `Mon`, `Tue`, `Wed`, `Thu`, `Fri` or `Sat`
@@ -52,40 +52,61 @@ final class DateTime private (val year: Int, // the year
   def -(millis: Long): DateTime = DateTime(clicks - millis)
 
   /**
-   * `yyyy-mm-dd`
+   * `yyyy-mm-ddThh:mm:ss`
    */
-  def toIsoDateString = year + "-" + ##(month) + '-' + ##(day)
+  def render[R <: Rendering](r: R): r.type = renderIsoDateTimeString(r)
 
   /**
    * `yyyy-mm-ddThh:mm:ss`
    */
-  def toIsoDateTimeString = toIsoDateString + 'T' + ##(hour) + ':' + ##(minute) + ':' + ##(second)
+  override def toString = toIsoDateTimeString
+
+  /**
+   * `yyyy-mm-dd`
+   */
+  def renderIsoDate[R <: Rendering](r: R): r.type = put_##(put_##(r ~~ year ~~ '-', month) ~~ '-', day)
+
+  /**
+   * `yyyy-mm-dd`
+   */
+  def toIsoDateString = renderIsoDate(new StringRendering).get
+
+  /**
+   * `yyyy-mm-ddThh:mm:ss`
+   */
+  def renderIsoDateTimeString[R <: Rendering](r: R): r.type =
+    put_##(put_##(put_##(renderIsoDate(r) ~~ 'T', hour) ~~ ':', minute) ~~ ':', second)
+
+  /**
+   * `yyyy-mm-ddThh:mm:ss`
+   */
+  def toIsoDateTimeString = renderIsoDateTimeString(new StringRendering).get
 
   /**
    * `yyyy-mm-dd hh:mm:ss`
    */
-  def toIsoLikeDateTimeString = toIsoDateString + ' ' + ##(hour) + ':' + ##(minute) + ':' + ##(second)
+  def renderIsoLikeDateTimeString[R <: Rendering](r: R): r.type =
+    put_##(put_##(put_##(renderIsoDate(r) ~~ ' ', hour) ~~ ':', minute) ~~ ':', second)
 
   /**
-   * RFC 1123 date string, e.g. `Sun, 06 Nov 1994 08:49:37 GMT`
+   * `yyyy-mm-dd hh:mm:ss`
    */
-  def toRfc1123DateTimeString = {
-    new java.lang.StringBuilder(32)
-      .append(weekdayStr).append(", ")
-      .append(##(day)).append(' ')
-      .append(monthStr).append(' ')
-      .append(year).append(' ')
-      .append(##(hour)).append(':')
-      .append(##(minute)).append(':')
-      .append(##(second)).append(" GMT")
-      .toString
-  }
+  def toIsoLikeDateTimeString = renderIsoLikeDateTimeString(new StringRendering).get
 
-  private def ##(i: Int) = String.valueOf(Array[Char]((i / 10 + '0').toChar, (i % 10 + '0').toChar))
+  /**
+   * RFC1123 date string, e.g. `Sun, 06 Nov 1994 08:49:37 GMT`
+   */
+  def renderRfc1123DateTimeString[R <: Rendering](r: R): r.type =
+    put_##(put_##(put_##(put_##(r ~~ weekdayStr ~~ ',' ~~ ' ', day) ~~ ' ' ~~ monthStr ~~ ' ' ~~ year ~~ ' ', hour) ~~ ':', minute) ~~ ':', second) ~~ " GMT"
 
-  def compare(that: DateTime) = {
-    if (clicks < that.clicks) -1 else if (clicks > that.clicks) 1 else 0
-  }
+  /**
+   * RFC1123 date string, e.g. `Sun, 06 Nov 1994 08:49:37 GMT`
+   */
+  def toRfc1123DateTimeString = renderRfc1123DateTimeString(new StringRendering).get
+
+  private def put_##[R <: Rendering](r: R, i: Int): r.type = r ~~ (i / 10 + '0').toChar ~~ (i % 10 + '0').toChar
+
+  def compare(that: DateTime): Int = math.signum(clicks - that.clicks).toInt
 
   override def hashCode() = clicks.##
 
@@ -93,8 +114,6 @@ final class DateTime private (val year: Int, // the year
     case x: DateTime ⇒ x.clicks == clicks
     case _           ⇒ false
   }
-
-  override def toString = toIsoDateTimeString
 }
 
 object DateTime {

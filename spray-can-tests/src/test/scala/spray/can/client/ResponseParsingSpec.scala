@@ -20,7 +20,7 @@ import org.specs2.mutable.Specification
 import akka.io.Tcp
 import akka.util.ByteString
 import spray.testkit.Specs2PipelineStageTest
-import spray.can.rendering.HttpRequestPartRenderingContext
+import spray.can.rendering.RequestPartRenderingContext
 import spray.http.HttpRequest
 import spray.can.TestSupport._
 import spray.can.Http
@@ -37,14 +37,14 @@ class ResponseParsingSpec extends Specification with Specs2PipelineStageTest {
     }
 
     "parse a simple response and produce the corresponding event" in new Fixture(stage) {
-      connectionActor ! HttpRequestPartRenderingContext(HttpRequest())
+      connectionActor ! RequestPartRenderingContext(HttpRequest())
       connectionActor ! Tcp.Received(ByteString(rawResponse("foo")))
       events.expectMsg(Http.MessageEvent(response("foo")))
     }
 
     "parse a double response and produce the corresponding events" in new Fixture(stage) {
-      connectionActor ! HttpRequestPartRenderingContext(HttpRequest())
-      connectionActor ! HttpRequestPartRenderingContext(HttpRequest())
+      connectionActor ! RequestPartRenderingContext(HttpRequest())
+      connectionActor ! RequestPartRenderingContext(HttpRequest())
       connectionActor ! Tcp.Received(ByteString(rawResponse("foo") + rawResponse("bar")))
       events.expectMsg(Http.MessageEvent(response("foo")))
       events.expectMsg(Http.MessageEvent(response("bar")))
@@ -56,8 +56,8 @@ class ResponseParsingSpec extends Specification with Specs2PipelineStageTest {
         commands.expectMsg(Http.Close)
       }
       "example 2" in new Fixture(stage) {
-        connectionActor ! HttpRequestPartRenderingContext(HttpRequest())
-        connectionActor ! HttpRequestPartRenderingContext(HttpRequest())
+        connectionActor ! RequestPartRenderingContext(HttpRequest())
+        connectionActor ! RequestPartRenderingContext(HttpRequest())
         connectionActor ! Tcp.Received(ByteString(rawResponse("foo")))
         connectionActor ! Tcp.Received(ByteString(rawResponse("bar")))
         connectionActor ! Tcp.Received(ByteString(rawResponse("baz")))

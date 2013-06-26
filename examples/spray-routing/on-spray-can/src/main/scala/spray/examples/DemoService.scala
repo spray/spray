@@ -152,7 +152,7 @@ trait DemoService extends HttpService {
           def receive = {
             case Ok(0) =>
               ctx.responder ! MessageChunk(streamEnd)
-              ctx.responder ! ChunkedMessageEnd()
+              ctx.responder ! ChunkedMessageEnd
               context.stop(self)
 
             case Ok(remaining) =>
@@ -169,7 +169,7 @@ trait DemoService extends HttpService {
     }
 
   implicit val statsMarshaller: Marshaller[Stats] =
-    Marshaller.delegate[Stats, String](ContentType.`text/plain`) { stats =>
+    Marshaller.delegate[Stats, String](ContentTypes.`text/plain`) { stats =>
       "Uptime                : " + stats.uptime.formatHMS + '\n' +
       "Total requests        : " + stats.totalRequests + '\n' +
       "Open requests         : " + stats.openRequests + '\n' +

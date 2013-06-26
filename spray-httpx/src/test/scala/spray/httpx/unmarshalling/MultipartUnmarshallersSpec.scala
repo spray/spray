@@ -22,18 +22,19 @@ import spray.http._
 import MediaTypes._
 import HttpCharsets._
 import HttpHeaders._
+import ProtectedHeaderCreation.enable
 
 class MultipartUnmarshallersSpec extends Specification {
 
   "The MultipartContentUnmarshaller" should {
     "correctly unmarshal 'multipart/mixed' content with one empty part" in {
-      HttpEntity(new `multipart/mixed`(Some("XYZABC")),
+      HttpEntity(new `multipart/mixed`("XYZABC"),
         """|--XYZABC
            |--XYZABC--""".stripMargin).as[MultipartContent] ===
         Right(MultipartContent(Seq(BodyPart(HttpEntity(ContentType(`text/plain`, Some(`US-ASCII`)), "")))))
     }
     "correctly unmarshal 'multipart/form-data' content with one part" in {
-      HttpEntity(new `multipart/form-data`(Some("-")),
+      HttpEntity(new `multipart/form-data`("-"),
         """|---
            |Content-type: text/plain; charset=UTF8
            |content-disposition: form-data; name="email"
@@ -50,7 +51,7 @@ class MultipartUnmarshallersSpec extends Specification {
         }
     }
     "correctly unmarshal multipart content with two different parts" in {
-      HttpEntity(new `multipart/mixed`(Some("12345")),
+      HttpEntity(new `multipart/mixed`("12345"),
         """|--12345
            |
            |first part, with a trailing EOL
@@ -72,16 +73,16 @@ class MultipartUnmarshallersSpec extends Specification {
         }
     }
     "reject illegal multipart content" in {
-      val Left(MalformedContent(msg, _)) = HttpEntity(new `multipart/mixed`(Some("12345")), "--noob").as[MultipartContent]
+      val Left(MalformedContent(msg, _)) = HttpEntity(new `multipart/mixed`("12345"), "--noob").as[MultipartContent]
       msg === "Missing start boundary"
     }
   }
 
   "The MultipartFormDataUnmarshaller" should {
     "correctly unmarshal 'multipart/form-data' content with one element" in (
-      HttpEntity(new `multipart/form-data`(Some("XYZABC")),
+      HttpEntity(new `multipart/form-data`("XYZABC"),
         """|--XYZABC
-           |content-disposition: form-data; name="email"
+           |content-disposition: form-data; name=email
            |
            |test@there.com
            |--XYZABC--""".stripMargin).as[MultipartFormData] === Right {
@@ -91,7 +92,7 @@ class MultipartUnmarshallersSpec extends Specification {
               List(`Content-Disposition`("form-data", Map("name" -> "email"))))))
         })
     "correctly unmarshal 'multipart/form-data' content mixed with a file" in {
-      HttpEntity(new `multipart/form-data`(Some("XYZABC")),
+      HttpEntity(new `multipart/form-data`("XYZABC"),
         """|--XYZABC
            |Content-Disposition: form-data; name="email"
            |
@@ -107,11 +108,11 @@ class MultipartUnmarshallersSpec extends Specification {
         }.mkString("|") === "email: test@there.com|userfile: filecontent"
     }
     "reject illegal multipart content" in {
-      val Left(MalformedContent(msg, _)) = HttpEntity(new `multipart/form-data`(Some("XYZABC")), "--noboundary--").as[MultipartFormData]
+      val Left(MalformedContent(msg, _)) = HttpEntity(new `multipart/form-data`("XYZABC"), "--noboundary--").as[MultipartFormData]
       msg === "Missing start boundary"
     }
     "reject illegal form-data content" in {
-      val Left(MalformedContent(msg, _)) = HttpEntity(new `multipart/form-data`(Some("XYZABC")),
+      val Left(MalformedContent(msg, _)) = HttpEntity(new `multipart/form-data`("XYZABC"),
         """|--XYZABC
            |content-disposition: form-data; named="email"
            |

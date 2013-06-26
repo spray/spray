@@ -16,7 +16,7 @@
 
 package spray.can.client
 
-import akka.actor.{ ActorRef, Props, Actor }
+import akka.actor.{ SupervisorStrategy, ActorRef, Props, Actor }
 import spray.can.{ Http, HttpExt }
 
 private[can] class HttpClientSettingsGroup(settings: ClientConnectionSettings,

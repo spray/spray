@@ -98,7 +98,7 @@ class GzipDecompressor extends DeflateDecompressor {
     }
     def readShort(): Int = readByte() | (readByte() << 8)
     def readInt(): Int = readShort() | (readShort() << 16)
-    def readHeader() {
+    def readHeader(): Unit = {
       def crc16(buffer: Array[Byte], offset: Int, len: Int) = {
         val crc = new CRC32
         crc.update(buffer, offset, len)
@@ -113,7 +113,7 @@ class GzipDecompressor extends DeflateDecompressor {
       if ((flags & 16) > 0) while (readByte() != 0) {} // skip optional file comment
       if ((flags & 2) > 0 && crc16(buffer, offset, off - offset) != readShort()) fail("Corrupt GZIP header")
     }
-    def readTrailer() {
+    def readTrailer(): Unit = {
       if (readInt() != checkSum.getValue.asInstanceOf[Int]) fail("Corrupt data (CRC32 checksum error)")
       if (readInt() != inflater.getBytesWritten) fail("Corrupt GZIP trailer ISIZE")
     }

@@ -15,7 +15,9 @@ used by both of them.
    unmarshalling
    de-compression
    request-building
+   response-transformation
    spray-json-support
    lift-json-support
+   json4s-support
    twirl-support
 

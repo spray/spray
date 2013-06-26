@@ -19,6 +19,7 @@ package spray.can.parsing
 import com.typesafe.config.Config
 import scala.collection.JavaConverters._
 import akka.actor.ActorSystem
+import spray.http.Uri
 
 case class ParserSettings(
     maxUriLength: Int,
@@ -29,6 +30,8 @@ case class ParserSettings(
     maxContentLength: Int,
     maxChunkExtLength: Int,
     maxChunkSize: Int,
+    uriParsingMode: Uri.ParsingMode,
+    illegalHeaderWarnings: Boolean,
     headerValueCacheLimits: Map[String, Int]) {
 
   require(maxUriLength > 0, "max-uri-length must be > 0")
@@ -66,6 +69,8 @@ object ParserSettings {
       bytes("max-content-length"),
       bytes("max-chunk-ext-length"),
       bytes("max-chunk-size"),
+      Uri.ParsingMode(config getString "uri-parsing-mode"),
+      config getBoolean "illegal-header-warnings",
       cacheConfig.entrySet.asScala.map(kvp ⇒ kvp.getKey -> cacheConfig.getInt(kvp.getKey))(collection.breakOut))
   }
 }

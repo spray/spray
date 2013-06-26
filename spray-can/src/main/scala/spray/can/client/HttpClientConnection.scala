@@ -18,9 +18,9 @@ package spray.can
 package client
 
 import scala.concurrent.duration.Duration
-import akka.actor.{ ReceiveTimeout, ActorRef }
+import akka.actor.{ SupervisorStrategy, ReceiveTimeout, ActorRef }
 import akka.io.{ Tcp, IO }
-import spray.http.{ Confirmed, HttpRequestPart }
+import spray.http.{ SetRequestTimeout, Confirmed, HttpRequestPart }
 import spray.io._
 
 private[can] class HttpClientConnection(connectCommander: ActorRef,
@@ -35,6 +35,9 @@ private[can] class HttpClientConnection(connectCommander: ActorRef,
   IO(Tcp) ! Tcp.Connect(remoteAddress, localAddress, options)
 
   context.setReceiveTimeout(settings.connectingTimeout)
+
+  // we cannot sensibly recover from crashes
+  override def supervisorStrategy = SupervisorStrategy.stoppingStrategy
 
   def receive: Receive = {
     case connected: Tcp.Connected ⇒
@@ -60,6 +63,7 @@ private[can] class HttpClientConnection(connectCommander: ActorRef,
     super.running(tcpConnection, pipelines) orElse {
       case x: HttpRequestPart                   ⇒ pipelines.commandPipeline(Http.MessageCommand(x))
       case x @ Confirmed(_: HttpRequestPart, _) ⇒ pipelines.commandPipeline(Http.MessageCommand(x))
+      case x: SetRequestTimeout                 ⇒ pipelines.commandPipeline(CommandWrapper(x))
     }
 
   def pipelineContext(connected: Tcp.Connected) = new SslTlsContext {

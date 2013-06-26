@@ -20,7 +20,7 @@ import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 import akka.io.Tcp
 import akka.util.CompactByteString
-import spray.can.rendering.HttpRequestPartRenderingContext
+import spray.can.rendering.RequestPartRenderingContext
 import spray.can.Http
 import spray.can.parsing._
 import spray.http._
@@ -35,7 +35,8 @@ object ResponseParsing {
         new Pipelines {
           import context.log
           val parser = rootParser.copyWith { errorInfo ⇒
-            log.warning(errorInfo.withSummaryPrepended("Illegal response header").formatPretty)
+            if (settings.illegalHeaderWarnings)
+              log.warning(errorInfo.withSummaryPrepended("Illegal response header").formatPretty)
           }
           var openRequestMethods = Queue.empty[HttpMethod]
 
@@ -59,7 +60,7 @@ object ResponseParsing {
             }
 
           val commandPipeline: CPL = {
-            case x: HttpRequestPartRenderingContext ⇒
+            case x: RequestPartRenderingContext ⇒
               def register(req: HttpRequest): Unit = {
                 if (openRequestMethods.isEmpty) parser.startResponse(req.method)
                 openRequestMethods = openRequestMethods enqueue req.method

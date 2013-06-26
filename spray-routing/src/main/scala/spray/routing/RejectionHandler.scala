@@ -26,13 +26,13 @@ trait RejectionHandler extends RejectionHandler.PF
 object RejectionHandler {
   type PF = PartialFunction[List[Rejection], Route]
 
-  implicit def fromPF(pf: PF): RejectionHandler =
+  implicit def apply(pf: PF): RejectionHandler =
     new RejectionHandler {
       def isDefinedAt(rejections: List[Rejection]) = pf.isDefinedAt(rejections)
       def apply(rejections: List[Rejection]) = pf(rejections)
     }
 
-  implicit val Default = fromPF {
+  implicit val Default = apply {
     case Nil ⇒ complete(NotFound, "The requested resource could not be found.")
 
     case AuthenticationRequiredRejection(scheme, realm, params) :: _ ⇒

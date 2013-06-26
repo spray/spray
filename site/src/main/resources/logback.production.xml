@@ -18,8 +18,8 @@
         </encoder>
     </appender>
 
-    <logger name="spray-site-Main.user.io-bridge" level="INFO" />
-    <logger name="spray-site-Main.user.http-server" level="INFO" />
+    <logger name="site.user.IO-HTTP" level="INFO" />
+    <logger name="akka.io.TcpListener" level="INFO" />
 
     <root level="DEBUG">
         <appender-ref ref="FILE"/>

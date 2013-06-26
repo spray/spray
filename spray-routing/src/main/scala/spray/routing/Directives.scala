@@ -20,6 +20,7 @@ import directives._
 
 //# source-quote
 trait Directives extends RouteConcatenation
+  with AnyParamDirectives
   with BasicDirectives
   with ChunkingDirectives
   with CookieDirectives
@@ -28,6 +29,7 @@ trait Directives extends RouteConcatenation
   with ExecutionDirectives
   with FileAndResourceDirectives
   with FormFieldDirectives
+  with FutureDirectives
   with HeaderDirectives
   with HostDirectives
   with MarshallingDirectives

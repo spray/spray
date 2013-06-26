@@ -18,15 +18,27 @@ package spray
 
 import java.nio.charset.Charset
 import spray.http.parser.HttpParser
+import scala.annotation.tailrec
 
 package object http {
   val UTF8: Charset = HttpCharsets.`UTF-8`.nioCharset
+
+  private[http] def asciiBytes(s: String) = {
+    val array = new Array[Byte](s.length)
+    @tailrec def copyChars(ix: Int = 0): Unit =
+      if (ix < array.length) {
+        array(ix) = s.charAt(ix).asInstanceOf[Byte]
+        copyChars(ix + 1)
+      }
+    copyChars()
+    array
+  }
 
   /**
    * Warms up the spray.http module by triggering the loading of most classes in this package,
    * so as to increase the speed of the first usage.
    */
-  def warmUp() {
+  def warmUp(): Unit = {
     HttpParser.parseHeaders {
       List(
         HttpHeaders.RawHeader("Accept", "*/*,text/plain,custom/custom"),
@@ -47,23 +59,4 @@ package object http {
     }
     HttpResponse(status = 200)
   }
-}
-
-package http {
-
-  case class ProductVersion(product: String, version: String = "") {
-    override def toString = if (version.isEmpty) product else product + '/' + version
-  }
-
-  object ProductVersion {
-    def parseMultiple(string: String): Seq[ProductVersion] =
-      string.split("\\s").flatMap {
-        _.split("/", 2) match {
-          case Array() | Array("") | Array("", _) ⇒ None
-          case Array(product)                     ⇒ Some(ProductVersion(product))
-          case Array(product, version)            ⇒ Some(ProductVersion(product, version))
-        }
-      }(collection.breakOut)
-  }
-
 }

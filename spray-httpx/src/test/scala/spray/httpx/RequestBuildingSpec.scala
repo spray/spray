@@ -26,6 +26,8 @@ class RequestBuildingSpec extends Specification with RequestBuilding {
   "The RequestBuilding trait" should {
     "construct simple requests" >> {
       Get() === HttpRequest()
+      Options() === HttpRequest(OPTIONS)
+      Head() === HttpRequest(HEAD)
       Post("/abc") === HttpRequest(POST, "/abc")
       Patch("/abc", "content") === HttpRequest(PATCH, "/abc", entity = "content")
       Put("/abc", Some("content")) === HttpRequest(PUT, "/abc", entity = "content")
@@ -34,6 +36,15 @@ class RequestBuildingSpec extends Specification with RequestBuilding {
     "provide a working `addHeader` transformer" >> {
       Get() ~> addHeader("X-Yeah", "Naah") ~> addHeader(Authorization(BasicHttpCredentials("bla"))) ===
         HttpRequest(headers = List(Authorization(BasicHttpCredentials("bla")), RawHeader("X-Yeah", "Naah")))
+    }
+
+    "support adding headers directly without explicit `addHeader` transformer" >> {
+      Get() ~> RawHeader("X-Yeah", "Naah") === HttpRequest(headers = List(RawHeader("X-Yeah", "Naah")))
+    }
+
+    "provide the ability to add generic Authorization credentials to the request" >> {
+      val creds = GenericHttpCredentials("OAuth", Map("oauth_version" -> "1.0"))
+      Get() ~> addCredentials(creds) === HttpRequest(headers = List(Authorization(creds)))
     }
   }
 

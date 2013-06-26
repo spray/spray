@@ -18,16 +18,16 @@ package spray.testkit
 
 import com.typesafe.config.{ ConfigFactory, Config }
 import scala.util.DynamicVariable
+import scala.util.control.NonFatal
 import scala.reflect.ClassTag
-import akka.actor.ActorSystem
 import org.scalatest.Suite
+import akka.actor.ActorSystem
 import spray.routing.directives.ExecutionDirectives
 import spray.routing._
 import spray.httpx.unmarshalling._
 import spray.httpx._
 import spray.http._
 import spray.util._
-import scala.util.control.NonFatal
 
 trait RouteTest extends RequestBuilding with RouteResultComponent {
   this: TestFrameworkInterface ⇒
@@ -41,21 +41,22 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   implicit val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConfig)
   implicit def executor = system.dispatcher
 
-  def cleanUp() { system.shutdown() }
+  def cleanUp(): Unit = { system.shutdown() }
 
   private val dynRR = new DynamicVariable[RouteResult](null)
 
-  private def assertInCheck() {
+  private def assertInCheck(): Unit = {
     if (dynRR.value == null) sys.error("This value is only available inside of a `check` construct!")
   }
 
   def check[T](body: ⇒ T): RouteResult ⇒ T = dynRR.withValue(_)(body)
 
-  def result = { assertInCheck(); dynRR.value }
+  private def result = { assertInCheck(); dynRR.value }
   def handled: Boolean = result.handled
   def response: HttpResponse = result.response
   def entity: HttpEntity = response.entity
-  def entityAs[T: Unmarshaller] = entity.as[T].fold(error ⇒ failTest(error.toString), identityFunc)
+  def entityAs[T: Unmarshaller: ClassTag]: T = entity.as[T].fold(error ⇒ failTest("Could not unmarshal response " +
+    s"to type '${implicitly[ClassTag[T]]}' for `entityAs` assertion: $error\n\nResponse was: $response"), identityFunc)
   def body: HttpBody = entity.toOption getOrElse failTest("Response has no body")
   def contentType: ContentType = body.contentType
   def mediaType: MediaType = contentType.mediaType
@@ -68,29 +69,25 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   def chunks: List[MessageChunk] = result.chunks
   def closingExtension: String = result.closingExtension
   def trailer: List[HttpHeader] = result.trailer
-
-  def rejections: List[Rejection] = {
-    assertInCheck()
-    RejectionHandler.applyTransformations(dynRR.value.rejections)
-  }
+  def rejections: List[Rejection] = RejectionHandler.applyTransformations(result.rejections)
   def rejection: Rejection = {
     val r = rejections
     if (r.size == 1) r.head else failTest("Expected a single rejection but got %s (%s)".format(r.size, r))
   }
 
-  implicit def pimpHttpRequestWithTildeArrow(request: HttpRequest) = new HttpRequestWithTildeArrow(request)
-  class HttpRequestWithTildeArrow(request: HttpRequest) {
+  // there is already an implicit class WithTransformation in scope (inherited from spray.httpx.TransformerPipelineSupport)
+  // however, this one takes precedence
+  implicit class WithTransformation2(request: HttpRequest) {
     def ~>[A, B](f: A ⇒ B)(implicit ta: TildeArrow[A, B]): ta.Out = ta(request, f)
-    def ~>(header: HttpHeader) = addHeader(header)(request)
   }
 
-  private abstract class TildeArrow[A, B] {
+  abstract class TildeArrow[A, B] {
     type Out
     def apply(request: HttpRequest, f: A ⇒ B): Out
   }
 
-  private object TildeArrow {
-    implicit val concatWithRequestTransformer = new TildeArrow[HttpRequest, HttpRequest] {
+  object TildeArrow {
+    implicit object InjectIntoRequestTransformer extends TildeArrow[HttpRequest, HttpRequest] {
       type Out = HttpRequest
       def apply(request: HttpRequest, f: HttpRequest ⇒ HttpRequest) = f(request)
     }

@@ -20,7 +20,7 @@ import scala.collection.immutable.Queue
 import scala.concurrent.duration._
 import akka.actor.ActorRef
 import akka.io.Tcp
-import spray.can.rendering.HttpRequestPartRenderingContext
+import spray.can.rendering.RequestPartRenderingContext
 import spray.can.Http
 import spray.http._
 import spray.io._
@@ -71,9 +71,9 @@ object ClientFrontend {
               closeCommanders += context.sender
               commandPL(x)
 
-            case SetRequestTimeout(timeout) ⇒ requestTimeout = timeout
+            case CommandWrapper(SetRequestTimeout(timeout)) ⇒ requestTimeout = timeout
 
-            case cmd                        ⇒ commandPL(cmd)
+            case cmd                                        ⇒ commandPL(cmd)
           }
 
           val eventPipeline: EPL = {
@@ -118,10 +118,10 @@ object ClientFrontend {
 
           def render(part: HttpRequestPart, ack: Option[Any]): Unit = {
             val sentAck = ack match {
-              case Some(x) ⇒ x
+              case Some(x) ⇒ Pipeline.AckEvent(x)
               case None    ⇒ Tcp.NoAck(PartAndSender(part, context.sender))
             }
-            commandPL(HttpRequestPartRenderingContext(part, sentAck))
+            commandPL(RequestPartRenderingContext(part, sentAck))
           }
 
           def checkForTimeout(): Unit =
@@ -143,14 +143,4 @@ object ClientFrontend {
   private class RequestRecord(val request: HttpRequestPart with HttpMessageStart, val sender: ActorRef, var timestamp: Long)
 
   private case class PartAndSender(part: HttpRequestPart, sender: ActorRef)
-
-  ////////////// COMMANDS //////////////
-
-  /**
-   * Sets a new request-timeout on the connection.
-   * Set to `Duration.Undefined` to disable timeout checking.
-   */
-  case class SetRequestTimeout(timeout: Duration) extends Command {
-    require(timeout >= Duration.Zero, "timeout must not be negative")
-  }
 }

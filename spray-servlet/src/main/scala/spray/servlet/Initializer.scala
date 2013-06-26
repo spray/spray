@@ -22,12 +22,13 @@ import scala.language.reflectiveCalls
 import scala.util.control.NonFatal
 import akka.util.Switch
 import akka.actor.ActorSystem
+import spray.util._
 
 class Initializer extends ServletContextListener {
   private val booted = new Switch(false)
   @volatile private[this] var actorSystem: Option[ActorSystem] = None
 
-  def contextInitialized(ev: ServletContextEvent) {
+  def contextInitialized(ev: ServletContextEvent): Unit = {
     booted switchOn {
       println("Starting spray application ...")
       val servletContext = ev.getServletContext
@@ -63,12 +64,12 @@ class Initializer extends ServletContextListener {
             "`javax.servlet.ServletContext` parameter nor a default constructor"), e)
         }
       } catch {
-        case NonFatal(e) ⇒ servletContext.log(e.getMessage, e)
+        case NonFatal(e) ⇒ servletContext.log(e.getMessage.nullAsEmpty, e)
       }
     }
   }
 
-  def contextDestroyed(e: ServletContextEvent) {
+  def contextDestroyed(e: ServletContextEvent): Unit = {
     booted switchOff {
       println("Shutting down spray application ...")
       actorSystem.foreach(_.shutdown())

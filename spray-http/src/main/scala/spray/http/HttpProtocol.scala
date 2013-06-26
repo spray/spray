@@ -17,12 +17,11 @@
 
 package spray.http
 
-class HttpProtocol private[http] (val value: String) {
-  override def toString = value
-  HttpProtocols.register(value, this)
-}
+case class HttpProtocol private[http] (value: String) extends LazyValueBytesRenderable
 
 object HttpProtocols extends ObjectRegistry[String, HttpProtocol] {
-  val `HTTP/1.0` = new HttpProtocol("HTTP/1.0")
-  val `HTTP/1.1` = new HttpProtocol("HTTP/1.1")
+  private def register(p: HttpProtocol): HttpProtocol = register(p.value, p)
+
+  val `HTTP/1.0` = register(HttpProtocol("HTTP/1.0"))
+  val `HTTP/1.1` = register(HttpProtocol("HTTP/1.1"))
 }

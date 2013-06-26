@@ -44,7 +44,7 @@ object ResponseChunkAggregation {
             case Http.MessageEvent(_: ChunkedMessageEnd) ⇒
               val contentType = response.header[HttpHeaders.`Content-Type`] match {
                 case Some(x) ⇒ x.contentType
-                case None    ⇒ ContentType.`application/octet-stream`
+                case None    ⇒ ContentTypes.`application/octet-stream`
               }
               eventPL(Http.MessageEvent(response.copy(entity = HttpEntity(contentType, bb.result().toArray[Byte]))))
               eventPipeline.become(initialEventPipeline)
@@ -52,7 +52,7 @@ object ResponseChunkAggregation {
             case ev ⇒ eventPL(ev)
           }
 
-          def closeWithError() {
+          def closeWithError(): Unit = {
             context.log.error("Aggregated response entity greater than configured limit of {} bytes," +
               "closing connection", limit)
             commandPL(Http.Close)

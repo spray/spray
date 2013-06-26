@@ -16,3 +16,7 @@ object TestUtils {
   }
 
 }
+
+object Specs2Utils {
+  def compileOnly[U](block: ⇒ U) = new org.specs2.specification.Scope {}
+}

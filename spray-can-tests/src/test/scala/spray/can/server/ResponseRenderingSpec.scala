@@ -21,7 +21,7 @@ import com.typesafe.config.{ ConfigFactory, Config }
 import akka.io.Tcp
 import spray.testkit.Specs2PipelineStageTest
 import spray.can.Http
-import spray.can.rendering.HttpResponsePartRenderingContext
+import spray.can.rendering.ResponsePartRenderingContext
 import spray.http.{ HttpMethods, HttpResponse }
 import spray.can.TestSupport._
 
@@ -43,7 +43,7 @@ class ResponseRenderingSpec extends Specification with Specs2PipelineStageTest {
     }
 
     "translate a simple HttpResponsePartRenderingContext into the corresponding Tcp.Write command" in new Fixture(stage) {
-      connectionActor ! HttpResponsePartRenderingContext(HttpResponse(entity = "Some Message"))
+      connectionActor ! ResponsePartRenderingContext(HttpResponse(entity = "Some Message"))
       wipeDate(commands.expectMsgType[Tcp.Write].data.utf8String) === prep {
         """HTTP/1.1 200 OK
           |Server: spray/1.0
@@ -56,7 +56,7 @@ class ResponseRenderingSpec extends Specification with Specs2PipelineStageTest {
     }
 
     "append a Close command to the Tcp.Write if the connection is to be closed" in new Fixture(stage) {
-      connectionActor ! HttpResponsePartRenderingContext(
+      connectionActor ! ResponsePartRenderingContext(
         responsePart = HttpResponse(entity = "Some Message"),
         requestMethod = HttpMethods.HEAD,
         closeAfterResponseCompletion = true)

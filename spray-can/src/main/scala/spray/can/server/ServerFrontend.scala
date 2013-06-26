@@ -16,19 +16,23 @@
 
 package spray.can.server
 
+import scala.util.control.NonFatal
 import scala.concurrent.duration.Duration
 import akka.actor.ActorRef
+import akka.io.Tcp
 import spray.can.server.RequestParsing.HttpMessageStartEvent
+import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.Http
-import spray.util.requirePositiveOrUndefined
 import spray.http._
 import spray.io._
+import spray.util.requirePositiveOrUndefined
 
 object ServerFrontend {
 
   trait Context extends PipelineContext {
     // the application-level request handler
     def handler: ActorRef
+    def fastPath: Http.FastPath
   }
 
   def apply(serverSettings: ServerSettings): RawPipelineStage[Context] = {
@@ -70,7 +74,7 @@ object ServerFrontend {
               // a response for a non-current openRequest has to be queued
               openRequest.enqueueCommand(command)
 
-            case SetRequestTimeout(timeout) ⇒
+            case CommandWrapper(SetRequestTimeout(timeout)) ⇒
               _requestTimeout = timeout
               if (_requestTimeout.isFinite() && _idleTimeout.isFinite() && _idleTimeout <= _requestTimeout) {
                 val newIdleTimeout = timeout * 2
@@ -79,7 +83,7 @@ object ServerFrontend {
                 commandPipeline(ConnectionTimeouts.SetIdleTimeout(newIdleTimeout))
               }
 
-            case SetTimeoutTimeout(timeout) ⇒ _timeoutTimeout = timeout
+            case CommandWrapper(SetTimeoutTimeout(timeout)) ⇒ _timeoutTimeout = timeout
 
             case x @ ConnectionTimeouts.SetIdleTimeout(timeout) ⇒
               _idleTimeout = timeout
@@ -92,7 +96,21 @@ object ServerFrontend {
 
           val eventPipeline: EPL = {
             case HttpMessageStartEvent(request: HttpRequest, closeAfterResponseCompletion) ⇒
-              openNewRequest(request, closeAfterResponseCompletion, System.currentTimeMillis)
+              if (context.fastPath.isDefinedAt(request)) {
+                val response =
+                  try context.fastPath(request)
+                  catch {
+                    case NonFatal(e) ⇒
+                      context.log.error(e, "Error during fastPath evaluation for request {}", request)
+                      HttpResponse(StatusCodes.InternalServerError, StatusCodes.InternalServerError.defaultMessage)
+                  }
+                if (firstOpenRequest.isEmpty) commandPL {
+                  ResponsePartRenderingContext(response, request.method, request.protocol,
+                    closeAfterResponseCompletion, if (autoBackPressure) Tcp.NoAck else Tcp.NoAck(PartAndSender(response, context.self)))
+                }
+                else throw new NotImplementedError("fastPath is not yet supported with pipelining enabled")
+
+              } else openNewRequest(request, closeAfterResponseCompletion, System.currentTimeMillis)
 
             case HttpMessageStartEvent(ChunkedRequestStart(request), closeAfterResponseCompletion) ⇒
               openNewRequest(request, closeAfterResponseCompletion, 0L)
@@ -105,6 +123,11 @@ object ServerFrontend {
 
             case x: AckEventWithReceiver ⇒
               firstUnconfirmed = firstUnconfirmed handleSentAckAndReturnNextUnconfirmed x
+
+            case Tcp.CommandFailed(Tcp.Write(_, Tcp.NoAck(PartAndSender(part, responseSender)))) ⇒
+              // TODO: implement automatic checkpoint buffering and write resuming
+              context.log.error("Could not write response part {}, closing connection", part)
+              commandPL(Pipeline.Tell(responseSender, Http.SendFailed(part), context.self))
 
             case x: Http.ConnectionClosed ⇒
               if (firstUnconfirmed.isEmpty)
@@ -125,24 +148,15 @@ object ServerFrontend {
             case ev ⇒ eventPL(ev)
           }
 
-          def openNewRequest(request: HttpRequest, closeAfterResponseCompletion: Boolean, timestamp: Long) {
+          def openNewRequest(request: HttpRequest, closeAfterResponseCompletion: Boolean, timestamp: Long): Unit = {
             val nextOpenRequest = new DefaultOpenRequest(request, closeAfterResponseCompletion, timestamp)
             firstOpenRequest = firstOpenRequest appendToEndOfChain nextOpenRequest
             nextOpenRequest.dispatchInitialRequestPartToHandler()
             if (firstUnconfirmed.isEmpty) firstUnconfirmed = firstOpenRequest
           }
+
+          def autoBackPressure = serverSettings.backpressureSettings.isDefined
         }
     }
   }
-
-  ////////////// COMMANDS //////////////
-
-  case class SetRequestTimeout(timeout: Duration) extends Command {
-    requirePositiveOrUndefined(timeout)
-  }
-
-  case class SetTimeoutTimeout(timeout: Duration) extends Command {
-    requirePositiveOrUndefined(timeout)
-  }
-
 }

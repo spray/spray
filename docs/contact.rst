@@ -1,9 +1,9 @@
-.. _contact:
+.. _Contact:
 
 Contact
 =======
 
-.. _mailing-list:
+.. _Mailing List:
 
 Mailing List
 ------------
@@ -20,7 +20,7 @@ Twitter
 
 If you `follow us on twitter`__ we'll keep you informed about new developments as well as general news around *spray*.
 
-__ http://twitter.com/sprayio
+__ https://twitter.com/sprayio
 
 
 Email
@@ -41,7 +41,7 @@ Please email us for contact details.
 Commercial Support
 ------------------
 
-Even though our capacity for commercial support is currently somewhat limited, we might
+Even though our capacity for commercial support is currently somewhat limited we might
 be able to provide help for your *spray*-based development efforts in selected cases.
 Please contact us for more details.
 

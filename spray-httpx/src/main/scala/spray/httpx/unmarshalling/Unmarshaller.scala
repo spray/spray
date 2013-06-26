@@ -19,7 +19,10 @@ package spray.httpx.unmarshalling
 import spray.http.{ HttpEntity, ContentTypeRange }
 
 object Unmarshaller {
-  def apply[T](unmarshalFrom: ContentTypeRange*)(f: PartialFunction[HttpEntity, T]): Unmarshaller[T] =
+  // format: OFF
+  def apply[T](unmarshalFrom: ContentTypeRange*)                     // unmarshaller-apply
+              (f: PartialFunction[HttpEntity, T]): Unmarshaller[T] = // unmarshaller-apply
+    // format: ON
     new SimpleUnmarshaller[T] {
       val canUnmarshalFrom = unmarshalFrom
       def unmarshal(entity: HttpEntity) =

@@ -32,10 +32,10 @@ trait HeaderDirectives {
    * with a [[spray.routing.MalformedHeaderRejection]].
    */
   def headerValue[T](f: HttpHeader ⇒ Option[T]): Directive1[T] = {
-    def protectedF(header: HttpHeader): Option[Either[Rejection, T]] =
+    val protectedF: HttpHeader ⇒ Option[Either[Rejection, T]] = header ⇒
       try f(header).map(Right.apply)
       catch {
-        case NonFatal(e) ⇒ Some(Left(MalformedHeaderRejection(header.name, e.getMessage, Some(e))))
+        case NonFatal(e) ⇒ Some(Left(MalformedHeaderRejection(header.name, e.getMessage.nullAsEmpty, Some(e))))
       }
     extract(_.request.headers.mapFind(protectedF)).flatMap {
       case Some(Right(a))        ⇒ provide(a)
@@ -49,6 +49,12 @@ trait HeaderDirectives {
    * request is rejected with an empty rejection set.
    */
   def headerValuePF[T](pf: PartialFunction[HttpHeader, T]): Directive1[T] = headerValue(pf.lift)
+
+  /**
+   * Extracts the value of the HTTP request header with the given name.
+   * If no header with a matching name is found the request is rejected with a [[spray.routing.MissingHeaderRejection]].
+   */
+  def headerValueByName(headerName: Symbol): Directive1[String] = headerValueByName(headerName.toString)
 
   /**
    * Extracts the value of the HTTP request header with the given name.
@@ -74,6 +80,12 @@ trait HeaderDirectives {
    */
   def optionalHeaderValuePF[T](pf: PartialFunction[HttpHeader, T]): Directive1[Option[T]] =
     optionalHeaderValue(pf.lift)
+
+  /**
+   * Extracts the value of the optional HTTP request header with the given name.
+   */
+  def optionalHeaderValueByName(headerName: Symbol): Directive1[Option[String]] =
+    optionalHeaderValueByName(headerName.toString)
 
   /**
    * Extracts the value of the optional HTTP request header with the given name.

@@ -21,7 +21,7 @@ import com.typesafe.config.{ ConfigFactory, Config }
 import akka.actor.{ ActorRef, Status, ActorSystem }
 import akka.io.IO
 import akka.testkit.TestProbe
-import spray.can.{ HostConnectorInfo, HostConnectorSetup, Http }
+import spray.can.Http
 import spray.util.Utils._
 import spray.httpx.RequestBuilding._
 import spray.http._
@@ -35,7 +35,9 @@ class SprayCanClientSpec extends Specification {
     akka.io.tcp.trace-logging = off
     spray.can.client.request-timeout = 500ms
     spray.can.host-connector.max-retries = 1
-    spray.can.host-connector.client.request-timeout = 500ms""")
+    spray.can.host-connector.client.request-timeout = 500ms
+    spray.can.server.request-chunk-aggregation-limit = 0
+    spray.can.client.response-chunk-aggregation-limit = 0""")
   implicit val system = ActorSystem(actorSystemNameFrom(getClass), testConf)
 
   "The connection-level client infrastructure" should {
@@ -46,6 +48,32 @@ class SprayCanClientSpec extends Specification {
       server.expectMsgType[HttpRequest].uri.path.toString === "/abc"
       server.reply(HttpResponse(entity = "ok"))
       client.expectMsgType[HttpResponse].entity === HttpEntity("ok")
+      client.send(clientConnection, Http.Close)
+      server.expectMsg(Http.PeerClosed)
+      client.expectMsg(Http.Closed)
+      unbind()
+    }
+
+    "properly complete a pipelined request/response cycle with a chunked request" in new TestSetup {
+      val clientConnection = newClientConnect()
+      val client = send(clientConnection, ChunkedRequestStart(Get("/abc") ~> Host(hostname, port)))
+      client.send(clientConnection, MessageChunk("123"))
+      client.send(clientConnection, MessageChunk("456"))
+      client.send(clientConnection, ChunkedMessageEnd)
+      client.send(clientConnection, Get("/def") ~> Host(hostname, port))
+
+      val server = acceptConnection()
+      server.expectMsgType[ChunkedRequestStart].request.uri.path.toString === "/abc"
+      server.expectMsg(MessageChunk("123"))
+      server.expectMsg(MessageChunk("456"))
+      server.expectMsg(ChunkedMessageEnd)
+      val firstRequestSender = server.sender
+      server.expectMsgType[HttpRequest].uri.path.toString === "/def"
+      server.reply(HttpResponse(entity = "ok-def")) // reply to the second request first
+      server.send(firstRequestSender, HttpResponse(entity = "ok-abc"))
+
+      client.expectMsgType[HttpResponse].entity === HttpEntity("ok-abc")
+      client.expectMsgType[HttpResponse].entity === HttpEntity("ok-def")
       client.send(clientConnection, Http.Close)
       server.expectMsg(Http.PeerClosed)
       client.expectMsg(Http.Closed)
@@ -68,10 +96,10 @@ class SprayCanClientSpec extends Specification {
   "The host-level client infrastructure" should {
     "return the same HostConnector for identical setup requests" in new TestSetup {
       val probe = TestProbe()
-      probe.send(IO(Http), HostConnectorSetup(hostname, port))
-      val HostConnectorInfo(hostConnector1, _) = probe.expectMsgType[HostConnectorInfo]
-      probe.send(IO(Http), HostConnectorSetup(hostname, port))
-      val HostConnectorInfo(hostConnector2, _) = probe.expectMsgType[HostConnectorInfo]
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port))
+      val Http.HostConnectorInfo(hostConnector1, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port))
+      val Http.HostConnectorInfo(hostConnector2, _) = probe.expectMsgType[Http.HostConnectorInfo]
       hostConnector1 === hostConnector2
     }
 
@@ -95,8 +123,8 @@ class SprayCanClientSpec extends Specification {
 
     "support a clean CloseAll shutdown" in new TestSetup {
       val probe = TestProbe()
-      probe.send(IO(Http), HostConnectorSetup(hostname, port))
-      val HostConnectorInfo(hostConnector, _) = probe.expectMsgType[HostConnectorInfo]
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port))
+      val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
 
       // open two connections
       val clientA = send(hostConnector, Get("/a"))
@@ -157,7 +185,7 @@ class SprayCanClientSpec extends Specification {
     val listener = {
       val commander = TestProbe()
       commander.send(IO(Http), Http.Bind(bindHandler.ref, hostname, port))
-      commander.expectMsg(Http.Bound)
+      commander.expectMsgType[Http.Bound]
       commander.sender
     }
 
@@ -175,9 +203,9 @@ class SprayCanClientSpec extends Specification {
       probe
     }
 
-    def send(transport: ActorRef, request: HttpRequest): TestProbe = {
+    def send(transport: ActorRef, part: HttpRequestPart): TestProbe = {
       val probe = TestProbe()
-      probe.send(transport, request)
+      probe.send(transport, part)
       probe
     }
 
@@ -189,8 +217,8 @@ class SprayCanClientSpec extends Specification {
 
     def sendViaHostConnector(request: HttpRequest): (TestProbe, ActorRef) = {
       val probe = TestProbe()
-      probe.send(IO(Http), HostConnectorSetup(hostname, port))
-      val HostConnectorInfo(hostConnector, _) = probe.expectMsgType[HostConnectorInfo]
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port))
+      val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
       probe.sender === hostConnector
       probe.reply(request)
       probe -> hostConnector

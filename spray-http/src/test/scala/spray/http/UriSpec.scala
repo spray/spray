@@ -20,6 +20,7 @@ import org.specs2.mutable.Specification
 import Uri._
 
 class UriSpec extends Specification {
+
   "Uri.Host instances" should {
 
     "parse correctly from IPv4 literals" in {
@@ -162,8 +163,8 @@ class UriSpec extends Specification {
   }
 
   "Uri.Path instances" should {
+    import Path.Empty
     "be parsed and rendered correctly" in {
-      import Path._
       Path("") === Empty
       Path("/") === Path./
       Path("a") === "a" :: Empty
@@ -177,17 +178,70 @@ class UriSpec extends Specification {
       Path("H%C3%A4ll%C3%B6") === """Hällö""" :: Empty
       Path("/%2F%5C") === Path / """/\"""
       Path("/:foo:/") === Path / ":foo:" / ""
+      Path("%2520").head === "%20"
+    }
+    "support the `startsWith` predicate" in {
+      Empty startsWith Empty must beTrue
+      Path./ startsWith Empty must beTrue
+      Path("abc") startsWith Empty must beTrue
+      Empty startsWith Path./ must beFalse
+      Empty startsWith Path("abc") must beFalse
+      Path./ startsWith Path./ must beTrue
+      Path./ startsWith Path("abc") must beFalse
+      Path("/abc") startsWith Path./ must beTrue
+      Path("abc") startsWith Path./ must beFalse
+      Path("abc") startsWith Path("ab") must beTrue
+      Path("abc") startsWith Path("abc") must beTrue
+      Path("/abc") startsWith Path("/a") must beTrue
+      Path("/abc") startsWith Path("/abc") must beTrue
+      Path("/ab") startsWith Path("/abc") must beFalse
+      Path("/abc") startsWith Path("/abd") must beFalse
+      Path("/abc/def") startsWith Path("/ab") must beTrue
+      Path("/abc/def") startsWith Path("/abc/") must beTrue
+      Path("/abc/def") startsWith Path("/abc/d") must beTrue
+      Path("/abc/def") startsWith Path("/abc/def") must beTrue
+      Path("/abc/def") startsWith Path("/abc/def/") must beFalse
+    }
+    "support the `dropChars` modifier" in {
+      Path./.dropChars(0) === Path./
+      Path./.dropChars(1) === Empty
+      Path("/abc/def/").dropChars(0) === Path("/abc/def/")
+      Path("/abc/def/").dropChars(1) === Path("abc/def/")
+      Path("/abc/def/").dropChars(2) === Path("bc/def/")
+      Path("/abc/def/").dropChars(3) === Path("c/def/")
+      Path("/abc/def/").dropChars(4) === Path("/def/")
+      Path("/abc/def/").dropChars(5) === Path("def/")
+      Path("/abc/def/").dropChars(6) === Path("ef/")
+      Path("/abc/def/").dropChars(7) === Path("f/")
+      Path("/abc/def/").dropChars(8) === Path("/")
+      Path("/abc/def/").dropChars(9) === Empty
     }
   }
 
   "Uri.Query instances" should {
-    "be parsed and rendered correctly" in {
-      import Query._
-      Query("") === ("", "") +: Empty
-      Query("a") === ("a", "") +: Empty
-      Query("a=") === ("a", "") +: Empty
-      Query("=a") === ("", "a") +: Empty
-      Query("a&") === ("a", "") +: ("", "") +: Empty
+    def parser(mode: Uri.ParsingMode): String ⇒ Query = Query(_, mode)
+    "be parsed and rendered correctly in strict mode" in {
+      val test = parser(Uri.ParsingMode.Strict)
+      test("") === ("", "") +: Query.Empty
+      test("a") === ("a", "") +: Query.Empty
+      test("a=") === ("a", "") +: Query.Empty
+      test("=a") === ("", "a") +: Query.Empty
+      test("a&") === ("a", "") +: ("", "") +: Query.Empty
+      test("a^=b") must throwAn[IllegalUriException]
+    }
+    "be parsed and rendered correctly in relaxed mode" in {
+      val test = parser(Uri.ParsingMode.Relaxed)
+      test("") === ("", "") +: Query.Empty
+      test("a") === ("a", "") +: Query.Empty
+      test("a=") === ("a", "") +: Query.Empty
+      test("=a") === ("", "a") +: Query.Empty
+      test("a&") === ("a", "") +: ("", "") +: Query.Empty
+      test("a^=b") === ("a^", "b") +: Query.Empty
+    }
+    "be parsed and rendered correctly in relaxed-with-raw-query mode" in {
+      val test = parser(Uri.ParsingMode.RelaxedWithRawQuery)
+      test("a^=b&c").toString === "a^=b&c"
+      test("a%2Fb") === Uri.Query.Raw("a%2Fb")
     }
     "properly support the retrieval interface" in {
       val query = Query("a=1&b=2&c=3&b=4&b")
@@ -195,8 +249,19 @@ class UriSpec extends Specification {
       query.get("d") === None
       query.getOrElse("a", "x") === "1"
       query.getOrElse("d", "x") === "x"
-      query.getAll("b") === List("2", "4", "")
+      query.getAll("b") === List("", "4", "2")
       query.getAll("d") === Nil
+      query.toMap === Map("a" -> "1", "b" -> "", "c" -> "3")
+      query.toMultiMap === Map("a" -> List("1"), "b" -> List("", "4", "2"), "c" -> List("3"))
+      query.toList === List("a" -> "1", "b" -> "2", "c" -> "3", "b" -> "4", "b" -> "")
+      query.toSeq === Seq("a" -> "1", "b" -> "2", "c" -> "3", "b" -> "4", "b" -> "")
+    }
+    "support conversion from list of name/value pairs" in {
+      import Query._
+      val pairs = List("key1" -> "value1", "key2" -> "value2", "key3" -> "value3")
+      Query(pairs: _*).toList.diff(pairs) === Nil
+      Query() === Empty
+      Query("k" -> "v") === ("k" -> "v") +: Empty
     }
   }
 
@@ -232,6 +297,17 @@ class UriSpec extends Specification {
       Uri("http://") === Uri(scheme = "http", authority = Authority(host = NamedHost("")))
       Uri("http:?") === Uri.from(scheme = "http", query = Query(""))
       Uri("?a+b=c%2Bd") === Uri.from(query = ("a b", "c+d") +: Query.Empty)
+
+      // illegal paths
+      Uri("foo/another@url/[]and{}") === Uri.from(path = "foo/another@url/%5B%5Dand%7B%7D")
+      Uri("foo/another@url/[]and{}", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
+
+      // handle query parameters with more than percent-encoded character
+      Uri("?%7Ba%7D=$%7B%7D", UTF8, Uri.ParsingMode.Strict) === Uri(query = Query.Cons("{a}", "${}", Query.Empty))
+
+      // don't double decode
+      Uri("%2520").path.head === "%20"
+      Uri("/%2F%5C").path === Path / """/\"""
     }
 
     "properly complete a normalization cycle" in {
@@ -273,11 +349,17 @@ class UriSpec extends Specification {
       normalize("http://user:pass@SOMEHOST.COM:123") === "http://user:pass@somehost.com:123"
       normalize("HTTP://a:b@HOST:123/./1/2/../%41?abc#def") === "http://a:b@host:123/1/A?abc#def"
 
+      // acceptance and normalization of unescaped ascii characters such as {} and []:
+      normalize("eXAMPLE://a/./b/../b/%63/{foo}/[bar]") === "example://a/b/c/%7Bfoo%7D/%5Bbar%5D"
+      normalize("eXAMPLE://a/./b/../b/%63/{foo}/[bar]", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
+
       // queries
       normalize("?") === "?"
       normalize("?key") === "?key"
       normalize("?key=") === "?key" // our query model cannot discriminate between these two inputs
       normalize("?key=&a=b") === "?key&a=b" // our query model cannot discriminate between these two inputs
+      normalize("?key={}&a=[]") === "?key=%7B%7D&a=%5B%5D"
+      normalize("?key={}&a=[]", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
       normalize("?=value") === "?=value"
       normalize("?key=value") === "?key=value"
       normalize("?a+b") === "?a+b"
@@ -290,6 +372,17 @@ class UriSpec extends Specification {
       normalize("?&#") === "?&#"
       normalize("?#") === "?#"
       normalize("#") === "#"
+      normalize("#{}[]") === "#%7B%7D%5B%5D"
+      normalize("#{}[]", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
+    }
+
+    "support tunneling a URI through a query param" in {
+      val uri = Uri("http://aHost/aPath?aParam=aValue#aFragment")
+      val q = Query("uri" -> uri.toString)
+      val uri2 = Uri(path = Path./, query = q, fragment = Some("aFragment")).toString
+      uri2 === "/?uri=http://ahost/aPath?aParam%3DaValue%23aFragment#aFragment"
+      Uri(uri2).query === q
+      Uri(q.getOrElse("uri", "<nope>")) === uri
     }
 
     "produce proper error messages for illegal URIs" in {

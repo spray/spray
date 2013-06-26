@@ -33,24 +33,24 @@ private[parser] trait CookieHeaders {
   }
 
   def CookiePair = rule {
-    Token ~ ch('=') ~ CookieValue ~~> (HttpCookie(_, _))
+    Token ~ ch('=') ~ CookieValue ~ OptWS ~~> (HttpCookie(_, _))
   }
 
   def CookieValue = rule(
     ch('"') ~ zeroOrMore(CookieOctet) ~> identityFunc ~ "\""
-      | zeroOrMore(CookieOctet) ~> identityFunc ~ OptWS)
+      | zeroOrMore(CookieOctet) ~> identityFunc)
 
   def CookieOctet = rule {
     ch('\u0021') | ch('\u0023') - "\u002b" | ch('\u002d') - "\u003a" | ch('\u003c') - "\u005b" | ch('\u005d') - "\u007e"
   }
 
   def CookieAttrs = rule(
-    str("Expires=") ~ HttpDate ~~> { (cookie: HttpCookie, dateTime: DateTime) ⇒ cookie.copy(expires = Some(dateTime)) }
-      | str("Max-Age=") ~ NonNegativeLong ~~> { (cookie: HttpCookie, seconds: Long) ⇒ cookie.copy(maxAge = Some(seconds)) }
-      | str("Domain=") ~ DomainName ~~> { (cookie: HttpCookie, domainName: String) ⇒ cookie.copy(domain = Some(domainName)) }
-      | str("Path=") ~ StringValue ~~> { (cookie: HttpCookie, pathValue: String) ⇒ cookie.copy(path = Some(pathValue)) }
-      | str("Secure") ~~> { (cookie: HttpCookie) ⇒ cookie.copy(secure = true) }
-      | str("HttpOnly") ~~> { (cookie: HttpCookie) ⇒ cookie.copy(httpOnly = true) }
+    ignoreCase("Expires=") ~ HttpDate ~~> { (cookie: HttpCookie, dateTime: DateTime) ⇒ cookie.copy(expires = Some(dateTime)) }
+      | ignoreCase("Max-Age=") ~ NonNegativeLong ~~> { (cookie: HttpCookie, seconds: Long) ⇒ cookie.copy(maxAge = Some(seconds)) }
+      | ignoreCase("Domain=") ~ DomainName ~~> { (cookie: HttpCookie, domainName: String) ⇒ cookie.copy(domain = Some(domainName)) }
+      | ignoreCase("Path=") ~ StringValue ~~> { (cookie: HttpCookie, pathValue: String) ⇒ cookie.copy(path = Some(pathValue)) }
+      | ignoreCase("Secure") ~~> { (cookie: HttpCookie) ⇒ cookie.copy(secure = true) }
+      | ignoreCase("HttpOnly") ~~> { (cookie: HttpCookie) ⇒ cookie.copy(httpOnly = true) }
       | StringValue ~~> { (cookie: HttpCookie, stringValue: String) ⇒ cookie.copy(extension = Some(stringValue)) })
 
   def NonNegativeLong = rule { oneOrMore(Digit) ~> (_.toLong) }

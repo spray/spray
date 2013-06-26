@@ -30,6 +30,10 @@ class DemoService extends Actor with SprayActorLogging {
     case HttpRequest(GET, Uri.Path("/timeout"), _, _, _) =>
       log.info("Dropping request, triggering a timeout")
 
+    case HttpRequest(GET, Uri.Path("/changetimeout"), _, _, _) =>
+      sender ! SetRequestTimeout(60.seconds)
+      log.info("Changing timeout initially set by 'spray.servlet.request-timeout' property and triggering timeout")
+
     case HttpRequest(GET, Uri.Path("/timeout/timeout"), _, _, _) =>
       log.info("Dropping request, triggering a timeout")
 
@@ -75,7 +79,7 @@ class DemoService extends Actor with SprayActorLogging {
       case Ok(0) =>
         log.info("Finalizing response stream ...")
         client ! MessageChunk("\nStopped...")
-        client ! ChunkedMessageEnd()
+        client ! ChunkedMessageEnd
         context.stop(self)
 
       case Ok(remaining) =>

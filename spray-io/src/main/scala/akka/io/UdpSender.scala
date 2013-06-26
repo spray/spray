@@ -3,21 +3,21 @@
  */
 package akka.io
 
-import akka.actor._
 import java.nio.channels.DatagramChannel
-import akka.io.Udp._
-import akka.io.SelectionHandler.{ ChannelRegistered, RegisterChannel }
 import scala.collection.immutable
-import akka.io.Inet.SocketOption
 import scala.util.control.NonFatal
+import akka.io.Inet.SocketOption
+import akka.io.Udp._
+import akka.actor._
 
 /**
  * INTERNAL API
  */
-private[io] class UdpSender(val udp: UdpExt, options: immutable.Traversable[SocketOption], val commander: ActorRef)
+private[io] class UdpSender(val udp: UdpExt,
+                            channelRegistry: ChannelRegistry,
+                            commander: ActorRef,
+                            options: immutable.Traversable[SocketOption])
     extends Actor with ActorLogging with WithUdpSend {
-
-  def selector: ActorRef = context.parent
 
   val channel = {
     val datagramChannel = DatagramChannel.open
@@ -28,19 +28,19 @@ private[io] class UdpSender(val udp: UdpExt, options: immutable.Traversable[Sock
 
     datagramChannel
   }
-  selector ! RegisterChannel(channel, 0)
+  channelRegistry.register(channel, initialOps = 0)
 
   def receive: Receive = {
-    case ChannelRegistered ⇒
-      context.become(sendHandlers, discardOld = true)
-      commander ! SimpleSendReady
+    case registration: ChannelRegistration ⇒
+      commander ! SimpleSenderReady
+      context.become(sendHandlers(registration))
   }
 
   override def postStop(): Unit = if (channel.isOpen) {
     log.debug("Closing DatagramChannel after being stopped")
     try channel.close()
     catch {
-      case NonFatal(e) ⇒ log.error(e, "Error closing DatagramChannel")
+      case NonFatal(e) ⇒ log.debug("Error closing DatagramChannel: {}", e)
     }
   }
 }

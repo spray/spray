@@ -20,6 +20,7 @@ package parser
 import org.parboiled.scala._
 import BasicRules._
 import HttpHeaders._
+import ProtectedHeaderCreation.enable
 
 /**
  * parser rules for all headers that can be parsed with one simple rule
@@ -35,11 +36,11 @@ private[parser] trait SimpleHeaders {
   }
 
   def `*Content-Disposition` = rule {
-    Token ~ zeroOrMore(";" ~ Parameter) ~ EOI ~~> (_.toMap) ~~> `Content-Disposition`
+    Token ~ zeroOrMore(";" ~ Parameter) ~ EOI ~~> (_.toMap) ~~> (`Content-Disposition`(_, _))
   }
 
   def `*Date` = rule {
-    HttpDate ~ EOI ~~> Date
+    HttpDate ~ EOI ~~> (Date(_))
   }
 
   def `*Expect` = rule(
@@ -54,7 +55,7 @@ private[parser] trait SimpleHeaders {
       ~~> ((h, p) ⇒ Host(h, p.getOrElse(0))))
 
   def `*Last-Modified` = rule {
-    HttpDate ~ EOI ~~> `Last-Modified`
+    HttpDate ~ EOI ~~> (`Last-Modified`(_))
   }
 
   def `*Location` = rule {
@@ -62,23 +63,18 @@ private[parser] trait SimpleHeaders {
   }
 
   def `*Remote-Address` = rule {
-    Ip ~ EOI ~~> `Remote-Address`
+    Ip ~ EOI ~~> (`Remote-Address`(_))
   }
 
-  def `*Server` = rule {
-    oneOrMore(Product, separator = " ") ~~> (Server(_))
-  }
+  def `*Server` = rule { ProductVersionComments ~~> (Server(_)) }
 
   def `*Transfer-Encoding` = rule {
-    oneOrMore(TransferCoding ~> identityFunc, separator = ListSep) ~~> (`Transfer-Encoding`(_))
+    oneOrMore(TransferCoding ~> identityFunc, separator = ListSep) ~ EOI ~~> (`Transfer-Encoding`(_))
   }
 
-  def `*User-Agent` = rule {
-    oneOrMore(Product, separator = " ") ~~> (`User-Agent`(_))
-  }
+  def `*User-Agent` = rule { ProductVersionComments ~~> (`User-Agent`(_)) }
 
   def `*X-Forwarded-For` = rule {
     oneOrMore(Ip ~~> (Some(_)) | "unknown" ~ push(None), separator = ListSep) ~ EOI ~~> (`X-Forwarded-For`(_))
   }
-
 }

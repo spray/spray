@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.annotation.tailrec
 import scala.concurrent.duration._
 import spray.http.{ Timedout, HttpMessageStart }
-import spray.can.rendering.HttpResponsePartRenderingContext
+import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.io._
 import spray.can.Http
@@ -37,7 +37,7 @@ object StatsSupport {
     val requestTimeouts = new AtomicLong
 
     @tailrec
-    final def adjustMaxOpenConnections() {
+    final def adjustMaxOpenConnections(): Unit = {
       val co = connectionsOpened.get
       val cc = connectionsClosed.get
       val moc = maxOpenConnections.get
@@ -47,7 +47,7 @@ object StatsSupport {
     }
 
     @tailrec
-    final def adjustMaxOpenRequests() {
+    final def adjustMaxOpenRequests(): Unit = {
       val rqs = requestStarts.get
       val rss = responseStarts.get
       val mor = maxOpenRequests.get
@@ -66,7 +66,7 @@ object StatsSupport {
       maxOpenConnections = maxOpenConnections.get,
       requestTimeouts = requestTimeouts.get)
 
-    def clear() {
+    def clear(): Unit = {
       requestStarts.set(0L)
       responseStarts.set(0L)
       maxOpenRequests.set(0L)
@@ -86,7 +86,7 @@ object StatsSupport {
           adjustMaxOpenConnections()
 
           val commandPipeline: CPL = {
-            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStart] ⇒
+            case x: ResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStart] ⇒
               responseStarts.incrementAndGet()
               commandPL(x)
 
@@ -113,6 +113,7 @@ object StatsSupport {
     }
 }
 
+//# Stats
 case class Stats(
   uptime: FiniteDuration,
   totalRequests: Long,
@@ -122,3 +123,4 @@ case class Stats(
   openConnections: Long,
   maxOpenConnections: Long,
   requestTimeouts: Long)
+//#

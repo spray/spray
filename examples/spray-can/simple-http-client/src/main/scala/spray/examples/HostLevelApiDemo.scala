@@ -6,7 +6,7 @@ import akka.actor.ActorSystem
 import akka.util.Timeout
 import akka.pattern.ask
 import akka.io.IO
-import spray.can.{HostConnectorInfo, HostConnectorSetup, Http}
+import spray.can.Http
 import spray.http._
 import HttpMethods._
 
@@ -22,7 +22,7 @@ trait HostLevelApiDemo {
   def demoHostLevelApi(host: String)(implicit system: ActorSystem): Future[ProductVersion] = {
     import system.dispatcher // execution context for future transformations below
     for {
-      HostConnectorInfo(hostConnector, _) <- IO(Http) ? HostConnectorSetup(host, port = 80)
+      Http.HostConnectorInfo(hostConnector, _) <- IO(Http) ? Http.HostConnectorSetup(host, port = 80)
       response <- hostConnector.ask(HttpRequest(GET, "/")).mapTo[HttpResponse]
       _ <- hostConnector ? Http.CloseAll
     } yield {

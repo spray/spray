@@ -12,7 +12,7 @@ object MyHandler {
   import spray.routing._
 
   implicit def myExceptionHandler(implicit log: LoggingContext) =
-    ExceptionHandler.fromPF {
+    ExceptionHandler {
       case e: ArithmeticException => ctx =>
         log.warning("Request {} could not be handled normally", ctx.request)
         ctx.complete(InternalServerError, "Bad numbers, bad result!!!")

@@ -42,18 +42,21 @@ private[can] class HttpListener(bindCommander: ActorRef,
 
   context.setReceiveTimeout(settings.bindTimeout)
 
+  // we cannot sensibly recover from crashes
+  override def supervisorStrategy = SupervisorStrategy.stoppingStrategy
+
   def receive = binding()
 
   def binding(unbindCommanders: Set[ActorRef] = Set.empty): Receive = {
-    case Tcp.Bound if !unbindCommanders.isEmpty ⇒
+    case _: Tcp.Bound if !unbindCommanders.isEmpty ⇒
       log.info("Bind to {} aborted", endpoint)
       bindCommander ! Http.CommandFailed(bind)
       context.setReceiveTimeout(settings.unbindTimeout)
       context.become(unbinding(unbindCommanders))
 
-    case Tcp.Bound ⇒
+    case x: Tcp.Bound ⇒
       log.info("Bound to {}", endpoint)
-      bindCommander ! Http.Bound
+      bindCommander ! x
       context.setReceiveTimeout(Duration.Undefined)
       context.become(connected(sender))
 

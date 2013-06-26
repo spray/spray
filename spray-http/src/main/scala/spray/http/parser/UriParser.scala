@@ -24,7 +24,7 @@ import spray.http._
 import Uri._
 import UriParser._
 
-private[http] class UriParser(input: ParserInput, charset: Charset) {
+private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.ParsingMode) {
   private[this] var cursor: Int = 0
   private[this] var maxCursor: Int = 0
   private[this] var firstUpper = -1
@@ -36,6 +36,20 @@ private[http] class UriParser(input: ParserInput, charset: Charset) {
   var _path: Path = Path.Empty
   var _query: Query = Query.Empty
   var _fragment: Option[String] = None
+
+  private[this] val PARSE_PATH_SEGMENT_CHAR = mode match {
+    case Uri.ParsingMode.Strict ⇒ PATH_SEGMENT_CHAR
+    case _                      ⇒ RELAXED_PATH_SEGMENT_CHAR
+  }
+  private[this] val PARSE_QUERY_CHAR = mode match {
+    case Uri.ParsingMode.Strict              ⇒ QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL)
+    case Uri.ParsingMode.Relaxed             ⇒ RELAXED_QUERY_CHAR
+    case Uri.ParsingMode.RelaxedWithRawQuery ⇒ RAW_QUERY_CHAR
+  }
+  private[this] val PARSE_FRAGMENT_CHAR = mode match {
+    case Uri.ParsingMode.Strict ⇒ QUERY_FRAGMENT_CHAR
+    case _                      ⇒ RELAXED_FRAGMENT_CHAR
+  }
 
   def parseAbsolute(): Uri = {
     complete("absolute URI", `absolute-URI`)
@@ -221,7 +235,7 @@ private[http] class UriParser(input: ParserInput, charset: Charset) {
         firstPercent -= start
         val s = slice(start, cursor)
         if (firstUpper >= 0)
-          if (firstPercent >= 0) toLowerIfNeeded(decodeIfNeeded(s, firstPercent, charset), min(firstPercent, firstUpper))
+          if (firstPercent >= 0) toLowerIfNeeded(decodeIfNeeded(s, firstPercent, charset), math.min(firstPercent, firstUpper))
           else toLowerIfNeeded(s, firstUpper)
         else if (firstPercent >= 0) toLowerIfNeeded(decodeIfNeeded(s, firstPercent, charset), firstPercent) else s
       } else ""
@@ -231,12 +245,12 @@ private[http] class UriParser(input: ParserInput, charset: Charset) {
 
   def `path-abempty` = {
     val start = cursor
-    resetFirstPercent() && slashSegments && savePath(start)
+    slashSegments && savePath(start)
   }
 
   def `path-absolute` = {
     val start = cursor
-    resetFirstPercent() && ch('/') && {
+    ch('/') && {
       val mark = cursor
       `segment-nz` && slashSegments || reset(mark)
     } && savePath(start)
@@ -244,12 +258,12 @@ private[http] class UriParser(input: ParserInput, charset: Charset) {
 
   def `path-noscheme` = {
     val start = cursor
-    resetFirstPercent() && `segment-nz-nc` && slashSegments && savePath(start)
+    `segment-nz-nc` && slashSegments && savePath(start)
   }
 
   def `path-rootless` = {
     val start = cursor
-    resetFirstPercent() && `segment-nz` && slashSegments && savePath(start)
+    `segment-nz` && slashSegments && savePath(start)
   }
 
   def `path-empty` = true
@@ -269,14 +283,14 @@ private[http] class UriParser(input: ParserInput, charset: Charset) {
     cursor > start && reset(mark)
   }
 
-  def pchar = matches(PATH_SEGMENT_CHARS) || `pct-encoded`
+  def pchar = matches(PARSE_PATH_SEGMENT_CHAR) || `pct-encoded`
 
   def query = {
     def part = {
       val start = cursor
       var mark = cursor
       resetFirstPercent()
-      while (matches(QUERY_FRAGMENT_CHARS & ~(AMP | EQUAL)) || `pct-encoded`) mark = cursor
+      while (matches(PARSE_QUERY_CHAR) || `pct-encoded`) mark = cursor
       reset(mark)
       if (cursor > start)
         decodeIfNeeded(slice(start, cursor).replace('+', ' '), firstPercent - start, charset)
@@ -292,7 +306,12 @@ private[http] class UriParser(input: ParserInput, charset: Charset) {
       val tail = if (ch('&')) readKVP() else Query.Empty
       Query.Cons(key, value, tail)
     }
-    _query = readKVP()
+    _query =
+      if (mode == Uri.ParsingMode.RelaxedWithRawQuery) {
+        val start = cursor
+        while (is(current, PARSE_QUERY_CHAR)) advance()
+        if (cursor > start) Query.Raw(slice(start, cursor)) else Query.Empty
+      } else readKVP()
     true
   }
 
@@ -300,7 +319,7 @@ private[http] class UriParser(input: ParserInput, charset: Charset) {
     val start = cursor
     var mark = cursor
     resetFirstPercent()
-    while (matches(QUERY_FRAGMENT_CHARS) || `pct-encoded`) mark = cursor
+    while (matches(PARSE_FRAGMENT_CHAR) || `pct-encoded`) mark = cursor
     reset(mark)
     _fragment = Some {
       if (cursor > start) decodeIfNeeded(slice(start, cursor), firstPercent - start, charset)
@@ -316,7 +335,7 @@ private[http] class UriParser(input: ParserInput, charset: Charset) {
   // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-2.7
   def `absolute-path` = {
     val start = cursor
-    resetFirstPercent() && ch('/') && segment && slashSegments && savePath(start)
+    ch('/') && segment && slashSegments && savePath(start)
   }
 
   // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.3
@@ -360,17 +379,17 @@ private[http] class UriParser(input: ParserInput, charset: Charset) {
 
   def reset(mark: Int) = { cursor = mark; true }
 
-  def advance() = { cursor += 1; maxCursor = max(maxCursor, cursor); true }
+  def advance() = { cursor += 1; maxCursor = math.max(maxCursor, cursor); true }
 
   def savePath(start: Int) = {
-    _path = Path(decodeIfNeeded(slice(start, cursor), firstPercent - start, charset))
+    _path = Path(slice(start, cursor), charset)
     true
   }
 
   def slice(start: Int, end: Int): String = input.sliceString(start, end)
 
   def resetFirstUpper() = { firstUpper = -1; true }
-  def resetFirstPercent() = { firstUpper = -1; true }
+  def resetFirstPercent() = { firstPercent = -1; true }
   def markUpper() = { if (firstUpper == -1) firstUpper = cursor; true }
   def markPercent(delta: Int = 0) = { if (firstPercent == -1) firstPercent = cursor + delta; true }
 
@@ -401,6 +420,7 @@ private[http] class UriParser(input: ParserInput, charset: Charset) {
     }
 }
 
+// TODO: switch to CharMask-based masking
 private[http] object UriParser {
   // compile time constants
   final val EOI = '\uffff'
@@ -417,7 +437,7 @@ private[http] object UriParser {
   final val HEX_LETTER = LOWER_HEX_LETTER | UPPER_HEX_LETTER
   final val HEX_DIGIT = DIGIT | HEX_LETTER
   final val UNRESERVED_SPECIALS = 0x0080
-  final val UNRESERVED = ALPHA | DIGIT | UNRESERVED_SPECIALS
+  final val UNRESERVED = ALPHA | DIGIT | UNRESERVED_SPECIALS | DASH
   final val GEN_DELIM = 0x0100
   final val SUB_DELIM_BASE = 0x0200
   final val AT = 0x0400
@@ -431,15 +451,29 @@ private[http] object UriParser {
   final val EQUAL = 0x40000
   final val SPACE = 0x80000
   final val SUB_DELIM = SUB_DELIM_BASE | AMP | EQUAL | PLUS
-  final val RESERVED = GEN_DELIM | SUB_DELIM
+  final val HASH = 0x100000
+  final val RESERVED = GEN_DELIM | SUB_DELIM | QUESTIONMARK | COLON | SLASH | HASH | AT
 
-  final val QUERY_FRAGMENT_CHARS = UNRESERVED | SUB_DELIM | COLON | AT | SLASH | QUESTIONMARK
-  final val PATH_SEGMENT_CHARS = UNRESERVED | SUB_DELIM | COLON | AT
+  final val OTHER_VCHAR = 0x200000
+  final val PERCENT = 0x400000
+  final val VCHAR = OTHER_VCHAR | UNRESERVED | HEX_DIGIT | RESERVED | AT | COLON | SLASH | QUESTIONMARK | DASH | DOT | HASH | PERCENT
+
+  // FRAGMENT/QUERY and PATH characters have two classes of acceptable characters: one that strictly
+  // follows rfc3986, which should be used for rendering urls, and one relaxed, which accepts all visible
+  // 7-bit ASCII characters, even if they're not percent-encoded.
+
+  final val QUERY_FRAGMENT_CHAR = UNRESERVED | SUB_DELIM | COLON | AT | SLASH | QUESTIONMARK
+  final val PATH_SEGMENT_CHAR = UNRESERVED | SUB_DELIM | COLON | AT
+
+  final val RELAXED_FRAGMENT_CHAR = VCHAR & ~PERCENT
+  final val RELAXED_PATH_SEGMENT_CHAR = VCHAR & ~(PERCENT | SLASH | QUESTIONMARK | HASH)
+  final val RELAXED_QUERY_CHAR = VCHAR & ~(PERCENT | AMP | EQUAL | HASH)
+  final val RAW_QUERY_CHAR = VCHAR & ~HASH
 
   private[this] val props = new Array[Int](128)
 
   private[http] def is(c: Int, mask: Int): Boolean = (props(indexFor(c)) & mask) != 0
-  private def indexFor(c: Int): Int = c & sex(c - 127) // branchless for `if (c <= 127) c else 0`
+  private def indexFor(c: Int): Int = c & sex(c - 128) // branchless for `if (c < 128) c else 0`
   private def mark(mask: Int, chars: Char*): Unit = chars.foreach(c ⇒ props(indexFor(c)) = props(indexFor(c)) | mask)
   private def mark(mask: Int, range: NumericRange[Char]): Unit = mark(mask, range.toSeq: _*)
 
@@ -450,8 +484,8 @@ private[http] object UriParser {
   mark(DIGIT05, '0' to '5')
   mark(LOWER_HEX_LETTER, 'a' to 'f')
   mark(UPPER_HEX_LETTER, 'A' to 'F')
-  mark(UNRESERVED_SPECIALS, '-', '.', '_', '~')
-  mark(GEN_DELIM, ':', '/', '?', '#', '[', ']', '@')
+  mark(UNRESERVED_SPECIALS, '.', '_', '~')
+  mark(GEN_DELIM, '[', ']')
   mark(SUB_DELIM_BASE, '!', '$', '\'', '(', ')', '*', ',', ';')
   mark(AT, '@')
   mark(COLON, ':')
@@ -463,6 +497,10 @@ private[http] object UriParser {
   mark(AMP, '&')
   mark(EQUAL, '=')
   mark(SPACE, ' ')
+  mark(HASH, '#')
+  mark(PERCENT, '%')
+
+  mark(OTHER_VCHAR, '<', '>', '\\', '^', '`', '{', '|', '}')
 
   def toLowerCase(c: Char): Char = if (is(c, UPPER_ALPHA)) (c + 0x20).toChar else c
   def toUpperCase(c: Char): Char = if (is(c, LOWER_ALPHA)) (c - 0x20).toChar else c
@@ -472,10 +510,6 @@ private[http] object UriParser {
   def sex(i: Int): Int = i >> 31 // sign-extend, branchless version of `if (i < 0) 0xFFFFFFFF else 0x00000000`
 
   def abs(i: Int): Int = { val j = sex(i); (i ^ j) - j }
-
-  def min(a: Int, b: Int): Int = { val d = a - b; b + (d & sex(d)) }
-
-  def max(a: Int, b: Int): Int = { val d = b - a; a + (d & ~sex(d)) }
 
   def hexDigit(i: Int): Char = { val j = i & 0x0F; ('0' + j + -7 * sex(0x7ffffff6 + j)).toChar }
 

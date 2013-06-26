@@ -17,15 +17,15 @@
 
 package spray.http
 
-trait MessagePredicate extends (HttpMessage ⇒ Boolean) { thiz ⇒
+trait MessagePredicate extends (HttpMessage ⇒ Boolean) { self ⇒
   def &&(that: MessagePredicate): MessagePredicate = new MessagePredicate {
-    def apply(msg: HttpMessage) = thiz(msg) && that(msg)
+    def apply(msg: HttpMessage) = self(msg) && that(msg)
   }
   def ||(that: MessagePredicate) = new MessagePredicate {
-    def apply(msg: HttpMessage) = thiz(msg) || that(msg)
+    def apply(msg: HttpMessage) = self(msg) || that(msg)
   }
   def unary_! = new MessagePredicate {
-    def apply(msg: HttpMessage) = !thiz(msg)
+    def apply(msg: HttpMessage) = !self(msg)
   }
 }
 

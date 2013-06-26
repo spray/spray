@@ -16,6 +16,7 @@
 
 package spray.routing
 
+import scala.util.{ Failure, Success }
 import scala.concurrent.{ ExecutionContext, Future }
 import shapeless._
 import spray.httpx.unmarshalling.MalformedContent
@@ -85,21 +86,10 @@ abstract class Directive[L <: HList] { self ⇒
       def happly(g: R ⇒ Route) = self.happly { values ⇒ f(values).happly(g) }
     }
 
-  // TODO: add Seq[Rejection] parameter
-  def hrequire(predicate: L ⇒ Boolean): Directive0 =
+  def hrequire(predicate: L ⇒ Boolean, rejection: Option[Rejection] = None): Directive0 =
     new Directive0 {
       def happly(f: HNil ⇒ Route) =
-        self.happly { values ⇒ ctx ⇒ if (predicate(values)) f(HNil)(ctx) else ctx.reject() }
-    }
-
-  def unwrapFuture[R](implicit ev: L <:< (Future[R] :: HNil), hl: HListable[R], ec: ExecutionContext) =
-    new Directive[hl.Out] {
-      def happly(f: hl.Out ⇒ Route) = self.happly { list ⇒
-        ctx ⇒
-          list.head
-            .map { value ⇒ f(hl(value))(ctx) }
-            .onFailure { case error ⇒ ctx.failWith(error) }
-      }
+        self.happly { values ⇒ ctx ⇒ if (predicate(values)) f(HNil)(ctx) else ctx.reject(rejection.toList: _*) }
     }
 
   def recover[R >: L <: HList](recovery: List[Rejection] ⇒ Directive[R]): Directive[R] =
@@ -140,7 +130,7 @@ object Directive {
     def flatMap[R <: HList](f: T ⇒ Directive[R]): Directive[R] =
       underlying.hflatMap { case value :: HNil ⇒ f(value) }
 
-    def require(predicate: T ⇒ Boolean) =
-      underlying.hrequire { case value :: HNil ⇒ predicate(value) }
+    def require(predicate: T ⇒ Boolean, rejection: Option[Rejection] = None): Directive0 =
+      underlying.hrequire({ case value :: HNil ⇒ predicate(value) }, rejection)
   }
 }

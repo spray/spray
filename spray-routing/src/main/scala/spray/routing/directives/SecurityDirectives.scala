@@ -18,23 +18,20 @@ package spray.routing
 package directives
 
 import scala.concurrent.{ ExecutionContext, Future }
-import shapeless._
+import shapeless.HNil
 import spray.routing.authentication._
 import BasicDirectives._
+import FutureDirectives._
+import MiscDirectives._
 import RouteDirectives._
 
 trait SecurityDirectives {
 
   /**
    * Wraps its inner Route with authentication support.
+   * Can be called either with a ``Future[Authentication[T]]`` or ``ContextAuthenticator[T]``.
    */
-  def authenticate[T](am: AuthMagnet[T]): Directive1[T] = {
-    implicit def executor = am.executor
-    am.value.unwrapFuture.flatMap {
-      case Right(user)     ⇒ provide(user)
-      case Left(rejection) ⇒ reject(rejection)
-    }
-  }
+  def authenticate[T](magnet: AuthMagnet[T]): Directive1[T] = magnet.directive
 
   /**
    * Applies the given authorization check to the request.
@@ -47,16 +44,22 @@ trait SecurityDirectives {
    * If the check fails the route is rejected with an [[spray.AuthorizationFailedRejection]].
    */
   def authorize(check: RequestContext ⇒ Boolean): Directive0 =
-    extract(check).flatMap(if (_) pass else reject(AuthorizationFailedRejection))
-
+    extract(check).flatMap[HNil](if (_) pass else reject(AuthorizationFailedRejection)) &
+      cancelRejection(AuthorizationFailedRejection)
 }
 
-class AuthMagnet[T](val value: Directive1[Future[Authentication[T]]], val executor: ExecutionContext)
+class AuthMagnet[T](authDirective: Directive1[Authentication[T]])(implicit executor: ExecutionContext) {
+  val directive: Directive1[T] = authDirective.flatMap {
+    case Right(user)     ⇒ provide(user)
+    case Left(rejection) ⇒ reject(rejection)
+  }
+}
 
 object AuthMagnet {
+
   implicit def fromFutureAuth[T](auth: Future[Authentication[T]])(implicit executor: ExecutionContext) =
-    new AuthMagnet(provide(auth), executor)
+    new AuthMagnet(onSuccess(auth))
 
   implicit def fromContextAuthenticator[T](auth: ContextAuthenticator[T])(implicit executor: ExecutionContext) =
-    new AuthMagnet(extract(auth), executor)
+    new AuthMagnet(extract(auth).flatMap(onSuccess(_)))
 }

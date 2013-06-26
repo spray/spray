@@ -72,11 +72,11 @@ object MetaMarshallers extends MetaMarshallers {
 
       case current #:: rest ⇒
         val chunkingCtx = new DelegatingMarshallingContext(ctx) {
-          override def marshalTo(entity: HttpEntity) {
+          override def marshalTo(entity: HttpEntity): Unit = {
             if (connectionActor == null) connectionActor = ctx.startChunkedMessage(entity, Some(SentOk(rest)))
             else connectionActor ! MessageChunk(entity.buffer).withAck(SentOk(rest))
           }
-          override def handleError(error: Throwable) {
+          override def handleError(error: Throwable): Unit = {
             context.stop(self)
             ctx.handleError(error)
           }
@@ -87,7 +87,7 @@ object MetaMarshallers extends MetaMarshallers {
 
       case SentOk(remaining) ⇒
         if (remaining.isEmpty) {
-          connectionActor ! ChunkedMessageEnd()
+          connectionActor ! ChunkedMessageEnd
           context.stop(self)
         } else self ! remaining
 

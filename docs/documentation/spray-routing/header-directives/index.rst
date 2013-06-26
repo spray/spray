@@ -3,6 +3,9 @@
 HeaderDirectives
 ================
 
+Header directives can be used to extract header values from the request. To change
+response headers use one of the :ref:`RespondWithDirectives`.
+
 .. toctree::
    :maxdepth: 1
 

@@ -18,24 +18,37 @@ package spray
 package http
 package parser
 
+import scala.annotation.tailrec
 import org.parboiled.scala._
 import HttpHeaders._
+import ProtectedHeaderCreation.enable
 
 private[parser] trait ContentTypeHeader {
   this: Parser with ProtocolParameterRules with CommonActions ⇒
 
   def `*Content-Type` = rule {
-    ContentTypeHeaderValue ~~> `Content-Type`
+    ContentTypeHeaderValue ~~> (`Content-Type`(_))
   }
 
   lazy val ContentTypeHeaderValue = rule {
-    MediaTypeDef ~ EOI ~~> (createContentType(_, _, _))
-  }
+    MediaTypeDef ~ EOI ~~> { (main, sub, params) ⇒
+      @tailrec def processParams(remaining: List[(String, String)] = params,
+                                 boundary: String = "",
+                                 charset: Option[HttpCharset] = None,
+                                 builder: StringMapBuilder = null): (String, Option[HttpCharset], Map[String, String]) =
+        remaining match {
+          case Nil                         ⇒ (boundary, charset, if (builder eq null) Map.empty else builder.result())
+          case ("boundary", value) :: tail ⇒ processParams(tail, value, charset, builder)
+          case ("charset", value) :: tail  ⇒ processParams(tail, boundary, Some(getCharset(value)), builder)
+          case kvp :: tail ⇒
+            val b = if (builder eq null) Map.newBuilder[String, String] else builder
+            b += kvp
+            processParams(tail, boundary, charset, b)
+        }
 
-  private def createContentType(mainType: String, subType: String, params: Map[String, String]) = {
-    val mimeType = getMediaType(mainType, subType, params.get("boundary"))
-    val charset = params.get("charset").map(getCharset)
-    ContentType(mimeType, charset)
+      val (boundary, charset, parameters) = processParams()
+      val mediaType = getMediaType(main, sub, boundary, parameters)
+      ContentType(mediaType, charset)
+    }
   }
-
 }

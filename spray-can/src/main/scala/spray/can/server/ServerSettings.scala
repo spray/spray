@@ -22,6 +22,8 @@ import akka.actor.ActorSystem
 import spray.can.parsing.ParserSettings
 import spray.util._
 
+case class BackpressureSettings(noAckRate: Int, readingLowWatermark: Int)
+
 case class ServerSettings(
     serverHeader: String,
     sslEncryption: Boolean,
@@ -41,13 +43,14 @@ case class ServerSettings(
     bindTimeout: Duration,
     unbindTimeout: Duration,
     registrationTimeout: Duration,
+    backpressureSettings: Option[BackpressureSettings],
     parserSettings: ParserSettings) {
 
   requirePositiveOrUndefined(idleTimeout)
   requirePositiveOrUndefined(requestTimeout)
   requirePositiveOrUndefined(timeoutTimeout)
   requirePositiveOrUndefined(idleTimeout)
-  require(0 < pipeliningLimit && pipeliningLimit <= 128, "pipelining-limit must be > 0 and <= 128")
+  require(0 <= pipeliningLimit && pipeliningLimit <= 128, "pipelining-limit must be >= 0 and <= 128")
   require(0 <= requestChunkAggregationLimit && requestChunkAggregationLimit <= Int.MaxValue,
     "request-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
   require(0 <= responseSizeHint && responseSizeHint <= Int.MaxValue,
@@ -68,10 +71,15 @@ object ServerSettings {
     val c = config
       .withFallback(Utils.sprayConfigAdditions)
       .withFallback(ConfigFactory.defaultReference(getClass.getClassLoader))
+    val backpressureSettings =
+      Some(BackpressureSettings(
+        c getInt "back-pressure.noack-rate",
+        c getPossiblyInfiniteInt "back-pressure.reading-low-watermark")).filter(_ ⇒ c.getBoolean("automatic-back-pressure-handling"))
+
     ServerSettings(
       c getString "server-header",
       c getBoolean "ssl-encryption",
-      c getInt "pipelining-limit",
+      c.getString("pipelining-limit") match { case "disabled" ⇒ 0; case _ ⇒ c getInt "pipelining-limit" },
       c getDuration "idle-timeout",
       c getDuration "request-timeout",
       c getDuration "timeout-timeout",
@@ -87,6 +95,7 @@ object ServerSettings {
       c getDuration "bind-timeout",
       c getDuration "unbind-timeout",
       c getDuration "registration-timeout",
+      backpressureSettings,
       ParserSettings(c getConfig "parsing"))
   }
 }

@@ -24,7 +24,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
 
   var debugMsg = ""
 
-  def resetDebugMsg() { debugMsg = "" }
+  def resetDebugMsg(): Unit = { debugMsg = "" }
 
   implicit val log = new LoggingAdapter {
     def isErrorEnabled = true
@@ -32,11 +32,11 @@ class DebuggingDirectivesSpec extends RoutingSpec {
     def isInfoEnabled = true
     def isDebugEnabled = true
 
-    def notifyError(message: String) {}
-    def notifyError(cause: Throwable, message: String) {}
-    def notifyWarning(message: String) {}
-    def notifyInfo(message: String) {}
-    def notifyDebug(message: String) { debugMsg += message + '\n' }
+    def notifyError(message: String): Unit = {}
+    def notifyError(cause: Throwable, message: String): Unit = {}
+    def notifyWarning(message: String): Unit = {}
+    def notifyInfo(message: String): Unit = {}
+    def notifyDebug(message: String): Unit = { debugMsg += message + '\n' }
   }
 
   "The 'logRequest' directive" should {
@@ -53,7 +53,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
       resetDebugMsg()
       Get("/hello") ~> logResponse("2") { completeOk } ~> check {
         response === Ok
-        debugMsg === "2: HttpResponse(StatusCode(200, OK),EmptyEntity,List(),HTTP/1.1)\n"
+        debugMsg === "2: HttpResponse(200 OK,EmptyEntity,List(),HTTP/1.1)\n"
       }
     }
   }
@@ -65,7 +65,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
         response === Ok
         debugMsg === """|3: Response for
                         |  Request : HttpRequest(GET,/hello,List(),EmptyEntity,HTTP/1.1)
-                        |  Response: HttpResponse(StatusCode(200, OK),EmptyEntity,List(),HTTP/1.1)
+                        |  Response: HttpResponse(200 OK,EmptyEntity,List(),HTTP/1.1)
                         |""".stripMargin.replace(EOL, "\n")
       }
     }

@@ -60,10 +60,7 @@ converted into ``400 Bad Request`` error response by the default :ref:`Rejection
 successfully handles the request.
 
 
-Quirk
------
-
-There is one quirk to look out for when using case class extraction: If you create an explicit companion object for your
-case class, no matter whether you actually add any members to it or not, the syntax presented above will not (quite)
-work anymore. Instead of ``as(Color)`` you will then have to say ``as(Color.apply)``. This behavior appears as if it's
-not really intended, we will try to work with the TypeSafe team to fix this.
+.. caution:: There is one quirk to look out for when using case class extraction: If you create an explicit companion
+   object for your case class, no matter whether you actually add any members to it or not, the syntax presented above
+   will not (quite) work anymore. Instead of ``as(Color)`` you will then have to say ``as(Color.apply)``. This behavior
+   appears as if it's not really intended, we will try to work with the TypeSafe team to fix this.

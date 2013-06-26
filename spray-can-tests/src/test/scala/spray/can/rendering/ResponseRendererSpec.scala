@@ -17,7 +17,9 @@
 package spray.can.rendering
 
 import org.specs2.matcher.DataTables
+import org.specs2.specification.Scope
 import org.specs2._
+import akka.event.NoLogging
 import spray.util._
 import spray.http._
 import HttpHeaders._
@@ -29,7 +31,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
   "The response preparation logic" should {
     "properly render" in {
 
-      "a response with status 200, no headers and no body" in {
+      "a response with status 200, no headers and no body" in new TestSetup() {
         render(HttpResponse(200)) === result {
           """HTTP/1.1 200 OK
             |Server: spray-can/1.0.0
@@ -40,7 +42,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         } -> false
       }
 
-      "a response with status 304, a few headers and no body" in {
+      "a response with status 304, a few headers and no body" in new TestSetup() {
         render {
           HttpResponse(304, headers = List(RawHeader("X-Fancy", "of course"), RawHeader("Age", "0")))
         } === result {
@@ -55,7 +57,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         } -> false
       }
 
-      "a response with status 400, a few headers and a body" in {
+      "a response with status 400, a few headers and a body" in new TestSetup() {
         render {
           HttpResponse(
             status = 400,
@@ -74,7 +76,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         } -> false
       }
 
-      "a response to a HEAD request" in {
+      "a response to a HEAD request" in new TestSetup() {
         render(requestMethod = HEAD,
           response = HttpResponse(
             headers = List(RawHeader("Age", "30"), Connection("Keep-Alive")),
@@ -91,7 +93,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           } -> false
       }
 
-      "a chunked response without body" in {
+      "a chunked response without body" in new TestSetup() {
         render(
           response = ChunkedResponseStart(HttpResponse(200, headers = List(RawHeader("Age", "30")))),
           requestConnectionHeader = Some("close")) === result {
@@ -105,7 +107,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           } -> false
       }
 
-      "a chunked response with body" in {
+      "a chunked response with body" in new TestSetup() {
         render(ChunkedResponseStart(HttpResponse(entity = "Yahoooo"))) === result {
           """HTTP/1.1 200 OK
             |Server: spray-can/1.0.0
@@ -119,7 +121,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         } -> false
       }
 
-      "a response chunk" in {
+      "a response chunk" in new TestSetup() {
         render(MessageChunk("body123".getBytes("ISO-8859-1"), """key=value;another="tl;dr"""")) === result {
           """7;key=value;another="tl;dr"
             |body123
@@ -127,7 +129,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         } -> false
       }
 
-      "a final response chunk" in {
+      "a final response chunk" in new TestSetup() {
         render(ChunkedMessageEnd("", List(RawHeader("Age", "30"), RawHeader("Cache-Control", "public")))) === result {
           """0
             |Age: 30
@@ -137,47 +139,40 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         } -> false
       }
 
-      "a chunkless chunked response without body" in {
-        render(
-          response = ChunkedResponseStart(HttpResponse(200, headers = List(RawHeader("Age", "30")))),
-          chunkless = true) === result {
-            """HTTP/1.1 200 OK
+      "a chunkless chunked response without body" in new TestSetup(chunklessStreaming = true) {
+        render(response = ChunkedResponseStart(HttpResponse(200, headers = List(RawHeader("Age", "30"))))) === result {
+          """HTTP/1.1 200 OK
             |Server: spray-can/1.0.0
             |Date: Thu, 25 Aug 2011 09:10:29 GMT
             |Age: 30
             |
             |"""
-          } -> false
+        } -> false
       }
 
-      "a chunkless chunked response with body" in {
-        render(
-          response = ChunkedResponseStart(HttpResponse(entity = "Yahoooo")),
-          chunkless = true) === result {
-            """HTTP/1.1 200 OK
+      "a chunkless chunked response with body" in new TestSetup(chunklessStreaming = true) {
+        render(response = ChunkedResponseStart(HttpResponse(entity = "Yahoooo"))) === result {
+          """HTTP/1.1 200 OK
             |Server: spray-can/1.0.0
             |Date: Thu, 25 Aug 2011 09:10:29 GMT
             |Content-Type: text/plain
             |
             |Yahoooo"""
-          } -> false
+        } -> false
       }
 
-      "a chunkless response chunk" in {
-        render(
-          response = MessageChunk("body123".getBytes("ISO-8859-1"), """key=value;another="tl;dr""""),
-          chunkless = true) === result {
-            "body123"
-          } -> false
+      "a chunkless response chunk" in new TestSetup(chunklessStreaming = true) {
+        render(response = MessageChunk("body123".getBytes("ISO-8859-1"), """key=value;another="tl;dr"""")) === result {
+          "body123"
+        } -> false
       }
 
-      "a chunkless final response chunk" in {
-        render(
-          response = ChunkedMessageEnd("", List(RawHeader("Age", "30"), RawHeader("Cache-Control", "public"))),
-          chunkless = true) === result("") -> true
+      "a chunkless final response chunk" in new TestSetup(chunklessStreaming = true) {
+        render(response = ChunkedMessageEnd("",
+          List(RawHeader("Age", "30"), RawHeader("Cache-Control", "public")))) === result("") -> true
       }
 
-      "The 'Connection' header should be rendered correctly" in {
+      "The 'Connection' header should be rendered correctly" in new TestSetup() {
         val NONE: Option[String] = None
 
         "Client Version" | "Request" | "Response" | "Rendered" | "Close" |
@@ -206,24 +201,29 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
     }
   }
 
-  def render(response: HttpResponsePart,
-             requestMethod: HttpMethod = HttpMethods.GET,
-             requestProtocol: HttpProtocol = `HTTP/1.1`,
-             requestConnectionHeader: Option[String] = None,
-             chunkless: Boolean = false) = {
-    val renderer = new ResponseRenderer("spray-can/1.0.0", chunkless, 256) {
-      override def dateTime(now: Long) = DateTime(2011, 8, 25, 9, 10, 29) // provide a stable date for testing
-    }
-    val RenderedMessagePart(data, closeAfterWrite) = renderer.render {
+  class TestSetup(val serverHeaderValue: String = "spray-can/1.0.0",
+                  val chunklessStreaming: Boolean = false,
+                  val transparentHeadRequests: Boolean = true)
+      extends ResponseRenderingComponent with Scope {
+
+    def render(response: HttpResponsePart,
+               requestMethod: HttpMethod = HttpMethods.GET,
+               requestProtocol: HttpProtocol = `HTTP/1.1`,
+               requestConnectionHeader: Option[String] = None) = {
       val connectionHeader = requestConnectionHeader map (Connection(_))
       val closeAfterResponseCompletion = requestProtocol match {
         case `HTTP/1.1` ⇒ connectionHeader.isDefined && connectionHeader.get.hasClose
         case `HTTP/1.0` ⇒ connectionHeader.isEmpty || !connectionHeader.get.hasKeepAlive
       }
-      HttpResponsePartRenderingContext(response, requestMethod, requestProtocol, closeAfterResponseCompletion)
+      val rendering = new ByteStringRendering(256)
+      val closeAfterWrite = renderResponsePartRenderingContext(rendering,
+        ResponsePartRenderingContext(response, requestMethod, requestProtocol, closeAfterResponseCompletion),
+        NoLogging)
+      rendering.get.utf8String -> closeAfterWrite
     }
-    data.utf8String -> closeAfterWrite
-  }
 
-  def result(content: String) = content.stripMargin.replace(EOL, "\r\n")
+    def result(content: String) = content.stripMargin.replace(EOL, "\r\n")
+
+    override def dateTime(now: Long) = DateTime(2011, 8, 25, 9, 10, 29) // provide a stable date for testing
+  }
 }

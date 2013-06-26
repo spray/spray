@@ -20,9 +20,10 @@ import akka.actor.{ ActorSystem, Props }
 import akka.event.Logging
 import akka.io.IO
 import spray.can.Http
+import spray.http.StringRendering
 
 object Main extends App {
-  implicit val system = ActorSystem()
+  implicit val system = ActorSystem("site")
   val log = Logging(system, getClass)
   val settings = SiteSettings(system)
 
@@ -30,6 +31,8 @@ object Main extends App {
   val root = new RootNode(SphinxDoc.load("index/").getOrElse(sys.error("index doc not found")))
   val blog = new Blog(root)
 
+  //  println(root.render(new StringRendering).get)
+  //  system.shutdown()
   log.info("Starting service actor and HTTP server...")
   val service = system.actorOf(Props(new SiteServiceActor(settings)), "site-service")
   IO(Http) ! Http.Bind(service, settings.interface, settings.port)

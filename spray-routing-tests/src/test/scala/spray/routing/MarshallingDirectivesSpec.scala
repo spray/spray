@@ -143,7 +143,8 @@ class MarshallingDirectivesSpec extends RoutingSpec {
       Get() ~> complete(Promise.successful("yes").future) ~> check { entityAs[String] === "yes" }
     }
     "work for failed futures" in {
-      Get() ~> complete(Promise.failed[String](new RuntimeException("Naa")).future) ~>
+      object TestException extends spray.util.SingletonException
+      Get() ~> complete(Promise.failed[String](TestException).future) ~>
         check {
           status === StatusCodes.InternalServerError
           entityAs[String] === "There was an internal server error."

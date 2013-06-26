@@ -81,8 +81,10 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
         s"URI length exceeds the configured limit of ${settings.maxUriLength} characters")
 
     val uriEnd = findUriEnd()
-    try uri = Uri.parseHttpRequestTarget(input.iterator.slice(uriStart, uriEnd).toArray[Byte])
-    catch {
+    try {
+      val uriBytes = input.iterator.slice(uriStart, uriEnd).toArray[Byte]
+      uri = Uri.parseHttpRequestTarget(uriBytes, mode = settings.uriParsingMode)
+    } catch {
       case e: IllegalUriException ⇒
         throw new ParsingException(BadRequest, e.info.withSummaryPrepended("Illegal request URI"))
     }
