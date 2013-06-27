@@ -75,19 +75,19 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
     if (r.size == 1) r.head else failTest("Expected a single rejection but got %s (%s)".format(r.size, r))
   }
 
-  implicit def pimpHttpRequestWithTildeArrow(request: HttpRequest) = new HttpRequestWithTildeArrow(request)
-  class HttpRequestWithTildeArrow(request: HttpRequest) {
+  // there is already an implicit class WithTransformation in scope (inherited from spray.httpx.TransformerPipelineSupport)
+  // however, this one takes precedence
+  implicit class WithTransformation2(request: HttpRequest) {
     def ~>[A, B](f: A ⇒ B)(implicit ta: TildeArrow[A, B]): ta.Out = ta(request, f)
-    def ~>(header: HttpHeader) = addHeader(header)(request)
   }
 
-  private abstract class TildeArrow[A, B] {
+  abstract class TildeArrow[A, B] {
     type Out
     def apply(request: HttpRequest, f: A ⇒ B): Out
   }
 
-  private object TildeArrow {
-    implicit val concatWithRequestTransformer = new TildeArrow[HttpRequest, HttpRequest] {
+  object TildeArrow {
+    implicit object InjectIntoRequestTransformer extends TildeArrow[HttpRequest, HttpRequest] {
       type Out = HttpRequest
       def apply(request: HttpRequest, f: HttpRequest ⇒ HttpRequest) = f(request)
     }

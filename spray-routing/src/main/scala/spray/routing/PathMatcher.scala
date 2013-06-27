@@ -33,7 +33,7 @@ trait PathMatcher[L <: HList] extends (Path ⇒ PathMatcher.Matching[L]) { self 
   def /[R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]): PathMatcher[prepender.Out] =
     this ~ PathMatchers.Slash ~ other
 
-  def |[R >: L <: HList](other: PathMatcher[R]): PathMatcher[R] =
+  def |[R >: L <: HList](other: PathMatcher[_ <: R]): PathMatcher[R] =
     new PathMatcher[R] {
       def apply(path: Path) = self(path) orElse other(path)
     }
@@ -156,6 +156,20 @@ trait ImplicitPathMatcherConstruction {
 
 trait PathMatchers {
   import PathMatcher._
+
+  /**
+   * Converts a path string containing slashes into a PathMatcher that interprets slashes as
+   * path segment separators.
+   */
+  def separateOnSlashes(string: String): PathMatcher0 = {
+    @tailrec def split(ix: Int = 0, matcher: PathMatcher0 = null): PathMatcher0 = {
+      val nextIx = string.indexOf('/', ix)
+      def append(m: PathMatcher0) = if (matcher eq null) m else matcher / m
+      if (nextIx < 0) append(string.substring(ix))
+      else split(nextIx + 1, append(string.substring(ix, nextIx)))
+    }
+    split()
+  }
 
   /**
    * A PathMatcher that matches a single slash character ('/').
