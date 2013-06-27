@@ -290,6 +290,12 @@ class PathDirectivesSpec extends RoutingSpec {
       "example 3" in {
         Get("/ab/xy/gh") ~> route ~> check { handled === false }
       }
+      "example 4" in {
+        val route = path(LongNumber | JavaUUID) { echoComplete }
+        Get("/123") ~> route ~> check { entityAs[String] === "123" }
+        Get("/bdea8652-f26c-40ca-8157-0b96a2a8389d") ~> route ~> check { entityAs[String] must startWith("bdea8652") }
+      }
+
     }
     "support the unary_! modifier" in {
       val route = pathPrefix("ab" / !"cd" ~ Rest) { echoComplete }
