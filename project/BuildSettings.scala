@@ -86,6 +86,7 @@ object BuildSettings {
   )
 
   lazy val exampleSettings = basicSettings ++ noPublishing
+  lazy val standaloneServerExampleSettings = exampleSettings ++ Revolver.settings
 
   lazy val benchmarkSettings = basicSettings ++ noPublishing ++ Revolver.settings ++ assemblySettings ++ Seq(
     mainClass in assembly := Some("spray.examples.Main"),
