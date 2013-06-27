@@ -196,7 +196,7 @@ object Build extends Build with DocSupport {
 
   lazy val simpleHttpServer = Project("simple-http-server", file("examples/spray-can/simple-http-server"))
     .dependsOn(sprayCan, sprayHttp)
-    .settings(exampleSettings: _*)
+    .settings(standaloneServerExampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
       runtime(akkaSlf4j, logback)
@@ -220,7 +220,7 @@ object Build extends Build with DocSupport {
 
   lazy val echoServerExample = Project("echo-server", file("examples/spray-io/echo-server"))
     .dependsOn(sprayIO)
-    .settings(exampleSettings: _*)
+    .settings(standaloneServerExampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
       runtime(akkaSlf4j, logback)
@@ -242,7 +242,7 @@ object Build extends Build with DocSupport {
 
   lazy val onSprayCan = Project("on-spray-can", file("examples/spray-routing/on-spray-can"))
     .dependsOn(sprayCaching, sprayCan, sprayRouting, sprayTestKit % "test")
-    .settings(exampleSettings: _*)
+    .settings(standaloneServerExampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
       test(specs2) ++
@@ -251,7 +251,7 @@ object Build extends Build with DocSupport {
 
   lazy val simpleRoutingApp = Project("simple-routing-app", file("examples/spray-routing/simple-routing-app"))
     .dependsOn(sprayCan, sprayRouting)
-    .settings(exampleSettings: _*)
+    .settings(standaloneServerExampleSettings: _*)
     .settings(libraryDependencies ++= compile(akkaActor))
 
   lazy val sprayServletExamples = Project("spray-servlet-examples", file("examples/spray-servlet"))
