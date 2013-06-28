@@ -60,8 +60,10 @@ settings (most importantly the ``reference.conf`` files).
 
 The category that a commit belongs to is indicated with a respective marker character that the commit's message must
 start with (followed by a space char), e.g. ``= testkit: clean up imports``. Note that *all* commits must carry exactly
-one of the markers listed in the table above! This makes sure that the committer has actively thought about the effects
-of the commit on the API surface.
+one of the markers listed in the table above, with one exception: merge commits that don't introduce any changes
+themselves do not have to carry a marker. Instead, they start with "Merge".
+Requiring the marker makes sure that the committer has actively thought about the effects of the commit on the public
+API surface.
 
 Also, all commits in the "Extending" and especially in the "Breaking" category should contain a dedicated paragraph
 (in addition to the summary line) explaining in what way the change breaks the API and why this is necessary/beneficial.
