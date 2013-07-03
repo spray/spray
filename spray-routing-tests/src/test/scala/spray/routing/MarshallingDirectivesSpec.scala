@@ -29,7 +29,7 @@ import HttpCharsets._
 class MarshallingDirectivesSpec extends RoutingSpec {
 
   implicit val IntUnmarshaller =
-    Unmarshaller[Int](ContentTypeRange(`text/xml`, `ISO-8859-2`), `text/html`, `application/xhtml+xml`) {
+    Unmarshaller[Int](ContentTypeRange(`text/xml`, HttpCharsets.getForKey("iso-8859-2").get), `text/html`, `application/xhtml+xml`) {
       case HttpBody(_, buffer) ⇒ XML.load(new ByteArrayInputStream(buffer)).text.toInt
     }
 
