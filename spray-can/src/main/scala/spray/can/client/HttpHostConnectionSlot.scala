@@ -95,21 +95,16 @@ private[client] class HttpHostConnectionSlot(remoteAddress: InetSocketAddress,
       val RequestContext(request, _, commander) = openRequests.head
       if (log.isDebugEnabled) log.debug("Delivering {} for {}", formatResponse(part), format(request))
       commander ! part
-      def handleResponseCompletion(closeConnection: Boolean): Unit = {
+      def handleResponseCompletion(): Unit = {
         context.parent ! RequestCompleted
-        if (closeConnection) {
-          log.debug("Closing connection as indicated by last response")
-          httpConnection ! Http.Close
-          context.become(closing(httpConnection, openRequests.tail, "Premature connection close (the server doesn't " +
-            "appear to support request pipelining)", retry = true))
-        } else context.become(connected(httpConnection, openRequests.tail))
+        context.become(connected(httpConnection, openRequests.tail))
       }
       part match {
-        case x: HttpResponse ⇒ handleResponseCompletion(x.connectionCloseExpected)
+        case x: HttpResponse ⇒ handleResponseCompletion()
         case ChunkedResponseStart(x: HttpResponse) ⇒
           context.become(connected(httpConnection, openRequests, x.connectionCloseExpected))
         case _: MessageChunk      ⇒ // nothing to do
-        case _: ChunkedMessageEnd ⇒ handleResponseCompletion(closeAfterResponseEnd)
+        case _: ChunkedMessageEnd ⇒ handleResponseCompletion()
       }
 
     case x: HttpResponsePart ⇒
@@ -140,7 +135,11 @@ private[client] class HttpHostConnectionSlot(remoteAddress: InetSocketAddress,
 
     case ev: Http.ConnectionClosed ⇒
       context.parent ! Disconnected(openRequests.size)
-      openRequests foreach clear(ev.toString, retry = true)
+      val errorMsgForOpenRequests = ev match {
+        case Http.PeerClosed ⇒ "Premature connection close (the server doesn't appear to support request pipelining)"
+        case x               ⇒ x.toString
+      }
+      openRequests foreach clear(errorMsgForOpenRequests, retry = true)
       context.unwatch(httpConnection)
       context.become(unconnected)
 
