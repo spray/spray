@@ -20,7 +20,9 @@ import java.net.Socket
 import java.io.{ InputStreamReader, BufferedReader, OutputStreamWriter, BufferedWriter }
 import com.typesafe.config.{ ConfigFactory, Config }
 import scala.annotation.tailrec
+import scala.concurrent.duration._
 import org.specs2.mutable.Specification
+import org.specs2.time.NoTimeConversions
 import akka.actor.{ ActorRef, ActorSystem }
 import akka.io.IO
 import akka.testkit.TestProbe
@@ -29,7 +31,7 @@ import spray.util.Utils.temporaryServerHostnameAndPort
 import spray.httpx.RequestBuilding._
 import spray.http._
 
-class SprayCanServerSpec extends Specification {
+class SprayCanServerSpec extends Specification with NoTimeConversions {
   val testConf: Config = ConfigFactory.parseString("""
     akka {
       event-handlers = ["akka.testkit.TestEventListener"]
@@ -138,7 +140,7 @@ class SprayCanServerSpec extends Specification {
         case HttpRequest(_, Uri.Path("/abc"), _, _, _) ⇒ HttpResponse(entity = "fast")
       }
       val probe = sendRequest(connection, Get("/abc"))
-      serverHandler.expectNoMsg()
+      serverHandler.expectNoMsg(100.millis)
       probe.expectMsgType[HttpResponse].entity === HttpEntity("fast")
     }
   }
