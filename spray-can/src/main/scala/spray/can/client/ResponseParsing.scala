@@ -80,7 +80,7 @@ object ResponseParsing {
           val eventPipeline: EPL = {
             case Tcp.Received(data: CompactByteString) ⇒ parse(data)
 
-            case ev @ Http.PeerClosed ⇒
+            case ev @ Http.PeerClosed if openRequestMethods.nonEmpty ⇒
               parse(CompactByteString.empty)
               eventPL(ev)
 
