@@ -73,7 +73,7 @@ class HttpClientConnectionPipelineSpec extends Specification with RawSpecs2Pipel
 
       connectionActor ! Tcp.Received(ByteString(rawResponse("123")))
       commands.expectMsg(Pipeline.Tell(probe.ref, response("123"), connectionActor))
-      commands.expectNoMsg(500.millis)
+      commands.expectNoMsg(100.millis)
     }
 
     "dispatch a 'Connection: close' HttpResponse back to the sender and close the connection" in new Fixture(stage) {
