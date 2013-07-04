@@ -66,6 +66,37 @@ class HttpClientConnectionPipelineSpec extends Specification with RawSpecs2Pipel
       commands.expectMsg(Pipeline.Tell(probe.ref, response, connectionActor))
     }
 
+    "dispatch a keep-alive HttpResponse back to the sender" in new Fixture(stage) {
+      val probe = TestProbe()
+      probe.send(connectionActor, Http.MessageCommand(HttpRequest()))
+      commands.expectMsgType[Tcp.Write]
+
+      connectionActor ! Tcp.Received(ByteString(rawResponse("123")))
+      commands.expectMsg(Pipeline.Tell(probe.ref, response("123"), connectionActor))
+      commands.expectNoMsg(100.millis)
+    }
+
+    "dispatch a 'Connection: close' HttpResponse back to the sender and close the connection" in new Fixture(stage) {
+      val probe = TestProbe()
+      probe.send(connectionActor, Http.MessageCommand(HttpRequest()))
+      commands.expectMsgType[Tcp.Write]
+
+      connectionActor ! Tcp.Received(ByteString(rawResponse("123", "Connection: close")))
+      commands.expectMsg(Pipeline.Tell(probe.ref, response("123", HttpHeaders.Connection("close")), connectionActor))
+      commands.expectMsg(Tcp.Close)
+    }
+
+    "be able to deal with PeerClosed events after response completion" in new Fixture(stage) {
+      val probe = TestProbe()
+      probe.send(connectionActor, Http.MessageCommand(HttpRequest()))
+      commands.expectMsgType[Tcp.Write]
+
+      connectionActor ! Tcp.Received(ByteString(rawResponse("123")))
+      connectionActor ! Tcp.PeerClosed
+      commands.expectMsg(Pipeline.Tell(probe.ref, response("123"), connectionActor))
+      commands.expectNoMsg(100.millis)
+    }
+
     "dispatch an aggregated chunked response back to the sender" in new Fixture(stage) {
       val (probe, probeRef) = probeAndRef()
       probe.send(connectionActor, Http.MessageCommand(HttpRequest()))

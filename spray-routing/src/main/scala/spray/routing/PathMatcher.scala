@@ -319,8 +319,9 @@ trait PathMatchers {
 
   /**
    * A PathMatcher that always matches, doesn't consume anything and extracts nothing.
+   * Serves mainly as a neutral element in PathMatcher composition.
    */
-  val Empty = PathMatcher.provide(HNil)
+  val Neutral: PathMatcher[HNil] = PathMatcher.provide(HNil)
 
   /**
    * A PathMatcher that matches if the unmatched path starts with a path segment.
