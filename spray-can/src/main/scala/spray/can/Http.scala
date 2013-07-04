@@ -55,7 +55,7 @@ object Http extends ExtensionKey[HttpExt] {
 
   case class HostConnectorSetup(remoteAddress: InetSocketAddress,
                                 options: immutable.Traversable[Inet.SocketOption],
-                                settings: Option[HostConnectorSettings])(implicit sslEngineProvider: ClientSSLEngineProvider) extends Command {
+                                settings: Option[HostConnectorSettings])(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command {
     private[can] def normalized(implicit refFactory: ActorRefFactory) =
       if (settings.isDefined) this
       else copy(settings = Some(HostConnectorSettings(actorSystem)))
@@ -65,7 +65,7 @@ object Http extends ExtensionKey[HttpExt] {
               settings: Option[HostConnectorSettings] = None)(implicit sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup =
       apply(new InetSocketAddress(host, port), options, settings)
 
-    def apply(host: String, port: Int, sslEncryption: Boolean)(implicit refFactory: ActorRefFactory): HostConnectorSetup = {
+    def apply(host: String, port: Int, sslEncryption: Boolean)(implicit refFactory: ActorRefFactory, sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup = {
       val connectionSettings = ClientConnectionSettings(actorSystem).copy(sslEncryption = sslEncryption)
       apply(host, port, settings = Some(HostConnectorSettings(actorSystem).copy(connectionSettings = connectionSettings)))
     }

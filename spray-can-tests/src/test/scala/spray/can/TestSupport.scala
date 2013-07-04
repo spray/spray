@@ -52,9 +52,9 @@ object TestSupport {
       `Date`(DateTime(2011, 8, 25, 9, 10, 29)),
       `Server`("spray/1.0")))
 
-  def response(content: String) = HttpResponse(
+  def response(content: String, additionalHeaders: HttpHeader*) = HttpResponse(
     status = 200,
-    headers = List(
+    headers = additionalHeaders.toList ::: List(
       `Content-Type`(`text/plain`),
       `Content-Length`(content.length),
       `Date`(DateTime(2011, 8, 25, 9, 10, 29)),
@@ -70,15 +70,15 @@ object TestSupport {
        |"""
   }
 
-  def rawResponse(content: String) = prep {
+  def rawResponse(content: String, additionalHeaders: String = "") = prep {
     """|HTTP/1.1 200 OK
        |Server: spray/1.0
        |Date: Thu, 25 Aug 2011 09:10:29 GMT
        |Content-Length: %s
        |Content-Type: text/plain
-       |
-       |%s"""
-  }.format(content.length, content)
+       |%s
+       |%s""".format(content.length, if (additionalHeaders.isEmpty) "" else additionalHeaders + '\n', content)
+  }
 
   val chunkedRequestStart = prep {
     """GET / HTTP/1.1

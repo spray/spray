@@ -42,10 +42,11 @@ object ResponseParsing {
 
           @tailrec def parse(data: ByteString): Unit =
             parser.parse(data) match {
-              case Result.Ok(part, remainingData, _) ⇒
+              case Result.Ok(part, remainingData, closeAfterResponseCompletion) ⇒
                 eventPL(Http.MessageEvent(part))
                 if (part.isInstanceOf[HttpMessageEnd]) {
                   openRequestMethods = openRequestMethods.tail
+                  if (closeAfterResponseCompletion) commandPL(Http.Close)
                   if (openRequestMethods.nonEmpty) parser.startResponse(openRequestMethods.head)
                 }
                 if (!remainingData.isEmpty) parse(remainingData)
@@ -79,7 +80,7 @@ object ResponseParsing {
           val eventPipeline: EPL = {
             case Tcp.Received(data: ByteString) ⇒ parse(data)
 
-            case ev @ Http.PeerClosed ⇒
+            case ev @ Http.PeerClosed if openRequestMethods.nonEmpty ⇒
               parse(ByteString.empty)
               eventPL(ev)
 

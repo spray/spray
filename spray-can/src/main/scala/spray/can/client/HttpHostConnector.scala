@@ -20,11 +20,10 @@ import scala.collection.immutable.Queue
 import akka.io.ExtraStrategies
 import akka.actor._
 import spray.util.SprayActorLogging
-import spray.io.ClientSSLEngineProvider
 import spray.http.{ HttpHeaders, HttpRequest }
 import spray.can.Http
 
-private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
+private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, clientConnectionSettingsGroup: ActorRef)
     extends Actor with SprayActorLogging {
 
   import HttpHostConnector._

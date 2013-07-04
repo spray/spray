@@ -76,14 +76,19 @@ object BackPressureHandling {
 
               // go into buffering mode
               commandPL(Tcp.ResumeWriting)
-              become(buffering(out, isReading, closeCommand))
+              become(buffering(out, idx, isReading, closeCommand))
             }
             def isClosing = closeCommand.isDefined
 
             def commandPipeline = {
               case _: Tcp.Write if isClosing ⇒ log.warning("Can't process more writes when closing. Dropping...")
-              case a @ Tcp.Abort             ⇒ commandPL(a) // always forward abort
-              case c: Tcp.CloseCommand if out.queue.isEmpty ⇒
+              case w @ Tcp.Write(data, NoAck(noAck)) ⇒
+                if (noAck != null) log.warning("BackPressureHandling doesn't support custom NoAcks " + noAck)
+
+                commandPL(out.enqueue(w))
+              case w @ Tcp.Write(data, ack) ⇒ commandPL(out.enqueue(w, forceAck = true))
+              case a @ Tcp.Abort            ⇒ commandPL(a) // always forward abort
+              case c: Tcp.CloseCommand if out.queueEmpty ⇒
                 commandPL(c)
                 become(closed())
               case c: Tcp.CloseCommand ⇒
@@ -92,12 +97,8 @@ object BackPressureHandling {
                   commandPL(ProbeForEndOfWriting)
                   become(writeThrough(out, isReading, Some(c)))
                 }
-              case w @ Tcp.Write(data, NoAck(noAck)) ⇒
-                if (noAck != null) log.warning("BackPressureHandling doesn't support custom NoAcks " + noAck)
 
-                commandPL(out.enqueue(w))
-              case w @ Tcp.Write(data, ack) ⇒ commandPL(out.enqueue(w, forceAck = true))
-              case c                        ⇒ commandPL(c)
+              case c ⇒ commandPL(c)
             }
 
             def eventPipeline = {
@@ -105,7 +106,7 @@ object BackPressureHandling {
                 // dequeue and send out possible user level ack
                 out.dequeue(idx).foreach(eventPL)
 
-                if (!isReading && out.queue.length < lowWatermark) resumeReading()
+                if (!isReading && out.queueLength < lowWatermark) resumeReading()
 
               case Tcp.CommandFailed(Tcp.Write(_, NoAck(seq: Int))) ⇒ writeFailed(seq)
               case Tcp.CommandFailed(Tcp.Write(_, Ack(seq: Int)))   ⇒ writeFailed(seq)
@@ -127,12 +128,12 @@ object BackPressureHandling {
            * The state where writing is suspended and we are waiting for WritingResumed. Reading will be suspended
            * if it currently isn't and if the connection isn't already going to be closed.
            */
-          def buffering(out: OutQueue, isReading: Boolean, closeCommand: Option[CloseCommand]): Pipelines = {
+          def buffering(out: OutQueue, failedSeq: Int, isReading: Boolean, closeCommand: Option[CloseCommand]): Pipelines = {
             def isClosing = closeCommand.isDefined
 
             if (!isClosing && isReading) {
               commandPL(Tcp.SuspendReading)
-              buffering(out, isReading = false, closeCommand)
+              buffering(out, failedSeq, isReading = false, closeCommand)
             } else new Pipelines {
               def commandPipeline = {
                 case w: Tcp.Write ⇒
@@ -146,7 +147,7 @@ object BackPressureHandling {
                     // because by definition more data read can't lead to more traffic on the
                     // writing side once the writing side was closed
                     if (!isReading) commandPL(Tcp.ResumeReading)
-                    become(buffering(out, true, Some(c)))
+                    become(buffering(out, failedSeq, isReading = true, Some(c)))
                   }
                 case c ⇒ commandPL(c)
               }
@@ -165,8 +166,14 @@ object BackPressureHandling {
                   // otherwise, if we are closing we replay the close as well
                   else effective.commandPipeline(closeCommand.get)
 
-                case Tcp.CommandFailed(_: Tcp.Write) ⇒ // drop this, this is expected
-                case e                               ⇒ eventPL(e)
+                case Tcp.CommandFailed(_: Tcp.Write)  ⇒ // Drop. This is expected.
+                case Ack(seq) if seq == failedSeq - 1 ⇒
+                // Ignore. This is expected since if the last successful write was an
+                // ack'd one and the next one fails (because of the ack'd one still being in the queue)
+                // the CommandFailed will be received before the Ack
+                case Ack(seq) ⇒ log.warning("Unexpected Ack(" + seq + ") in buffering mode. length: " +
+                  out.queueLength + " head: " + out.headSequenceNo)
+                case e ⇒ eventPL(e)
               }
             }
           }
@@ -192,9 +199,12 @@ object BackPressureHandling {
     // the sequence number of the first Write in the buffer
     private[this] var firstSequenceNo = _initialSequenceNo
 
+    private[this] var length = 0
+
     def enqueue(w: Tcp.Write, forceAck: Boolean = false): Tcp.Write = {
-      val seq = firstSequenceNo + buffer.length // is that efficient, otherwise maintain counter
+      val seq = firstSequenceNo + length // is that efficient, otherwise maintain counter
       buffer = buffer.enqueue(w)
+      length += 1
 
       val shouldAck = forceAck || unacked >= ackRate - 1
 
@@ -209,11 +219,13 @@ object BackPressureHandling {
       if (firstSequenceNo < upToSeq) {
         firstSequenceNo += 1
         buffer = buffer.tail
+        length -= 1
         dequeue(upToSeq)
       } else if (firstSequenceNo == upToSeq) { // the last one may contain an ack to send
         firstSequenceNo += 1
         val front = buffer.front
         buffer = buffer.tail
+        length -= 1
 
         if (front.wantsAck) Some(front.ack)
         else None
@@ -221,7 +233,9 @@ object BackPressureHandling {
       else throw new IllegalStateException("Shouldn't get here, " + firstSequenceNo + " > " + upToSeq)
 
     def queue: Queue[Tcp.Write] = buffer
+    def queueEmpty: Boolean = length == 0
+    def queueLength: Int = length
     def headSequenceNo = firstSequenceNo
-    def nextSequenceNo = firstSequenceNo + buffer.length
+    def nextSequenceNo = firstSequenceNo + length
   }
 }

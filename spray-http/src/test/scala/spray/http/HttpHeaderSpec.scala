@@ -101,7 +101,7 @@ class HttpHeaderSpec extends Specification {
       "Content-Type: text/plain; charset=utf8" !
       example(`Content-Type`(ContentType(`text/plain`, `UTF-8`)), fix(_).replace("utf", "UTF-"))_ ^
       "Content-Type: text/xml; version=3; charset=windows-1252" !
-      example(`Content-Type`(ContentType(MediaType.custom("text", "xml", parameters = Map("version" -> "3")), `windows-1252`)))_ ^
+      example(`Content-Type`(ContentType(MediaType.custom("text", "xml", parameters = Map("version" -> "3")), HttpCharsets.getForKey("windows-1252"))))_ ^
       "Content-Type: text/plain; charset=fancy-pants" !
       errorExample(ErrorInfo("Illegal HTTP header 'Content-Type': Unsupported charset", "fancy-pants"))_ ^
       "Content-Type: multipart/mixed; boundary=ABC123" ! example(`Content-Type`(ContentType(new `multipart/mixed`("ABC123"))))_ ^
