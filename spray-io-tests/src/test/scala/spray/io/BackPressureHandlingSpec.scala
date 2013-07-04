@@ -2,12 +2,15 @@ package spray.io
 
 import akka.io._
 
+import com.typesafe.config.ConfigFactory
 import org.specs2.mutable.Specification
 import spray.testkit.Specs2PipelineStageTest
 import akka.util.ByteString
 
 class BackPressureHandlingSpec extends Specification with Specs2PipelineStageTest {
   val stage = BackPressureHandling(4)
+
+  override lazy val config = ConfigFactory.parseString("akka.test.single-expect-default = 100 ms")
 
   val data = ByteString(0, 1, 2)
   val write = Tcp.Write(data)
@@ -354,7 +357,27 @@ class BackPressureHandlingSpec extends Specification with Specs2PipelineStageTes
 
       events.expectNoMsg()
     }
+    "don't report Ack on the pipeline when Write after successful Ack fails" in new Fixture(stage) {
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(0))
 
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(1))
+
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(2))
+
+      connectionActor ! write
+      commands.expectMsg(AckedWrite(3))
+
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(4))
+
+      connectionActor ! Tcp.CommandFailed(NoAckedWrite(4))
+      connectionActor ! ack(3)
+
+      events.expectNoMsg()
+    }
     // FIXME: these cases are not yet handled
     "what happens if WriteFile fails" in pending
   }
