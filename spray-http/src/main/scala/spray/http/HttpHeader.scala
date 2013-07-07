@@ -171,6 +171,18 @@ object HttpHeaders {
     import Allow.methodsRenderer
     def renderValue[R <: Rendering](r: R): r.type = r ~~ methods
     protected def companion = Allow
+
+  object `Accept-Ranges` extends ModeledCompanion {
+    def apply(first: RangeUnit, more: RangeUnit*): `Accept-Ranges` = apply(first +: more)
+    implicit val acceptRangesRenderer = Renderer.defaultSeqRenderer[RangeUnit] // cache
+  }
+  case class `Accept-Ranges`(acceptRanges: Seq[RangeUnit]) extends ModeledHeader {
+    import `Accept-Ranges`.acceptRangesRenderer
+    def renderValue[R <: Rendering](r: R): r.type = {
+      if (acceptRanges.isEmpty) r ~~ "none"
+      else r ~~ acceptRanges
+    }
+    protected def companion = `Accept-Ranges`
   }
 
   object Authorization extends ModeledCompanion
@@ -227,6 +239,12 @@ object HttpHeaders {
   case class `Content-Length`(length: Long)(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ length
     protected def companion = `Content-Length`
+  }
+
+  object `Content-Range` extends ModeledCompanion
+  case class `Content-Range`(contentRange: ContentRange) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ contentRange
+    protected def companion = `Content-Range`
   }
 
   object `Content-Type` extends ModeledCompanion
@@ -293,6 +311,17 @@ object HttpHeaders {
   case class Origin(originList: Seq[HttpOrigin]) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ originList
     protected def companion = Origin
+  }
+
+  object Range extends ModeledCompanion {
+    def apply(first: ByteRangeSetEntry, more: ByteRangeSetEntry*): Range = Range(first +: more)
+    implicit val rangesRenderer = Renderer.defaultSeqRenderer[ByteRangeSetEntry] // cache
+  }
+
+  case class Range(ranges: Seq[ByteRangeSetEntry]) extends ModeledHeader {
+    import Range.rangesRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ "bytes=" ~~ ranges
+    protected def companion = Range
   }
 
   object `Proxy-Authenticate` extends ModeledCompanion {

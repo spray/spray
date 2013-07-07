@@ -150,4 +150,13 @@ private[parser] trait ProtocolParameterRules {
   def EntityTag = rule { optional("W/") ~ OpaqueTag }
 
   def OpaqueTag = rule { QuotedString }
+
+  /* 3.12 Range Units */
+
+  def RangeUnit = rule { BytesUnit | OtherRangeUnit }
+
+  def BytesUnit = rule { ignoreCase("bytes") ~> (_ ⇒ spray.http.BytesUnit) }
+
+  def OtherRangeUnit = rule { Token ~~> (s ⇒ spray.http.OtherRangeUnit(s)) }
+
 }
