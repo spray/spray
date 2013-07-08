@@ -308,6 +308,10 @@ class UriSpec extends Specification {
       // don't double decode
       Uri("%2520").path.head === "%20"
       Uri("/%2F%5C").path === Path / """/\"""
+
+      // render
+      Uri("https://server.com/path/to/here?st=12345").toString === "https://server.com/path/to/here?st=12345"
+      Uri("/foo/?a#b").toString === "/foo/?a#b"
     }
 
     "properly complete a normalization cycle" in {
