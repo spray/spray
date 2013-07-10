@@ -17,6 +17,7 @@
 package spray.routing
 
 import spray.routing.directives.CachingDirectives
+import spray.util.SingletonException
 import spray.http._
 import HttpHeaders.`Cache-Control`
 import CacheDirectives._
@@ -65,6 +66,21 @@ class CachingDirectivesSpec extends RoutingSpec with CachingDirectives {
     }
     "not cache responses for GETs if the request contains a `Cache-Control: max-age=0` header" in {
       Get() ~> addHeader(`Cache-Control`(`max-age`(0))) ~> prime(countingService) ~> check { entityAs[String] === "4" }
+    }
+
+    "be transparent to exceptions thrown from its inner route" in {
+      case object MyException extends SingletonException
+      implicit val myExceptionHandler = ExceptionHandler {
+        case MyException ⇒ complete("Good")
+      }
+
+      Get() ~> cache(routeCache()) {
+        _ ⇒ throw MyException // thrown directly
+      } ~> check { entityAs[String] === "Good" }
+
+      Get() ~> cache(routeCache()) {
+        _.failWith(MyException) // bubbling up
+      } ~> check { entityAs[String] === "Good" }
     }
   }
 
