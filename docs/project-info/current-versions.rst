@@ -34,6 +34,9 @@ However, at present *spray* 1.0/1.1/1.2 is not yet quite completed, the current 
 - | *spray* |1.2| is built against Scala 2.10.2 and Akka 2.2.0-RC1.
   | It's sources live in the `release/1.2`_ branch of the *spray* repository.
 
+  Note that |1.2| is *not* compatible with Akka 2.2.0 final due to a binary incompatibility introduced with Akka 2.2.0-RC2.
+  Please use the **1.2-20130710** nightly build (or later) for Akka 2.2.0 final!
+
 For information about where to find the *spray* artifacts please check out the :ref:`maven-repo` chapter.
 
 .. |1.0| replace:: **1.0-M8.1**
