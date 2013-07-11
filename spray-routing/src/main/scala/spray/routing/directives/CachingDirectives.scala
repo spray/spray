@@ -17,7 +17,7 @@
 package spray.routing
 package directives
 
-import akka.actor.ActorRefFactory
+import akka.actor.{ Status, ActorRefFactory }
 import akka.util.Duration
 import akka.dispatch.{ Promise, ExecutionContext }
 import spray.caching._
@@ -69,6 +69,7 @@ trait CachingDirectives {
                 ctx.withRouteResponseHandling {
                   case response: HttpResponse ⇒ promise.success(Right(response))
                   case Rejected(rejections)   ⇒ promise.success(Left(rejections))
+                  case Status.Failure(e)      ⇒ promise.failure(e)
                   case x ⇒ promise.failure(new RequestProcessingException(StatusCodes.InternalServerError,
                     "Route responses other than HttpResponse or Rejections cannot be cached (received: " + x + ")"))
                 }

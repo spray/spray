@@ -91,7 +91,8 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
       type Out = HttpRequest
       def apply(request: HttpRequest, f: HttpRequest ⇒ HttpRequest) = f(request)
     }
-    implicit def injectIntoRoute(implicit timeout: RouteTestTimeout, settings: RoutingSettings, log: LoggingContext) =
+    implicit def injectIntoRoute(implicit timeout: RouteTestTimeout, settings: RoutingSettings,
+                                 log: LoggingContext, eh: ExceptionHandler) =
       new TildeArrow[RequestContext, Unit] {
         type Out = RouteResult
         def apply(request: HttpRequest, route: Route) = {
@@ -99,7 +100,7 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
           val effectiveRequest =
             try request.withEffectiveUri(securedConnection = false)
             catch { case NonFatal(_) ⇒ request }
-          ExecutionDirectives.handleExceptions(ExceptionHandler.default)(route) {
+          ExecutionDirectives.handleExceptions(eh orElse ExceptionHandler.default)(route) {
             RequestContext(
               request = effectiveRequest,
               responder = routeResult.handler,
