@@ -48,11 +48,11 @@ private[parser] trait CORSHeaders {
   }
 
   def `*Access-Control-Allow-Origin` = rule {
-    oneOrMore(Text) ~> (`Access-Control-Allow-Origin`(_))
+    oneOrMore(Text) ~> (`Access-Control-Allow-Origin`(_)) ~ EOI
   }
 
   def `*Access-Control-Expose-Headers` = rule {
-    oneOrMore(Token, separator = ListSep) ~~> (`Access-Control-Expose-Headers`(_))
+    oneOrMore(Token, separator = ListSep) ~ EOI ~~> (`Access-Control-Expose-Headers`(_))
   }
 
   def `*Access-Control-Max-Age` = rule {

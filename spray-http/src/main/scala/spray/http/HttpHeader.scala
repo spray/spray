@@ -119,6 +119,7 @@ object HttpHeaders {
 
   object `Access-Control-Max-Age` extends ModeledCompanion
   case class `Access-Control-Max-Age`(deltaSeconds: Long) extends ModeledHeader {
+    require(deltaSeconds >= 0, "deltaSeconds must be >= 0")
     def renderValue[R <: Rendering](r: R): r.type = r ~~ deltaSeconds
     protected def companion = `Access-Control-Max-Age`
   }
