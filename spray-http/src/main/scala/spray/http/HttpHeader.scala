@@ -192,9 +192,11 @@ object HttpHeaders {
 
   object Host extends ModeledCompanion {
     def apply(address: InetSocketAddress): Host = apply(address.getHostName, address.getPort)
+    val empty = Host("")
   }
   case class Host(host: String, port: Int = 0) extends ModeledHeader {
     require((port >> 16) == 0, "Illegal port: " + port)
+    def isEmpty = host.isEmpty
     def renderValue[R <: Rendering](r: R): r.type = if (port > 0) r ~~ host ~~ ':' ~~ port else r ~~ host
     protected def companion = Host
   }
