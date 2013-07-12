@@ -16,10 +16,11 @@
 
 package spray.can.server
 
-import com.typesafe.config.{ ConfigFactory, Config }
+import com.typesafe.config.Config
 import scala.concurrent.duration.Duration
-import akka.actor.ActorSystem
 import spray.can.parsing.ParserSettings
+import spray.http.parser.HttpParser
+import spray.http.HttpHeaders._
 import spray.util._
 
 case class BackpressureSettings(noAckRate: Int, readingLowWatermark: Int)
@@ -63,39 +64,37 @@ case class ServerSettings(
     "idle-timeout must be > request-timeout (if the latter is not 'infinite')")
 }
 
-object ServerSettings {
-  def apply(system: ActorSystem): ServerSettings =
-    apply(system.settings.config getConfig "spray.can.server")
-
-  def apply(config: Config): ServerSettings = {
-    val c = config
-      .withFallback(Utils.sprayConfigAdditions)
-      .withFallback(ConfigFactory.defaultReference(getClass.getClassLoader))
-    val backpressureSettings =
-      Some(BackpressureSettings(
+object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.server") {
+  def fromSubConfig(c: Config) = apply(
+    c getString "server-header",
+    c getBoolean "ssl-encryption",
+    c.getString("pipelining-limit") match { case "disabled" ⇒ 0; case _ ⇒ c getInt "pipelining-limit" },
+    c getDuration "idle-timeout",
+    c getDuration "request-timeout",
+    c getDuration "timeout-timeout",
+    c getDuration "reaping-cycle",
+    c getBoolean "stats-support",
+    c getBoolean "remote-address-header",
+    c getBoolean "transparent-head-requests",
+    c getString "timeout-handler",
+    c getBoolean "chunkless-streaming",
+    c getBoolean "verbose-error-messages",
+    c getBytes "request-chunk-aggregation-limit" toInt,
+    c getBytes "response-size-hint" toInt,
+    c getDuration "bind-timeout",
+    c getDuration "unbind-timeout",
+    c getDuration "registration-timeout",
+    defaultHostHeader =
+      HttpParser.parseHeader(RawHeader("Host", c getString "default-host-header")) match {
+        case Right(x: Host) ⇒ x
+        case Left(error)    ⇒ sys.error(error.withSummary("Configured `default-host-header` is illegal").formatPretty)
+        case Right(_)       ⇒ throw new IllegalStateException
+      },
+    backpressureSettings =
+      if (c.getBoolean("automatic-back-pressure-handling"))
+        Some(BackpressureSettings(
         c getInt "back-pressure.noack-rate",
-        c getPossiblyInfiniteInt "back-pressure.reading-low-watermark")).filter(_ ⇒ c.getBoolean("automatic-back-pressure-handling"))
-
-    ServerSettings(
-      c getString "server-header",
-      c getBoolean "ssl-encryption",
-      c.getString("pipelining-limit") match { case "disabled" ⇒ 0; case _ ⇒ c getInt "pipelining-limit" },
-      c getDuration "idle-timeout",
-      c getDuration "request-timeout",
-      c getDuration "timeout-timeout",
-      c getDuration "reaping-cycle",
-      c getBoolean "stats-support",
-      c getBoolean "remote-address-header",
-      c getBoolean "transparent-head-requests",
-      c getString "timeout-handler",
-      c getBoolean "chunkless-streaming",
-      c getBoolean "verbose-error-messages",
-      c getBytes "request-chunk-aggregation-limit" toInt,
-      c getBytes "response-size-hint" toInt,
-      c getDuration "bind-timeout",
-      c getDuration "unbind-timeout",
-      c getDuration "registration-timeout",
-      backpressureSettings,
-      ParserSettings(c getConfig "parsing"))
-  }
+        c getPossiblyInfiniteInt "back-pressure.reading-low-watermark"))
+      else None,
+    ParserSettings fromSubConfig c.getConfig("parsing"))
 }

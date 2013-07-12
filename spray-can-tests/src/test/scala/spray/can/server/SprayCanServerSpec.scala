@@ -179,7 +179,8 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
     // automatically bind a server
     val listener = {
       val commander = TestProbe()
-      commander.send(IO(Http), Http.Bind(bindHandler.ref, hostname, port))
+      val settings = spray.util.pimpString_(configOverrides).toOption.map(ServerSettings.apply)
+      commander.send(IO(Http), Http.Bind(bindHandler.ref, hostname, port, settings = settings))
       commander.expectMsgType[Http.Bound]
       commander.sender
     }
