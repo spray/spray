@@ -44,6 +44,7 @@ case class ServerSettings(
     bindTimeout: Duration,
     unbindTimeout: Duration,
     registrationTimeout: Duration,
+    defaultHostHeader: Host,
     backpressureSettings: Option[BackpressureSettings],
     parserSettings: ParserSettings) {
 
