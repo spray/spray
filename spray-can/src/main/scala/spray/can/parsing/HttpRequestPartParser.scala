@@ -75,7 +75,7 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
 
     @tailrec def findUriEnd(ix: Int = cursor): Int =
       if (ix == input.length) throw NotEnoughDataException
-      else if (input(ix) == ' ') ix
+      else if (CharUtils.isWhitespaceOrNewline(input(ix).toChar)) ix
       else if (ix < uriEndLimit) findUriEnd(ix + 1)
       else throw new ParsingException(RequestUriTooLong,
         s"URI length exceeds the configured limit of ${settings.maxUriLength} characters")

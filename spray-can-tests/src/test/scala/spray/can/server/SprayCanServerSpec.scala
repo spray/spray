@@ -35,7 +35,7 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
   val testConf: Config = ConfigFactory.parseString("""
     akka {
       event-handlers = ["akka.testkit.TestEventListener"]
-      loglevel = WARNING
+      loglevel = ERROR
       io.tcp.trace-logging = off
     }
     spray.can.server.request-chunk-aggregation-limit = 0
@@ -130,6 +130,26 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
         val (text, reader) = readAll(socket)()
         text must startWith("HTTP/1.1 400 Bad Request")
         text must contain("Illegal request-target, unexpected character")
+        socket.close()
+      }
+      "when the request has no protocol" in new TestSetup {
+        val socket = openClientSocket()
+        val serverHandler = acceptConnection()
+        val writer = write(socket, "GET /\r\n")
+        serverHandler.expectMsg(Http.Closed)
+        val (text, reader) = readAll(socket)()
+        text must startWith("HTTP/1.1 505 HTTP Version Not Supported")
+        text must endWith("The server does not support the HTTP protocol version used in the request.")
+        socket.close()
+      }
+      "when the request has no URI and no protocol" in new TestSetup {
+        val socket = openClientSocket()
+        val serverHandler = acceptConnection()
+        val writer = write(socket, "GET\r\n")
+        serverHandler.expectMsg(Http.Closed)
+        val (text, reader) = readAll(socket)()
+        text must startWith("HTTP/1.1 501 Not Implemented")
+        text must endWith("Unsupported HTTP method")
         socket.close()
       }
     }
