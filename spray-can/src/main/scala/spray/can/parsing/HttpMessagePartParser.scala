@@ -29,11 +29,13 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
   var parse: CompactByteString ⇒ Result[Part] = this
   var protocol: HttpProtocol = `HTTP/1.1`
 
-  def apply(input: CompactByteString): Result[Part] =
+  def apply(input: CompactByteString): Result[Part] = parseMessageSafe(input)
+
+  def parseMessageSafe(input: CompactByteString): Result[Part] =
     try parseMessage(input)
     catch {
       case NotEnoughDataException ⇒
-        parse = { more ⇒ this((input ++ more).compact) }
+        parse = { more ⇒ parseMessageSafe((input ++ more).compact) }
         Result.NeedMoreData
 
       case e: ParsingException ⇒ fail(e.status, e.info)
