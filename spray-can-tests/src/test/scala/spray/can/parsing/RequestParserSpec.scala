@@ -89,7 +89,7 @@ class RequestParserSpec extends Specification {
 
       "with multi-line headers" in {
         parse {
-          """DELETE /abc HTTP/1.1
+          """DELETE /abc HTTP/1.0
             |User-Agent: curl/7.19.7
             | abc
             |    xyz
@@ -99,7 +99,7 @@ class RequestParserSpec extends Specification {
             |Content-type: application/json
             |
             |"""
-        } === (DELETE, Uri("/abc"), `HTTP/1.1`, List(`Content-Type`(`application/json`), Connection("close", "fancy"),
+        } === (DELETE, Uri("/abc"), `HTTP/1.0`, List(`Content-Type`(`application/json`), Connection("close", "fancy"),
           Accept(MediaRanges.`*/*`), `User-Agent`("curl/7.19.7 abc xyz")), "", "", true)
       }
 

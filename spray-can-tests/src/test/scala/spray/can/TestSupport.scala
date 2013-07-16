@@ -25,7 +25,7 @@ import MediaTypes._
 
 object TestSupport {
 
-  def defaultParserSettings = ParserSettings(ConfigFactory.load() getConfig "spray.can.parsing")
+  def defaultParserSettings = ParserSettings(ConfigFactory.load())
 
   def emptyRawRequest(method: String = "GET") = prep {
     """|%s / HTTP/1.1

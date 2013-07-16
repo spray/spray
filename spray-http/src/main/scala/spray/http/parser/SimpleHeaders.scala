@@ -47,11 +47,13 @@ private[parser] trait SimpleHeaders {
     oneOrMore(Token ~ &(EOI) | Token ~ "=" ~ (Token | QuotedString) ~~> (_ + '=' + _), separator = ListSep) ~ EOI
       ~~> (Expect(_)))
 
-  // Do not accept scoped IPv6 addresses as they should not appear in the Host header,
+  // We don't accept scoped IPv6 addresses as they should not appear in the Host header,
   // see also https://issues.apache.org/bugzilla/show_bug.cgi?id=35122 (WONTFIX in Apache 2 issue) and
   // https://bugzilla.mozilla.org/show_bug.cgi?id=464162 (FIXED in mozilla)
+  // Also: an empty hostnames with a non-empty port value (as in `Host: :8080`) are *allowed*,
+  // see http://trac.tools.ietf.org/wg/httpbis/trac/ticket/92
   def `*Host` = rule(
-    (Token | IPv6Reference) ~ OptWS ~ optional(":" ~ oneOrMore(Digit) ~> (_.toInt)) ~ EOI
+    (Token | IPv6Reference | push("")) ~ OptWS ~ optional(":" ~ oneOrMore(Digit) ~> (_.toInt)) ~ EOI
       ~~> ((h, p) ⇒ Host(h, p.getOrElse(0))))
 
   def `*Last-Modified` = rule {

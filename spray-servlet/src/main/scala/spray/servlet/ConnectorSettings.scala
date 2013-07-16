@@ -16,9 +16,8 @@
 
 package spray.servlet
 
-import com.typesafe.config.{ ConfigFactory, Config }
+import com.typesafe.config.Config
 import scala.concurrent.duration.Duration
-import akka.actor.ActorSystem
 import spray.http.Uri
 import spray.util._
 
@@ -41,20 +40,14 @@ case class ConnectorSettings(
   val rootPathCharCount = rootPath.charCount
 }
 
-object ConnectorSettings {
-  def apply(system: ActorSystem): ConnectorSettings =
-    apply(system.settings.config getConfig "spray.servlet")
-
-  def apply(config: Config): ConnectorSettings = {
-    val c = config withFallback ConfigFactory.defaultReference(getClass.getClassLoader)
-    ConnectorSettings(
-      c getString "boot-class",
-      c getDuration "request-timeout",
-      c getDuration "timeout-timeout",
-      c getString "timeout-handler",
-      Uri.Path(c getString "root-path"),
-      c getBoolean "remote-address-header",
-      c getBoolean "verbose-error-messages",
-      c getBytes "max-content-length")
-  }
+object ConnectorSettings extends SettingsCompanion[ConnectorSettings]("spray.servlet") {
+  def fromSubConfig(c: Config) = apply(
+    c getString "boot-class",
+    c getDuration "request-timeout",
+    c getDuration "timeout-timeout",
+    c getString "timeout-handler",
+    Uri.Path(c getString "root-path"),
+    c getBoolean "remote-address-header",
+    c getBoolean "verbose-error-messages",
+    c getBytes "max-content-length")
 }
