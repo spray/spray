@@ -77,6 +77,18 @@ class ResponseParserSpec extends Specification {
         } === (InternalServerError, "Shake your BOODY!", List(`Content-Length`(17), Connection("close"),
           `User-Agent`("curl/7.19.7 xyz")), `HTTP/1.1`, "XXX", true)
       }
+
+      "a split response (parsed byte-by-byte)" in {
+        val response = prep {
+          """HTTP/1.1 200 Ok
+            |Content-Length: 4
+            |
+            |ABC"""
+        }
+        val parser = newParser()
+        response.toCharArray foreach { c ⇒ rawParse(parser)(c.toString) === Result.NeedMoreData }
+        parse(parser)("DEFGH") === (OK, "ABCD", List(`Content-Length`(4)), `HTTP/1.1`, "EFGH", false)
+      }
     }
 
     "properly parse a chunked" in {
@@ -147,8 +159,10 @@ class ResponseParserSpec extends Specification {
   def parse(rawResponse: String, requestMethod: HttpMethod = GET): AnyRef =
     parse(newParser(requestMethod))(rawResponse)
 
-  def parse(parser: HttpResponsePartParser)(rawResponse: String): AnyRef = {
-    val data = CompactByteString(rawResponse.stripMargin.replace(EOL, "\n").replace("\n", "\r\n"))
+  def parse(parser: HttpResponsePartParser)(rawResponse: String): AnyRef = rawParse(parser)(prep(rawResponse))
+
+  def rawParse(parser: HttpResponsePartParser)(rawResponse: String): AnyRef = {
+    val data = CompactByteString(rawResponse)
     parser.parse(data) match {
       case Result.Ok(HttpResponse(s, e, h, p), rd, close) ⇒ (s, e.asString, h, p, rd.utf8String, close)
       case Result.Ok(ChunkedResponseStart(HttpResponse(s, EmptyEntity, h, p)), rd, close) ⇒ (s, h, p, rd.utf8String, close)
@@ -158,4 +172,6 @@ class ResponseParserSpec extends Specification {
       case x ⇒ x
     }
   }
+
+  def prep(response: String) = response.stripMargin.replace(EOL, "\n").replace("\n", "\r\n")
 }
