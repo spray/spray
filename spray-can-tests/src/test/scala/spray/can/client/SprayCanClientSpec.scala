@@ -178,6 +178,12 @@ class SprayCanClientSpec extends Specification {
       verifyServerSideRequestAndReply(s"http://$hostname:$port/abc?query", probe)
     }
 
+    "support absolute request URIs without path component" in new TestSetup {
+      val probe = TestProbe()
+      probe.send(IO(Http), Get(s"http://$hostname:$port"))
+      verifyServerSideRequestAndReply(s"http://$hostname:$port/", probe)
+    }
+
     "produce an error if the request does not contain a Host-header or an absolute URI" in {
       val probe = TestProbe()
       probe.send(IO(Http), Get("/abc"))
