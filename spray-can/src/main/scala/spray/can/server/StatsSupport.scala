@@ -15,7 +15,6 @@
  */
 package spray.can.server
 
-import java.util.concurrent.atomic.AtomicLong
 import scala.annotation.tailrec
 import scala.concurrent.duration._
 import spray.http.{ Timedout, HttpMessageStart }
@@ -23,18 +22,19 @@ import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.io._
 import spray.can.Http
+import spray.util.PaddedAtomicLong
 
 object StatsSupport {
 
   class StatsHolder {
     val startTimestamp = System.currentTimeMillis
-    val requestStarts = new AtomicLong
-    val responseStarts = new AtomicLong
-    val maxOpenRequests = new AtomicLong
-    val connectionsOpened = new AtomicLong
-    val connectionsClosed = new AtomicLong
-    val maxOpenConnections = new AtomicLong
-    val requestTimeouts = new AtomicLong
+    val requestStarts = new PaddedAtomicLong
+    val responseStarts = new PaddedAtomicLong
+    val maxOpenRequests = new PaddedAtomicLong
+    val connectionsOpened = new PaddedAtomicLong
+    val connectionsClosed = new PaddedAtomicLong
+    val maxOpenConnections = new PaddedAtomicLong
+    val requestTimeouts = new PaddedAtomicLong
 
     @tailrec
     final def adjustMaxOpenConnections(): Unit = {
