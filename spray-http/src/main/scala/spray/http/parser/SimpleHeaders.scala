@@ -76,7 +76,12 @@ private[parser] trait SimpleHeaders {
 
   def `*User-Agent` = rule { ProductVersionComments ~~> (`User-Agent`(_)) }
 
+  // de-facto standard as per http://en.wikipedia.org/w/index.php?title=X-Forwarded-For&oldid=563040890
+  // It's not clear in which format IpV6 addresses are to be expected, the ones we've seen in the wild
+  // were not quoted and that's also what the "Transition" section in the draft says:
+  // http://tools.ietf.org/html/draft-ietf-appsawg-http-forwarded-10
   def `*X-Forwarded-For` = rule {
-    oneOrMore(Ip ~~> (Some(_)) | "unknown" ~ push(None), separator = ListSep) ~ EOI ~~> (`X-Forwarded-For`(_))
+    oneOrMore((Ip | IPv6Address ~> (HttpIp(_))) ~~> (Some(_)) | "unknown" ~ push(None), separator = ListSep) ~ EOI ~~>
+      (`X-Forwarded-For`(_))
   }
 }
