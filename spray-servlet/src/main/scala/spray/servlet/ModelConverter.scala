@@ -36,7 +36,7 @@ object ModelConverter {
     HttpRequest(
       method = toHttpMethod(hsRequest.getMethod),
       uri = rebuildUri(hsRequest),
-      headers = addRemoteAddressHeader(hsRequest, parsedHeaders),
+      headers = addServletRequestInfoHeader(hsRequest, addRemoteAddressHeader(hsRequest, parsedHeaders)),
       entity = toHttpEntity(hsRequest, contentType, hsRequest.getContentLength),
       protocol = toHttpProtocol(hsRequest.getProtocol))
   }
@@ -78,6 +78,10 @@ object ModelConverter {
         throw new IllegalRequestException(BadRequest, ErrorInfo("Illegal request URI", e.getMessage))
     }
   }
+
+  def addServletRequestInfoHeader(hsr: HttpServletRequest, headers: List[HttpHeader])(implicit settings: ConnectorSettings): List[HttpHeader] =
+    if (settings.servletRequestAccess) ServletRequestInfoHeader(hsr) :: headers
+    else headers
 
   def addRemoteAddressHeader(hsr: HttpServletRequest, headers: List[HttpHeader])(implicit settings: ConnectorSettings): List[HttpHeader] =
     if (settings.remoteAddressHeader) `Remote-Address`(hsr.getRemoteAddr) :: headers

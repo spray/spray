@@ -32,7 +32,7 @@ class SprayCanClientSpec extends Specification {
 
   val testConf: Config = ConfigFactory.parseString("""
     akka.event-handlers = ["akka.testkit.TestEventListener"]
-    akka.loglevel = WARNING
+    akka.loglevel = ERROR
     akka.io.tcp.trace-logging = off
     spray.can.client.request-timeout = 500ms
     spray.can.host-connector.max-retries = 1
@@ -117,8 +117,9 @@ class SprayCanClientSpec extends Specification {
     }
 
     "accept absolute URIs and render them unchanged" in new TestSetup {
-      val (probe, hostConnector) = sendViaHostConnector(Get("http://www.example.com/"))
-      verifyServerSideRequestAndReply("http://www.example.com/", probe)
+      val uri = s"http://$hostname:$port/foo"
+      val (probe, hostConnector) = sendViaHostConnector(Get(uri))
+      verifyServerSideRequestAndReply(uri, probe)
       closeHostConnector(hostConnector)
     }
 
@@ -175,6 +176,12 @@ class SprayCanClientSpec extends Specification {
       val probe = TestProbe()
       probe.send(IO(Http), Get(s"http://$hostname:$port/abc?query#fragment"))
       verifyServerSideRequestAndReply(s"http://$hostname:$port/abc?query", probe)
+    }
+
+    "support absolute request URIs without path component" in new TestSetup {
+      val probe = TestProbe()
+      probe.send(IO(Http), Get(s"http://$hostname:$port"))
+      verifyServerSideRequestAndReply(s"http://$hostname:$port/", probe)
     }
 
     "produce an error if the request does not contain a Host-header or an absolute URI" in {

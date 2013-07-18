@@ -19,8 +19,9 @@ package spray.testkit
 import java.util.concurrent.CountDownLatch
 import concurrent.duration._
 import scala.collection.mutable.ListBuffer
-import akka.actor.{ Status, ActorRefFactory, ActorRef }
+import akka.actor.{ ActorSystem, Status, ActorRefFactory, ActorRef }
 import akka.spray.UnregisteredActorRef
+import akka.testkit._
 import spray.routing.{ RejectionHandler, Rejected, Rejection }
 import spray.http._
 
@@ -115,6 +116,6 @@ trait RouteResultComponent {
   case class RouteTestTimeout(duration: FiniteDuration)
 
   object RouteTestTimeout {
-    implicit val default = RouteTestTimeout(1 second span)
+    implicit def default(implicit system: ActorSystem) = RouteTestTimeout(1.second dilated)
   }
 }

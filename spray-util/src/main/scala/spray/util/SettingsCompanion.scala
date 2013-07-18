@@ -16,14 +16,22 @@
 
 package spray.util
 
+import akka.actor.ActorSystem
 import com.typesafe.config.Config
+import com.typesafe.config.ConfigFactory._
 
-case class UtilSettings(
-  logActorPathsWithDots: Boolean,
-  logActorSystemName: Boolean)
+abstract class SettingsCompanion[T](prefix: String) {
+  def apply(system: ActorSystem): T =
+    apply(system.settings.config)
 
-object UtilSettings extends SettingsCompanion[UtilSettings]("spray.util") {
-  def fromSubConfig(c: Config) = apply(
-    c getBoolean "log-actor-paths-with-dots",
-    c getBoolean "log-actor-system-name")
+  def apply(configOverrides: String): T =
+    apply(parseString(configOverrides)
+      .withFallback(Utils.sprayConfigAdditions)
+      .withFallback(defaultReference(getClass.getClassLoader)))
+
+  def apply(config: Config): T =
+    fromSubConfig(config getConfig prefix)
+
+  def fromSubConfig(c: Config): T
 }
+

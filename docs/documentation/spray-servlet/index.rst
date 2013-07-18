@@ -188,6 +188,17 @@ and *not* written through to the servlet container (as the connector servlet set
    (like *spray-routing*) only work with the Content-Type value contained in the ``HttpEntity``.
 
 
+Accessing HttpServletRequest
+----------------------------
+
+If your application needs access to the ``javax.servlet.http.HttpServletRequest``, the ``spray.servlet.servlet-request-access``
+setting can be set to ``on``. This results in the connector servlet adding an additional request header of type
+``spray.servlet.ServletRequestInfoHeader``. This allows the service actor (or directives) to access
+members of ``HttpServletRequest`` that are not in ``HttpRequest``. This is necessary when working with container
+managed security and access to the authenticated principal is required (via ``getUserPrincipal``) or when accessing
+an authenticated client SSL certificate (via ``getAttribute("javax.servlet.request.X509Certificate")``).
+
+
 Differences to spray-can
 ------------------------
 

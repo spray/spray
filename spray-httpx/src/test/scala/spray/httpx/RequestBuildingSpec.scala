@@ -42,6 +42,33 @@ class RequestBuildingSpec extends Specification with RequestBuilding {
       Get() ~> RawHeader("X-Yeah", "Naah") === HttpRequest(headers = List(RawHeader("X-Yeah", "Naah")))
     }
 
+    "provide a working `mapHeaders` transformer" >> {
+      Get() ~> addHeader("X-Yeah", "Naah") ~> mapHeaders(_.filterNot(_.name == "X-Yeah")) === HttpRequest(headers = Nil)
+    }
+
+    "provide a working, case-insensitive `removeHeader` transformer" >> {
+      Get() ~> addHeader("X-Yeah", "Naah") ~> removeHeader("X-Yeah") === HttpRequest(headers = Nil)
+      Get() ~> addHeader("X-Yeah", "Naah") ~> removeHeader("x-yEaH") === HttpRequest(headers = Nil)
+    }
+
+    "provide a working `removeHeader` by header type transformer" >> {
+      Get() ~> addHeader("X-Yeah", "Naah") ~> removeHeader[RawHeader] === HttpRequest(headers = Nil)
+      Get() ~> addHeader("X-Yeah", "Naah") ~> addHeader(Authorization(BasicHttpCredentials("bla"))) ~> removeHeader[Authorization] ===
+        HttpRequest(headers = List(RawHeader("X-Yeah", "Naah")))
+    }
+
+    "provide a working, case-insensitive `removeHeaders` transformer" >> {
+      Get() ~> addHeader("X-Yeah", "Naah") ~>
+        addHeader("X-Awesome", "Dude!") ~>
+        addHeader("X-Naah", "Yeah") ~>
+        removeHeaders("X-Yeah", "X-Naah") === HttpRequest(headers = List(RawHeader("X-Awesome", "Dude!")))
+
+      Get() ~> addHeader("X-Yeah", "Naah") ~>
+        addHeader("X-Awesome", "Dude!") ~>
+        addHeader("X-Naah", "Yeah") ~>
+        removeHeaders("x-nAah", "X-YEAH") === HttpRequest(headers = List(RawHeader("X-Awesome", "Dude!")))
+    }
+
     "provide the ability to add generic Authorization credentials to the request" >> {
       val creds = GenericHttpCredentials("OAuth", Map("oauth_version" -> "1.0"))
       Get() ~> addCredentials(creds) === HttpRequest(headers = List(Authorization(creds)))

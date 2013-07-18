@@ -30,12 +30,13 @@ import spray.can.Http
 import spray.util.Utils.temporaryServerHostnameAndPort
 import spray.httpx.RequestBuilding._
 import spray.http._
+import HttpProtocols._
 
 class SprayCanServerSpec extends Specification with NoTimeConversions {
   val testConf: Config = ConfigFactory.parseString("""
     akka {
       event-handlers = ["akka.testkit.TestEventListener"]
-      loglevel = WARNING
+      loglevel = ERROR
       io.tcp.trace-logging = off
     }
     spray.can.server.request-chunk-aggregation-limit = 0
@@ -102,36 +103,62 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
     }
 
     "automatically produce an error response" in {
-      "when the request has no absolute URI and no Host header" in new TestSetup {
-        val socket = openClientSocket()
-        val serverHandler = acceptConnection()
-        val writer = write(socket, "GET / HTTP/1.1\r\n\r\n")
-        serverHandler.expectMsg(Http.Closed)
-        val (text, reader) = readAll(socket)()
-        text must startWith("HTTP/1.1 400 Bad Request")
-        text must endWith("Cannot establish effective request URI, request has a relative URI and is missing a `Host` header")
-        socket.close()
-      }
-      "when the request has an ill-formed URI" in new TestSetup {
-        val socket = openClientSocket()
-        val serverHandler = acceptConnection()
-        val writer = write(socket, "GET http://host:naaa HTTP/1.1\r\n\r\n")
-        serverHandler.expectMsg(Http.Closed)
-        val (text, reader) = readAll(socket)()
-        text must startWith("HTTP/1.1 400 Bad Request")
-        text must contain("Illegal request-target")
-        socket.close()
-      }
-      "when the request has a URI with a fragment" in new TestSetup {
-        val socket = openClientSocket()
-        val serverHandler = acceptConnection()
-        val writer = write(socket, "GET /path?query#fragment HTTP/1.1\r\n\r\n")
-        serverHandler.expectMsg(Http.Closed)
-        val (text, reader) = readAll(socket)()
-        text must startWith("HTTP/1.1 400 Bad Request")
-        text must contain("Illegal request-target, unexpected character")
-        socket.close()
-      }
+      def errorTest(request: String, errorMsg: String) =
+        new TestSetup {
+          val socket = openClientSocket()
+          val serverHandler = acceptConnection()
+          val writer = write(socket, request + "\r\n\r\n")
+          serverHandler.expectMsg(Http.Closed)
+          val (text, reader) = readAll(socket)()
+          text must startWith("HTTP/1.1 400 Bad Request")
+          text must endWith(errorMsg)
+          socket.close()
+        }
+      "when an HTTP/1.1 request has no Host header" in errorTest(
+        request = "GET / HTTP/1.1",
+        errorMsg = "Request is missing required `Host` header")
+      "when an HTTP/1.0 request has no Host header and no default-host-header is configured" in errorTest(
+        request = "GET / HTTP/1.0",
+        errorMsg = "Cannot establish effective request URI, request has a relative URI and is missing a `Host` header")
+      "when an HTTP/1.1 request has an empty Host header and no default-host-header is configured" in errorTest(
+        request = "GET / HTTP/1.1\r\nHost:",
+        errorMsg = "Cannot establish effective request URI, request has a relative URI and an empty `Host` header")
+      "when an HTTP/1.0 request has an empty Host header and no default-host-header is configured" in errorTest(
+        request = "GET / HTTP/1.0\r\nHost:",
+        errorMsg = "Cannot establish effective request URI, request has a relative URI and an empty `Host` header")
+      "when the request has an ill-formed URI" in errorTest(
+        request = "GET http://host:naaa HTTP/1.1",
+        errorMsg = "Illegal request-target, unexpected end-of-input at position 16")
+      "when the request has an URI with a fragment" in errorTest(
+        request = "GET /path?query#fragment HTTP/1.1",
+        errorMsg = "Illegal request-target, unexpected character '#' at position 11")
+      "when the request has an absolute URI without authority part and a non-empty host header" in errorTest(
+        request = "GET http:/foo HTTP/1.1\r\nHost: spray.io",
+        errorMsg = "'Host' header value doesn't match request target authority")
+      "when the request has an absolute URI and the authority doesn't match the host header" in errorTest(
+        request = "GET http://foo/bar HTTP/1.1\r\nHost: spray.io",
+        errorMsg = "'Host' header value doesn't match request target authority")
+    }
+
+    "accept requests if a non-empty default-host-header is configured" in {
+      def test(request: String, dispatched: HttpRequest) =
+        new TestSetup {
+          override def configOverrides = """spray.can.server.default-host-header="spray.io:8765""""
+          val socket = openClientSocket()
+          val serverHandler = acceptConnection()
+          val writer = write(socket, request + "\r\n\r\n")
+          serverHandler.expectMsgType[HttpRequest] === dispatched
+          socket.close()
+        }
+      "an HTTP/1.0 request without `Host` header and an absolute URI" in test(
+        request = "GET http://foo/bar HTTP/1.0",
+        dispatched = HttpRequest(uri = Uri("http://foo/bar"), protocol = `HTTP/1.0`))
+      "an HTTP/1.0 request without `Host` header and a relative URI" in test(
+        request = "GET /foo HTTP/1.0",
+        dispatched = HttpRequest(uri = Uri("http://spray.io:8765/foo"), protocol = `HTTP/1.0`))
+      "an HTTP/1.1 request with empty `Host` header and a relative URI" in test(
+        request = "GET /foo HTTP/1.1\r\nHost:",
+        dispatched = HttpRequest(uri = Uri("http://spray.io:8765/foo"), headers = List(HttpHeaders.Host.empty)))
     }
 
     "properly support fastPath responses" in new TestSetup {
@@ -155,11 +182,13 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
   class TestSetup extends org.specs2.specification.Scope {
     val (hostname, port) = temporaryServerHostnameAndPort()
     val bindHandler = TestProbe()
+    def configOverrides = ""
 
     // automatically bind a server
     val listener = {
       val commander = TestProbe()
-      commander.send(IO(Http), Http.Bind(bindHandler.ref, hostname, port))
+      val settings = spray.util.pimpString_(configOverrides).toOption.map(ServerSettings.apply)
+      commander.send(IO(Http), Http.Bind(bindHandler.ref, hostname, port, settings = settings))
       commander.expectMsgType[Http.Bound]
       commander.sender
     }

@@ -61,9 +61,8 @@ object Utils {
     installEventStreamLoggerFor[UnhandledMessage]
   }
 
-  lazy val sprayConfigAdditions: Config = ConfigFactory.parseMap {
-    Map("spray.hostname" -> tryOrElse(InetAddress.getLocalHost.getHostName, _ ⇒ "")).asJava
-  }
+  lazy val sprayConfigAdditions: Config =
+    mapToConfig(Map("spray.hostname" -> tryOrElse(InetAddress.getLocalHost.getHostName, _ ⇒ "")))
 
   def mapToConfig(map: Map[String, Any]): Config = ConfigFactory.parseMap(map.asJava)
 

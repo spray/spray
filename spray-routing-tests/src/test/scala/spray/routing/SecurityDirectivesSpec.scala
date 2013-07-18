@@ -21,49 +21,59 @@ import akka.event.NoLogging
 import spray.routing.authentication._
 import spray.http._
 import HttpHeaders._
+import AuthenticationFailedRejection._
 
 class SecurityDirectivesSpec extends RoutingSpec {
 
-  val dontAuth = UserPassAuthenticator[BasicUserContext](_ ⇒ Future.successful(None))
+  val dontAuth = BasicAuth(UserPassAuthenticator[BasicUserContext](_ ⇒ Future.successful(None)), "Realm")
 
-  val doAuth = UserPassAuthenticator[BasicUserContext] { userPassOption ⇒
+  val doAuth = BasicAuth(UserPassAuthenticator[BasicUserContext] { userPassOption ⇒
     Future.successful(Some(BasicUserContext(userPassOption.get.user)))
-  }
+  }, "Realm")
 
   "the 'authenticate(BasicAuth())' directive" should {
-    "reject requests without Authorization header with an AuthenticationRequiredRejection" in {
+    "reject requests without Authorization header with an AuthenticationFailedRejection" in {
       Get() ~> {
-        authenticate(BasicAuth(dontAuth, "Realm")) { echoComplete }
-      } ~> check { rejection === AuthenticationRequiredRejection("Basic", "Realm", Map.empty) }
+        authenticate(dontAuth) { echoComplete }
+      } ~> check { rejection === AuthenticationFailedRejection(CredentialsMissing, dontAuth) }
     }
-    "reject unauthenticated requests with Authorization header with an AuthorizationFailedRejection" in {
+    "reject unauthenticated requests with Authorization header with an AuthenticationFailedRejection" in {
       Get() ~> Authorization(BasicHttpCredentials("Bob", "")) ~> {
-        authenticate(BasicAuth(dontAuth, "Realm")) { echoComplete }
-      } ~> check { rejection === AuthenticationFailedRejection("Realm") }
+        authenticate(dontAuth) { echoComplete }
+      } ~> check { rejection === AuthenticationFailedRejection(CredentialsRejected, dontAuth) }
+    }
+    "reject requests with illegal Authorization header with 401" in {
+      Get() ~> RawHeader("Authorization", "bob alice") ~> handleRejections(RejectionHandler.Default) {
+        authenticate(dontAuth) { echoComplete }
+      } ~> check {
+        status === StatusCodes.Unauthorized and
+          entityAs[String] === "The resource requires authentication, which was not supplied with the request"
+      }
     }
     "extract the object representing the user identity created by successful authentication" in {
       Get() ~> Authorization(BasicHttpCredentials("Alice", "")) ~> {
-        authenticate(BasicAuth(doAuth, "Realm")) { echoComplete }
+        authenticate(doAuth) { echoComplete }
       } ~> check { entityAs[String] === "BasicUserContext(Alice)" }
     }
     "properly handle exceptions thrown in its inner route" in {
       object TestException extends spray.util.SingletonException
       Get() ~> Authorization(BasicHttpCredentials("Alice", "")) ~> {
         handleExceptions(ExceptionHandler.default) {
-          authenticate(BasicAuth(doAuth, "Realm")) { _ ⇒ throw TestException }
+          authenticate(doAuth) { _ ⇒ throw TestException }
         }
       } ~> check { status === StatusCodes.InternalServerError }
     }
   }
 
   "the 'authenticate(<ContextAuthenticator>)' directive" should {
+    case object AuthenticationRejection extends Rejection
+
     val myAuthenticator: ContextAuthenticator[Int] = ctx ⇒ Future {
-      Either.cond(ctx.request.uri.authority.host == Uri.NamedHost("spray.io"), 42,
-        AuthenticationRequiredRejection("my-scheme", "MyRealm", Map()))
+      Either.cond(ctx.request.uri.authority.host == Uri.NamedHost("spray.io"), 42, AuthenticationRejection)
     }
     "reject requests not satisfying the filter condition" in {
       Get() ~> authenticate(myAuthenticator) { echoComplete } ~>
-        check { rejection === AuthenticationRequiredRejection("my-scheme", "MyRealm", Map.empty) }
+        check { rejection === AuthenticationRejection }
     }
     "pass on the authenticator extraction if the filter conditions is met" in {
       Get() ~> Host("spray.io") ~> authenticate(myAuthenticator) { echoComplete } ~>

@@ -75,7 +75,7 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
 
     @tailrec def findUriEnd(ix: Int = cursor): Int =
       if (ix == input.length) throw NotEnoughDataException
-      else if (input(ix) == ' ') ix
+      else if (CharUtils.isWhitespaceOrNewline(input(ix).toChar)) ix
       else if (ix < uriEndLimit) findUriEnd(ix + 1)
       else throw new ParsingException(RequestUriTooLong,
         s"URI length exceeds the configured limit of ${settings.maxUriLength} characters")
@@ -85,8 +85,7 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
       val uriBytes = input.iterator.slice(uriStart, uriEnd).toArray[Byte]
       uri = Uri.parseHttpRequestTarget(uriBytes, mode = settings.uriParsingMode)
     } catch {
-      case e: IllegalUriException ⇒
-        throw new ParsingException(BadRequest, e.info.withSummaryPrepended("Illegal request URI"))
+      case e: IllegalUriException ⇒ throw new ParsingException(BadRequest, e.info)
     }
     uriEnd + 1
   }
@@ -95,30 +94,32 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
 
   // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-3.3
   def parseEntity(headers: List[HttpHeader], input: CompactByteString, bodyStart: Int, clh: Option[`Content-Length`],
-                  cth: Option[`Content-Type`], teh: Option[`Transfer-Encoding`],
+                  cth: Option[`Content-Type`], teh: Option[`Transfer-Encoding`], hostHeaderPresent: Boolean,
                   closeAfterResponseCompletion: Boolean): Result[HttpRequestPart] =
-    teh match {
-      case Some(te) if te.encodings.size == 1 && te.hasChunked ⇒
-        if (clh.isEmpty) {
-          parse = parseChunk(closeAfterResponseCompletion)
-          Result.Ok(ChunkedRequestStart(message(headers, EmptyEntity)), drop(input, bodyStart), closeAfterResponseCompletion)
-        } else fail("A chunked request must not contain a Content-Length header.")
+    if (hostHeaderPresent || protocol == HttpProtocols.`HTTP/1.0`) {
+      teh match {
+        case Some(te) if te.encodings.size == 1 && te.hasChunked ⇒
+          if (clh.isEmpty) {
+            parse = parseChunk(closeAfterResponseCompletion)
+            Result.Ok(ChunkedRequestStart(message(headers, EmptyEntity)), drop(input, bodyStart), closeAfterResponseCompletion)
+          } else fail("A chunked request must not contain a Content-Length header.")
 
-      case Some(te) ⇒ fail(NotImplemented, s"$te is not supported by this server")
+        case Some(te) ⇒ fail(NotImplemented, s"$te is not supported by this server")
 
-      case None ⇒
-        val contentLength = clh match {
-          case Some(`Content-Length`(len)) ⇒ len
-          case None                        ⇒ 0
-        }
-        if (contentLength == 0) {
-          parse = this
-          Result.Ok(message(headers, EmptyEntity), drop(input, bodyStart), closeAfterResponseCompletion)
-        } else if (contentLength <= settings.maxContentLength)
-          parseFixedLengthBody(headers, input, bodyStart, contentLength, cth, closeAfterResponseCompletion)
-        else fail(RequestEntityTooLarge, s"Request Content-Length $contentLength exceeds the configured limit of " +
-          settings.maxContentLength)
-    }
+        case None ⇒
+          val contentLength = clh match {
+            case Some(`Content-Length`(len)) ⇒ len
+            case None                        ⇒ 0
+          }
+          if (contentLength == 0) {
+            parse = this
+            Result.Ok(message(headers, EmptyEntity), drop(input, bodyStart), closeAfterResponseCompletion)
+          } else if (contentLength <= settings.maxContentLength)
+            parseFixedLengthBody(headers, input, bodyStart, contentLength, cth, closeAfterResponseCompletion)
+          else fail(RequestEntityTooLarge, s"Request Content-Length $contentLength exceeds the configured limit of " +
+            settings.maxContentLength)
+      }
+    } else fail("Request is missing required `Host` header")
 
   def message(headers: List[HttpHeader], entity: HttpEntity) =
     HttpRequest(method, uri, headers, entity, protocol)
