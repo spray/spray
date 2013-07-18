@@ -42,6 +42,14 @@ class SecurityDirectivesSpec extends RoutingSpec {
         authenticate(dontAuth) { echoComplete }
       } ~> check { rejection === AuthenticationFailedRejection(CredentialsRejected, dontAuth) }
     }
+    "reject requests with illegal Authorization header with 401" in {
+      Get() ~> RawHeader("Authorization", "bob alice") ~> handleRejections(RejectionHandler.Default) {
+        authenticate(BasicAuth(dontAuth, "Realm")) { echoComplete }
+      } ~> check {
+        status === StatusCodes.Unauthorized and
+          entityAs[String] === "The resource requires authentication, which was not supplied with the request"
+      }
+    }
     "extract the object representing the user identity created by successful authentication" in {
       Get() ~> Authorization(BasicHttpCredentials("Alice", "")) ~> {
         authenticate(doAuth) { echoComplete }
