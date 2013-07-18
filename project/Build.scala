@@ -250,7 +250,7 @@ object Build extends Build with DocSupport {
     .settings(jettyExampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
-      test(specs2) ++
+      test(specs2, akkaTestKit) ++
       runtime(akkaSlf4j, logback) ++
       container(jettyWebApp, servlet30)
     )
@@ -260,7 +260,7 @@ object Build extends Build with DocSupport {
     .settings(standaloneServerExampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
-      test(specs2) ++
+      test(specs2, akkaTestKit) ++
       runtime(akkaSlf4j, logback)
     )
 
