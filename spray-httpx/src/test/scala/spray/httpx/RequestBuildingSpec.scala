@@ -51,6 +51,12 @@ class RequestBuildingSpec extends Specification with RequestBuilding {
       Get() ~> addHeader("X-Yeah", "Naah") ~> removeHeader("x-yEaH") === HttpRequest(headers = Nil)
     }
 
+    "provide a working `removeHeader` by header type transformer" >> {
+      Get() ~> addHeader("X-Yeah", "Naah") ~> removeHeader[RawHeader] === HttpRequest(headers = Nil)
+      Get() ~> addHeader("X-Yeah", "Naah") ~> addHeader(Authorization(BasicHttpCredentials("bla"))) ~> removeHeader[Authorization] ===
+        HttpRequest(headers = List(RawHeader("X-Yeah", "Naah")))
+    }
+
     "provide a working, case-insensitive `removeHeaders` transformer" >> {
       Get() ~> addHeader("X-Yeah", "Naah") ~>
         addHeader("X-Awesome", "Dude!") ~>
