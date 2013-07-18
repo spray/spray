@@ -16,9 +16,9 @@
 
 package spray.site
 
-import com.typesafe.config.{ Config, ConfigFactory }
+import com.typesafe.config.Config
 import scala.collection.JavaConverters._
-import akka.actor.ActorSystem
+import spray.util.SettingsCompanion
 
 case class SiteSettings(
     interface: String,
@@ -33,19 +33,13 @@ case class SiteSettings(
   require(0 < port && port < 65536, "illegal port")
 }
 
-object SiteSettings {
-  def apply(system: ActorSystem): SiteSettings =
-    apply(system.settings.config getConfig "spray.site")
-
-  def apply(config: Config): SiteSettings = {
-    val c = config withFallback ConfigFactory.defaultReference(getClass.getClassLoader)
-    SiteSettings(
-      c getString "interface",
-      c getInt "port",
-      c getBoolean "dev-mode",
-      c getString "repo-dirs" split ':' toList,
-      c getString "nightlies-dir",
-      c getString "main-version",
-      c.getStringList("other-versions").asScala)
-  }
+object SiteSettings extends SettingsCompanion[SiteSettings]("spray.site") {
+  def fromSubConfig(c: Config) = apply(
+    c getString "interface",
+    c getInt "port",
+    c getBoolean "dev-mode",
+    c getString "repo-dirs" split ':' toList,
+    c getString "nightlies-dir",
+    c getString "main-version",
+    c.getStringList("other-versions").asScala)
 }

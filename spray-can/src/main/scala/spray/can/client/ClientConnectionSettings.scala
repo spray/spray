@@ -16,9 +16,9 @@
 
 package spray.can.client
 
-import com.typesafe.config.{ ConfigFactory, Config }
+import com.typesafe.config.Config
 import scala.concurrent.duration.Duration
-import akka.actor.{ ActorRefFactory, ActorSystem }
+import akka.actor.ActorRefFactory
 import spray.can.parsing.ParserSettings
 import spray.util._
 
@@ -43,25 +43,17 @@ case class ClientConnectionSettings(
   requirePositiveOrUndefined(connectingTimeout)
 }
 
-object ClientConnectionSettings {
-  def apply(system: ActorSystem): ClientConnectionSettings =
-    apply(system.settings.config getConfig "spray.can.client")
-
-  def apply(config: Config): ClientConnectionSettings = {
-    val c = config
-      .withFallback(Utils.sprayConfigAdditions)
-      .withFallback(ConfigFactory.defaultReference(getClass.getClassLoader))
-    ClientConnectionSettings(
-      c getString "user-agent-header",
-      c getBoolean "ssl-encryption",
-      c getDuration "idle-timeout",
-      c getDuration "request-timeout",
-      c getDuration "reaping-cycle",
-      c getBytes "response-chunk-aggregation-limit" toInt,
-      c getBytes "request-size-hint" toInt,
-      c getDuration "connecting-timeout",
-      ParserSettings(c getConfig "parsing"))
-  }
+object ClientConnectionSettings extends SettingsCompanion[ClientConnectionSettings]("spray.can.client") {
+  def fromSubConfig(c: Config) = apply(
+    c getString "user-agent-header",
+    c getBoolean "ssl-encryption",
+    c getDuration "idle-timeout",
+    c getDuration "request-timeout",
+    c getDuration "reaping-cycle",
+    c getBytes "response-chunk-aggregation-limit" toInt,
+    c getBytes "request-size-hint" toInt,
+    c getDuration "connecting-timeout",
+    ParserSettings fromSubConfig c.getConfig("parsing"))
 
   def apply(optionalSettings: Option[ClientConnectionSettings])(implicit actorRefFactory: ActorRefFactory): ClientConnectionSettings =
     optionalSettings getOrElse apply(actorSystem)

@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package spray.util
+package spray.servlet
 
-import com.typesafe.config.Config
+import spray.http.{ HttpHeader, Rendering }
+import javax.servlet.http.HttpServletRequest
 
-case class UtilSettings(
-  logActorPathsWithDots: Boolean,
-  logActorSystemName: Boolean)
-
-object UtilSettings extends SettingsCompanion[UtilSettings]("spray.util") {
-  def fromSubConfig(c: Config) = apply(
-    c getBoolean "log-actor-paths-with-dots",
-    c getBoolean "log-actor-system-name")
+/** Header that provides the `javax.servlet.http.HttpServletRequest` that a request originated from. */
+case class ServletRequestInfoHeader(hsRequest: HttpServletRequest) extends HttpHeader {
+  def name = "Servlet-Request-Info"
+  def value = hsRequest.toString
+  def lowercaseName = name.toLowerCase
+  def render[R <: Rendering](r: R): r.type = r ~~ name ~~ ": " ~~ hsRequest.toString
 }

@@ -16,12 +16,12 @@
 
 package spray.http
 
+import java.util
 import java.nio.charset.Charset
 import scala.annotation.tailrec
 import scala.reflect.{ classTag, ClassTag }
 import HttpHeaders._
 import HttpCharsets._
-import java.util
 
 sealed trait HttpMessagePartWrapper {
   def messagePart: HttpMessagePart
@@ -124,13 +124,26 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   def isRequest = true
   def isResponse = false
 
-  def withEffectiveUri(securedConnection: Boolean): HttpRequest =
-    if (uri.isAbsolute) this
-    else header[Host] match {
-      case None                   ⇒ sys.error("Cannot establish effective request URI, request has a relative URI and is missing a `Host` header")
-      case Some(Host("", _))      ⇒ sys.error("Cannot establish effective request URI, request has a relative URI and an empty `Host` header")
-      case Some(Host(host, port)) ⇒ copy(uri = uri.toEffectiveHttpRequestUri(securedConnection, Uri.Host(host), port))
-    }
+  def withEffectiveUri(securedConnection: Boolean, defaultHostHeader: Host = Host.empty): HttpRequest = {
+    val hostHeader = header[Host]
+    if (uri.isRelative) {
+      val Host(host, port) = hostHeader match {
+        case None ⇒
+          if (defaultHostHeader.isEmpty)
+            sys.error("Cannot establish effective request URI, request has a relative URI and is missing a `Host` header")
+          else defaultHostHeader
+        case Some(x) if x.isEmpty ⇒
+          if (defaultHostHeader.isEmpty)
+            sys.error("Cannot establish effective request URI, request has a relative URI and an empty `Host` header")
+          else defaultHostHeader
+        case Some(x) ⇒ x
+      }
+      copy(uri = uri.toEffectiveHttpRequestUri(securedConnection, Uri.Host(host), port))
+    } else // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.4
+    if (hostHeader.isEmpty || uri.authority.isEmpty && hostHeader.get.isEmpty ||
+      hostHeader.get.host.equalsIgnoreCase(uri.authority.host.address) && hostHeader.get.port == uri.authority.port) this
+    else sys.error("'Host' header value doesn't match request target authority")
+  }
 
   def acceptedMediaRanges: List[MediaRange] = {
     // TODO: sort by preference

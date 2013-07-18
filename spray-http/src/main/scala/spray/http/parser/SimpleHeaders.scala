@@ -47,11 +47,13 @@ private[parser] trait SimpleHeaders {
     oneOrMore(Token ~ &(EOI) | Token ~ "=" ~ (Token | QuotedString) ~~> (_ + '=' + _), separator = ListSep) ~ EOI
       ~~> (Expect(_)))
 
-  // Do not accept scoped IPv6 addresses as they should not appear in the Host header,
+  // We don't accept scoped IPv6 addresses as they should not appear in the Host header,
   // see also https://issues.apache.org/bugzilla/show_bug.cgi?id=35122 (WONTFIX in Apache 2 issue) and
   // https://bugzilla.mozilla.org/show_bug.cgi?id=464162 (FIXED in mozilla)
+  // Also: an empty hostnames with a non-empty port value (as in `Host: :8080`) are *allowed*,
+  // see http://trac.tools.ietf.org/wg/httpbis/trac/ticket/92
   def `*Host` = rule(
-    (Token | IPv6Reference) ~ OptWS ~ optional(":" ~ oneOrMore(Digit) ~> (_.toInt)) ~ EOI
+    (Token | IPv6Reference | push("")) ~ OptWS ~ optional(":" ~ oneOrMore(Digit) ~> (_.toInt)) ~ EOI
       ~~> ((h, p) ⇒ Host(h, p.getOrElse(0))))
 
   def `*Last-Modified` = rule {
@@ -74,7 +76,12 @@ private[parser] trait SimpleHeaders {
 
   def `*User-Agent` = rule { ProductVersionComments ~~> (`User-Agent`(_)) }
 
+  // de-facto standard as per http://en.wikipedia.org/w/index.php?title=X-Forwarded-For&oldid=563040890
+  // It's not clear in which format IpV6 addresses are to be expected, the ones we've seen in the wild
+  // were not quoted and that's also what the "Transition" section in the draft says:
+  // http://tools.ietf.org/html/draft-ietf-appsawg-http-forwarded-10
   def `*X-Forwarded-For` = rule {
-    oneOrMore(Ip ~~> (Some(_)) | "unknown" ~ push(None), separator = ListSep) ~ EOI ~~> (`X-Forwarded-For`(_))
+    oneOrMore((Ip | IPv6Address ~> (HttpIp(_))) ~~> (Some(_)) | "unknown" ~ push(None), separator = ListSep) ~ EOI ~~>
+      (`X-Forwarded-For`(_))
   }
 }

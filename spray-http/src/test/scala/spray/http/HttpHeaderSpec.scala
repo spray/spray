@@ -23,6 +23,7 @@ import MediaTypes._
 import MediaRanges._
 import HttpCharsets._
 import HttpEncodings._
+import HttpMethods._
 import parser.HttpParser
 
 class HttpHeaderSpec extends Specification {
@@ -47,6 +48,32 @@ class HttpHeaderSpec extends Specification {
       p ^
       "Accept-Charset: utf8; q=0.5, *" !
       example(`Accept-Charset`(`UTF-8`, HttpCharsets.`*`), fix(_).replace("utf", "UTF-"))_ ^
+      p ^
+      "Access-Control-Allow-Origin: *" !
+      example(`Access-Control-Allow-Origin`("*"))_ ^
+      "Access-Control-Allow-Origin: http://spray.io" !
+      example(`Access-Control-Allow-Origin`("http://spray.io"))_ ^
+      p ^
+      "Access-Control-Expose-Headers: Accept, X-My-Header" !
+      example(`Access-Control-Expose-Headers`("Accept", "X-My-Header"))_ ^
+      p ^
+      "Access-Control-Max-Age: 3600" !
+      example(`Access-Control-Max-Age`(3600))_ ^
+      p ^
+      "Access-Control-Allow-Credentials: true" !
+      example(`Access-Control-Allow-Credentials`(true))_ ^
+      p ^
+      "Access-Control-Allow-Methods: GET, POST" !
+      example(`Access-Control-Allow-Methods`(GET, POST))_ ^
+      p ^
+      "Access-Control-Allow-Headers: Accept, X-My-Header" !
+      example(`Access-Control-Allow-Headers`("Accept", "X-My-Header"))_ ^
+      p ^
+      "Access-Control-Request-Method: POST" !
+      example(`Access-Control-Request-Method`(POST))_ ^
+      p ^
+      "Access-Control-Request-Headers: Accept, X-My-Header" !
+      example(`Access-Control-Request-Headers`("Accept", "X-My-Header"))_ ^
       p ^
       "Accept-Encoding: compress, gzip, fancy" !
       example(`Accept-Encoding`(compress, gzip, HttpEncoding.custom("fancy")))_ ^
@@ -131,6 +158,7 @@ class HttpHeaderSpec extends Specification {
       "Location: https://spray.io/ sec" ! errorExample(ErrorInfo("Illegal HTTP header 'Location': Illegal absolute " +
         "URI, unexpected character ' ' at position 17", "\nhttps://spray.io/ sec\n                 ^\n"))_ ^
       p ^
+      "Origin: http://spray.io" ! example(Origin(Uri("http://spray.io")))_ ^
       "Remote-Address: 111.22.3.4" ! example(`Remote-Address`("111.22.3.4"))_ ^
       p ^
       "Server: as fghf.fdf/xx" ! example(`Server`(Seq(ProductVersion("as"), ProductVersion("fghf.fdf", "xx"))))_ ^
@@ -172,6 +200,8 @@ class HttpHeaderSpec extends Specification {
       "X-Forwarded-For: 1.2.3.4" ! example(`X-Forwarded-For`("1.2.3.4"))_ ^
       "X-Forwarded-For: 234.123.5.6, 8.8.8.8" ! example(`X-Forwarded-For`("234.123.5.6", "8.8.8.8"))_ ^
       "X-Forwarded-For: 1.2.3.4, unknown" ! example(`X-Forwarded-For`(Seq(Some(HttpIp("1.2.3.4")), None)))_ ^
+      "X-Forwarded-For: 0:0:0:0:0:0:0:1" ! example(`X-Forwarded-For`("::1"))_ ^
+      "X-Forwarded-For: 192.0.2.43, 2001:db8:cafe:0:0:0:0:17" ! example(`X-Forwarded-For`("192.0.2.43", "2001:db8:cafe::17"))_ ^
       p ^
       "X-Space-Ranger: no, this rock!" ! example(RawHeader("X-Space-Ranger", "no, this rock!"))_
 

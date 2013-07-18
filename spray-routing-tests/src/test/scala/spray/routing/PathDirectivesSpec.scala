@@ -273,11 +273,27 @@ class PathDirectivesSpec extends RoutingSpec {
   }
 
   "PathMatchers" should {
-    "support the map modifier" in {
+    "support the hmap modifier" in {
       import shapeless._
       Get("/yes-no") ~> {
-        path(Rest.map { case s :: HNil ⇒ s.split('-').toList :: HNil }) { echoComplete }
+        path(Rest.hmap { case s :: HNil ⇒ s.split('-').toList :: HNil }) { echoComplete }
       } ~> check { entityAs[String] === "List(yes, no)" }
+    }
+    "support the map modifier" in {
+      Get("/yes-no") ~> {
+        path(Rest.map(_.split('-').toList)) { echoComplete }
+      } ~> check { entityAs[String] === "List(yes, no)" }
+    }
+    "support the hflatMap modifier" in {
+      import shapeless._
+      val route = path(Rest.hflatMap { case s :: HNil ⇒ Some(s).filter("yes" ==).map(_ :: HNil) }) { echoComplete }
+      Get("/yes") ~> route ~> check { entityAs[String] === "yes" }
+      Get("/blub") ~> route ~> check { handled must beFalse }
+    }
+    "support the flatMap modifier" in {
+      val route = path(Rest.flatMap(s ⇒ Some(s).filter("yes" ==))) { echoComplete }
+      Get("/yes") ~> route ~> check { entityAs[String] === "yes" }
+      Get("/blub") ~> route ~> check { handled must beFalse }
     }
     "support the `|` operator" in {
       val route = path("ab" / ("cd" | "ef") / "gh") { completeOk }
