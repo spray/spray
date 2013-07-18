@@ -49,9 +49,9 @@ trait PathMatcher[L <: HList] extends (Path ⇒ PathMatcher.Matching[L]) { self 
   def transform[R <: HList](f: Matching[L] ⇒ Matching[R]): PathMatcher[R] =
     new PathMatcher[R] { def apply(path: Path) = f(self(path)) }
 
-  def map[R <: HList](f: L ⇒ R): PathMatcher[R] = transform(_.map(f))
+  def hmap[R <: HList](f: L ⇒ R): PathMatcher[R] = transform(_.map(f))
 
-  def flatMap[R <: HList](f: L ⇒ Option[R]): PathMatcher[R] = transform(_.flatMap(f))
+  def hflatMap[R <: HList](f: L ⇒ Option[R]): PathMatcher[R] = transform(_.flatMap(f))
 }
 
 object PathMatcher extends ImplicitPathMatcherConstruction {
@@ -97,6 +97,12 @@ object PathMatcher extends ImplicitPathMatcherConstruction {
     }
 
   def apply[L <: HList](magnet: PathMatcher[L]): PathMatcher[L] = magnet
+
+  implicit class PathMatcher1Ops[T](matcher: PathMatcher1[T]) {
+    def map[R](f: T ⇒ R): PathMatcher1[R] = matcher.hmap { case e :: HNil ⇒ f(e) :: HNil }
+    def flatMap[R](f: T ⇒ Option[R]): PathMatcher1[R] =
+      matcher.hflatMap { case e :: HNil ⇒ f(e).map(_ :: HNil) }
+  }
 }
 
 trait ImplicitPathMatcherConstruction {
@@ -303,20 +309,18 @@ trait PathMatchers {
    * optionally signed form of a double value, i.e. without exponent.
    */
   val DoubleNumber = PathMatcher("""[+-]?\d*\.?\d*""".r)
-    .flatMap {
-      case string :: HNil ⇒
-        try Some(java.lang.Double.parseDouble(string) :: HNil)
-        catch { case _: NumberFormatException ⇒ None }
+    .flatMap { string ⇒
+      try Some(java.lang.Double.parseDouble(string))
+      catch { case _: NumberFormatException ⇒ None }
     }
 
   /**
    * A PathMatcher that matches and extracts a java.util.UUID instance.
    */
   val JavaUUID = PathMatcher("""[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}""".r)
-    .flatMap {
-      case string :: HNil ⇒
-        try Some(UUID.fromString(string) :: HNil)
-        catch { case _: IllegalArgumentException ⇒ None }
+    .flatMap { string ⇒
+      try Some(UUID.fromString(string))
+      catch { case _: IllegalArgumentException ⇒ None }
     }
 
   /**
