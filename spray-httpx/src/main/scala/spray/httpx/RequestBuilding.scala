@@ -16,6 +16,7 @@
 
 package spray.httpx
 
+import scala.reflect.ClassTag
 import akka.event.LoggingAdapter
 import spray.httpx.encoding.Encoder
 import spray.httpx.marshalling._
@@ -65,6 +66,24 @@ trait RequestBuilding extends TransformerPipelineSupport {
   def addHeaders(first: HttpHeader, more: HttpHeader*): RequestTransformer = addHeaders(first :: more.toList)
 
   def addHeaders(headers: List[HttpHeader]): RequestTransformer = _.mapHeaders(headers ::: _)
+
+  def mapHeaders(f: List[HttpHeader] ⇒ List[HttpHeader]): RequestTransformer = _.mapHeaders(f)
+
+  def removeHeader(headerName: String): RequestTransformer = {
+    val selected = (_: HttpHeader).name equalsIgnoreCase headerName
+    _ mapHeaders (_ filterNot selected)
+  }
+
+  def removeHeader[T <: HttpHeader: ClassTag]: RequestTransformer = {
+    val clazz = implicitly[ClassTag[T]].runtimeClass
+    val selected = (header: HttpHeader) ⇒ clazz.isInstance(header)
+    _ mapHeaders (_ filterNot selected)
+  }
+
+  def removeHeaders(names: String*): RequestTransformer = {
+    val selected = (header: HttpHeader) ⇒ names exists (_ equalsIgnoreCase header.name)
+    _ mapHeaders (_ filterNot selected)
+  }
 
   def addCredentials(credentials: HttpCredentials) = addHeader(HttpHeaders.Authorization(credentials))
 
