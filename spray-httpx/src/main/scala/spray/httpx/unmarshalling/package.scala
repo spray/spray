@@ -26,12 +26,6 @@ package object unmarshalling {
   type Unmarshaller[T] = Deserializer[HttpEntity, T]
   type FromEntityOptionUnmarshaller[T] = Deserializer[Option[HttpEntity], T]
 
-  def unmarshal[T](implicit um: Unmarshaller[T]) = um
-  def unmarshalUnsafe[T: Unmarshaller](entity: HttpEntity): T = unmarshal.apply(entity) match {
-    case Right(value) ⇒ value
-    case Left(error)  ⇒ sys.error(error.toString)
-  }
-
   implicit def formFieldExtractor(form: HttpForm) = FormFieldExtractor(form)
   implicit def pimpHttpEntity(entity: HttpEntity) = new PimpedHttpEntity(entity)
   implicit def pimpHttpBodyPart(bodyPart: BodyPart) = new PimpedHttpEntity(bodyPart.entity)
