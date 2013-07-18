@@ -20,6 +20,7 @@ import spray.http._
 import StatusCodes._
 import HttpHeaders._
 import spray.routing.directives.RouteDirectives._
+import AuthenticationFailedRejection._
 
 trait RejectionHandler extends RejectionHandler.PF
 
@@ -35,12 +36,12 @@ object RejectionHandler {
   implicit val Default = apply {
     case Nil ⇒ complete(NotFound, "The requested resource could not be found.")
 
-    case AuthenticationRequiredRejection(scheme, realm, params) :: _ ⇒
-      complete(Unauthorized, `WWW-Authenticate`(HttpChallenge(scheme, realm, params)) :: Nil,
-        "The resource requires authentication, which was not supplied with the request")
-
-    case AuthenticationFailedRejection(realm) :: _ ⇒
-      complete(Unauthorized, "The supplied authentication is invalid")
+    case AuthenticationFailedRejection(cause, authenticator) :: _ ⇒
+      val rejectionMessage = cause match {
+        case CredentialsMissing  ⇒ "The resource requires authentication, which was not supplied with the request"
+        case CredentialsRejected ⇒ "The supplied authentication is invalid"
+      }
+      ctx ⇒ ctx.complete(Unauthorized, authenticator.getChallengeHeaders(ctx.request), rejectionMessage)
 
     case AuthorizationFailedRejection :: _ ⇒
       complete(Forbidden, "The supplied authentication is not authorized to access this resource")
