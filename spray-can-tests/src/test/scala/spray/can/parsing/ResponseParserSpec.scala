@@ -65,6 +65,16 @@ class ResponseParserSpec extends Specification {
         } === Result.NeedMoreData
         parse(parser)("") === (NotFound, "Foobs", List(Host("api.example.com")), `HTTP/1.0`, "", true)
       }
+      "a response with one header, no body, and no Content-Length header" in {
+        val parser = newParser()
+        parse(parser) {
+          """HTTP/1.0 404 Not Found
+            |Host: api.example.com
+            |
+            |"""
+        } === Result.NeedMoreData
+        parse(parser)("") === (NotFound, "", List(Host("api.example.com")), `HTTP/1.0`, "", true)
+      }
 
       "a response with 3 headers, a body and remaining content" in {
         parse {
