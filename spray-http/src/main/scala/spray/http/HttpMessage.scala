@@ -145,10 +145,11 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     else sys.error("'Host' header value doesn't match request target authority")
   }
 
-  def acceptedMediaRanges: List[MediaRange] = {
-    // TODO: sort by preference
-    for (Accept(mediaRanges) ← headers; range ← mediaRanges) yield range
-  }
+  def acceptedMediaRanges: List[MediaRange] =
+    (for {
+      Accept(mediaRanges) ← headers
+      range ← mediaRanges
+    } yield range).sortBy(-_.qValue)
 
   def acceptedCharsetRanges: List[HttpCharsetRange] = {
     // TODO: sort by preference
@@ -169,7 +170,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     // according to the HTTP spec a client has to accept all mime types if no Accept header is sent with the request
     // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
     val ranges = acceptedMediaRanges
-    ranges.isEmpty || ranges.exists(_.matches(mediaType))
+    ranges.isEmpty || ranges.exists(r ⇒ r.qValue > 0.0f && r.matches(mediaType))
   }
 
   /**
@@ -196,21 +197,34 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   /**
    * Determines whether the given content-type is accepted by the client.
    */
-  def isContentTypeAccepted(ct: ContentType) = {
+  def isContentTypeAccepted(ct: ContentType) =
     isMediaTypeAccepted(ct.mediaType) && (ct.noCharsetDefined || isCharsetAccepted(ct.definedCharset.get))
-  }
 
   /**
-   * Determines whether the given content-type is accepted by the client.
-   * If the given ContentType does not define a charset an accepted charset is selected, i.e. the method guarantees
+   * Determines whether one of the given content-types is accepted by the client.
+   * If a given ContentType does not define a charset an accepted charset is selected, i.e. the method guarantees
    * that, if a ContentType instance is returned within the option, it will contain a defined charset.
    */
-  def acceptableContentType(contentType: ContentType): Option[ContentType] = {
-    if (isContentTypeAccepted(contentType)) Some {
-      if (contentType.isCharsetDefined) contentType
-      else ContentType(contentType.mediaType, acceptedCharset)
+  def acceptableContentType(contentTypes: Seq[ContentType]): Option[ContentType] = {
+    @tailrec def negotiate(mediaRanges: List[MediaRange]): Option[ContentType] = mediaRanges match {
+      case r :: rs ⇒
+        val contentType = contentTypes.find { ct ⇒
+          r.matches(ct) && isContentTypeAccepted(ct)
+        }
+        if (contentType.nonEmpty) contentType else negotiate(rs)
+      case Nil ⇒ None
     }
-    else None
+
+    val mediaRanges = acceptedMediaRanges
+    val contentType =
+      if (mediaRanges.nonEmpty)
+        negotiate(mediaRanges)
+      else
+        contentTypes.headOption
+    contentType map { ct ⇒
+      if (ct.isCharsetDefined) ct
+      else ContentType(ct.mediaType, acceptedCharset)
+    }
   }
 
   /**

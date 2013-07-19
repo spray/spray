@@ -42,7 +42,7 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
   def chunkedMessageEnd: Option[ChunkedMessageEnd] = _chunkedMessageEnd.get
 
   // we always convert to the first content-type the marshaller can marshal to
-  def tryAccept(contentType: ContentType) = Some(contentType)
+  def tryAccept(contentTypes: Seq[ContentType]) = contentTypes.headOption
 
   def rejectMarshalling(supported: Seq[ContentType]): Unit = {
     handleError(new RuntimeException("Marshaller rejected marshalling, only supports " + supported))

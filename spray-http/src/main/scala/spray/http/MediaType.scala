@@ -31,6 +31,7 @@ sealed abstract class MediaRange extends LazyValueBytesRenderable {
   def isMultipart = false
   def isText = false
   def isVideo = false
+  def qValue = parameters.getOrElse("q", "1.0").toFloat
 }
 
 object MediaRange {

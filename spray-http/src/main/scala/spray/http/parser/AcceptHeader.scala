@@ -34,8 +34,8 @@ private[parser] trait AcceptHeader {
       @tailrec def toNonQValueMap(remaining: List[(String, String)],
                                   builder: StringMapBuilder = null): Map[String, String] =
         remaining match {
-          case Nil              ⇒ if (builder eq null) Map.empty else builder.result()
-          case ("q", _) :: tail ⇒ toNonQValueMap(tail, builder)
+          case Nil ⇒ if (builder eq null) Map.empty else builder.result()
+          // case ("q", _) :: tail ⇒ toNonQValueMap(tail, builder)
           case kvp :: tail ⇒
             val b = if (builder eq null) Map.newBuilder[String, String] else builder
             b += kvp
