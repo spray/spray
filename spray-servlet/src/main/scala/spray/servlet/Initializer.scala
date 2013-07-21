@@ -36,7 +36,7 @@ class Initializer extends ServletContextListener {
       try {
         val classLoader = ActorSystem.asInstanceOf[{ def findClassLoader(): ClassLoader }].findClassLoader()
         val config = ConfigFactory.load(classLoader)
-        val settings = ConnectorSettings(config getConfig "spray.servlet")
+        val settings = ConnectorSettings(config)
         servletContext.setAttribute(Initializer.SettingsAttrName, settings)
         def errorMsg(msg: String) = "Configured boot class " + settings.bootClass + ' ' + msg
         try {
