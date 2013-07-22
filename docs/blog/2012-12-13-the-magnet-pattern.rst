@@ -127,7 +127,7 @@ The ``CompletionMagnet`` is the following simple trait::
     def apply(): Result
   }
 
-The magnet branches are were the actual logic lives. They represent the different overload implementations we had
+The magnet branches are where the actual logic lives. They represent the different overload implementations we had
 before and are defined as implicit conversions to ``CompletionMagnet`` instances in the companion object::
 
   object CompletionMagnet {
