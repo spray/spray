@@ -18,8 +18,8 @@ package spray.can.parsing
 
 import com.typesafe.config.Config
 import scala.collection.JavaConverters._
-import akka.actor.ActorSystem
 import spray.http.Uri
+import spray.util._
 
 case class ParserSettings(
     maxUriLength: Int,
@@ -49,28 +49,20 @@ case class ParserSettings(
     headerValueCacheLimits.getOrElse(headerName, defaultHeaderValueCacheLimit)
 }
 
-object ParserSettings {
-  def apply(system: ActorSystem): ParserSettings =
-    apply(system.settings.config getConfig "spray.can.parsing")
-
-  def apply(config: Config): ParserSettings = {
-    def bytes(key: String): Int = {
-      val value: Long = config getBytes key
-      if (value <= Int.MaxValue) value.toInt
-      else sys.error("ParserSettings config setting " + key + " must not be larger than " + Int.MaxValue)
-    }
-    val cacheConfig = config.getConfig("header-cache")
-    ParserSettings(
-      bytes("max-uri-length"),
-      bytes("max-response-reason-length"),
-      bytes("max-header-name-length"),
-      bytes("max-header-value-length"),
-      bytes("max-header-count"),
-      bytes("max-content-length"),
-      bytes("max-chunk-ext-length"),
-      bytes("max-chunk-size"),
-      Uri.ParsingMode(config getString "uri-parsing-mode"),
-      config getBoolean "illegal-header-warnings",
+object ParserSettings extends SettingsCompanion[ParserSettings]("spray.can.parsing") {
+  def fromSubConfig(c: Config) = {
+    val cacheConfig = c getConfig "header-cache"
+    apply(
+      c getIntBytes "max-uri-length",
+      c getIntBytes "max-response-reason-length",
+      c getIntBytes "max-header-name-length",
+      c getIntBytes "max-header-value-length",
+      c getIntBytes "max-header-count",
+      c getIntBytes "max-content-length",
+      c getIntBytes "max-chunk-ext-length",
+      c getIntBytes "max-chunk-size",
+      Uri.ParsingMode(c getString "uri-parsing-mode"),
+      c getBoolean "illegal-header-warnings",
       cacheConfig.entrySet.asScala.map(kvp ⇒ kvp.getKey -> cacheConfig.getInt(kvp.getKey))(collection.breakOut))
   }
 }

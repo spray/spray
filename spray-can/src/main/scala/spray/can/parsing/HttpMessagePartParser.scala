@@ -29,11 +29,13 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
   var parse: ByteString ⇒ Result[Part] = this
   var protocol: HttpProtocol = `HTTP/1.1`
 
-  def apply(input: ByteString): Result[Part] =
+  def apply(input: ByteString): Result[Part] = parseMessageSafe(input)
+
+  def parseMessageSafe(input: ByteString): Result[Part] =
     try parseMessage(input)
     catch {
       case NotEnoughDataException ⇒
-        parse = { more ⇒ this((input ++ more).compact) }
+        parse = { more ⇒ parseMessageSafe((input ++ more).compact) }
         Result.NeedMoreData
 
       case e: ParsingException ⇒ fail(e.status, e.info)
@@ -58,7 +60,8 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
   @tailrec final def parseHeaderLines(input: ByteString, lineStart: Int, headers: List[HttpHeader] = Nil,
                                       headerCount: Int = 0, ch: Option[Connection] = None,
                                       clh: Option[`Content-Length`] = None, cth: Option[`Content-Type`] = None,
-                                      teh: Option[`Transfer-Encoding`] = None, e100: Boolean = false): Result[Part] = {
+                                      teh: Option[`Transfer-Encoding`] = None, e100: Boolean = false,
+                                      hh: Boolean = false): Result[Part] = {
     var lineEnd = 0
     val result =
       try {
@@ -66,7 +69,7 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
         null
       } catch {
         case NotEnoughDataException ⇒
-          parse = { more ⇒ parseHeaderLinesAux((input ++ more).compact, lineStart, headers, headerCount, ch, clh, cth, teh, e100) }
+          parse = { more ⇒ parseHeaderLinesAux((input ++ more).compact, lineStart, headers, headerCount, ch, clh, cth, teh, e100, hh) }
           Result.NeedMoreData
 
         case e: ParsingException ⇒ fail(e.status, e.info)
@@ -76,30 +79,30 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
       case HttpHeaderParser.EmptyHeader ⇒
         val close = closeAfterResponseCompletion(ch)
         if (e100) {
-          parse = parseEntity(headers, _, 0, clh, cth, teh, close)
+          parse = parseEntity(headers, _, 0, clh, cth, teh, hh, close)
           Result.Expect100Continue(drop(input, lineEnd))
-        } else parseEntity(headers, input, lineEnd, clh, cth, teh, close)
+        } else parseEntity(headers, input, lineEnd, clh, cth, teh, hh, close)
 
       case h: Connection ⇒
-        parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, Some(h), clh, cth, teh, e100)
+        parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, Some(h), clh, cth, teh, e100, hh)
 
       case h: `Content-Length` ⇒
-        if (clh.isEmpty) parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, Some(h), cth, teh, e100)
+        if (clh.isEmpty) parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, Some(h), cth, teh, e100, hh)
         else fail("HTTP message must not contain more than one Content-Length header")
 
       case h: `Content-Type` ⇒
-        if (cth.isEmpty) parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, clh, Some(h), teh, e100)
+        if (cth.isEmpty) parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, clh, Some(h), teh, e100, hh)
         else fail("HTTP message must not contain more than one Content-Type header")
 
       case h: `Transfer-Encoding` ⇒
-        parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, clh, cth, Some(h), e100)
+        parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, clh, cth, Some(h), e100, hh)
 
       case h: Expect ⇒
-        if (h.has100continue) parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, clh, cth, teh, e100 = true)
+        if (h.has100continue) parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, clh, cth, teh, e100 = true, hh)
         else fail(ExpectationFailed, "Expectation '" + h + "' is not supported by this server")
 
       case h if headerCount < settings.maxHeaderCount ⇒
-        parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, clh, cth, teh, e100)
+        parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, clh, cth, teh, e100, hh || h.isInstanceOf[Host])
 
       case _ ⇒ fail("HTTP message contains more than the configured limit of " + settings.maxHeaderCount + " headers")
     }
@@ -107,11 +110,11 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
 
   def parseHeaderLinesAux(input: ByteString, lineStart: Int, headers: List[HttpHeader], headerCount: Int,
                           ch: Option[Connection], clh: Option[`Content-Length`], cth: Option[`Content-Type`],
-                          teh: Option[`Transfer-Encoding`], e100: Boolean): Result[Part] =
-    parseHeaderLines(input, lineStart, headers, headerCount, ch, clh, cth, teh, e100)
+                          teh: Option[`Transfer-Encoding`], e100: Boolean, hh: Boolean): Result[Part] =
+    parseHeaderLines(input, lineStart, headers, headerCount, ch, clh, cth, teh, e100, hh)
 
   def parseEntity(headers: List[HttpHeader], input: ByteString, bodyStart: Int, clh: Option[`Content-Length`],
-                  cth: Option[`Content-Type`], teh: Option[`Transfer-Encoding`],
+                  cth: Option[`Content-Type`], teh: Option[`Transfer-Encoding`], hostHeaderPresent: Boolean,
                   closeAfterResponseCompletion: Boolean): Result[Part]
 
   def parseFixedLengthBody(headers: List[HttpHeader], input: ByteString, bodyStart: Int, length: Int,

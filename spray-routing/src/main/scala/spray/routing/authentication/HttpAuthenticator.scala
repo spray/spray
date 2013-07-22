@@ -22,6 +22,7 @@ import akka.dispatch.{ ExecutionContext, Future }
 import spray.http._
 import spray.util._
 import HttpHeaders._
+import AuthenticationFailedRejection._
 
 /**
  * An HttpAuthenticator is a ContextAuthenticator that uses credentials passed to the server via the
@@ -34,19 +35,17 @@ trait HttpAuthenticator[U] extends ContextAuthenticator[U] {
     val credentials = authHeader.map { case Authorization(creds) ⇒ creds }
     authenticate(credentials, ctx) map {
       case Some(userContext) ⇒ Right(userContext)
-      case None ⇒ Left {
-        if (authHeader.isEmpty) AuthenticationRequiredRejection(scheme, realm, params(ctx))
-        else AuthenticationFailedRejection(realm)
-      }
+      case None ⇒
+        val cause = if (authHeader.isEmpty) CredentialsMissing else CredentialsRejected
+        Left(AuthenticationFailedRejection(cause, this))
     }
   }
 
   implicit def executionContext: ExecutionContext
-  def scheme: String
-  def realm: String
-  def params(ctx: RequestContext): Map[String, String]
 
   def authenticate(credentials: Option[HttpCredentials], ctx: RequestContext): Future[Option[U]]
+
+  def getChallengeHeaders(httpRequest: HttpRequest): List[HttpHeader]
 }
 
 /**
@@ -54,9 +53,6 @@ trait HttpAuthenticator[U] extends ContextAuthenticator[U] {
  */
 class BasicHttpAuthenticator[U](val realm: String, val userPassAuthenticator: UserPassAuthenticator[U])(implicit val executionContext: ExecutionContext)
     extends HttpAuthenticator[U] {
-
-  def scheme = "Basic"
-  def params(ctx: RequestContext) = Map.empty
 
   def authenticate(credentials: Option[HttpCredentials], ctx: RequestContext) = {
     userPassAuthenticator {
@@ -66,6 +62,10 @@ class BasicHttpAuthenticator[U](val realm: String, val userPassAuthenticator: Us
       }
     }
   }
+
+  def getChallengeHeaders(httpRequest: HttpRequest) =
+    `WWW-Authenticate`(HttpChallenge(scheme = "Basic", realm = realm, params = Map.empty)) :: Nil
+
 }
 
 object BasicAuth {

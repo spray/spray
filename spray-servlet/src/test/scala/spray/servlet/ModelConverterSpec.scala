@@ -38,7 +38,8 @@ class ModelConverterSpec extends Specification with NoTimeConversions {
     rootPath = Uri.Path.Empty,
     remoteAddressHeader = false,
     verboseErrorMessages = true,
-    maxContentLength = 16)
+    maxContentLength = 16,
+    servletRequestAccess = false)
 
   val remoteAddress = `Remote-Address`("127.0.0.7")
   val textPlain = `Content-Type`(ContentTypes.`text/plain`)
@@ -81,6 +82,13 @@ class ModelConverterSpec extends Specification with NoTimeConversions {
         implicit def s = settings
         ModelConverter.toHttpRequest(RequestMock(headers = "Cookie" -> "foo=bar; bar=baz" :: Nil)) ===
           HttpRequest(headers = Cookie(HttpCookie("foo", "bar"), HttpCookie("bar", "baz")) :: Nil)
+      }
+    }
+
+    "should provide access to javax.servlet.http.HttpServletRequest via a header if spray.servlet.servlet-request-access is enabled" in {
+      "example 1" in {
+        implicit def s = settings.copy(servletRequestAccess = true)
+        ModelConverter.toHttpRequest(RequestMock()) === HttpRequest(headers = ServletRequestInfoHeader(RequestMock()) :: Nil)
       }
     }
   }

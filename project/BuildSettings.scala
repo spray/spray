@@ -6,6 +6,8 @@ import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import sbtassembly.Plugin.AssemblyKeys._
 import sbtassembly.Plugin._
 import spray.revolver.RevolverPlugin.Revolver
+import com.typesafe.sbt.osgi.SbtOsgi
+import SbtOsgi._
 
 object BuildSettings {
   val VERSION = "1.0-M8.1"
@@ -114,4 +116,16 @@ object BuildSettings {
       .setPreference(AlignParameters, true)
       .setPreference(AlignSingleLineCaseStatements, true)
       .setPreference(DoubleIndentClassDeclaration, true)
+
+  def osgiSettings(exports: Seq[String], imports: Seq[String] = Seq.empty) =
+    SbtOsgi.osgiSettings ++ Seq(
+      OsgiKeys.exportPackage := exports map { pkg => pkg + ".*;version=\"${Bundle-Version}\"" },
+      OsgiKeys.importPackage <<= scalaVersion { sv => Seq("""scala.*;version="$<range;[==,=+);%s>"""".format(sv)) },
+      OsgiKeys.importPackage ++= imports,
+      OsgiKeys.importPackage += "akka.io.*;version=\"${Bundle-Version}\"",
+      OsgiKeys.importPackage += "akka.spray.*;version=\"${Bundle-Version}\"",
+      OsgiKeys.importPackage += """akka.*;version="$<range;[==,=+);$<@>>"""",
+      OsgiKeys.importPackage += "*",
+      OsgiKeys.additionalHeaders := Map("-removeheaders" -> "Include-Resource,Private-Package")
+    )
 }

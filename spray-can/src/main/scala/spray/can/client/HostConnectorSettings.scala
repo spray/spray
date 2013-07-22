@@ -16,9 +16,8 @@
 
 package spray.can.client
 
-import com.typesafe.config.{ ConfigFactory, Config }
+import com.typesafe.config.Config
 import akka.util.Duration
-import akka.actor.ActorSystem
 import spray.util._
 
 case class HostConnectorSettings(
@@ -33,17 +32,11 @@ case class HostConnectorSettings(
   requirePositiveOrUndefined(idleTimeout)
 }
 
-object HostConnectorSettings {
-  def apply(system: ActorSystem): HostConnectorSettings =
-    apply(system.settings.config getConfig "spray.can.host-connector")
-
-  def apply(config: Config): HostConnectorSettings = {
-    val c = config withFallback ConfigFactory.defaultReference(getClass.getClassLoader)
-    HostConnectorSettings(
-      c getInt "max-connections",
-      c getInt "max-retries",
-      c getBoolean "pipelining",
-      c getDuration "idle-timeout",
-      ClientConnectionSettings(c getConfig "client"))
-  }
+object HostConnectorSettings extends SettingsCompanion[HostConnectorSettings]("spray.can.host-connector") {
+  def fromSubConfig(c: Config) = apply(
+    c getInt "max-connections",
+    c getInt "max-retries",
+    c getBoolean "pipelining",
+    c getDuration "idle-timeout",
+    ClientConnectionSettings fromSubConfig c.getConfig("client"))
 }

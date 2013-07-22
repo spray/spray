@@ -22,6 +22,7 @@ import spray.can.client.{ HttpHostConnector, HttpClientSettingsGroup, ClientConn
 import spray.can.server.HttpListener
 import spray.util.SprayActorLogging
 import spray.http._
+import Http.HostConnectorSetup
 
 private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor with SprayActorLogging {
   import httpSettings._
@@ -30,7 +31,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
   private[this] val hostConnectorCounter = Iterator from 0
 
   private[this] var settingsGroups = Map.empty[ClientConnectionSettings, ActorRef]
-  private[this] var hostConnectors = Map.empty[Http.HostConnectorSetup, ActorRef]
+  private[this] var hostConnectors = Map.empty[HostConnectorSetup, ActorRef]
   private[this] var listeners = Seq.empty[ActorRef]
 
   def receive = withTerminationManagement {
@@ -39,19 +40,22 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
         val req = request.withEffectiveUri(securedConnection = false)
         val Uri.Authority(host, port, _) = req.uri.authority
         val effectivePort = if (port == 0) Uri.defaultPorts(req.uri.scheme) else port
-        val connector = hostConnectorFor(Http.HostConnectorSetup(host.toString, effectivePort, req.uri.scheme == "https"))
-        // never render absolute URI here
-        connector.forward(req.copy(uri = req.uri.copy(scheme = "", authority = Uri.Authority.Empty)))
+        val connector = hostConnectorFor(HostConnectorSetup(host.toString, effectivePort, req.uri.scheme == "https"))
+        // never render absolute URIs here and we also drop any potentially existing fragment
+        val relativeUri = Uri(
+          path = if (req.uri.path.isEmpty) Uri.Path./ else req.uri.path,
+          query = req.uri.query)
+        connector.forward(req.copy(uri = relativeUri))
       } catch {
         case NonFatal(e) ⇒
           log.error("Illegal request: {}", e.getMessage)
           sender ! Status.Failure(e)
       }
 
-    case (request: HttpRequest, setup: Http.HostConnectorSetup) ⇒
+    case (request: HttpRequest, setup: HostConnectorSetup) ⇒
       hostConnectorFor(setup).forward(request)
 
-    case setup: Http.HostConnectorSetup ⇒
+    case setup: HostConnectorSetup ⇒
       val connector = hostConnectorFor(setup)
       sender.tell(Http.HostConnectorInfo(connector, setup), connector)
 
@@ -140,7 +144,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
       case Terminated(child) if running contains child ⇒ self.tell(Http.Unbound, child)
     }
 
-  def hostConnectorFor(setup: Http.HostConnectorSetup): ActorRef = {
+  def hostConnectorFor(setup: HostConnectorSetup): ActorRef = {
     val normalizedSetup = setup.normalized
 
     def createAndRegisterHostConnector = {

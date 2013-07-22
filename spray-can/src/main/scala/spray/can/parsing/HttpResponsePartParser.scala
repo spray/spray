@@ -80,7 +80,7 @@ class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeade
 
   // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-3.3
   def parseEntity(headers: List[HttpHeader], input: ByteString, bodyStart: Int, clh: Option[`Content-Length`],
-                  cth: Option[`Content-Type`], teh: Option[`Transfer-Encoding`],
+                  cth: Option[`Content-Type`], teh: Option[`Transfer-Encoding`], hostHeaderPresent: Boolean,
                   closeAfterResponseCompletion: Boolean): Result[HttpResponsePart] = {
     def entityExpected: Boolean =
       !isResponseToHeadRequest && {

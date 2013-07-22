@@ -89,7 +89,7 @@ class RequestParserSpec extends Specification {
 
       "with multi-line headers" in {
         parse {
-          """DELETE /abc HTTP/1.1
+          """DELETE /abc HTTP/1.0
             |User-Agent: curl/7.19.7
             | abc
             |    xyz
@@ -99,8 +99,22 @@ class RequestParserSpec extends Specification {
             |Content-type: application/json
             |
             |"""
-        } === (DELETE, Uri("/abc"), `HTTP/1.1`, List(`Content-Type`(`application/json`), Connection("close", "fancy"),
+        } === (DELETE, Uri("/abc"), `HTTP/1.0`, List(`Content-Type`(`application/json`), Connection("close", "fancy"),
           Accept(MediaRanges.`*/*`), `User-Agent`("curl/7.19.7 abc xyz")), "", "", true)
+      }
+
+      "byte-by-byte" in {
+        val request = prep {
+          """PUT /resource/yes HTTP/1.1
+            |Content-length:    4
+            |Host: x
+            |
+            |ABC"""
+        }
+        val parser = newParser
+        request.toCharArray foreach { c ⇒ rawParse(parser)(c.toString) === Result.NeedMoreData }
+        parse(parser)("DEFGH") === (PUT, Uri("/resource/yes"), `HTTP/1.1`, List(Host("x"), `Content-Length`(4)),
+          "ABCD", "EFGH", false)
       }
     }
 
@@ -259,8 +273,10 @@ class RequestParserSpec extends Specification {
 
   def parse(rawRequest: String): AnyRef = parse(newParser)(rawRequest)
 
-  def parse(parser: HttpRequestPartParser)(rawRequest: String): AnyRef = {
-    val data = ByteString(rawRequest.stripMargin.replace(EOL, "\n").replace("\n", "\r\n"))
+  def parse(parser: HttpRequestPartParser)(rawRequest: String): AnyRef = rawParse(parser)(prep(rawRequest))
+
+  def rawParse(parser: HttpRequestPartParser)(rawRequest: String): AnyRef = {
+    val data = ByteString(rawRequest)
     parser.parse(data) match {
       case Result.Ok(HttpRequest(m, u, h, e, p), rd, close) ⇒ (m, u, p, h, e.asString, rd.utf8String, close)
       case Result.Ok(ChunkedRequestStart(HttpRequest(m, u, h, EmptyEntity, p)), rd, close) ⇒ (m, u, p, h, rd.utf8String, close)
@@ -270,4 +286,6 @@ class RequestParserSpec extends Specification {
       case x ⇒ x
     }
   }
+
+  def prep(response: String) = response.stripMargin.replace(EOL, "\n").replace("\n", "\r\n")
 }

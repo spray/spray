@@ -43,18 +43,16 @@ object RequestParsing {
               log.warning(errorInfo.withSummaryPrepended("Illegal request header").formatPretty)
           }
 
+          def withEffectiveUri(req: HttpRequest) = req.withEffectiveUri(https, settings.defaultHostHeader)
+
           @tailrec def parse(data: ByteString): Unit =
             if (!data.isEmpty) parser.parse(data) match {
               case Result.Ok(part, remainingData, closeAfterResponseCompletion) ⇒
                 eventPL {
                   part match {
-                    case x: HttpRequest ⇒
-                      HttpMessageStartEvent(x.withEffectiveUri(https), closeAfterResponseCompletion)
-                    case x: ChunkedRequestStart ⇒
-                      HttpMessageStartEvent(ChunkedRequestStart(x.request.withEffectiveUri(https)),
-                        closeAfterResponseCompletion)
-                    case x ⇒
-                      Http.MessageEvent(x)
+                    case x: HttpRequest         ⇒ HttpMessageStartEvent(withEffectiveUri(x), closeAfterResponseCompletion)
+                    case x: ChunkedRequestStart ⇒ HttpMessageStartEvent(ChunkedRequestStart(withEffectiveUri(x.request)), closeAfterResponseCompletion)
+                    case x                      ⇒ Http.MessageEvent(x)
                   }
                 }
                 parse(remainingData)
