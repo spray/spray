@@ -17,21 +17,18 @@
 package spray.httpx.encoding
 
 import spray.http._
-import HttpHeaders._
 
 trait Decoder {
   def encoding: HttpEncoding
 
   def decode[T <: HttpMessage](message: T): T#Self = message.entity match {
-    case HttpBody(contentType, buffer) if message.headers exists isContentEncodingHeader ⇒
+    case HttpBody(contentType, buffer) if message.headers exists Encoder.isContentEncodingHeader ⇒
       message.withHeadersAndEntity(
-        headers = message.headers filterNot isContentEncodingHeader,
+        headers = message.headers filterNot Encoder.isContentEncodingHeader,
         entity = HttpEntity(contentType, newDecompressor.decompress(buffer)))
 
     case _ ⇒ message.message
   }
-
-  private val isContentEncodingHeader: HttpHeader ⇒ Boolean = _.isInstanceOf[`Content-Encoding`]
 
   def newDecompressor: Decompressor
 }
