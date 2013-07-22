@@ -67,4 +67,33 @@ class BasicUnmarshallersSpec extends Specification {
       EmptyEntity.as[String] === Left(ContentExpected)
     }
   }
+
+  "Unmarshaller.unmarshaller" should {
+    "produce the correct unmarshaller" in {
+      val unmarshaller = Unmarshaller.unmarshaller[String]
+
+      unmarshaller(HttpEntity("Hällö")) === Right("Hällö")
+    }
+  }
+
+  "Unmarshaller.unmarshal" should {
+    "succeed when unmarshalling valid entities" in {
+      Unmarshaller.unmarshal[String](HttpEntity("Hällö")) === Right("Hällö")
+    }
+
+    "fail when unmarshalling invalid entities" in {
+      val Left(UnsupportedContentType(msg)) = Unmarshaller.unmarshal[FormData](HttpEntity("Hällö"))
+      msg === "Expected 'application/x-www-form-urlencoded'"
+    }
+  }
+
+  "Unmarshaller.unmarshalUnsafe" should {
+    "correctly unmarshal valid content" in {
+      Unmarshaller.unmarshalUnsafe[String](HttpEntity("Hällö")) === "Hällö"
+    }
+
+    "throw an exception for invalid entities" in {
+      Unmarshaller.unmarshalUnsafe[NodeSeq](HttpEntity("Hällö")) must throwA[RuntimeException]
+    }
+  }
 }

@@ -46,11 +46,11 @@ class Servlet30ConnectorServlet extends HttpServlet {
     system = getServletContext.getAttribute(SystemAttrName).asInstanceOf[ActorSystem]
     serviceActor = getServletContext.getAttribute(ServiceActorAttrName).asInstanceOf[ActorRef]
     settings = getServletContext.getAttribute(SettingsAttrName).asInstanceOf[ConnectorSettings]
-    timeoutHandler = if (settings.timeoutHandler.isEmpty) serviceActor else system.actorFor(settings.timeoutHandler)
     require(system != null, "No ActorSystem configured")
     require(serviceActor != null, "No ServiceActor configured")
     require(settings != null, "No ConnectorSettings configured")
     require(RefUtils.isLocal(serviceActor), "The serviceActor must live in the same JVM as the Servlet30ConnectorServlet")
+    timeoutHandler = if (settings.timeoutHandler.isEmpty) serviceActor else system.actorFor(settings.timeoutHandler)
     require(RefUtils.isLocal(timeoutHandler), "The timeoutHandler must live in the same JVM as the Servlet30ConnectorServlet")
     log = Logging(system, this.getClass)
     log.info("Initialized Servlet API 3.0 <=> Spray Connector")

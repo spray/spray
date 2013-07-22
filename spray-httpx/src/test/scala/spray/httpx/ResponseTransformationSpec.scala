@@ -52,7 +52,7 @@ class ResponseTransformationSpec extends Specification with RequestBuilding with
 
     "support response decompression" in {
       val pipeline = encode(Gzip) ~> echo ~> decode(Gzip)
-      pipeline(Get("/abc", "Hello")).await === HttpResponse(200, "Hello", List(`Content-Encoding`(HttpEncodings.gzip)))
+      pipeline(Get("/abc", "Hello")).await === HttpResponse(200, "Hello")
     }
 
     "support request authentication" in {
