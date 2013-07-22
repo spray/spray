@@ -16,6 +16,7 @@
 
 package spray.httpx.encoding
 
+import spray.http.{ HttpRequest, HttpEntity }
 import java.io.{ ByteArrayInputStream, ByteArrayOutputStream }
 import java.util.zip.{ ZipException, GZIPInputStream, GZIPOutputStream }
 import org.parboiled.common.FileUtils
@@ -42,6 +43,10 @@ class GzipSpec extends Specification with CodecSpecSupport {
     }
     "properly roundtip encode/decode a large string" in {
       ourGunzip(ourGzip(largeTextBytes)) must readAs(largeText)
+    }
+    "properly roundtip encode/decode an HttpRequest" in {
+      val request = HttpRequest(entity = HttpEntity(largeText))
+      Gzip.decode(Gzip.encode(request)) === request
     }
     "provide a better compression ratio than the standard Gzipr/Gunzip streams" in {
       ourGzip(largeTextBytes).length must be_<(streamGzip(largeTextBytes).length)
