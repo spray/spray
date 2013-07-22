@@ -39,4 +39,12 @@ object Unmarshaller {
     new Unmarshaller[T] {
       def apply(entity: HttpEntity) = if (entity.isEmpty) Left(ContentExpected) else um(entity)
     }
+
+  def unmarshaller[T](implicit um: Unmarshaller[T]) = um
+
+  def unmarshal[T: Unmarshaller](entity: HttpEntity): Deserialized[T] = unmarshaller.apply(entity)
+  def unmarshalUnsafe[T: Unmarshaller](entity: HttpEntity): T = unmarshaller.apply(entity) match {
+    case Right(value) ⇒ value
+    case Left(error)  ⇒ sys.error(error.toString)
+  }
 }
