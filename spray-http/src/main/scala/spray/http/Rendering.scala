@@ -167,7 +167,12 @@ object Rendering {
 class StringRendering extends Rendering {
   private[this] val sb = new java.lang.StringBuilder
   def ~~(char: Char): this.type = { sb.append(char); this }
-  def ~~(bytes: Array[Byte]): this.type = { sb.append(new String(bytes, 0)); this }
+  def ~~(bytes: Array[Byte]): this.type = {
+    @tailrec def rec(ix: Int = 0): this.type =
+      if (ix < bytes.length) { this ~~ bytes(ix).asInstanceOf[Char]; rec(ix + 1) } else this
+    rec()
+  }
+
   def get: String = sb.toString
 }
 
