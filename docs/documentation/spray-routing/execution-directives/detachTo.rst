@@ -1,6 +1,0 @@
-.. _-detachTo-:
-
-detachTo
-========
-
-(todo)

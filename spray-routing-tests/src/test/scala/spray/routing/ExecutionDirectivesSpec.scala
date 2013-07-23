@@ -16,6 +16,8 @@
 
 package spray.routing
 
+import spray.http.StatusCodes.InternalServerError
+
 class ExecutionDirectivesSpec extends RoutingSpec {
 
   "the 'dynamicIf' directive" should {
@@ -30,6 +32,27 @@ class ExecutionDirectivesSpec extends RoutingSpec {
       expect(dynamicRoute, "xx")
       expect(dynamicRoute, "xxx")
       expect(dynamicRoute, "xxxx")
+    }
+  }
+
+  "the 'detach directive" should {
+    "handle exceptions thrown inside its inner future" in {
+
+      implicit val exceptionHandler = ExceptionHandler {
+        case e: ArithmeticException ⇒ ctx ⇒
+          ctx.complete(InternalServerError, "Oops.")
+      }
+
+      val route = get {
+        detach() {
+          complete((3 / 0).toString)
+        }
+      }
+
+      Get() ~> route ~> check {
+        status === InternalServerError
+        entityAs[String] === "Oops."
+      }
     }
   }
 }

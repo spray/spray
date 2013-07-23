@@ -74,7 +74,7 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
               // unmarshal with in-scope unmarshaller
               entity(as[Order]) { order =>
                 // transfer to newly spawned actor
-                detachTo(singleRequestServiceActor) {
+                detach() {
                   complete {
                     // ... write order to DB
                     "Order received"
