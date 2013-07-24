@@ -38,7 +38,7 @@ trait DemoService extends HttpService {
   val demoRoute = {
     get {
       path("") {
-      complete(index)
+        complete(index)
       } ~
       path("ping") {
         complete("PONG!")

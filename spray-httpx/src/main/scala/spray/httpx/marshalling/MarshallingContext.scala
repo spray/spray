@@ -28,8 +28,6 @@ trait MarshallingContext { self ⇒
    */
   def tryAccept(contentTypes: Seq[ContentType]): Option[ContentType]
 
-  def tryAccept(contentType: ContentType): Option[ContentType] = tryAccept(List(contentType))
-
   /**
    * Signals that the Marshaller rejects the marshalling request because
    * none of its target ContentTypes is accepted.

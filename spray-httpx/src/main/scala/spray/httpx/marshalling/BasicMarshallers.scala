@@ -69,7 +69,7 @@ trait BasicMarshallers {
   implicit val HttpEntityMarshaller = Marshaller[HttpEntity] { (value, ctx) ⇒
     value match {
       case EmptyEntity ⇒ ctx.marshalTo(EmptyEntity)
-      case body @ HttpBody(contentType, _) ⇒ ctx.tryAccept(contentType) match {
+      case body @ HttpBody(contentType, _) ⇒ ctx.tryAccept(contentType :: Nil) match {
         case Some(_) ⇒ ctx.marshalTo(body) // we do NOT use the accepted CT here, since we do not want to recode
         case None    ⇒ ctx.rejectMarshalling(Seq(contentType))
       }
