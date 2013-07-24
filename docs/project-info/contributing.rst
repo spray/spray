@@ -83,14 +83,15 @@ Contributor License Agreement (CLA)
 -----------------------------------
 
 Contributions to the project, no matter what kind, are always very welcome.
-However, we can only accept patches if the patch is your original work and you license your work to the *spray* project
-under the :ref:`project's open source license <license>`. In order the provide a proper legal foundation for this we
-need to ask you to sign `our CLA`_, which is a direct adaptation of the
-`Apache Foundation's Individual Contributor License Agreement V2.0`__.
+However, we would like to make sure that we as the project maintainers as well as the contributors are properly covered
+with regard to the legal aspects of their contributions. This is why we can only accept patches if the patch is your
+original work and you license your work to the *spray* project under the :ref:`project's open source license <license>`.
 
-If you have not already done so, please
-download_, complete and sign a copy of the CLA and then scan and :ref:`email <Contact>` us a PDF file!
-If you prefer you can also snail-mail us the original, please ask for the mailing address.
+In order the provide a proper legal foundation for this we need to ask you to sign `our CLA`_, which is a direct
+adaptation of the `Apache Foundation's Individual Contributor License Agreement V2.0`__.
+
+If you have not already done so, please download_, complete and sign a copy of the CLA and then scan and :ref:`email <Contact>`
+us a PDF file! If you prefer you can also snail-mail us the original, please ask for the mailing address.
 
 .. _download: `our CLA`_
 .. _our CLA: /spray.io-CLA.pdf
