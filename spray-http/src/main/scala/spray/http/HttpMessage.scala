@@ -170,8 +170,13 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     // according to the HTTP spec a client has to accept all mime types if no Accept header is sent with the request
     // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
     val ranges = acceptedMediaRanges
-    ranges.isEmpty || ranges.exists(r ⇒ r.qValue > 0.0f && r.matches(mediaType))
+    ranges.isEmpty || ranges.exists(r ⇒ isMediaTypeMatched(r, mediaType))
   }
+
+  private def isMediaTypeMatched(mediaRange: MediaRange, mediaType: MediaType) =
+    // according to the HTTP spec a media range with a q-Value of 0 is not acceptable for the client
+    // http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.9
+    mediaRange.qValue > 0.0f && mediaRange.matches(mediaType)
 
   /**
    * Determines whether the given charset is accepted by the client.
@@ -203,17 +208,16 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     val charsetRanges = acceptedCharsetRanges
     def hasAcceptedCharset(ct: ContentType) =
       ct.noCharsetDefined || isCharsetAccepted(ct.definedCharset.get, charsetRanges)
-    val contentType =
-      acceptedMediaRanges match {
-        // according to the HTTP spec a client has to accept all mime types if no Accept header is sent with the request
-        // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
-        case Nil ⇒ contentTypes.headOption filter hasAcceptedCharset
-        case mediaRanges ⇒ mediaRanges.view.map { mediaRange ⇒
-          contentTypes find { ct ⇒
-            mediaRange.qValue > 0.0f && mediaRange.matches(ct.mediaType) && hasAcceptedCharset(ct)
-          }
-        } collectFirst { case Some(ct) ⇒ ct } // TODO: replace with `mapFind` after dependency on spray-utils is added
-      }
+    val contentType = acceptedMediaRanges match {
+      // according to the HTTP spec a client has to accept all mime types if no Accept header is sent with the request
+      // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
+      case Nil ⇒ contentTypes find hasAcceptedCharset
+      case mediaRanges ⇒ mediaRanges.view.flatMap { mediaRange ⇒
+        contentTypes find { ct ⇒
+          isMediaTypeMatched(mediaRange, ct.mediaType) && hasAcceptedCharset(ct)
+        }
+      }.headOption
+    }
     contentType map { ct ⇒
       if (ct.isCharsetDefined) ct
       else {
