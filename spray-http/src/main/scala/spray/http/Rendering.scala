@@ -111,6 +111,9 @@ trait Rendering {
   def ~~(char: Char): this.type
   def ~~(bytes: Array[Byte]): this.type
 
+  def ~~(f: Float): this.type = this ~~ f.toString
+  def ~~(d: Double): this.type = this ~~ d.toString
+
   def ~~(int: Int): this.type = this ~~ int.toLong
 
   def ~~(long: Long): this.type =

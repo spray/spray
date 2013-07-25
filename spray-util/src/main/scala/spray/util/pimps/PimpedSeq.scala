@@ -39,7 +39,7 @@ abstract class PimpedSeq[+A] {
 class PimpedLinearSeq[+A](underlying: LinearSeq[A]) extends PimpedSeq[A] {
   def mapFind[B](f: A ⇒ Option[B]): Option[B] = {
     @tailrec def mapFind(seq: LinearSeq[A]): Option[B] =
-      if (!seq.isEmpty) {
+      if (seq.nonEmpty) {
         val x = f(seq.head)
         if (x.isEmpty) mapFind(seq.tail) else x
       } else None

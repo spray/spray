@@ -26,7 +26,7 @@ trait MarshallingContext { self ⇒
    * If the given ContentType does not define a charset an accepted charset is selected, i.e. the method guarantees
    * that, if a ContentType instance is returned within the option, it will contain a defined charset.
    */
-  def tryAccept(contentType: ContentType): Option[ContentType]
+  def tryAccept(contentTypes: Seq[ContentType]): Option[ContentType]
 
   /**
    * Signals that the Marshaller rejects the marshalling request because
@@ -61,8 +61,8 @@ trait MarshallingContext { self ⇒
    */
   def withContentTypeOverriding(contentType: ContentType): MarshallingContext =
     new DelegatingMarshallingContext(self) {
-      override def tryAccept(ct: ContentType) =
-        Some(if (contentType.isCharsetDefined) ct.withCharset(contentType.charset) else ct)
+      override def tryAccept(cts: Seq[ContentType]) =
+        Some(if (contentType.isCharsetDefined) cts.head.withCharset(contentType.charset) else cts.head)
       override def marshalTo(entity: HttpEntity): Unit = { self.marshalTo(overrideContentType(entity)) }
       override def startChunkedMessage(entity: HttpEntity, ack: Option[Any])(implicit sender: ActorRef) =
         self.startChunkedMessage(overrideContentType(entity), ack)
@@ -76,7 +76,7 @@ trait MarshallingContext { self ⇒
  * wrap another MarshallingContext with some extra logic.
  */
 class DelegatingMarshallingContext(underlying: MarshallingContext) extends MarshallingContext {
-  def tryAccept(contentType: ContentType) = underlying.tryAccept(contentType)
+  def tryAccept(contentTypes: Seq[ContentType]) = underlying.tryAccept(contentTypes)
   def rejectMarshalling(supported: Seq[ContentType]): Unit = { underlying.rejectMarshalling(supported) }
   def marshalTo(entity: HttpEntity): Unit = { underlying.marshalTo(entity) }
   def handleError(error: Throwable): Unit = { underlying.handleError(error) }
