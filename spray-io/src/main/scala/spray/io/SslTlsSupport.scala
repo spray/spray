@@ -34,6 +34,17 @@ trait SslTlsContext extends PipelineContext {
   def sslEngine: Option[SSLEngine]
 }
 
+/**
+ * A pipeline stage that provides SSL support.
+ *
+ * One thing to keep in mind is that there's no support for half-closed connections
+ * in SSL (but SSL on the other side requires half-closed connections from its transport
+ * layer). This means:
+ * 1. keepOpenOnPeerClosed is not supported on top of SSL (once you receive PeerClosed the connection is closed, further
+ *    CloseCommands are ignored)
+ * 2. keepOpenOnPeerClosed should always be enabled on the transport layer beneath SSL so that one can wait for
+ *    the other side's SSL level close_notify message without barfing RST to the peer because this socket is already gone
+ */
 object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
 
   def enabled(context: SslTlsContext) = context.sslEngine.isDefined
@@ -44,6 +55,7 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
       val engine = context.sslEngine.get
       var pendingSends = Queue.empty[Send]
       var inboundReceptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
+      var originalCloseCommand: Tcp.CloseCommand = _
 
       val commandPipeline: CPL = {
         case x: Tcp.Write ⇒
@@ -51,10 +63,14 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
           else pendingSends = pendingSends enqueue Send(x)
 
         case x @ (Tcp.Close | Tcp.ConfirmedClose) ⇒
+          originalCloseCommand = x.asInstanceOf[Tcp.CloseCommand]
+
           log.debug("Closing SSLEngine due to reception of {}", x)
           engine.closeOutbound()
           withTempBuf(closeEngine)
-          commandPL(x)
+
+        // don't send close command to network here, it's the job of the SSL engine
+        // to shutdown the connection when getting CLOSED in encrypt
 
         case cmd ⇒ commandPL(cmd)
       }
@@ -70,11 +86,19 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
           withTempBuf(decrypt(buf, _))
 
         case x: Tcp.ConnectionClosed ⇒
-          if (!engine.isOutboundDone) {
+          // After we have closed the connection we ignore FIN from the other side.
+          // That's to avoid a strange condition where we know that no truncation attack
+          // can happen any more (because we actively closed the connection) but the peer
+          // isn't behaving properly and didn't send close_notify. Why is this condition strange?
+          // Because if we had closed the connection directly after we sent close_notify (which
+          // is allowed by the spec) we wouldn't even have noticed.
+          if (!engine.isOutboundDone)
             try engine.closeInbound()
             catch { case e: SSLException ⇒ } // ignore warning about possible possible truncation attacks
-          }
-          eventPL(x)
+
+          if (x.isAborted || (originalCloseCommand eq null)) eventPL(x)
+          else if (!engine.isInboundDone) eventPL(originalCloseCommand.event)
+        // else close message was sent by decrypt case CLOSED
 
         case ev ⇒ eventPL(ev)
       }
@@ -111,8 +135,9 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
           case CLOSED ⇒
             if (postContentLeft) {
               log.warning("SSLEngine closed prematurely while sending")
-              commandPL(Tcp.Close)
+              commandPL(Tcp.Abort)
             }
+            commandPL(Tcp.ConfirmedClose)
           case BUFFER_OVERFLOW ⇒
             throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
           case BUFFER_UNDERFLOW ⇒
@@ -146,7 +171,11 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
           }
           case CLOSED ⇒
             if (!engine.isOutboundDone) {
-              log.warning("SSLEngine closed prematurely while receiving")
+              closeEngine(tempBuf)
+              eventPL(Tcp.PeerClosed)
+            } else { // now both sides are closed on the SSL level
+              eventPL(originalCloseCommand.event)
+              // close the underlying connection, we don't need it any more
               commandPL(Tcp.Close)
             }
           case BUFFER_UNDERFLOW ⇒
