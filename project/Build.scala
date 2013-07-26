@@ -1,6 +1,5 @@
 import sbt._
 import Keys._
-import com.typesafe.sbt.osgi.SbtOsgi._
 
 object Build extends Build {
   import BuildSettings._
@@ -74,8 +73,7 @@ object Build extends Build {
 
 
   lazy val sprayHttpx = Project("spray-httpx", file("spray-httpx"))
-    .dependsOn(sprayHttp, sprayUtil,
-      sprayIO) // for access to akka.io.Tcp, can go away after upgrade to Akka 2.2
+    .dependsOn(sprayHttp, sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(osgiSettings(exports = Seq("spray.httpx"), imports = Seq(
       "spray.json.*;resolution := optional",
@@ -93,7 +91,7 @@ object Build extends Build {
   lazy val sprayIO = Project("spray-io", file("spray-io"))
     .dependsOn(sprayUtil)
     .settings(sprayModuleSettings: _*)
-    .settings(osgiSettings(exports = Seq("spray.io", "akka.io")): _*)
+    .settings(osgiSettings(exports = Seq("spray.io")): _*)
     .settings(libraryDependencies ++= provided(akkaActor, scalaReflect))
 
 
@@ -108,8 +106,7 @@ object Build extends Build {
     .dependsOn(
       sprayCaching % "provided", // for the CachingDirectives trait
       sprayCan % "provided",  // for the SimpleRoutingApp trait
-      sprayHttp, sprayHttpx, sprayUtil,
-      sprayIO) // for access to akka.io.Tcp, can go away after upgrade to Akka 2.2
+      sprayHttp, sprayHttpx, sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
     .settings(osgiSettings(exports = Seq("spray.routing"), imports = Seq("shapeless.*;resolution:=optional")): _*)
@@ -127,8 +124,7 @@ object Build extends Build {
 
 
   lazy val sprayServlet = Project("spray-servlet", file("spray-servlet"))
-    .dependsOn(sprayHttp, sprayUtil,
-      sprayIO) // for access to akka.io.Tcp, can go away after upgrade to Akka 2.2
+    .dependsOn(sprayHttp, sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(osgiSettings(exports = Seq("spray.servlet"), imports = Seq("javax.servlet.*;version=\"[2.6,4.0)\"")): _*)
     .settings(libraryDependencies ++=
@@ -265,8 +261,7 @@ object Build extends Build {
 
   lazy val simpleSprayServletServer = Project("simple-spray-servlet-server",
                                               file("examples/spray-servlet/simple-spray-servlet-server"))
-    .dependsOn(sprayHttp, sprayServlet,
-      sprayIO) // for access to akka.io.Tcp, can go away after upgrade to Akka 2.2
+    .dependsOn(sprayHttp, sprayServlet)
     .settings(jettyExampleSettings: _*)
     .settings(exampleSettings: _*)
     .settings(libraryDependencies ++=
