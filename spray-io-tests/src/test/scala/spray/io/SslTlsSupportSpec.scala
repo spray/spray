@@ -272,7 +272,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       def actorContext = context
       def remoteAddress = connected.remoteAddress
       def localAddress = connected.localAddress
-      def log = implicitly[LoggingContext]
+      def log = LoggingContext.fromActorRefFactory(context)
       def sslEngine = engineProvider(this)
     }
 
