@@ -68,7 +68,7 @@ object MediaRange {
 
   private case class CustomMediaRange(value: String)(val mainType: String, val parameters: Map[String, String],
                                                      val qValue: Float) extends MediaRange with MainTypeBased {
-    def matches(mediaType: MediaType) = mediaType.mainType == mainType
+    def matches(mediaType: MediaType) = mainType == "*" || mediaType.mainType == mainType
     type Self = MediaRange
     protected def copyWith(qValue: Double, parameters: Map[String, String]) = custom(mainType, parameters, qValue)
   }
@@ -133,6 +133,7 @@ sealed abstract case class MediaType private[http] (value: String)(val mainType:
                                                                    val qValue: Float) extends MediaRange {
   type Self <: MediaType
   override def matches(mediaType: MediaType) = mediaType.mainType == mainType && mediaType.subType == subType
+  def withCharset(charset: HttpCharset): ContentType = ContentType(this, charset)
 }
 
 class MultipartMediaType private[http] (_value: String, _subType: String, _parameters: Map[String, String], _qValue: Float)
