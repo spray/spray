@@ -53,18 +53,14 @@ object Http extends ExtensionKey[HttpExt] {
       apply(listener, new InetSocketAddress(interface, port), backlog, options, settings)
   }
 
-  case class HostConnectorSetup(remoteAddress: InetSocketAddress,
-                                options: immutable.Traversable[Inet.SocketOption],
-                                settings: Option[HostConnectorSettings])(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command {
+  case class HostConnectorSetup(host: String, port: Int = 80,
+                                options: immutable.Traversable[Inet.SocketOption] = Nil,
+                                settings: Option[HostConnectorSettings] = None)(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command {
     private[can] def normalized(implicit refFactory: ActorRefFactory) =
       if (settings.isDefined) this
       else copy(settings = Some(HostConnectorSettings(actorSystem)))
   }
   object HostConnectorSetup {
-    def apply(host: String, port: Int = 80, options: immutable.Traversable[Inet.SocketOption] = Nil,
-              settings: Option[HostConnectorSettings] = None)(implicit sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup =
-      apply(new InetSocketAddress(host, port), options, settings)
-
     def apply(host: String, port: Int, sslEncryption: Boolean)(implicit refFactory: ActorRefFactory, sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup = {
       val connectionSettings = ClientConnectionSettings(actorSystem).copy(sslEncryption = sslEncryption)
       apply(host, port, settings = Some(HostConnectorSettings(actorSystem).copy(connectionSettings = connectionSettings)))
