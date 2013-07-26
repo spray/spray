@@ -17,6 +17,7 @@
 package spray.routing
 package directives
 
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.control.NonFatal
 import akka.actor._
 
@@ -82,30 +83,32 @@ trait ExecutionDirectives {
   }
 
   /**
-   * Executes its inner Route in the context of the actor returned by the given function.
-   * Note that the parameter function is re-evaluated for every request anew.
+   * Executes its inner Route in a `Future`.
    */
-  def detachTo(serviceActor: Route ⇒ ActorRef): Directive0 =
-    mapInnerRoute { route ⇒ ctx ⇒ serviceActor(route) ! ctx }
-
-  /**
-   * Returns a function creating a new SingleRequestServiceActor for a given Route.
-   */
-  def singleRequestServiceActor(implicit refFactory: ActorRefFactory): Route ⇒ ActorRef =
-    route ⇒ refFactory.actorOf(Props(new SingleRequestServiceActor(route)))
+  def detach(dm: DetachMagnet): Directive0 = {
+    import dm._
+    mapInnerRoute { inner ⇒
+      ctx ⇒
+        Future(inner(ctx)).onFailure { case e ⇒ ctx.failWith(e) }
+    }
+  }
 }
 
 object ExecutionDirectives extends ExecutionDirectives
 
-/**
- * An HttpService actor that reacts to an incoming RequestContext message by running it in the given Route
- * before shutting itself down.
- */
-class SingleRequestServiceActor(route: Route) extends Actor {
-  def receive = {
-    case ctx: RequestContext ⇒
-      try route(ctx)
-      catch { case NonFatal(e) ⇒ ctx.failWith(e) }
-      finally context.stop(self)
-  }
+class DetachMagnet()(implicit val ec: ExecutionContext)
+
+object DetachMagnet {
+  implicit def fromUnit(u: Unit)(implicit dm2: DetachMagnet2) = new DetachMagnet()(dm2.ec)
+  implicit def fromExecutionContext(ec: ExecutionContext) = new DetachMagnet()(ec)
+}
+
+class DetachMagnet2(val ec: ExecutionContext)
+
+object DetachMagnet2 extends DetachMagnet2LowerPriorityImplicits {
+  implicit def fromImplicitExecutionContext(implicit ec: ExecutionContext) = new DetachMagnet2(ec)
+}
+
+private[directives] abstract class DetachMagnet2LowerPriorityImplicits {
+  implicit def fromImplicitRefFactory(implicit factory: ActorRefFactory) = new DetachMagnet2(factory.dispatcher)
 }

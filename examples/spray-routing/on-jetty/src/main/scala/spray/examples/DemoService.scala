@@ -44,8 +44,8 @@ trait DemoService extends HttpService {
         complete("PONG!")
       } ~
       path("stream1") {
-        // we detach in order to move the blocking code inside the simpleStringStream off the service actor
-        detachTo(singleRequestServiceActor) {
+        // we detach in order to move the blocking code inside the simpleStringStream into a future
+        detach() {
           complete(simpleStringStream)
         }
       } ~

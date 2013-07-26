@@ -6,7 +6,7 @@ ExecutionDirectives
 .. toctree::
    :maxdepth: 1
 
-   detachTo
+   detach
    dynamic
    dynamicIf
    handleExceptions
