@@ -33,7 +33,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
   private[this] val dispatchStrategy = if (settings.pipelining) new PipelinedStrategy else new NonPipelinedStrategy
   private[this] var openRequestCounts = Map.empty[ActorRef, Int] // open requests per child, holds -1 if unconnected
   private[this] val hostHeader = {
-    val encrypted = settings.connectionSettings.sslEncryption
+    val encrypted = normalizedSetup.sslEncryption
     val port = normalizedSetup.port match {
       case 443 if encrypted ⇒ 0
       case 80 if !encrypted ⇒ 0
@@ -122,7 +122,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
   def newConnectionChild(): ActorRef = {
     val child = context.watch {
       context.actorOf(
-        props = Props(new HttpHostConnectionSlot(host, port, options, settings.idleTimeout,
+        props = Props(new HttpHostConnectionSlot(host, port, sslEncryption, options, settings.idleTimeout,
           clientConnectionSettingsGroup)),
         name = counter.next().toString)
     }

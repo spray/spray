@@ -33,13 +33,14 @@ object Http extends ExtensionKey[HttpExt] {
   type Command = Tcp.Command
 
   case class Connect(remoteAddress: InetSocketAddress,
+                     sslEncryption: Boolean,
                      localAddress: Option[InetSocketAddress],
                      options: immutable.Traversable[Inet.SocketOption],
                      settings: Option[ClientConnectionSettings])(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command
   object Connect {
-    def apply(host: String, port: Int = 80, localAddress: Option[InetSocketAddress] = None,
+    def apply(host: String, port: Int = 80, sslEncryption: Boolean = false, localAddress: Option[InetSocketAddress] = None,
               options: immutable.Traversable[Inet.SocketOption] = Nil, settings: Option[ClientConnectionSettings] = None)(implicit sslEngineProvider: ClientSSLEngineProvider): Connect =
-      apply(new InetSocketAddress(host, port), localAddress, options, settings)
+      apply(new InetSocketAddress(host, port), sslEncryption, localAddress, options, settings)
   }
 
   case class Bind(listener: ActorRef,
@@ -54,6 +55,7 @@ object Http extends ExtensionKey[HttpExt] {
   }
 
   case class HostConnectorSetup(host: String, port: Int = 80,
+                                sslEncryption: Boolean = false,
                                 options: immutable.Traversable[Inet.SocketOption] = Nil,
                                 settings: Option[HostConnectorSettings] = None)(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command {
     private[can] def normalized(implicit refFactory: ActorRefFactory) =
@@ -62,8 +64,11 @@ object Http extends ExtensionKey[HttpExt] {
   }
   object HostConnectorSetup {
     def apply(host: String, port: Int, sslEncryption: Boolean)(implicit refFactory: ActorRefFactory, sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup = {
-      val connectionSettings = ClientConnectionSettings(actorSystem).copy(sslEncryption = sslEncryption)
-      apply(host, port, settings = Some(HostConnectorSettings(actorSystem).copy(connectionSettings = connectionSettings)))
+      val connectionSettings = ClientConnectionSettings(actorSystem)
+      apply(
+        host, port,
+        sslEncryption = sslEncryption,
+        settings = Some(HostConnectorSettings(actorSystem).copy(connectionSettings = connectionSettings)))
     }
   }
 

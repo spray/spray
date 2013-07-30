@@ -162,7 +162,7 @@ class SprayCanClientSpec extends Specification {
       }
 
       val probe = TestProbe()
-      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, true))
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, sslEncryption = true))
       val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
       probe.sender === hostConnector
       probe.reply(Get("/"))
