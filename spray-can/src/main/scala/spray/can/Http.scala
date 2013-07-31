@@ -33,13 +33,14 @@ object Http extends ExtensionKey[HttpExt] {
   type Command = Tcp.Command
 
   case class Connect(remoteAddress: InetSocketAddress,
+                     sslEncryption: Boolean,
                      localAddress: Option[InetSocketAddress],
                      options: immutable.Traversable[Inet.SocketOption],
                      settings: Option[ClientConnectionSettings])(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command
   object Connect {
-    def apply(host: String, port: Int = 80, localAddress: Option[InetSocketAddress] = None,
+    def apply(host: String, port: Int = 80, sslEncryption: Boolean = false, localAddress: Option[InetSocketAddress] = None,
               options: immutable.Traversable[Inet.SocketOption] = Nil, settings: Option[ClientConnectionSettings] = None)(implicit sslEngineProvider: ClientSSLEngineProvider): Connect =
-      apply(new InetSocketAddress(host, port), localAddress, options, settings)
+      apply(new InetSocketAddress(host, port), sslEncryption, localAddress, options, settings)
   }
 
   case class Bind(listener: ActorRef,
@@ -53,21 +54,21 @@ object Http extends ExtensionKey[HttpExt] {
       apply(listener, new InetSocketAddress(interface, port), backlog, options, settings)
   }
 
-  case class HostConnectorSetup(remoteAddress: InetSocketAddress,
-                                options: immutable.Traversable[Inet.SocketOption],
-                                settings: Option[HostConnectorSettings])(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command {
+  case class HostConnectorSetup(host: String, port: Int = 80,
+                                sslEncryption: Boolean = false,
+                                options: immutable.Traversable[Inet.SocketOption] = Nil,
+                                settings: Option[HostConnectorSettings] = None)(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command {
     private[can] def normalized(implicit refFactory: ActorRefFactory) =
       if (settings.isDefined) this
       else copy(settings = Some(HostConnectorSettings(actorSystem)))
   }
   object HostConnectorSetup {
-    def apply(host: String, port: Int = 80, options: immutable.Traversable[Inet.SocketOption] = Nil,
-              settings: Option[HostConnectorSettings] = None)(implicit sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup =
-      apply(new InetSocketAddress(host, port), options, settings)
-
     def apply(host: String, port: Int, sslEncryption: Boolean)(implicit refFactory: ActorRefFactory, sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup = {
-      val connectionSettings = ClientConnectionSettings(actorSystem).copy(sslEncryption = sslEncryption)
-      apply(host, port, settings = Some(HostConnectorSettings(actorSystem).copy(connectionSettings = connectionSettings)))
+      val connectionSettings = ClientConnectionSettings(actorSystem)
+      apply(
+        host, port,
+        sslEncryption = sslEncryption,
+        settings = Some(HostConnectorSettings(actorSystem).copy(connectionSettings = connectionSettings)))
     }
   }
 

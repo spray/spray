@@ -40,7 +40,8 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
     akka.loglevel = WARNING
     akka.io.tcp.trace-logging = off
     spray.can.host-connector.max-retries = 2
-    spray.can.host-connector.client.request-timeout = 400ms""")
+    spray.can.host-connector.client.request-timeout = 400ms
+    spray.can.client.user-agent-header = "RequestMachine"""")
   implicit val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConf)
   import system.dispatcher
   val (interface, port) = Utils.temporaryServerHostnameAndPort()
@@ -62,7 +63,8 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
           case x @ HttpRequest(method, uri, _, entity, _) ⇒
             log.debug("Responding to " + x)
             dropNext = random.nextBoolean()
-            sender ! HttpResponse(entity = method + "|" + uri.path + (if (entity.isEmpty) "" else "|" + entity.asString))
+            val mirroredHeaders = x.header[HttpHeaders.`User-Agent`].toList
+            sender ! HttpResponse(entity = method + "|" + uri.path + (if (entity.isEmpty) "" else "|" + entity.asString), headers = mirroredHeaders)
           case Timedout(request)         ⇒ sender ! HttpResponse(entity = "TIMEOUT")
           case ev: Http.ConnectionClosed ⇒ log.debug("Received " + ev)
         }
@@ -106,6 +108,11 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
       }
       future.await.map { case (a, b) ⇒ a.entity === b.entity }.reduceLeft(_ and _)
     }
+    "should honor the global spray.can.client settings" in {
+      val Http.HostConnectorInfo(connector, _) = IO(Http).ask(Http.HostConnectorSetup(interface, port)).await
+      val pipeline = sendReceive(connector)
+      pipeline(HttpRequest()).await.header[HttpHeaders.`User-Agent`].get.value === "RequestMachine"
+    }
   }
 
   "Shutdown" should {
@@ -121,7 +128,7 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
 
   def newPipeline(pipelined: Boolean, maxConnections: Int = 4) = {
     val settings = HostConnectorSettings(system).copy(maxConnections = maxConnections, pipelining = pipelined)
-    val Http.HostConnectorInfo(connector, _) = IO(Http).ask(Http.HostConnectorSetup(interface, port, Nil, Some(settings))).await
+    val Http.HostConnectorInfo(connector, _) = IO(Http).ask(Http.HostConnectorSetup(interface, port, false, Nil, Some(settings))).await
     sendReceive(connector)
   }
 

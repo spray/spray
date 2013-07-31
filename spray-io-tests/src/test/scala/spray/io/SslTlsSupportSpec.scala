@@ -34,6 +34,8 @@ import spray.util.{ Utils, LoggingContext }
 import annotation.tailrec
 
 class SslTlsSupportSpec extends Specification with NoTimeConversions {
+  sequential
+
   implicit val timeOut: Timeout = 1.second
   implicit val sslContext = createSslContext("/ssl-test-keystore.jks", "")
   val testConf: Config = ConfigFactory.parseString("""
@@ -47,22 +49,34 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
   "The SslTlsSupport" should {
 
     "work between a Java client and a Java server" in {
+      invalidateSessions()
       val server = new JavaSslServer
       val client = new JavaSslClient(server.address)
       client.run()
+
+      val baselineSessionCounts = sessionCounts()
       client.close()
+      // make sure not to lose sessions by invalid session closure
+      sessionCounts() === baselineSessionCounts
       server.close()
+      sessionCounts() === baselineSessionCounts // see above
     }
 
     "work between a spray client and a Java server" in {
+      invalidateSessions()
       val server = new JavaSslServer
       val client = new SpraySslClient(server.address)
       client.run()
+
+      val baselineSessionCounts = sessionCounts()
       client.close()
+      sessionCounts() === baselineSessionCounts // see above
       server.close()
+      sessionCounts() === baselineSessionCounts // see above
     }
 
     "work between a Java client and a spray server" in {
+      invalidateSessions()
       val serverAddress = Utils.temporaryServerAddress()
       val bindHandler = system.actorOf(Props(new SpraySslServer))
       val probe = TestProbe()
@@ -71,10 +85,13 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
 
       val client = new JavaSslClient(serverAddress)
       client.run()
+      val baselineSessionCounts = sessionCounts()
       client.close()
+      sessionCounts() === baselineSessionCounts // see above
     }
 
     "work between a spray client and a spray server" in {
+      invalidateSessions()
       val serverAddress = Utils.temporaryServerAddress()
       val bindHandler = system.actorOf(Props(new SpraySslServer))
       val probe = TestProbe()
@@ -83,7 +100,38 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
 
       val client = new SpraySslClient(serverAddress)
       client.run()
+
+      val baselineSessionCounts = sessionCounts()
       client.close()
+      sessionCounts() === baselineSessionCounts // see above
+    }
+
+    "work between a spray client and a Java server with confirmedClose" in {
+      invalidateSessions()
+      val server = new JavaSslServer
+      val client = new SpraySslClient(server.address)
+      client.run()
+      val baselineSessionCounts = sessionCounts()
+      client.closeConfirmed()
+      sessionCounts() === baselineSessionCounts // see above
+      server.close()
+      sessionCounts() === baselineSessionCounts // see above
+    }
+
+    "spray client runs the full shutdown sequence if peer closes" in {
+      //      invalidateSessions()
+      //      val server = new JavaSslServer
+      //      val client = new SpraySslClient(server.address)
+      //      client.run()
+      //      val baselineSessionCounts = serverSessions().length
+      //      val hook = TestProbe()
+      //      client.addNetworkEventHook(hook.ref)
+      //      server.close()
+      //      client.runPeerClosed(hook)
+      //      // we only check the spray side server sessions here
+      //      // the java client seems to lose the session for some reason
+      //      serverSessions().length === baselineSessionCounts
+      pending
     }
   }
 
@@ -111,11 +159,30 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
     val handler = system.actorOf(
       props = Props {
         new ConnectionHandler {
-          def receive = running(connection, frontend >> SslTlsSupport, sslTlsContext[ClientSSLEngineProvider](connected), keepOpenOnPeerClosed = false)
+          def receiver = running(connection, frontend >> SslTlsSupport,
+            sslTlsContext[ClientSSLEngineProvider](connected), keepOpenOnPeerClosed = false)
+
+          def receive: Receive = receiver orElse {
+            case HookNetwork(hook) ⇒ context.become(hooked(hook))
+          }
+
+          def hooked(hook: ActorRef): Receive = {
+            case Continue(msg) ⇒ receiver(msg)
+            case x ⇒
+              val mySelf = self
+              val origSender = sender
+              hook ! HookedMessage(x, origSender, () ⇒ mySelf.tell(Continue(x), origSender))
+          }
         }
       },
       name = "client" + counter.incrementAndGet())
-    probe.send(connection, Tcp.Register(handler))
+    probe.send(connection, Tcp.Register(handler, keepOpenOnPeerClosed = true))
+
+    case class HookNetwork(hook: ActorRef)
+    case class HookedMessage(msg: Any, sender: ActorRef, complete: () ⇒ Unit)
+    case class Continue(msg: Any)
+    def addNetworkEventHook(hook: ActorRef) =
+      handler ! HookNetwork(hook)
 
     def run(): Unit = {
       probe.send(handler, Tcp.Write(ByteString("3+4\n")))
@@ -123,10 +190,26 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       probe.send(handler, Tcp.Write(ByteString("20+22\n")))
       expectReceived(probe, ByteString("42\n"))
     }
+    def runPeerClosed(hook: TestProbe): Unit = {
+      val closeNotify = hook.expectMsgType[HookedMessage]
+      closeNotify.msg must beLike {
+        case _: Tcp.Received ⇒ ok
+      }
+      closeNotify.complete()
+
+      probe.expectMsg(Tcp.PeerClosed)
+      TestUtils.verifyActorTermination(handler)
+    }
 
     def close(): Unit = {
       probe.send(handler, Tcp.Close)
-      probe.expectMsgType[Tcp.ConnectionClosed]
+
+      probe.expectMsg(Tcp.Closed)
+      TestUtils.verifyActorTermination(handler)
+    }
+    def closeConfirmed(): Unit = {
+      probe.send(handler, Tcp.ConfirmedClose)
+      probe.expectMsg(Tcp.ConfirmedClosed)
       TestUtils.verifyActorTermination(handler)
     }
 
@@ -192,7 +275,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
             }
           },
           name = "server" + counter.incrementAndGet())
-        connection ! Tcp.Register(handler)
+        connection ! Tcp.Register(handler, keepOpenOnPeerClosed = true)
     }
   }
 
@@ -272,7 +355,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       def actorContext = context
       def remoteAddress = connected.remoteAddress
       def localAddress = connected.localAddress
-      def log = implicitly[LoggingContext]
+      def log = LoggingContext.fromActorRefFactory(context)
       def sslEngine = engineProvider(this)
     }
 
@@ -282,4 +365,19 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       data must be_==(expectedMessage.take(data.length))
       expectReceived(probe, expectedMessage.drop(data.length))
     }
+
+  import collection.JavaConverters._
+  def clientSessions() = sessions(_.getServerSessionContext)
+  def serverSessions() = sessions(_.getClientSessionContext)
+  def sessionCounts() = (clientSessions().length, serverSessions().length)
+
+  def sessions(f: SSLContext ⇒ SSLSessionContext): Seq[SSLSession] = {
+    val ctx = f(sslContext)
+    val ids = ctx.getIds().asScala.toIndexedSeq
+    ids.map(ctx.getSession)
+  }
+  def invalidateSessions() = {
+    clientSessions().foreach(_.invalidate())
+    serverSessions().foreach(_.invalidate())
+  }
 }

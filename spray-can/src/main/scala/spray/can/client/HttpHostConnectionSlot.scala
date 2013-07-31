@@ -16,9 +16,8 @@
 
 package spray.can.client
 
-import java.net.InetSocketAddress
 import scala.collection.immutable
-import scala.collection.immutable.{ Stack, Queue }
+import scala.collection.immutable.Queue
 import akka.util.Duration
 import akka.actor._
 import akka.io.{ ExtraStrategies, Inet }
@@ -28,7 +27,8 @@ import spray.can.Http
 import spray.io.ClientSSLEngineProvider
 import spray.http._
 
-private[client] class HttpHostConnectionSlot(remoteAddress: InetSocketAddress,
+private[client] class HttpHostConnectionSlot(host: String, port: Int,
+                                             sslEncryption: Boolean,
                                              options: immutable.Traversable[Inet.SocketOption],
                                              idleTimeout: Duration,
                                              clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
@@ -44,8 +44,8 @@ private[client] class HttpHostConnectionSlot(remoteAddress: InetSocketAddress,
 
     {
       case ctx: RequestContext ⇒
-        log.debug("Attempting new connection to {}", remoteAddress)
-        clientConnectionSettingsGroup ! Http.Connect(remoteAddress, None, options, None)
+        log.debug("Attempting new connection to {}:{}", host, port)
+        clientConnectionSettingsGroup ! Http.Connect(host, port, sslEncryption, None, options, None)
         context.resetReceiveTimeout()
         context.become(connecting(Queue(ctx)))
 
@@ -72,7 +72,7 @@ private[client] class HttpHostConnectionSlot(remoteAddress: InetSocketAddress,
       context.become(terminating(context.watch(sender)))
 
     case _: Http.Connected ⇒
-      log.debug("Connection to {} established, dispatching {} pending requests", remoteAddress, openRequests.size)
+      log.debug("Connection to {}:{} established, dispatching {} pending requests", host, port, openRequests.size)
       openRequests foreach dispatchToServer(sender)
       context.become(connected(context.watch(sender), openRequests))
 

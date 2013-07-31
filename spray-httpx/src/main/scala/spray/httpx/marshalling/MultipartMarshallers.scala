@@ -36,10 +36,10 @@ trait MultipartMarshallers {
     Base64.custom.encodeToString(array, false)
   }
 
-  implicit def multipartContentMarshaller =
-    Marshaller.of[MultipartContent](new `multipart/mixed`(randomBoundary)) { (value, contentType, ctx) ⇒
+  implicit def multipartContentMarshaller = {
+    val boundary = randomBoundary
+    Marshaller.of[MultipartContent](`multipart/mixed` withBoundary boundary) { (value, contentType, ctx) ⇒
       val r = new ByteArrayRendering(512)
-      val boundary = contentType.mediaType.asInstanceOf[MultipartMediaType].boundary
       if (!value.parts.isEmpty) {
         value.parts.foreach { part ⇒
           r ~~ '-' ~~ '-' ~~ boundary ~~ CrLf
@@ -53,10 +53,11 @@ trait MultipartMarshallers {
         ctx.marshalTo(HttpEntity(contentType, r.get))
       } else ctx.marshalTo(EmptyEntity)
     }
+  }
 
   implicit def multipartFormDataMarshaller(implicit mcm: Marshaller[MultipartContent]) =
     Marshaller[MultipartFormData] { (value, ctx) ⇒
-      ctx.tryAccept(`multipart/form-data`) match {
+      ctx.tryAccept(`multipart/form-data` :: Nil) match {
         case None ⇒ ctx.rejectMarshalling(Seq(`multipart/form-data`))
         case _ ⇒ mcm(
           value = MultipartContent {
@@ -67,15 +68,15 @@ trait MultipartMarshallers {
           },
           ctx = new DelegatingMarshallingContext(ctx) {
             var boundary = ""
-            override def tryAccept(contentType: ContentType) = {
-              boundary = contentType.mediaType.asInstanceOf[MultipartMediaType].boundary
-              Some(contentType)
+            override def tryAccept(contentTypes: Seq[ContentType]) = {
+              boundary = contentTypes.head.mediaType.parameters("boundary")
+              contentTypes.headOption
             }
             override def marshalTo(entity: HttpEntity): Unit = { ctx.marshalTo(overrideContentType(entity)) }
             override def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) =
               ctx.startChunkedMessage(overrideContentType(entity), sentAck)
             def overrideContentType(entity: HttpEntity) =
-              entity.flatMap(body ⇒ HttpEntity(new `multipart/form-data`(boundary), body.buffer))
+              entity.flatMap(body ⇒ HttpEntity(`multipart/form-data` withBoundary boundary, body.buffer))
           })
       }
     }

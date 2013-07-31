@@ -40,6 +40,10 @@ object Main extends App {
       log.info("The elevation of Mt. Everest is: {} m", elevation)
       shutdown()
 
+    case Right(somethingUnexpected) =>
+      log.warning("The Google API call was successful but returned something unexpected: '{}'.", somethingUnexpected)
+      shutdown()
+
     case Left(error) =>
       log.error(error, "Couldn't get elevation")
       shutdown()

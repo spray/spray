@@ -17,8 +17,7 @@
 package spray.can
 package client
 
-import akka.util.Duration
-import akka.actor.{ SupervisorStrategy, ReceiveTimeout, ActorRef }
+import akka.actor.{ ReceiveTimeout, ActorRef }
 import akka.io.{ ExtraStrategies, Tcp, IO }
 import spray.http.{ SetRequestTimeout, Confirmed, HttpRequestPart }
 import spray.io._
@@ -37,7 +36,7 @@ private[can] class HttpClientConnection(connectCommander: ActorRef,
   context.setReceiveTimeout(settings.connectingTimeout)
 
   // we cannot sensibly recover from crashes
-  override def supervisorStrategy = ExtraStrategies.stoppingStrategy
+  override def supervisorStrategy() = ExtraStrategies.stoppingStrategy
 
   def receive: Receive = {
     case connected: Tcp.Connected ⇒
@@ -71,7 +70,7 @@ private[can] class HttpClientConnection(connectCommander: ActorRef,
     def remoteAddress = connected.remoteAddress
     def localAddress = connected.localAddress
     def log = actor.log
-    def sslEngine = sslEngineProvider(this)
+    def sslEngine = if (connect.sslEncryption) sslEngineProvider(this) else None
   }
 }
 
@@ -84,7 +83,7 @@ private[can] object HttpClientConnection {
       ResponseParsing(parserSettings) >>
       RequestRendering(settings) >>
       (reapingCycle.isFinite && idleTimeout.isFinite) ? ConnectionTimeouts(idleTimeout) >>
-      sslEncryption ? SslTlsSupport >>
+      SslTlsSupport >>
       (idleTimeout.isFinite || requestTimeout.isFinite) ? TickGenerator(reapingCycle)
   }
 

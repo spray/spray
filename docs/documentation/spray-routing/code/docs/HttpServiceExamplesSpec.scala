@@ -73,7 +73,7 @@ class HttpServiceExamplesSpec extends Specification with NoTimeConversions {
               // unmarshal with in-scope unmarshaller
               entity(as[Order]) { order =>
                 // transfer to newly spawned actor
-                detachTo(singleRequestServiceActor) {
+                detach() {
                   complete {
                     // ... write order to DB
                     "Order received"

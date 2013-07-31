@@ -111,6 +111,9 @@ trait Rendering {
   def ~~(char: Char): this.type
   def ~~(bytes: Array[Byte]): this.type
 
+  def ~~(f: Float): this.type = this ~~ f.toString
+  def ~~(d: Double): this.type = this ~~ d.toString
+
   def ~~(int: Int): this.type = this ~~ int.toLong
 
   def ~~(long: Long): this.type =
@@ -167,7 +170,12 @@ object Rendering {
 class StringRendering extends Rendering {
   private[this] val sb = new java.lang.StringBuilder
   def ~~(char: Char): this.type = { sb.append(char); this }
-  def ~~(bytes: Array[Byte]): this.type = { sb.append(new String(bytes, 0)); this }
+  def ~~(bytes: Array[Byte]): this.type = {
+    @tailrec def rec(ix: Int = 0): this.type =
+      if (ix < bytes.length) { this ~~ bytes(ix).asInstanceOf[Char]; rec(ix + 1) } else this
+    rec()
+  }
+
   def get: String = sb.toString
 }
 

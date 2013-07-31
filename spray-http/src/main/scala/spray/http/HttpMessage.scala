@@ -144,10 +144,11 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     else sys.error("'Host' header value doesn't match request target authority")
   }
 
-  def acceptedMediaRanges: List[MediaRange] = {
-    // TODO: sort by preference
-    for (Accept(mediaRanges) ← headers; range ← mediaRanges) yield range
-  }
+  def acceptedMediaRanges: List[MediaRange] =
+    (for {
+      Accept(mediaRanges) ← headers
+      range ← mediaRanges
+    } yield range).sortBy(-_.qValue)
 
   def acceptedCharsetRanges: List[HttpCharsetRange] = {
     // TODO: sort by preference
@@ -168,18 +169,23 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     // according to the HTTP spec a client has to accept all mime types if no Accept header is sent with the request
     // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
     val ranges = acceptedMediaRanges
-    ranges.isEmpty || ranges.exists(_.matches(mediaType))
+    ranges.isEmpty || ranges.exists(r ⇒ isMediaTypeMatched(r, mediaType))
   }
+
+  private def isMediaTypeMatched(mediaRange: MediaRange, mediaType: MediaType) =
+    // according to the HTTP spec a media range with a q-Value of 0 is not acceptable for the client
+    // http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.9
+    mediaRange.qValue > 0.0f && mediaRange.matches(mediaType)
 
   /**
    * Determines whether the given charset is accepted by the client.
    */
-  def isCharsetAccepted(charset: HttpCharset) = {
+  def isCharsetAccepted(charset: HttpCharset): Boolean = isCharsetAccepted(charset, acceptedCharsetRanges)
+
+  private def isCharsetAccepted(charset: HttpCharset, ranges: List[HttpCharsetRange]): Boolean =
     // according to the HTTP spec a client has to accept all charsets if no Accept-Charset header is sent with the request
     // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.2
-    val ranges = acceptedCharsetRanges
     ranges.isEmpty || ranges.exists(_.matches(charset))
-  }
 
   /**
    * Determines whether the given encoding is accepted by the client.
@@ -193,34 +199,35 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   }
 
   /**
-   * Determines whether the given content-type is accepted by the client.
-   */
-  def isContentTypeAccepted(ct: ContentType) = {
-    isMediaTypeAccepted(ct.mediaType) && (ct.noCharsetDefined || isCharsetAccepted(ct.definedCharset.get))
-  }
-
-  /**
-   * Determines whether the given content-type is accepted by the client.
-   * If the given ContentType does not define a charset an accepted charset is selected, i.e. the method guarantees
+   * Determines whether one of the given content-types is accepted by the client.
+   * If a given ContentType does not define a charset an accepted charset is selected, i.e. the method guarantees
    * that, if a ContentType instance is returned within the option, it will contain a defined charset.
    */
-  def acceptableContentType(contentType: ContentType): Option[ContentType] = {
-    if (isContentTypeAccepted(contentType)) Some {
-      if (contentType.isCharsetDefined) contentType
-      else ContentType(contentType.mediaType, acceptedCharset)
+  def acceptableContentType(contentTypes: Seq[ContentType]): Option[ContentType] = {
+    val charsetRanges = acceptedCharsetRanges
+    def hasAcceptedCharset(ct: ContentType) =
+      ct.noCharsetDefined || isCharsetAccepted(ct.definedCharset.get, charsetRanges)
+    val contentType = acceptedMediaRanges match {
+      // according to the HTTP spec a client has to accept all mime types if no Accept header is sent with the request
+      // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
+      case Nil ⇒ contentTypes find hasAcceptedCharset
+      case mediaRanges ⇒ mediaRanges.view.flatMap { mediaRange ⇒
+        contentTypes find { ct ⇒
+          isMediaTypeMatched(mediaRange, ct.mediaType) && hasAcceptedCharset(ct)
+        }
+      }.headOption
     }
-    else None
-  }
-
-  /**
-   * Returns a charset that is accepted by the client.
-   * Default is UTF-8 in that, if UTF-8 is accepted, it is used.
-   */
-  def acceptedCharset: HttpCharset = {
-    if (isCharsetAccepted(`UTF-8`)) `UTF-8`
-    else acceptedCharsetRanges match {
-      case (cs: HttpCharset) :: _ ⇒ cs
-      case _                      ⇒ throw new IllegalStateException // a HttpCharsetRange that is not `*` ?
+    contentType map { ct ⇒
+      if (ct.isCharsetDefined) ct
+      else {
+        val acceptedCharset =
+          if (isCharsetAccepted(`UTF-8`, charsetRanges)) `UTF-8`
+          else charsetRanges match {
+            case (cs: HttpCharset) :: _ ⇒ cs
+            case _                      ⇒ throw new IllegalStateException // a HttpCharsetRange that is not `*` ?
+          }
+        ContentType(ct.mediaType, acceptedCharset)
+      }
     }
   }
 

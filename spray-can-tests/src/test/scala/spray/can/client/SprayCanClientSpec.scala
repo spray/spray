@@ -105,6 +105,15 @@ class SprayCanClientSpec extends Specification {
       hostConnector1 === hostConnector2
     }
 
+    "return the different HostConnectors for setup requests with differing hostnames" in new TestSetup {
+      val probe = TestProbe()
+      probe.send(IO(Http), Http.HostConnectorSetup("www.spray.io"))
+      val Http.HostConnectorInfo(hostConnector1, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      probe.send(IO(Http), Http.HostConnectorSetup("spray.io"))
+      val Http.HostConnectorInfo(hostConnector2, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      hostConnector1 !== hostConnector2
+    }
+
     "properly complete a simple request/response cycle with a Host-header request" in new TestSetup {
       val (probe, hostConnector) = sendViaHostConnector(Get("/hij") ~> Host(hostname, port) ~> Date(DateTime.now))
       verifyServerSideRequestAndReply("http://" + hostname + ":" + port + "/hij", probe)
@@ -154,7 +163,7 @@ class SprayCanClientSpec extends Specification {
       }
 
       val probe = TestProbe()
-      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, true))
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, sslEncryption = true))
       val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
       probe.sender === hostConnector
       probe.reply(Get("/"))

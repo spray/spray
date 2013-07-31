@@ -26,7 +26,7 @@ trait Encoder {
   def messageFilter: HttpMessage ⇒ Boolean
 
   def encode[T <: HttpMessage](message: T): T#Self = message.entity match {
-    case HttpBody(contentType, buffer) if messageFilter(message) && message.header[`Content-Encoding`].isEmpty ⇒
+    case HttpBody(contentType, buffer) if messageFilter(message) && !message.headers.exists(Encoder.isContentEncodingHeader) ⇒
       message.withHeadersAndEntity(
         headers = `Content-Encoding`(encoding) :: message.headers,
         entity = HttpEntity(contentType, newCompressor.compress(buffer).finish()))
@@ -35,7 +35,7 @@ trait Encoder {
   }
 
   def startEncoding[T <: HttpMessage](message: T): Option[(T#Self, Compressor)] =
-    if (messageFilter(message) && message.header[`Content-Encoding`].isEmpty)
+    if (messageFilter(message) && !message.headers.exists(Encoder.isContentEncodingHeader))
       message.entity.toOption.map {
         case HttpBody(contentType, buffer) ⇒
           val compressor = newCompressor
@@ -51,6 +51,8 @@ trait Encoder {
 object Encoder {
   import MessagePredicate._
   val DefaultFilter = (isRequest || responseStatus(_.isSuccess)) && isCompressible
+
+  private[encoding] val isContentEncodingHeader: HttpHeader ⇒ Boolean = _.isInstanceOf[`Content-Encoding`]
 }
 
 abstract class Compressor {

@@ -32,11 +32,11 @@ case class HostConnectorSettings(
   requirePositiveOrUndefined(idleTimeout)
 }
 
-object HostConnectorSettings extends SettingsCompanion[HostConnectorSettings]("spray.can.host-connector") {
+object HostConnectorSettings extends SettingsCompanion[HostConnectorSettings]("spray.can") {
   def fromSubConfig(c: Config) = apply(
-    c getInt "max-connections",
-    c getInt "max-retries",
-    c getBoolean "pipelining",
-    c getDuration "idle-timeout",
+    c getInt "host-connector.max-connections",
+    c getInt "host-connector.max-retries",
+    c getBoolean "host-connector.pipelining",
+    c getDuration "host-connector.idle-timeout",
     ClientConnectionSettings fromSubConfig c.getConfig("client"))
 }

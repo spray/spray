@@ -24,7 +24,6 @@ import spray.util._
 
 case class ClientConnectionSettings(
     userAgentHeader: String,
-    sslEncryption: Boolean,
     idleTimeout: Duration,
     requestTimeout: Duration,
     reapingCycle: Duration,
@@ -44,16 +43,22 @@ case class ClientConnectionSettings(
 }
 
 object ClientConnectionSettings extends SettingsCompanion[ClientConnectionSettings]("spray.can.client") {
-  def fromSubConfig(c: Config) = apply(
-    c getString "user-agent-header",
-    c getBoolean "ssl-encryption",
-    c getDuration "idle-timeout",
-    c getDuration "request-timeout",
-    c getDuration "reaping-cycle",
-    c getBytes "response-chunk-aggregation-limit" toInt,
-    c getBytes "request-size-hint" toInt,
-    c getDuration "connecting-timeout",
-    ParserSettings fromSubConfig c.getConfig("parsing"))
+  def fromSubConfig(c: Config) = {
+    if (c.hasPath("ssl-encryption"))
+      throw new IllegalArgumentException(
+        "spray.can.client.ssl-encryption not supported any more. " +
+          "Use Http.Connect(sslEncryption = true) to enable ssl encryption for a connection.")
+
+    apply(
+      c getString "user-agent-header",
+      c getDuration "idle-timeout",
+      c getDuration "request-timeout",
+      c getDuration "reaping-cycle",
+      c getBytes "response-chunk-aggregation-limit" toInt,
+      c getBytes "request-size-hint" toInt,
+      c getDuration "connecting-timeout",
+      ParserSettings fromSubConfig c.getConfig("parsing"))
+  }
 
   def apply(optionalSettings: Option[ClientConnectionSettings])(implicit actorRefFactory: ActorRefFactory): ClientConnectionSettings =
     optionalSettings getOrElse apply(actorSystem)

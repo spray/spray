@@ -43,7 +43,7 @@ trait ConnectionLevelApiDemo {
         sender ! request
         context.become(waitingForResponse(commander))
 
-      case Http.CommandFailed(Http.Connect(address, _, _, _)) =>
+      case Http.CommandFailed(Http.Connect(address, _, _, _, _)) =>
         log.warning("Could not connect to {}", address)
         commander ! Status.Failure(new RuntimeException("Connection error"))
         context.stop(self)

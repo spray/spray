@@ -43,19 +43,15 @@ trait DemoService extends HttpService {
   val demoRoute = {
     get {
       path("") {
-        respondWithMediaType(`text/html`) { // XML is marshalled to `text/xml` by default, so we simply override here
-          complete(index)
-        }
+        complete(index)
       } ~
       path("ping") {
         complete("PONG!")
       } ~
       path("stream1") {
-        respondWithMediaType(`text/html`) {
-          // we detach in order to move the blocking code inside the simpleStringStream off the service actor
-          detachTo(singleRequestServiceActor) {
-            complete(simpleStringStream)
-          }
+        // we detach in order to move the blocking code inside the simpleStringStream into a future
+        detach() {
+          complete(simpleStringStream)
         }
       } ~
       path("stream2") {

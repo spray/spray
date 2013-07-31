@@ -275,7 +275,7 @@ case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPa
    */
   def marshallingContext(status: StatusCode, headers: List[HttpHeader]): MarshallingContext =
     new MarshallingContext {
-      def tryAccept(contentType: ContentType) = request.acceptableContentType(contentType)
+      def tryAccept(contentTypes: Seq[ContentType]) = request.acceptableContentType(contentTypes)
       def rejectMarshalling(onlyTo: Seq[ContentType]): Unit = { reject(UnacceptedResponseContentTypeRejection(onlyTo)) }
       def marshalTo(entity: HttpEntity): Unit = { complete(response(entity)) }
       def handleError(error: Throwable): Unit = { failWith(error) }

@@ -24,17 +24,16 @@ private[parser] trait CommonActions {
 
   type StringMapBuilder = scala.collection.mutable.Builder[(String, String), Map[String, String]]
 
-  def getMediaType(mainType: String, subType: String, boundary: String = "",
-                   parameters: Map[String, String] = Map.empty): MediaType = {
+  def getMediaType(mainType: String, subType: String, parameters: Map[String, String]): MediaType = {
     mainType.toLowerCase match {
       case "multipart" ⇒ subType.toLowerCase match {
-        case "mixed"       ⇒ new `multipart/mixed`(boundary, parameters)
-        case "alternative" ⇒ new `multipart/alternative`(boundary, parameters)
-        case "related"     ⇒ new `multipart/related`(boundary, parameters)
-        case "form-data"   ⇒ new `multipart/form-data`(boundary, parameters)
-        case "signed"      ⇒ new `multipart/signed`(boundary, parameters)
-        case "encrypted"   ⇒ new `multipart/encrypted`(boundary, parameters)
-        case custom        ⇒ new MultipartMediaType(custom, boundary, parameters)
+        case "mixed"       ⇒ multipart.mixed(parameters)
+        case "alternative" ⇒ multipart.alternative(parameters)
+        case "related"     ⇒ multipart.related(parameters)
+        case "form-data"   ⇒ multipart.`form-data`(parameters)
+        case "signed"      ⇒ multipart.signed(parameters)
+        case "encrypted"   ⇒ multipart.encrypted(parameters)
+        case custom        ⇒ multipart(custom, parameters)
       }
       case mainLower ⇒
         val registered = if (parameters.isEmpty) MediaTypes.getForKey((mainLower, subType.toLowerCase)) else None
