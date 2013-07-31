@@ -21,8 +21,13 @@ import spray.http._
 trait Decoder {
   def encoding: HttpEncoding
 
-  def decode[T <: HttpMessage](message: T): T#Self = message.mapEntity {
-    _.flatMap { case HttpBody(contentType, buffer) ⇒ HttpEntity(contentType, newDecompressor.decompress(buffer)) }
+  def decode[T <: HttpMessage](message: T): T#Self = message.entity match {
+    case HttpBody(contentType, buffer) if message.headers exists Encoder.isContentEncodingHeader ⇒
+      message.withHeadersAndEntity(
+        headers = message.headers filterNot Encoder.isContentEncodingHeader,
+        entity = HttpEntity(contentType, newDecompressor.decompress(buffer)))
+
+    case _ ⇒ message.message
   }
 
   def newDecompressor: Decompressor

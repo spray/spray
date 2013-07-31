@@ -35,19 +35,19 @@ class HttpHeaderSpec extends Specification {
 
     "The HTTP header model must correctly parse and render the following examples" ^
       p ^
-      "Accept: audio/midi; q=0.2, audio/basic" !
-      example(Accept(`audio/midi`, `audio/basic`))_ ^
-      "Accept: text/plain; q=0.5, text/html,\r\n text/css; q=0.8" !
-      example(Accept(`text/plain`, `text/html`, `text/css`))_ ^
-      "Accept: text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2" !
-      example(Accept(`text/html`, `image/gif`, `image/jpeg`, `*/*`, `*/*`), fix(_).replace("*,", "*/*,"))_ ^
+      "Accept: audio/midi;q=0.2, audio/basic" !
+      example(Accept(`audio/midi` withQValue 0.2, `audio/basic`))_ ^
+      "Accept: text/plain;q=0.5, text/html,\r\n text/css;q=0.8" !
+      example(Accept(`text/plain` withQValue 0.5, `text/html`, `text/css` withQValue 0.8))_ ^
+      "Accept: text/html, image/gif, image/jpeg, *;q=.2, */*;q=.2" !
+      example(Accept(`text/html`, `image/gif`, `image/jpeg`, `*/*` withQValue 0.2, `*/*` withQValue 0.2), fix(_).replace(" *;", " */*;").replace(";q=.2", ";q=0.2"))_ ^
       "Accept: application/vnd.spray" !
       example(Accept(`application/vnd.spray`))_ ^
       "Accept: */*, text/*; foo=bar, custom/custom; bar=\"b>az\"" !
       example(Accept(`*/*`, MediaRange.custom("text", Map("foo" -> "bar")), MediaType.custom("custom", "custom", parameters = Map("bar" -> "b>az"))))_ ^
       p ^
       "Accept-Charset: utf8; q=0.5, *" !
-      example(`Accept-Charset`(`UTF-8`, HttpCharsets.`*`), fix(_).replace("utf", "UTF-"))_ ^
+      example(`Accept-Charset`(`UTF-8`, HttpCharsets.`*`), fixQ(_).replace("utf", "UTF-"))_ ^
       p ^
       "Access-Control-Allow-Origin: *" !
       example(`Access-Control-Allow-Origin`("*"))_ ^
@@ -78,12 +78,12 @@ class HttpHeaderSpec extends Specification {
       "Accept-Encoding: compress, gzip, fancy" !
       example(`Accept-Encoding`(compress, gzip, HttpEncoding.custom("fancy")))_ ^
       "Accept-Encoding: gzip;q=1.0, identity; q=0.5, *;q=0" !
-      example(`Accept-Encoding`(gzip, identity, HttpEncodings.`*`))_ ^
+      example(`Accept-Encoding`(gzip, identity, HttpEncodings.`*`), fixQ)_ ^
       p ^
       "Accept-Language: da, en-gb ;q=0.8, en;q=0.7" !
-      example(`Accept-Language`(Language("da"), Language("en", "gb"), Language("en")))_ ^
+      example(`Accept-Language`(Language("da"), Language("en", "gb"), Language("en")), fixQ)_ ^
       "Accept-Language: de-CH-1901, *;q=0" !
-      example(`Accept-Language`(Language("de", "CH", "1901"), LanguageRanges.`*`))_ ^
+      example(`Accept-Language`(Language("de", "CH", "1901"), LanguageRanges.`*`), fixQ)_ ^
       "Accept-Language: es-419, es" !
       example(`Accept-Language`(Language("es", "419"), Language("es")))_ ^
       p ^
@@ -131,8 +131,8 @@ class HttpHeaderSpec extends Specification {
       example(`Content-Type`(ContentType(MediaType.custom("text", "xml", parameters = Map("version" -> "3")), HttpCharsets.getForKey("windows-1252"))))_ ^
       "Content-Type: text/plain; charset=fancy-pants" !
       errorExample(ErrorInfo("Illegal HTTP header 'Content-Type': Unsupported charset", "fancy-pants"))_ ^
-      "Content-Type: multipart/mixed; boundary=ABC123" ! example(`Content-Type`(ContentType(new `multipart/mixed`("ABC123"))))_ ^
-      "Content-Type: multipart/mixed; boundary=\"ABC/123\"" ! example(`Content-Type`(ContentType(new `multipart/mixed`("ABC/123"))))_ ^
+      "Content-Type: multipart/mixed; boundary=ABC123" ! example(`Content-Type`(ContentType(`multipart/mixed` withBoundary "ABC123")))_ ^
+      "Content-Type: multipart/mixed; boundary=\"ABC/123\"" ! example(`Content-Type`(ContentType(`multipart/mixed` withBoundary "ABC/123")))_ ^
       p ^
       "Cookie: SID=31d4d96e407aad42" ! example(`Cookie`(HttpCookie("SID", "31d4d96e407aad42")))_ ^
       "Cookie: SID=31d4d96e407aad42; lang=en>US" ! example(`Cookie`(HttpCookie("SID", "31d4d96e407aad42"), HttpCookie("lang", "en>US")))_ ^
@@ -210,7 +210,8 @@ class HttpHeaderSpec extends Specification {
     HttpParser.parseHeader(RawHeader(name, value)) === Right(expected) and expected.toString === fix(line)
   }
 
-  def fix(line: String) = line.replaceAll("""\s*;\s*q=\d?(\.\d)?""", "").replaceAll("""\s\s+""", " ")
+  def fix(line: String) = line.replaceAll("""\s\s+""", " ")
+  def fixQ(line: String) = fix(line).replaceAll("""\s*;\s*q=\d?(\.\d)?""", "")
 
   def errorExample(expectedError: ErrorInfo)(line: String) = {
     val Array(name, value) = line.split(": ", 2)

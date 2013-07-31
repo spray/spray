@@ -40,7 +40,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
         val req = request.withEffectiveUri(securedConnection = false)
         val Uri.Authority(host, port, _) = req.uri.authority
         val effectivePort = if (port == 0) Uri.defaultPorts(req.uri.scheme) else port
-        val connector = hostConnectorFor(HostConnectorSetup(host.toString, effectivePort, req.uri.scheme == "https"))
+        val connector = hostConnectorFor(HostConnectorSetup(host.toString, effectivePort, sslEncryption = req.uri.scheme == "https"))
         // never render absolute URIs here and we also drop any potentially existing fragment
         val relativeUri = Uri(
           path = if (req.uri.path.isEmpty) Uri.Path./ else req.uri.path,

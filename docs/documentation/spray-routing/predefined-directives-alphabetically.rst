@@ -33,7 +33,7 @@ Directive                              Description
 :ref:`-delete-`                        Rejects all non-DELETE requests
 :ref:`-deleteCookie-`                  Adds a ``Set-Cookie`` header expiring the given cookie to all ``HttpResponse``
                                        replies of its inner Route
-:ref:`-detachTo-`                      Executes its inner Route in the context of the actor returned by a given function
+:ref:`-detach-`                        Executes its inner Route in a ``Future``
 :ref:`-dynamic-`                       Rebuilds its inner Route for every request anew
 :ref:`-dynamicIf-`                     Conditionally rebuilds its inner Route for every request anew
 :ref:`-encodeResponse-`                Compresses responses coming back from its inner Route using a given Decoder

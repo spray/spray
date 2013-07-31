@@ -76,8 +76,11 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
     if (ac != null) ac.self ! cmd
   }
 
-  private def unhandledMessage(message: Any)(implicit sender: ActorRef) {
-    openRequest.context.system.eventStream.publish(UnhandledMessage(message, sender, this))
+  private def unhandledMessage(message: Any)(implicit sender: ActorRef): Unit = {
+    val context = openRequest.context // we were seeing NPEs somewhere here
+    val system = context.system // so we split into several lines to
+    val evStream = system.eventStream // be able to better locate the problem
+    evStream.publish(UnhandledMessage(message, sender, this))
   }
 
   private def requestInfo = openRequest.request.method.toString + " request to '" + openRequest.request.uri + '\''

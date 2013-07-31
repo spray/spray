@@ -4,7 +4,8 @@ Exception Handling
 ==================
 
 Exceptions thrown during route execution bubble up throw the route structure up to the next enclosing
-``handleExceptions`` directive, the main ``runRoute`` wrapper or the ``receive`` function of a ``detachTo`` actor.
+``handleExceptions`` directive, the main ``runRoute`` wrapper or the ``onFailure`` callback of a
+future created by ``detach``.
 
 Similarly to the way that :ref:`Rejections` are handled the ``handleExceptions`` directive delegates the actual job of
 converting a list of rejections to its argument, an ExceptionHandler__, which is defined like this::

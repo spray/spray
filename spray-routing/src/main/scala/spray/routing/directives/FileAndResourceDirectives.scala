@@ -35,7 +35,7 @@ trait FileAndResourceDirectives {
 
   /**
    * Completes GET requests with the content of the given file. The actual I/O operation is
-   * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
+   * running detached in a `Future`, so it doesn't block the current thread (but potentially
    * some other thread !). If the file cannot be found or read the request is rejected.
    */
   def getFromFile(fileName: String)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
@@ -44,7 +44,7 @@ trait FileAndResourceDirectives {
 
   /**
    * Completes GET requests with the content of the given file. The actual I/O operation is
-   * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
+   * running detached in a `Future`, so it doesn't block the current thread (but potentially
    * some other thread !). If the file cannot be found or read the request is rejected.
    */
   def getFromFile(file: File)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
@@ -53,12 +53,12 @@ trait FileAndResourceDirectives {
 
   /**
    * Completes GET requests with the content of the given file. The actual I/O operation is
-   * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
+   * running detached in a `Future`, so it doesn't block the current thread (but potentially
    * some other thread !). If the file cannot be found or read the request is rejected.
    */
   def getFromFile(file: File, contentType: ContentType)(implicit settings: RoutingSettings,
                                                         refFactory: ActorRefFactory): Route =
-    (get & detachTo(singleRequestServiceActor)) {
+    (get & detach()) {
       respondWithLastModifiedHeader(file.lastModified) {
         if (file.isFile && file.canRead) {
           implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(contentType)
@@ -77,7 +77,7 @@ trait FileAndResourceDirectives {
 
   /**
    * Completes GET requests with the content of the given resource. The actual I/O operation is
-   * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
+   * running detached in a `Future`, so it doesn't block the current thread (but potentially
    * some other thread !).
    * If the file cannot be found or read the Route rejects the request.
    */
@@ -86,13 +86,13 @@ trait FileAndResourceDirectives {
 
   /**
    * Completes GET requests with the content of the given resource. The actual I/O operation is
-   * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
+   * running detached in a `Future`, so it doesn't block the current thread (but potentially
    * some other thread !).
    * If the file cannot be found or read the Route rejects the request.
    */
   def getFromResource(resourceName: String, contentType: ContentType)(implicit refFactory: ActorRefFactory): Route =
     if (!resourceName.endsWith("/"))
-      (get & detachTo(singleRequestServiceActor)) {
+      (get & detach()) {
         val theClassLoader = actorSystem(refFactory).dynamicAccess.classLoader
         theClassLoader.getResource(resourceName) match {
           case null ⇒ reject
@@ -110,7 +110,7 @@ trait FileAndResourceDirectives {
    * Completes GET requests with the content of a file underneath the given directory.
    * The unmatchedPath of the [[spray.RequestContext]] is first transformed by the given pathRewriter function before
    * being appended to the given directoryName to build the final fileName.
-   * The actual I/O operation is running detached in the context of a newly spawned actor, so it doesn't block the
+   * The actual I/O operation is running detached in a `Future`, so it doesn't block the
    * current thread. If the file cannot be read the Route rejects the request.
    */
   def getFromDirectory(directoryName: String)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
@@ -127,7 +127,7 @@ trait FileAndResourceDirectives {
    */
   def listDirectoryContents(directories: String*)(implicit renderer: Marshaller[DirectoryListing],
                                                   refFactory: ActorRefFactory): Route =
-    (get & detachTo(singleRequestServiceActor)) {
+    (get & detach()) {
       unmatchedPath { path ⇒
         val pathString = path.toString
         val dirs = directories.map(new File(_, pathString)).filter(dir ⇒ dir.isDirectory && dir.canRead)
@@ -157,7 +157,8 @@ trait FileAndResourceDirectives {
    * Same as "getFromDirectory" except that the file is not fetched from the file system but rather from a
    * "resource directory".
    */
-  def getFromResourceDirectory(directoryName: String)(implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route = {
+  def getFromResourceDirectory(directoryName: String)(implicit resolver: ContentTypeResolver,
+                                                      refFactory: ActorRefFactory): Route = {
     val base = if (directoryName.isEmpty) "" else withTrailingSlash(directoryName)
     unmatchedPath { path ⇒
       getFromResource(base + stripLeadingSlash(path).toString)
