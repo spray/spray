@@ -106,11 +106,18 @@ Additionally *spray-can* will render a
 SSL Support
 -----------
 
-If enabled via the ``ssl-encryption`` config setting the *spray-can* connection actors pipe all IO traffic through an
-``SslTlsSupport`` module, which can perform transparent SSL/TLS encryption. This module is configured via the implicit
+SSL support is enabled
+
+ - for the connection-level API by setting ``Http.Connect(sslEncryption = true)`` when connecting to a server
+ - for the host-level API by setting ``Http.HostConnectorSetup(sslEncryption = true`` when creating a host connector
+ - for the request-level API by using an ``https`` URL in the request
+
+Particular SSL settings can be configured via the implicit
 ``ClientSSLEngineProvider`` member on the ``Http.Connect`` and ``Http.HostConnectorSetup`` command messages.
 An ``ClientSSLEngineProvider`` is essentially a function ``PipelineContext ⇒ Option[SSLEngine]`` which determines
-whether encryption is to be performed and, if so, which ``javax.net.ssl.SSLEngine`` instance is to be used.
+whether encryption is to be performed and, if so, which ``javax.net.ssl.SSLEngine`` instance is to be used. By returning
+``None`` the ``ClientSSLEngineProvider`` can decide to disable SSL support even if SSL support was requested by the means
+described above.
 
 If you'd like to apply some custom configuration to your ``SSLEngine`` instances an easy way would be to bring a custom
 engine provider into scope, e.g. like this:

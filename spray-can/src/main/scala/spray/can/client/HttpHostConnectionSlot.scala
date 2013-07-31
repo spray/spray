@@ -28,6 +28,7 @@ import spray.io.ClientSSLEngineProvider
 import spray.http._
 
 private[client] class HttpHostConnectionSlot(host: String, port: Int,
+                                             sslEncryption: Boolean,
                                              options: immutable.Traversable[Inet.SocketOption],
                                              idleTimeout: Duration,
                                              clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
@@ -44,7 +45,7 @@ private[client] class HttpHostConnectionSlot(host: String, port: Int,
     {
       case ctx: RequestContext ⇒
         log.debug("Attempting new connection to {}:{}", host, port)
-        clientConnectionSettingsGroup ! Http.Connect(host, port, None, options, None)
+        clientConnectionSettingsGroup ! Http.Connect(host, port, sslEncryption, None, options, None)
         context.setReceiveTimeout(Duration.Undefined)
         context.become(connecting(Queue(ctx)))
 

@@ -121,7 +121,7 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
 
   def newPipeline(pipelined: Boolean, maxConnections: Int = 4) = {
     val settings = HostConnectorSettings(system).copy(maxConnections = maxConnections, pipelining = pipelined)
-    val Http.HostConnectorInfo(connector, _) = IO(Http).ask(Http.HostConnectorSetup(interface, port, Nil, Some(settings))).await
+    val Http.HostConnectorInfo(connector, _) = IO(Http).ask(Http.HostConnectorSetup(interface, port, false, Nil, Some(settings))).await
     sendReceive(connector)
   }
 
