@@ -38,12 +38,11 @@ object Marshaller extends BasicMarshallers
 
   def of[T](marshalTo: ContentType*)(f: (T, ContentType, MarshallingContext) ⇒ Unit): Marshaller[T] =
     new Marshaller[T] {
-      def apply(value: T, ctx: MarshallingContext): Unit = {
-        marshalTo.mapFind(ctx.tryAccept) match {
+      def apply(value: T, ctx: MarshallingContext): Unit =
+        ctx.tryAccept(marshalTo) match {
           case Some(contentType) ⇒ f(value, contentType, ctx)
           case None              ⇒ ctx.rejectMarshalling(marshalTo)
         }
-      }
     }
 
   def delegate[A, B](marshalTo: ContentType*) = new MarshallerDelegation[A, B](marshalTo)

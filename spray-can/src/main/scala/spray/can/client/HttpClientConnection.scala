@@ -71,7 +71,7 @@ private[can] class HttpClientConnection(connectCommander: ActorRef,
     def remoteAddress = connected.remoteAddress
     def localAddress = connected.localAddress
     def log = actor.log
-    def sslEngine = sslEngineProvider(this)
+    def sslEngine = if (connect.sslEncryption) sslEngineProvider(this) else None
   }
 }
 
@@ -84,7 +84,7 @@ private[can] object HttpClientConnection {
       ResponseParsing(parserSettings) >>
       RequestRendering(settings) >>
       ConnectionTimeouts(idleTimeout) ? (reapingCycle.isFinite && idleTimeout.isFinite) >>
-      SslTlsSupport ? sslEncryption >>
+      SslTlsSupport >>
       TickGenerator(reapingCycle) ? (idleTimeout.isFinite || requestTimeout.isFinite)
   }
 
