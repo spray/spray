@@ -18,8 +18,9 @@ package spray.routing
 
 import spray.http._
 import HttpHeaders._
-import MediaTypes._
 import HttpMethods._
+import MediaTypes._
+import Uri._
 
 class MiscDirectivesSpec extends RoutingSpec {
 
@@ -69,6 +70,13 @@ class MiscDirectivesSpec extends RoutingSpec {
           complete(HttpResponse(entity = HttpEntity(`text/plain`, "[1,2,3]")))
         }
       } ~> check { body === HttpEntity(`text/plain`, "[1,2,3]") }
+    }
+    "reject invalid / insecure callback identifiers" in {
+      Get(Uri.from(path = "/", query = Query("jsonp" -> "(function xss(x){evil()})"))) ~> {
+        jsonpWithParameter("jsonp") {
+          complete(HttpResponse(entity = HttpEntity(`text/plain`, "[1,2,3]")))
+        }
+      } ~> check { rejections === Seq(MalformedQueryParamRejection("jsonp", "Invalid JSONP callback identifier")) }
     }
   }
 
