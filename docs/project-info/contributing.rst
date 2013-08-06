@@ -22,6 +22,36 @@ Here is how:
    you are targeting (check the :ref:`Current Versions` chapter for more info on this).
 3. Run ``sbt compile test`` to compile the suite and run all tests.
 
+Contributing documentation
+--------------------------
+
+The site, i.e. what you see here at http://spray.io, is built with *spray* itself. It uses sphinx_ to generate
+documentation from `reStructured text`_ files located in the ``docs`` folder of the *spray* checkout. The documentation
+is served from the ``site`` sub-project of the sbt build. If you want to contribute documentation make sure you can
+build and view the site locally. Follow these instructions to get the site project working locally:
+
+* Follow the instructions in the above section about `building spray`_.
+* Install sphinx_  (in Debian / Ubuntu install the ``python-sphinx`` package, for OS/X see this `mailing list thread`_).
+* Find the path of ``sphinx-build`` (in Ubuntu it's probably ``/usr/bin/sphinx-build``)
+* Set the SPHINX_PATH environment variable to that path.
+* Run sbt
+* In the sbt shell use ``project site`` to change into the site project.
+* Use ``compile`` to build the site, this will take some time when running for the first time (~ 1 - 3 minutes).
+* Use ``re-start`` [1]_ to start the local site server.
+* Browse to http://localhost:8080
+* Use ``~ products`` in sbt to let it monitor changes to the documentation sources automatically.
+* Edit the documentation files inside the ``docs`` subdirectory. After saving a file, it will be automatically
+  picked up by sbt, then it will be regenerated and be available in the browser after ~ 1 - 5 seconds with a refresh
+  of the page.
+
+.. [1] ``re-start`` is a task from the sbt-revolver_ plugin which starts a project in the background while you can
+       still use the sbt shell for other tasks.
+.. _sphinx: http://sphinx-doc.org/
+.. _`reStructured text`: http://docutils.sourceforge.net/docs/user/rst/quickref.html
+.. _`mailing list thread`: https://groups.google.com/d/msg/spray-user/x2PJUYkn1Vs/JxhT_rRoJS0J
+.. _sbt-revolver: https://github.com/spray/sbt-revolver
+
+
 
 git Branching Model
 -------------------
