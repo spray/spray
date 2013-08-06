@@ -7,7 +7,7 @@ As opposed to the :ref:`ConnectionLevelApi` the host-level API relieves you from
 individual HTTP connection. It autonomously manages a configurable pool of connections to *one particular server*.
 
 
-Starting a HttpHostConnector
+Starting an HttpHostConnector
 ----------------------------
 
 The core of this API is the ``HttpHostConnector`` actor, whose class, as with all other *spray-can* actors, you don't
@@ -30,21 +30,21 @@ The connector will then respond with an ``Http.HostConnectorInfo`` event message
 .. _spray.can.Http: https://github.com/spray/spray/blob/master/spray-can/src/main/scala/spray/can/Http.scala#L29
 
 
-Using a HttpHostConnector
+Using an HttpHostConnector
 -------------------------
 
 Once you've got a hold of the connectors ``ActorRef`` you can send it one or more *spray-http* ``HttpRequestPart``
 messages. The connector will send the request across one of the connections it manages according to the following logic:
 
-- if `HTTP Pipelining`_ is not enabled (the default) the request is
+- if `HTTP pipelining`_ is not enabled (the default) the request is
 
   - dispatched to the first idle connection in the pool if there is one
   - dispatched to a newly opened connection if there is no idle one and less than the configured ``max-connections``
     have been opened so far
-  - queued and sent across the first connection that becomes avaiable (i.e. either idle or unconnected) if all
+  - queued and sent across the first connection that becomes available (i.e. either idle or unconnected) if all
     available connections are currently busy with open requests
 
-- if `HTTP pipelining`_ is not enabled the request is dispatched to
+- if `HTTP pipelining`_ is enabled the request is dispatched to
 
   - the first idle connection in the pool if there is one
   - a newly opened connection if there is no idle one and less than the configured ``max-connections``
@@ -52,7 +52,7 @@ messages. The connector will send the request across one of the connections it m
   - the connection with the least open requests if all connections already have requests open
 
 As soon as a response for a request has been received it is dispatched as a ``HttpResponsePart``
-instance to the sender of the respective request. If the server indicated the it doesn't want to reuse the connection
+instance to the sender of the respective request. If the server indicated that it doesn't want to reuse the connection
 for other requests (either via a ``Connection: close`` header on an ``HTTP/1.1`` response or a missing
 ``Connection: Keep-Alive`` header on an ``HTTP/1.0`` response) the connector actor closes the connection after receipt
 of the response thereby freeing up the "slot" for a new connection.
