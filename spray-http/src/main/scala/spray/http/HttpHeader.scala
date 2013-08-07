@@ -284,6 +284,12 @@ object HttpHeaders {
     protected def companion = Origin
   }
 
+  object `Raw-Request-URI` extends ModeledCompanion
+  case class `Raw-Request-URI`(uri: String) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ uri
+    protected def companion = `Raw-Request-URI`
+  }
+
   object `Remote-Address` extends ModeledCompanion
   case class `Remote-Address`(ip: HttpIp) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ ip
