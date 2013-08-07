@@ -29,6 +29,7 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
 
   private[this] var method: HttpMethod = GET
   private[this] var uri: Uri = Uri.Empty
+  var uriBytes: Array[Byte] = Array()
 
   def copyWith(warnOnIllegalHeader: ErrorInfo ⇒ Unit): HttpRequestPartParser =
     new HttpRequestPartParser(settings)(headerParser.copyWith(warnOnIllegalHeader))
@@ -84,6 +85,7 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
     try {
       val uriBytes = input.iterator.slice(uriStart, uriEnd).toArray[Byte]
       uri = Uri.parseHttpRequestTarget(uriBytes, mode = settings.uriParsingMode)
+      this.uriBytes = uriBytes
     } catch {
       case e: IllegalUriException ⇒ throw new ParsingException(BadRequest, e.info)
     }
