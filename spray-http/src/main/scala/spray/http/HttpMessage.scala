@@ -138,7 +138,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
           else defaultHostHeader
         case Some(x) ⇒ x
       }
-      copy(uri = uri.toEffectiveHttpRequestUri(securedConnection, Uri.Host(host), port))
+      copy(uri = uri.toEffectiveHttpRequestUri(Uri.Host(host), port, securedConnection))
     } else // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.4
     if (hostHeader.isEmpty || uri.authority.isEmpty && hostHeader.get.isEmpty ||
       hostHeader.get.host.equalsIgnoreCase(uri.authority.host.address) && hostHeader.get.port == uri.authority.port) this

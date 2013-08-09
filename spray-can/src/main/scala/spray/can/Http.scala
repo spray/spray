@@ -54,10 +54,18 @@ object Http extends ExtensionKey[HttpExt] {
       apply(listener, new InetSocketAddress(interface, port), backlog, options, settings)
   }
 
+  sealed trait ConnectionType
+  object ConnectionType {
+    object Direct extends ConnectionType
+    object AutoProxied extends ConnectionType
+    case class Proxied(proxyHost: String, proxyPort: Int) extends ConnectionType
+  }
+
   case class HostConnectorSetup(host: String, port: Int = 80,
                                 sslEncryption: Boolean = false,
                                 options: immutable.Traversable[Inet.SocketOption] = Nil,
-                                settings: Option[HostConnectorSettings] = None)(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command {
+                                settings: Option[HostConnectorSettings] = None,
+                                connection: ConnectionType = ConnectionType.AutoProxied)(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command {
     private[can] def normalized(implicit refFactory: ActorRefFactory) =
       if (settings.isDefined) this
       else copy(settings = Some(HostConnectorSettings(actorSystem)))

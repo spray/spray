@@ -18,7 +18,7 @@ package spray.can.client
 
 import scala.collection.immutable.Queue
 import akka.actor._
-import spray.http.{ HttpHeaders, HttpRequest }
+import spray.http.{ Uri, HttpHeaders, HttpRequest }
 import spray.can.Http
 
 private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, clientConnectionSettingsGroup: ActorRef)
@@ -32,13 +32,9 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
   private[this] val dispatchStrategy = if (settings.pipelining) new PipelinedStrategy else new NonPipelinedStrategy
   private[this] var openRequestCounts = Map.empty[ActorRef, Int] // open requests per child, holds -1 if unconnected
   private[this] val hostHeader = {
-    val encrypted = normalizedSetup.sslEncryption
-    val port = normalizedSetup.port match {
-      case 443 if encrypted ⇒ 0
-      case 80 if !encrypted ⇒ 0
-      case x                ⇒ x
-    }
-    HttpHeaders.Host(normalizedSetup.host, port)
+    import Uri._
+    val Authority(_, normalizedPort, _) = Authority(Host(host), port).normalizedForHttp(sslEncryption)
+    HttpHeaders.Host(host, normalizedPort)
   }
 
   context.setReceiveTimeout(settings.idleTimeout)
