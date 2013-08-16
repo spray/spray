@@ -31,7 +31,8 @@ class ResponseParserSpec extends Specification {
   val testConf: Config = ConfigFactory.parseString("""
     akka.event-handlers = ["akka.testkit.TestEventListener"]
     akka.loglevel = WARNING
-    spray.can.parsing.max-response-reason-length = 21""")
+    spray.can.parsing.max-response-reason-length = 21
+    spray.can.parsing.incoming-auto-chunking-threshold-size = 20""")
   val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConf)
 
   "The response parsing logic" should {
@@ -138,6 +139,41 @@ class ResponseParserSpec extends Specification {
             |
             |rest"""
         } === ("nice=true", List(RawHeader("Bar", "xyz"), RawHeader("Foo", "pip apo")), "rest", false)
+      }
+    }
+
+    "properly auto-chunk" in {
+      def start(contentSize: Int) =
+        f"""HTTP/1.1 200 OK
+           |Content-Length: $contentSize%d
+           |Server: spray-can
+           |
+           |"""
+
+      "full response if size < incoming-auto-chunking-threshold-size" in {
+        parse(start(1) + "re") ===
+          (OK, "r", List(Server("spray-can"), `Content-Length`(1)), `HTTP/1.1`, "e", false)
+      }
+
+      "response start" in {
+        parse(start(25) + "rest") ===
+          (OK, List(Server("spray-can"), `Content-Length`(25)), `HTTP/1.1`, "rest", false)
+      }
+
+      "response chunk" in {
+        val parser = newParser()
+        parse(parser)(start(25) + "rest")
+        parse(parser)("rest") === ("rest", "", "", false)
+      }
+      "response end" in {
+        val parser = newParser()
+        parse(parser)(start(25) + "rest")
+        parse(parser)("rest1") === ("rest1", "", "", false)
+        parse(parser)("rest2") === ("rest2", "", "", false)
+        parse(parser)("rest3") === ("rest3", "", "", false)
+        parse(parser)("rest4") === ("rest4", "", "", false)
+        parse(parser)("rest5") === ("rest5", "", "\0", false)
+        parse(parser)("\0") === ("", Nil, "", false)
       }
     }
 

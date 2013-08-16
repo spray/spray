@@ -36,4 +36,9 @@ class PimpedConfig(underlying: Config) {
     if (value <= Int.MaxValue) value.toInt
     else sys.error(s"Config setting $path must not be larger than ${Int.MaxValue}")
   }
+
+  def getPossiblyInfiniteIntBytes(path: String): Int = underlying.getString(path) match {
+    case "infinite" ⇒ Int.MaxValue
+    case x          ⇒ getIntBytes(path)
+  }
 }

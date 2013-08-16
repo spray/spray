@@ -123,6 +123,10 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
       parse = this
       val part = message(headers, entity(cth, input.iterator.slice(bodyStart, bodyStart + length).toArray[Byte]))
       Result.Ok(part, drop(input, bodyStart + length), closeAfterResponseCompletion)
+    } else if (length > settings.autoChunkingThreshold) {
+      parse = parseAutoChunk(length, closeAfterResponseCompletion)
+      val part = chunkStartMessage(headers)
+      Result.Ok(part, drop(input, bodyStart), closeAfterResponseCompletion)
     } else {
       parse = more ⇒ parseFixedLengthBody(headers, input ++ more, bodyStart, length, cth, closeAfterResponseCompletion)
       Result.NeedMoreData
@@ -188,6 +192,35 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
     }
   }
 
+  def parseAutoChunk(remainingBytes: Int, closeAfterResponseCompletion: Boolean)(input: CompactByteString): Result[Part] = {
+
+    def finishAutoChunking(input: CompactByteString): Result[Part] = {
+      parse = this
+      Result.Ok(ChunkedMessageEnd.asInstanceOf[Part], input.drop(1).compact, closeAfterResponseCompletion)
+    }
+
+    val consumed = math.min(remainingBytes, input.size)
+    val chunk = MessageChunk(input.take(consumed).toArray[Byte])
+
+    val remaining =
+      consumed match {
+        case `remainingBytes` ⇒ // last chunk
+          parse = finishAutoChunking
+
+          // we synthesize a single byte to keep parsing going after having delivered the last chunk
+          // this is necessary because for the last byte of an entity both the last chunk and the
+          // ChunkedMessageEnd must be delivered
+          // The pseudo-input will be stripped off in `finishAutoChunking` above
+          (ByteString(0) ++ input.drop(consumed)).compact
+        case x ⇒
+          parse = parseAutoChunk(remainingBytes - x, closeAfterResponseCompletion)
+
+          drop(input, consumed)
+      }
+
+    Result.Ok(chunk.asInstanceOf[Part], remaining, closeAfterResponseCompletion)
+  }
+
   def entity(cth: Option[`Content-Type`], body: Array[Byte]): HttpEntity = {
     val contentType = cth match {
       case Some(x) ⇒ x.contentType
@@ -203,6 +236,7 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
     }
 
   def message(headers: List[HttpHeader], entity: HttpEntity): Part
+  def chunkStartMessage(headers: List[HttpHeader]): Part with HttpMessageStart
 
   def drop(input: ByteString, n: Int): CompactByteString =
     if (input.length == n) CompactByteString.empty else input.drop(n).compact

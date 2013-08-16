@@ -33,7 +33,8 @@ class RequestParserSpec extends Specification {
     akka.event-handlers = ["akka.testkit.TestEventListener"]
     akka.loglevel = WARNING
     spray.can.parsing.max-header-value-length = 32
-    spray.can.parsing.max-uri-length = 20""")
+    spray.can.parsing.max-uri-length = 20
+    spray.can.parsing.incoming-auto-chunking-threshold-size = 20""")
   val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConf)
 
   "The request parsing logic" should {
@@ -161,6 +162,47 @@ class RequestParserSpec extends Specification {
             |
             |rest"""
         } === ("nice=true", List(RawHeader("Bar", "xyz"), RawHeader("Foo", "pip apo")), "rest", false)
+      }
+    }
+
+    "properly auto-chunk" in {
+      def start(contentSize: Int) =
+        f"""GET /data HTTP/1.1
+           |Content-Type: application/pdf
+           |Host: ping
+           |Content-Length: $contentSize%d
+           |
+           |"""
+
+      "full request if size < incoming-auto-chunking-threshold-size" in {
+        parse(start(1) + "r") ===
+          (GET, Uri("/data"), `HTTP/1.1`, List(`Content-Length`(1), Host("ping"), `Content-Type`(`application/pdf`)),
+            "r", "", false)
+      }
+
+      "request start" in {
+        parse(start(25) + "rest") ===
+          (GET, Uri("/data"), `HTTP/1.1`, List(`Content-Length`(25), Host("ping"), `Content-Type`(`application/pdf`)),
+            "rest", false)
+      }
+
+      "request chunk" in {
+        val parser = newParser
+        parse(parser)(start(25) + "rest")
+        parse(parser)("rest") === ("rest", "", "", false)
+        ()
+      }
+      "request end" in {
+        val parser = newParser
+        parse(parser)(start(25) + "rest")
+        parse(parser)("rest1")
+        parse(parser)("rest2")
+        parse(parser)("rest3")
+        parse(parser)("rest4")
+        // in the mean-time the next request arrived
+        parse(parser)("rest5GET /data HTTP/1.1") === ("rest5", "", "\0GET /data HTTP/1.1", false) // we synthesize a \0 to keep parsing going
+        parse(parser)("\0GET /data HTTP/1.1") === ("", Nil, "GET /data HTTP/1.1", false) // next parse run produced end
+        parse(parser)("GET /data HTTP/1.1") === Result.NeedMoreData // start of next request
       }
     }
 
