@@ -48,18 +48,18 @@ case class ServerSettings(
     backpressureSettings: Option[BackpressureSettings],
     parserSettings: ParserSettings) {
 
-  requirePositiveOrUndefined(idleTimeout)
-  requirePositiveOrUndefined(requestTimeout)
-  requirePositiveOrUndefined(timeoutTimeout)
-  requirePositiveOrUndefined(idleTimeout)
+  requirePositive(idleTimeout)
+  requirePositive(requestTimeout)
+  requirePositive(timeoutTimeout)
+  requirePositive(idleTimeout)
   require(0 <= pipeliningLimit && pipeliningLimit <= 128, "pipelining-limit must be >= 0 and <= 128")
   require(0 <= requestChunkAggregationLimit && requestChunkAggregationLimit <= Int.MaxValue,
     "request-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
   require(0 <= responseSizeHint && responseSizeHint <= Int.MaxValue,
     "response-size-hint must be >= 0 and <= Int.MaxValue")
-  requirePositiveOrUndefined(bindTimeout)
-  requirePositiveOrUndefined(unbindTimeout)
-  requirePositiveOrUndefined(registrationTimeout)
+  requirePositive(bindTimeout)
+  requirePositive(unbindTimeout)
+  requirePositive(registrationTimeout)
 
   require(!requestTimeout.isFinite || idleTimeout > requestTimeout,
     "idle-timeout must be > request-timeout (if the latter is not 'infinite')")

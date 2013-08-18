@@ -45,10 +45,10 @@ package object util {
     try body catch { case NonFatal(e) ⇒ onError(e) }
 
   /**
-   * Requires that the given duration is greater than Duration.Zero (finite or infinite) or Duration.Undefined.
+   * Requires that the given duration is greater than Duration.Zero (finite or infinite) or Duration.Inf.
    * This implementation is macro-based and only works if the argument is an identifier or member selector.
    */
-  def requirePositiveOrUndefined(duration: Duration): Duration = macro Macros.requirePositiveOrUndefined
+  def requirePositive(duration: Duration): Duration = macro Macros.requirePositive
 
   def actorSystem(implicit refFactory: ActorRefFactory): ExtendedActorSystem =
     refFactory match {
