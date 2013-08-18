@@ -16,7 +16,7 @@
 
 package spray.httpx
 
-import akka.event.LoggingAdapter
+import akka.event.{ Logging, LoggingAdapter }
 import spray.httpx.unmarshalling._
 import spray.httpx.encoding.Decoder
 import spray.http._
@@ -36,7 +36,7 @@ trait ResponseTransformation extends TransformerPipelineSupport {
         }
       else throw new UnsuccessfulResponseException(response)
 
-  def logResponse(log: LoggingAdapter) = logValue[HttpResponse](log)
+  def logResponse(log: LoggingAdapter, level: Logging.LogLevel = Logging.DebugLevel) = logValue[HttpResponse](log, level)
 
   def logResponse(logFun: HttpResponse ⇒ Unit) = logValue[HttpResponse](logFun)
 }
