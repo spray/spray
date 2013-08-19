@@ -203,7 +203,7 @@ class SprayCanClientSpec extends Specification {
       val probe = TestProbe()
       probe.send(IO(Http), Get("/abc") ~> Host(hostname, port))
       acceptConnection()
-      probe.expectMsgType[Status.Failure].cause.getMessage must startWith("Request timeout")
+      probe.expectMsgType[Status.Failure].cause must beAnInstanceOf[Http.RequestTimeoutException]
     }
   }
 
