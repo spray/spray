@@ -185,6 +185,14 @@ class RequestParserSpec extends Specification {
           (GET, Uri("/data"), `HTTP/1.1`, List(`Content-Length`(25), Host("ping"), `Content-Type`(`application/pdf`)),
             "rest", false)
       }
+      "request start if complete message is already available" in {
+        val parser = newParser
+        parse(parser)(start(25) + "rest1rest2rest3rest4rest5") ===
+          (GET, Uri("/data"), `HTTP/1.1`, List(`Content-Length`(25), Host("ping"), `Content-Type`(`application/pdf`)),
+            "rest1rest2rest3rest4rest5", false)
+        parse(parser)("rest1rest2rest3rest4rest5") === ("rest1rest2rest3rest4rest5", "", "\0", false)
+        parse(parser)("\0") === ("", Nil, "", false)
+      }
 
       "request chunk" in {
         val parser = newParser

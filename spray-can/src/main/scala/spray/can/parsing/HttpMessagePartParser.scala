@@ -119,14 +119,14 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
 
   def parseFixedLengthBody(headers: List[HttpHeader], input: ByteString, bodyStart: Int, length: Int,
                            cth: Option[`Content-Type`], closeAfterResponseCompletion: Boolean): Result[Part] =
-    if (bodyStart + length <= input.length) {
-      parse = this
-      val part = message(headers, entity(cth, input.iterator.slice(bodyStart, bodyStart + length).toArray[Byte]))
-      Result.Ok(part, drop(input, bodyStart + length), closeAfterResponseCompletion)
-    } else if (length > settings.autoChunkingThreshold) {
+    if (length >= settings.autoChunkingThreshold) {
       parse = parseAutoChunk(length, closeAfterResponseCompletion)
       val part = chunkStartMessage(headers)
       Result.Ok(part, drop(input, bodyStart), closeAfterResponseCompletion)
+    } else if (bodyStart + length <= input.length) {
+      parse = this
+      val part = message(headers, entity(cth, input.iterator.slice(bodyStart, bodyStart + length).toArray[Byte]))
+      Result.Ok(part, drop(input, bodyStart + length), closeAfterResponseCompletion)
     } else {
       parse = more ⇒ parseFixedLengthBody(headers, input ++ more, bodyStart, length, cth, closeAfterResponseCompletion)
       Result.NeedMoreData
