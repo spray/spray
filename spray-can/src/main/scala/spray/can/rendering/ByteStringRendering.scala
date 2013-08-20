@@ -17,21 +17,39 @@
 package spray.can.rendering
 
 import spray.http.Rendering
-import akka.util.{ ByteStringBuilder, ByteString }
+import akka.util.ByteString
 
 private[can] class ByteStringRendering(sizeHint: Int) extends Rendering {
-  private[this] val b = new ByteStringBuilder
-  b.sizeHint(sizeHint)
+  private[this] var array = new Array[Byte](sizeHint)
+  private[this] var size = 0
 
   def ~~(char: Char): this.type = {
-    b.putByte(char.toByte)
+    val oldSize = growBy(1)
+    array(oldSize) = char.toByte
     this
   }
 
   def ~~(bytes: Array[Byte]): this.type = {
-    b.putBytes(bytes)
+    if (bytes.length > 0) {
+      val oldSize = growBy(bytes.length)
+      System.arraycopy(bytes, 0, array, oldSize, bytes.length)
+    }
     this
   }
 
-  def get: ByteString = b.result()
+  private def growBy(delta: Int): Int = {
+    val oldSize = size
+    val neededSize = oldSize.toLong + delta
+    if (array.length < neededSize)
+      if (neededSize < Int.MaxValue) {
+        val newLen = math.min(math.max(array.length.toLong * 2, neededSize), Int.MaxValue).toInt
+        val newArray = new Array[Byte](newLen)
+        System.arraycopy(array, 0, newArray, 0, array.length)
+        array = newArray
+      } else sys.error("Cannot create compact ByteString greater than 2GB in size")
+    size = neededSize.toInt
+    oldSize
+  }
+
+  def get: ByteString = akka.spray.createByteStringUnsafe(array, 0, size)
 }
