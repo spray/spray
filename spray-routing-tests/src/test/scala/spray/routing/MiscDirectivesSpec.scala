@@ -86,7 +86,7 @@ class MiscDirectivesSpec extends RoutingSpec {
         clientIP { echoComplete }
       } ~> check { entityAs[String] === "2.3.4.5" }
     }
-    "extract from a X-Real-IP header" in {
+    "extract from a Remote-Address header" in {
       Get() ~> addHeaders(RawHeader("x-real-ip", "1.2.3.4"), `Remote-Address`("5.6.7.8")) ~> {
         clientIP { echoComplete }
       } ~> check { entityAs[String] === "5.6.7.8" }
