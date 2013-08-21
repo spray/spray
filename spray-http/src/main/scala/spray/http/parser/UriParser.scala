@@ -53,13 +53,13 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
 
   def parseAbsolute(): Uri = {
     complete("absolute URI", `absolute-URI`)
-    Impl(_scheme, _userinfo, _host, _port, collapseDotSegments(_path), _query, _fragment)
+    create(_scheme, _userinfo, _host, _port, collapseDotSegments(_path), _query, _fragment)
   }
 
   def parseReference(): Uri = {
     complete("URI reference", `URI-reference`)
     val path = if (_scheme.isEmpty) _path else collapseDotSegments(_path)
-    Impl(_scheme, _userinfo, _host, _port, path, _query, _fragment)
+    create(_scheme, _userinfo, _host, _port, path, _query, _fragment)
   }
 
   def parseAndResolveReference(base: Uri): Uri = {
@@ -349,7 +349,7 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
   def parseHttpRequestTarget(): Uri = {
     complete("request-target", `request-target`)
     val path = if (_scheme.isEmpty) _path else collapseDotSegments(_path)
-    Impl(_scheme, _userinfo, _host, _port, path, _query, _fragment)
+    create(_scheme, _userinfo, _host, _port, path, _query, _fragment)
   }
 
   /////////////// REQUIRED RFC 2234 (ABNF) CORE RULES ////////////////
