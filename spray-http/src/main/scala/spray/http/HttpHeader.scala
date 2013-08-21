@@ -52,7 +52,7 @@ object HttpHeaders {
     def render[R <: Rendering](r: R): r.type = r ~~ nameBytes ~~ ':' ~~ ' '
   }
 
-  abstract class ModeledHeader extends HttpHeader with Serializable {
+  sealed abstract class ModeledHeader extends HttpHeader with Serializable {
     def name: String = companion.name
     def value: String = renderValue(new StringRendering).get
     def lowercaseName: String = companion.lowercaseName
