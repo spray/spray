@@ -11,8 +11,7 @@ import spray.http._
 import HttpMethods._
 import MediaTypes._
 
-
-class DemoService extends Actor with SprayActorLogging {
+class DemoService extends Actor with ActorLogging {
   implicit val timeout: Timeout = 1.second // for the actor 'asks'
   import context.dispatcher // ExecutionContext for the futures and scheduler
 
@@ -102,7 +101,7 @@ class DemoService extends Actor with SprayActorLogging {
     )
   )
 
-  class Streamer(client: ActorRef, count: Int) extends Actor with SprayActorLogging {
+  class Streamer(client: ActorRef, count: Int) extends Actor with ActorLogging {
     log.debug("Starting streaming response ...")
 
     // we use the successful sending of a chunk as trigger for scheduling the next chunk

@@ -8,7 +8,7 @@ individual HTTP connection. It autonomously manages a configurable pool of conne
 
 
 Starting an HttpHostConnector
-----------------------------
+-----------------------------
 
 The core of this API is the ``HttpHostConnector`` actor, whose class, as with all other *spray-can* actors, you don't
 get in direct contact with from your application. All communication happens purely via actor messages, the majority of
@@ -31,7 +31,7 @@ The connector will then respond with an ``Http.HostConnectorInfo`` event message
 
 
 Using an HttpHostConnector
--------------------------
+--------------------------
 
 Once you've got a hold of the connectors ``ActorRef`` you can send it one or more *spray-http* ``HttpRequestPart``
 messages. The connector will send the request across one of the connections it manages according to the following logic:

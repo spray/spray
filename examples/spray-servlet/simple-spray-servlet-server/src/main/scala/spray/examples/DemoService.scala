@@ -3,13 +3,11 @@ package spray.examples
 import scala.concurrent.duration._
 import akka.io.Tcp
 import akka.actor._
-import spray.util._
 import spray.http._
 import MediaTypes._
 import HttpMethods._
 
-
-class DemoService extends Actor with SprayActorLogging {
+class DemoService extends Actor with ActorLogging {
 
   def receive = {
     case HttpRequest(GET, Uri.Path("/"), _, _, _) =>
@@ -69,7 +67,7 @@ class DemoService extends Actor with SprayActorLogging {
   // simple case class whose instances we use as send confirmation message for streaming chunks
   case class Ok(remaining: Int)
 
-  class Streamer(client: ActorRef, count: Int) extends Actor with SprayActorLogging {
+  class Streamer(client: ActorRef, count: Int) extends Actor with ActorLogging {
     log.debug("Starting streaming response ...")
 
     // we use the successful sending of a chunk as trigger for scheduling the next chunk
