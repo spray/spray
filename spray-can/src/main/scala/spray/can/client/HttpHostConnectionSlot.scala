@@ -21,7 +21,6 @@ import scala.collection.immutable.Queue
 import scala.concurrent.duration.Duration
 import akka.actor._
 import akka.io.Inet
-import spray.util.SprayActorLogging
 import spray.can.client.HttpHostConnector._
 import spray.can.Http
 import spray.io.ClientSSLEngineProvider
@@ -32,7 +31,7 @@ private[client] class HttpHostConnectionSlot(host: String, port: Int,
                                              options: immutable.Traversable[Inet.SocketOption],
                                              idleTimeout: Duration,
                                              clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
-    extends Actor with SprayActorLogging {
+    extends Actor with ActorLogging {
 
   // we cannot sensibly recover from crashes
   override def supervisorStrategy = SupervisorStrategy.stoppingStrategy

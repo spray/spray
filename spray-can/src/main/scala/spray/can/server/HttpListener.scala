@@ -19,13 +19,12 @@ package spray.can.server
 import scala.concurrent.duration.Duration
 import akka.io.{ IO, Tcp }
 import akka.actor._
-import spray.util.SprayActorLogging
 import spray.can.server.StatsSupport.StatsHolder
 import spray.can.{ HttpExt, Http }
 
 private[can] class HttpListener(bindCommander: ActorRef,
                                 bind: Http.Bind,
-                                httpSettings: HttpExt#Settings) extends Actor with SprayActorLogging {
+                                httpSettings: HttpExt#Settings) extends Actor with ActorLogging {
   import context.system
   import bind._
 

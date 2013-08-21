@@ -7,10 +7,8 @@ import akka.util.Timeout
 import akka.pattern.ask
 import akka.actor._
 import spray.can.Http
-import spray.util.SprayActorLogging
 import spray.http._
 import HttpMethods._
-
 
 trait ConnectionLevelApiDemo {
   private implicit val timeout: Timeout = 5.seconds
@@ -27,7 +25,7 @@ trait ConnectionLevelApiDemo {
   // as well as how requests are scheduled onto them.
 
   // Actor that manages the lifecycle of a single HTTP connection for a single request
-  class MyRequestActor(host: String) extends Actor with SprayActorLogging {
+  class MyRequestActor(host: String) extends Actor with ActorLogging {
     import context.system
 
     def receive: Receive = {
