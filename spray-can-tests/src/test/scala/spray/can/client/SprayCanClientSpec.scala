@@ -36,6 +36,7 @@ class SprayCanClientSpec extends Specification {
     akka.io.tcp.trace-logging = off
     spray.can.client.request-timeout = 500ms
     spray.can.host-connector.max-retries = 1
+    spray.can.host-connector.idle-timeout = infinite
     spray.can.host-connector.client.request-timeout = 500ms
     spray.can.server.request-chunk-aggregation-limit = 0
     spray.can.client.response-chunk-aggregation-limit = 0""")
@@ -203,7 +204,7 @@ class SprayCanClientSpec extends Specification {
       val probe = TestProbe()
       probe.send(IO(Http), Get("/abc") ~> Host(hostname, port))
       acceptConnection()
-      probe.expectMsgType[Status.Failure].cause.getMessage must startWith("Request timeout")
+      probe.expectMsgType[Status.Failure].cause must beAnInstanceOf[Http.RequestTimeoutException]
     }
   }
 

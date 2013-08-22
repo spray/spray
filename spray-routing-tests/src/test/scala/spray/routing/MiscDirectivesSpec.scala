@@ -18,8 +18,9 @@ package spray.routing
 
 import spray.http._
 import HttpHeaders._
-import MediaTypes._
 import HttpMethods._
+import MediaTypes._
+import Uri._
 
 class MiscDirectivesSpec extends RoutingSpec {
 
@@ -70,6 +71,13 @@ class MiscDirectivesSpec extends RoutingSpec {
         }
       } ~> check { body === HttpEntity(`text/plain`, "[1,2,3]") }
     }
+    "reject invalid / insecure callback identifiers" in {
+      Get(Uri.from(path = "/", query = Query("jsonp" -> "(function xss(x){evil()})"))) ~> {
+        jsonpWithParameter("jsonp") {
+          complete(HttpResponse(entity = HttpEntity(`text/plain`, "[1,2,3]")))
+        }
+      } ~> check { rejections === Seq(MalformedQueryParamRejection("jsonp", "Invalid JSONP callback identifier")) }
+    }
   }
 
   "the clientIP directive" should {
@@ -78,7 +86,7 @@ class MiscDirectivesSpec extends RoutingSpec {
         clientIP { echoComplete }
       } ~> check { entityAs[String] === "2.3.4.5" }
     }
-    "extract from a X-Real-IP header" in {
+    "extract from a Remote-Address header" in {
       Get() ~> addHeaders(RawHeader("x-real-ip", "1.2.3.4"), `Remote-Address`("5.6.7.8")) ~> {
         clientIP { echoComplete }
       } ~> check { entityAs[String] === "5.6.7.8" }

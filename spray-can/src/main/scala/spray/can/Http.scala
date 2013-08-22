@@ -24,7 +24,7 @@ import akka.actor._
 import spray.can.server.ServerSettings
 import spray.can.client.{ HostConnectorSettings, ClientConnectionSettings }
 import spray.io.{ ConnectionTimeouts, ClientSSLEngineProvider, ServerSSLEngineProvider }
-import spray.http.{ HttpResponse, HttpRequest, HttpMessagePart, HttpMessagePartWrapper }
+import spray.http._
 import spray.util.actorSystem
 
 object Http extends ExtensionKey[HttpExt] {
@@ -122,6 +122,14 @@ object Http extends ExtensionKey[HttpExt] {
   case class MessageEvent(ev: HttpMessagePart) extends Event
 
   case class HostConnectorInfo(hostConnector: ActorRef, setup: HostConnectorSetup) extends Event
+
+  // exceptions
+  class ConnectionException(message: String) extends RuntimeException(message)
+
+  class ConnectionAttemptFailedException(val host: String, val port: Int) extends ConnectionException(s"Connection attempt to $host:$port failed")
+
+  class RequestTimeoutException(val request: HttpRequestPart with HttpMessageStart, message: String)
+    extends ConnectionException(message)
 }
 
 class HttpExt(system: ExtendedActorSystem) extends akka.io.IO.Extension {

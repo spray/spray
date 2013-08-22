@@ -52,7 +52,7 @@ object HttpHeaders {
     def render[R <: Rendering](r: R): r.type = r ~~ nameBytes ~~ ':' ~~ ' '
   }
 
-  abstract class ModeledHeader extends HttpHeader with Serializable {
+  sealed abstract class ModeledHeader extends HttpHeader with Serializable {
     def name: String = companion.name
     def value: String = renderValue(new StringRendering).get
     def lowercaseName: String = companion.lowercaseName
@@ -282,6 +282,22 @@ object HttpHeaders {
   case class Origin(origin: Uri) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ origin
     protected def companion = Origin
+  }
+
+  object `Proxy-Authenticate` extends ModeledCompanion {
+    def apply(first: HttpChallenge, more: HttpChallenge*): `Proxy-Authenticate` = apply(first +: more)
+    implicit val challengesRenderer = Renderer.defaultSeqRenderer[HttpChallenge] // cache
+  }
+  case class `Proxy-Authenticate`(challenges: Seq[HttpChallenge]) extends ModeledHeader {
+    import `Proxy-Authenticate`.challengesRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ challenges
+    protected def companion = `Proxy-Authenticate`
+  }
+
+  object `Proxy-Authorization` extends ModeledCompanion
+  case class `Proxy-Authorization`(credentials: HttpCredentials) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ credentials
+    protected def companion = `Proxy-Authorization`
   }
 
   object `Remote-Address` extends ModeledCompanion

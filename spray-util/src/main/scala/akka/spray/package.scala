@@ -14,16 +14,14 @@
  * limitations under the License.
  */
 
-package spray.util
+package akka
 
-import com.typesafe.config.Config
+import akka.util.ByteString
 
-case class UtilSettings(
-  logActorPathsWithDots: Boolean,
-  logActorSystemName: Boolean)
+package object spray {
+  def createByteStringUnsafe(bytes: Array[Byte]): ByteString =
+    ByteString.ByteString1C(bytes)
 
-object UtilSettings extends SettingsCompanion[UtilSettings]("spray.util") {
-  def fromSubConfig(c: Config) = apply(
-    c getBoolean "log-actor-paths-with-dots",
-    c getBoolean "log-actor-system-name")
+  def createByteStringUnsafe(bytes: Array[Byte], start: Int, len: Int): ByteString =
+    ByteString.ByteString1(bytes, start, len)
 }

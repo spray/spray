@@ -20,6 +20,7 @@ package directives
 import scala.reflect.{ classTag, ClassTag }
 import shapeless._
 import spray.http._
+import spray.http.parser.CharPredicate
 import spray.util._
 import HttpHeaders._
 import MediaTypes._
@@ -50,18 +51,23 @@ trait MiscDirectives {
   /**
    * Wraps the inner Route with JSONP support. If a query parameter with the given name is present in the request and
    * the inner Route returns content with content-type `application/json` the response content is wrapped with a call
-   * to a Javascript function having the name of query parameters value. Additionally the content-type is changed from
-   * `application/json` to `application/javascript` in these cases.
+   * to a Javascript function having the name of query parameters value. The name of this function is validated to
+   * prevent XSS vulnerabilities. Only alphanumeric, underscore (_), dollar ($) and dot (.) characters are allowed.
+   * Additionally the content-type is changed from `application/json` to `application/javascript` in these cases.
    */
   def jsonpWithParameter(parameterName: String): Directive0 = {
+    import MiscDirectives._
     import ParameterDirectives._
     parameter(parameterName?).flatMap {
-      case Some(wrapper) ⇒ mapHttpResponseEntity {
-        case HttpBody(ct @ ContentType(`application/json`, _), buffer) ⇒ HttpEntity(
-          contentType = ct.withMediaType(`application/javascript`),
-          string = wrapper + '(' + buffer.asString(ct.charset.nioCharset) + ')')
-        case entity ⇒ entity
-      }
+      case Some(wrapper) ⇒
+        if (validJsonpChars.matchAll(wrapper)) {
+          mapHttpResponseEntity {
+            case HttpBody(ct @ ContentType(`application/json`, _), buffer) ⇒ HttpEntity(
+              contentType = ct.withMediaType(`application/javascript`),
+              string = wrapper + '(' + buffer.asString(ct.charset.nioCharset) + ')')
+            case entity ⇒ entity
+          }
+        } else reject(MalformedQueryParamRejection(parameterName, "Invalid JSONP callback identifier"))
       case _ ⇒ noop
     }
   }
@@ -125,4 +131,7 @@ trait MiscDirectives {
   }
 }
 
-object MiscDirectives extends MiscDirectives
+object MiscDirectives extends MiscDirectives {
+  import CharPredicate._
+  private val validJsonpChars = AlphaNum ++ '.' ++ '_' ++ '$'
+}

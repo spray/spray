@@ -18,12 +18,11 @@ package spray.can.client
 
 import scala.collection.immutable.Queue
 import akka.actor._
-import spray.util.SprayActorLogging
 import spray.http.{ HttpHeaders, HttpRequest }
 import spray.can.Http
 
 private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, clientConnectionSettingsGroup: ActorRef)
-    extends Actor with SprayActorLogging {
+    extends Actor with ActorLogging {
 
   import HttpHostConnector._
   import normalizedSetup.{ settings ⇒ _, _ }

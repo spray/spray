@@ -34,8 +34,8 @@ case class ConnectorSettings(
 
   require(!bootClass.isEmpty,
     "No boot class configured. Please specify a boot class FQN in the spray.servlet.boot-class config setting.")
-  requirePositiveOrUndefined(requestTimeout)
-  requirePositiveOrUndefined(timeoutTimeout)
+  requirePositive(requestTimeout)
+  requirePositive(timeoutTimeout)
   require(maxContentLength > 0, "max-content-length must be > 0")
 
   val rootPathCharCount = rootPath.charCount

@@ -1,3 +1,5 @@
+.. _case-class-extraction:
+
 Case Class Extraction
 =====================
 
