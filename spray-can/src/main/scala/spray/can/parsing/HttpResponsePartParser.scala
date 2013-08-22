@@ -135,4 +135,7 @@ class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeade
 
   def message(headers: List[HttpHeader], entity: HttpEntity): HttpResponse =
     HttpResponse(statusCode, entity, headers, protocol)
+
+  def chunkStartMessage(headers: List[HttpHeader]): ChunkedResponseStart =
+    ChunkedResponseStart(message(headers, EmptyEntity))
 }

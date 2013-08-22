@@ -17,11 +17,10 @@
 package spray.io
 
 import java.net.InetSocketAddress
-import akka.actor.{ ActorRef, Terminated, Actor }
+import akka.actor.{ ActorLogging, ActorRef, Terminated, Actor }
 import akka.io.Tcp
-import spray.util.SprayActorLogging
 
-trait ConnectionHandler extends Actor with SprayActorLogging {
+trait ConnectionHandler extends Actor with ActorLogging {
 
   //# final-stages
   def baseCommandPipeline(tcpConnection: ActorRef): Pipeline[Command] = {

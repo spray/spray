@@ -25,7 +25,6 @@ import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.Http
 import spray.http._
 import spray.io._
-import spray.util.requirePositiveOrUndefined
 
 object ServerFrontend {
 

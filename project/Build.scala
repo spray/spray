@@ -51,7 +51,7 @@ object Build extends Build {
     .dependsOn(sprayCan, sprayHttp, sprayHttpx, sprayIO, sprayTestKit, sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(noPublishing: _*)
-    .settings(libraryDependencies ++= test(akkaActor, akkaTestKit, specs2))
+    .settings(libraryDependencies ++= test(akkaActor, specs2))
 
 
   lazy val sprayClient = Project("spray-client", file("spray-client"))
@@ -102,7 +102,7 @@ object Build extends Build {
     .dependsOn(sprayIO, sprayTestKit, sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(noPublishing: _*)
-    .settings(libraryDependencies ++= test(akkaActor, akkaTestKit, specs2, scalatest))
+    .settings(libraryDependencies ++= test(akkaActor, specs2, scalatest))
 
 
   lazy val sprayRouting = Project("spray-routing", file("spray-routing"))
@@ -124,7 +124,7 @@ object Build extends Build {
     .dependsOn(sprayCaching, sprayHttp, sprayHttpx, sprayRouting, sprayTestKit, sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(noPublishing: _*)
-    .settings(libraryDependencies ++= test(akkaActor, akkaTestKit, specs2, shapeless, sprayJson))
+    .settings(libraryDependencies ++= test(akkaActor, specs2, shapeless, sprayJson))
 
 
   lazy val sprayServlet = Project("spray-servlet", file("spray-servlet"))
@@ -147,7 +147,7 @@ object Build extends Build {
       sprayUtil
     )
     .settings(sprayModuleSettings: _*)
-    .settings(libraryDependencies ++= provided(akkaActor, akkaTestKit, scalatest, specs2))
+    .settings(libraryDependencies ++= akkaTestKit +: provided(akkaActor, scalatest, specs2))
 
 
   lazy val sprayUtil = Project("spray-util", file("spray-util"))
@@ -169,7 +169,7 @@ object Build extends Build {
     sprayServlet, sprayTestKit, sprayUtil)
     .settings(SphinxSupport.settings: _*)
     .settings(docsSettings: _*)
-    .settings(libraryDependencies ++= test(akkaActor, akkaTestKit, sprayJson, specs2, json4sNative))
+    .settings(libraryDependencies ++= test(akkaActor, sprayJson, specs2, json4sNative))
 
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -204,7 +204,7 @@ object Build extends Build {
     .dependsOn(sprayCan, sprayHttp)
     .settings(standaloneServerExampleSettings: _*)
     .settings(libraryDependencies ++=
-      compile(akkaActor) ++
+      compile(akkaActor, mimepull) ++
       runtime(akkaSlf4j, logback)
     )
 
@@ -241,7 +241,7 @@ object Build extends Build {
     .settings(jettyExampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
-      test(specs2, akkaTestKit) ++
+      test(specs2) ++
       runtime(akkaSlf4j, logback) ++
       container(jettyWebApp, servlet30)
     )
@@ -251,7 +251,7 @@ object Build extends Build {
     .settings(standaloneServerExampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
-      test(specs2, akkaTestKit) ++
+      test(specs2) ++
       runtime(akkaSlf4j, logback)
     )
 

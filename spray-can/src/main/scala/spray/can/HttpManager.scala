@@ -20,11 +20,10 @@ import akka.util.NonFatal
 import akka.actor._
 import spray.can.client.{ HttpHostConnector, HttpClientSettingsGroup, ClientConnectionSettings }
 import spray.can.server.HttpListener
-import spray.util.SprayActorLogging
 import spray.http._
 import Http.HostConnectorSetup
 
-private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor with SprayActorLogging {
+private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor with ActorLogging {
   import httpSettings._
   private[this] val listenerCounter = Iterator from 0
   private[this] val groupCounter = Iterator from 0

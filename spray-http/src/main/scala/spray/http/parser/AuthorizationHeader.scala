@@ -28,6 +28,10 @@ private[parser] trait AuthorizationHeader {
     CredentialDef ~ EOI ~~> (HttpHeaders.`Authorization`(_))
   }
 
+  def `*Proxy-Authorization` = rule {
+    CredentialDef ~ EOI ~~> (HttpHeaders.`Proxy-Authorization`(_))
+  }
+
   def CredentialDef = rule {
     BasicCredentialDef | OAuth2BearerTokenDef | GenericHttpCredentialsDef
   }

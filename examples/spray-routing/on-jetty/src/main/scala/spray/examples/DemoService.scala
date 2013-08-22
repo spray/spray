@@ -3,7 +3,7 @@ package spray.examples
 import java.io.File
 import org.parboiled.common.FileUtils
 import akka.util.duration._
-import akka.actor.{Props, Actor}
+import akka.actor._
 import akka.io.Tcp
 import spray.routing.{HttpService, RequestContext}
 import spray.routing.directives.CachingDirectives
@@ -13,8 +13,6 @@ import spray.http._
 import MediaTypes._
 import CachingDirectives._
 import akka.util.FiniteDuration
-import akka.dispatch.ExecutionContext
-
 
 // we don't implement our route structure directly in the service actor because
 // we want to be able to test it independently, without having to spin up an actor
@@ -110,7 +108,7 @@ trait DemoService extends HttpService {
   def sendStreamingResponse(ctx: RequestContext): Unit =
     actorRefFactory.actorOf {
       Props {
-        new Actor with SprayActorLogging {
+        new Actor with ActorLogging {
           // we use the successful sending of a chunk as trigger for scheduling the next chunk
           val responseStart = HttpResponse(entity = HttpEntity(`text/html`, streamStart))
           ctx.responder ! ChunkedResponseStart(responseStart).withAck(Ok(16))

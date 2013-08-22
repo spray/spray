@@ -69,16 +69,6 @@ __ http://www.artima.com/weblogs/viewpost.jsp?thread=179766
 LoggingContext
 --------------
 
-The ``LoggingContext`` is a simple ``akka.event.LoggingAdapter`` that can be implicitly created from ``ActorRefFactory``
-instances (i.e. ``ActorSystems`` or ``ActorContexts``). It is mainly used by :ref:`spray-routing` directives, which
-require a logging facility for either type of ``ActorRefFactory``.
-
-The ``LoggingContext`` allows for some deeper configuration via the ``log-actor-paths-with-dots`` and
-``log-actor-system-name`` config settings shown in the "Configuration" section above.
-
-
-SprayActorLogging
------------------
-
-The ``SprayActorLogging`` trait is a drop-in replacement for the ``akka.actor.ActorLogging`` trait, which provides
-logging via a ``LoggingContext`` and therefore supports the same configuration options.
+The ``LoggingContext`` is a simple ``akka.event.LoggingAdapter`` that can always be implicitly created.
+It is mainly used by :ref:`spray-routing` directives, which require a logging facility for an implicitly available
+``ActorRefFactory`` (i.e. ``ActorSystem`` or ``ActorContext``).

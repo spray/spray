@@ -19,12 +19,11 @@ package spray.can.client
 import scala.collection.immutable.Queue
 import akka.io.ExtraStrategies
 import akka.actor._
-import spray.util.SprayActorLogging
 import spray.http.{ HttpHeaders, HttpRequest }
 import spray.can.Http
 
 private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, clientConnectionSettingsGroup: ActorRef)
-    extends Actor with SprayActorLogging {
+    extends Actor with ActorLogging {
 
   import HttpHostConnector._
   import normalizedSetup.{ settings ⇒ _, _ }
@@ -43,7 +42,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
     HttpHeaders.Host(normalizedSetup.host, port)
   }
 
-  context.setReceiveTimeout(settings.idleTimeout)
+  if (settings.idleTimeout.isFinite) context.setReceiveTimeout(settings.idleTimeout)
 
   // we cannot sensibly recover from crashes
   override def supervisorStrategy() = ExtraStrategies.stoppingStrategy

@@ -50,7 +50,7 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
 
   step {
     val testService = system.actorOf(Props(
-      new Actor with SprayActorLogging {
+      new Actor with ActorLogging {
         var dropNext = true
         val random = new Random(38)
         def receive = {

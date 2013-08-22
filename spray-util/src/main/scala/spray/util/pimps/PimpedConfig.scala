@@ -22,7 +22,7 @@ import akka.util.Duration
 class PimpedConfig(underlying: Config) {
 
   def getDuration(path: String): Duration = underlying.getString(path) match {
-    case "infinite" ⇒ Duration.Undefined
+    case "infinite" ⇒ Duration.Inf
     case x          ⇒ Duration(x)
   }
 
@@ -35,5 +35,10 @@ class PimpedConfig(underlying: Config) {
     val value: Long = underlying getBytes path
     if (value <= Int.MaxValue) value.toInt
     else sys.error("Config setting " + path + " must not be larger than " + Int.MaxValue)
+  }
+
+  def getPossiblyInfiniteIntBytes(path: String): Int = underlying.getString(path) match {
+    case "infinite" ⇒ Int.MaxValue
+    case x          ⇒ getIntBytes(path)
   }
 }

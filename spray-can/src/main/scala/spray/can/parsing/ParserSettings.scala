@@ -30,6 +30,7 @@ case class ParserSettings(
     maxContentLength: Int,
     maxChunkExtLength: Int,
     maxChunkSize: Int,
+    autoChunkingThreshold: Int,
     uriParsingMode: Uri.ParsingMode,
     illegalHeaderWarnings: Boolean,
     headerValueCacheLimits: Map[String, Int]) {
@@ -42,6 +43,7 @@ case class ParserSettings(
   require(maxContentLength > 0, "max-content-length must be > 0")
   require(maxChunkExtLength > 0, "max-chunk-ext-length must be > 0")
   require(maxChunkSize > 0, "max-chunk-size must be > 0")
+  require(autoChunkingThreshold >= 0, "incoming-auto-chunking-threshold-size must be >= 0")
 
   val defaultHeaderValueCacheLimit: Int = headerValueCacheLimits("default")
 
@@ -52,6 +54,7 @@ case class ParserSettings(
 object ParserSettings extends SettingsCompanion[ParserSettings]("spray.can.parsing") {
   def fromSubConfig(c: Config) = {
     val cacheConfig = c getConfig "header-cache"
+
     apply(
       c getIntBytes "max-uri-length",
       c getIntBytes "max-response-reason-length",
@@ -61,6 +64,7 @@ object ParserSettings extends SettingsCompanion[ParserSettings]("spray.can.parsi
       c getIntBytes "max-content-length",
       c getIntBytes "max-chunk-ext-length",
       c getIntBytes "max-chunk-size",
+      c getPossiblyInfiniteIntBytes "incoming-auto-chunking-threshold-size",
       Uri.ParsingMode(c getString "uri-parsing-mode"),
       c getBoolean "illegal-header-warnings",
       cacheConfig.entrySet.asScala.map(kvp ⇒ kvp.getKey -> cacheConfig.getInt(kvp.getKey))(collection.breakOut))

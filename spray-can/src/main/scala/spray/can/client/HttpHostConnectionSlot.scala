@@ -21,7 +21,6 @@ import scala.collection.immutable.Queue
 import akka.util.Duration
 import akka.actor._
 import akka.io.{ ExtraStrategies, Inet }
-import spray.util.SprayActorLogging
 import spray.can.client.HttpHostConnector._
 import spray.can.Http
 import spray.io.ClientSSLEngineProvider
@@ -32,7 +31,7 @@ private[client] class HttpHostConnectionSlot(host: String, port: Int,
                                              options: immutable.Traversable[Inet.SocketOption],
                                              idleTimeout: Duration,
                                              clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
-    extends Actor with SprayActorLogging {
+    extends Actor with ActorLogging {
 
   // we cannot sensibly recover from crashes
   override def supervisorStrategy() = ExtraStrategies.stoppingStrategy
@@ -40,7 +39,7 @@ private[client] class HttpHostConnectionSlot(host: String, port: Int,
   def receive: Receive = unconnected
 
   def unconnected: Receive = {
-    context.setReceiveTimeout(idleTimeout)
+    if (idleTimeout.isFinite) context.setReceiveTimeout(idleTimeout)
 
     {
       case ctx: RequestContext ⇒
@@ -82,7 +81,8 @@ private[client] class HttpHostConnectionSlot(host: String, port: Int,
 
     case _: Http.CommandFailed ⇒
       log.debug("Connection attempt failed")
-      openRequests foreach clear("Connection attempt failed", retry = false)
+      val error = new Http.ConnectionAttemptFailedException(host, port)
+      openRequests foreach clear(error, retry = false)
       if (aborted.isEmpty) {
         context.parent ! Disconnected(openRequests.size)
         context.become(unconnected)
@@ -126,7 +126,7 @@ private[client] class HttpHostConnectionSlot(host: String, port: Int,
 
     case ev @ Timedout(part) ⇒
       log.debug("{} timed out, closing connection", format(part))
-      context.become(closing(httpConnection, openRequests, "Request timeout", retry = true))
+      context.become(closing(httpConnection, openRequests, new Http.RequestTimeoutException(part, format(part) + " timed out"), retry = true))
 
     case cmd: Http.CloseCommand ⇒
       httpConnection ! cmd
@@ -149,12 +149,15 @@ private[client] class HttpHostConnectionSlot(host: String, port: Int,
       context.become(unconnected)
   }
 
-  def closing(httpConnection: ActorRef, openRequests: Queue[RequestContext], errorMsg: String,
+  def closing(httpConnection: ActorRef, openRequests: Queue[RequestContext], error: String, retry: Boolean): Receive =
+    closing(httpConnection, openRequests, new Http.ConnectionException(error), retry)
+
+  def closing(httpConnection: ActorRef, openRequests: Queue[RequestContext], error: Http.ConnectionException,
               retry: Boolean): Receive = {
 
     case ev @ (_: Http.ConnectionClosed | Terminated(`httpConnection`)) ⇒
       context.parent ! Disconnected(openRequests.size)
-      openRequests foreach clear(errorMsg, retry)
+      openRequests foreach clear(error, retry)
       context.unwatch(httpConnection)
       context.become(unconnected)
   }
@@ -164,14 +167,16 @@ private[client] class HttpHostConnectionSlot(host: String, port: Int,
     case Terminated(`httpConnection`) ⇒ context.stop(self)
   }
 
-  def clear(errorMsg: String, retry: Boolean): RequestContext ⇒ Unit = {
+  def clear(error: String, retry: Boolean): RequestContext ⇒ Unit = clear(new Http.ConnectionException(error), retry)
+
+  def clear(error: Http.ConnectionException, retry: Boolean): RequestContext ⇒ Unit = {
     case ctx @ RequestContext(request, retriesLeft, _) if retry && request.canBeRetried && retriesLeft > 0 ⇒
-      log.warning("{} in response to {} with {} retries left, retrying...", errorMsg, format(request), retriesLeft)
+      log.warning("{} in response to {} with {} retries left, retrying...", error.getMessage, format(request), retriesLeft)
       context.parent ! ctx.copy(retriesLeft = retriesLeft - 1)
 
     case RequestContext(request, _, commander) ⇒
-      log.warning("{} in response to {} with no retries left, dispatching error...", errorMsg, format(request))
-      commander ! Status.Failure(new RuntimeException(errorMsg))
+      log.warning("{} in response to {} with no retries left, dispatching error...", error.getMessage, format(request))
+      commander ! Status.Failure(error)
   }
 
   def dispatchToServer(httpConnection: ActorRef)(ctx: RequestContext): Unit = {

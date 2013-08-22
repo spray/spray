@@ -101,7 +101,7 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
         case Some(te) if te.encodings.size == 1 && te.hasChunked ⇒
           if (clh.isEmpty) {
             parse = parseChunk(closeAfterResponseCompletion)
-            Result.Ok(ChunkedRequestStart(message(headers, EmptyEntity)), drop(input, bodyStart), closeAfterResponseCompletion)
+            Result.Ok(chunkStartMessage(headers), drop(input, bodyStart), closeAfterResponseCompletion)
           } else fail("A chunked request must not contain a Content-Length header.")
 
         case Some(te) ⇒ fail(NotImplemented, te.toString + " is not supported by this server")
@@ -123,4 +123,7 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
 
   def message(headers: List[HttpHeader], entity: HttpEntity) =
     HttpRequest(method, uri, headers, entity, protocol)
+
+  def chunkStartMessage(headers: List[HttpHeader]) =
+    ChunkedRequestStart(message(headers, EmptyEntity))
 }

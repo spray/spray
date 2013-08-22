@@ -32,14 +32,14 @@ case class ClientConnectionSettings(
     connectingTimeout: Duration,
     parserSettings: ParserSettings) {
 
-  requirePositiveOrUndefined(idleTimeout)
-  requirePositiveOrUndefined(requestTimeout)
-  requirePositiveOrUndefined(reapingCycle)
+  requirePositive(idleTimeout)
+  requirePositive(requestTimeout)
+  requirePositive(reapingCycle)
   require(0 <= responseChunkAggregationLimit && responseChunkAggregationLimit <= Int.MaxValue,
     "response-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
   require(0 <= requestSizeHint && requestSizeHint <= Int.MaxValue,
     "request-size-hint must be >= 0 and <= Int.MaxValue")
-  requirePositiveOrUndefined(connectingTimeout)
+  requirePositive(connectingTimeout)
 }
 
 object ClientConnectionSettings extends SettingsCompanion[ClientConnectionSettings]("spray.can.client") {

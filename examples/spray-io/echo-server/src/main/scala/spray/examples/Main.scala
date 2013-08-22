@@ -7,7 +7,6 @@ import akka.pattern.ask
 import akka.io.{Tcp, IO}
 import akka.util.{ByteString, Timeout}
 import akka.actor._
-import spray.util._
 
 object Main extends App {
   // we need an ActorSystem to host our application in
@@ -30,7 +29,7 @@ object Main extends App {
   }
 }
 
-class EchoServer extends Actor with SprayActorLogging {
+class EchoServer extends Actor with ActorLogging {
   var childrenCount = 0
 
   def receive = {
@@ -51,7 +50,7 @@ class EchoServer extends Actor with SprayActorLogging {
   }
 }
 
-class EchoServerConnection(tcpConnection: ActorRef) extends Actor with SprayActorLogging {
+class EchoServerConnection(tcpConnection: ActorRef) extends Actor with ActorLogging {
   context.watch(tcpConnection)
 
   def receive = idle

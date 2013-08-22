@@ -37,7 +37,6 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
     with ContentTypeHeader
     with CookieHeaders
     with SimpleHeaders
-    with WwwAuthenticateHeader
     with CORSHeaders {
 
   // all string literals automatically receive a trailing optional whitespace
