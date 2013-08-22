@@ -27,7 +27,6 @@ import spray.http._
 import spray.util._
 import spray.io._
 import HttpHeaders.`Raw-Request-URI`
-import java.nio.charset.StandardCharsets
 
 object RequestParsing {
 
@@ -48,7 +47,7 @@ object RequestParsing {
           def withEffectiveUri(req: HttpRequest) = req.withEffectiveUri(https, settings.defaultHostHeader)
 
           def withRawRequestUriHeader(req: HttpRequest): HttpRequest =
-            if (settings.rawRequestUriHeader) req.withHeaders(`Raw-Request-URI`(new String(parser.uriBytes, StandardCharsets.US_ASCII)) :: req.headers)
+            if (settings.rawRequestUriHeader) req.withHeaders(`Raw-Request-URI`(new String(parser.uriBytes, US_ASCII)) :: req.headers)
             else req
 
           def normalize(req: HttpRequest): HttpRequest = withRawRequestUriHeader(withEffectiveUri(req))
