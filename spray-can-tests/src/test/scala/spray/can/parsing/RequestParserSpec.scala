@@ -34,6 +34,7 @@ class RequestParserSpec extends Specification {
     akka.loglevel = WARNING
     spray.can.parsing.max-header-value-length = 32
     spray.can.parsing.max-uri-length = 20
+    spray.can.parsing.max-content-length = 4000000000
     spray.can.parsing.incoming-auto-chunking-threshold-size = 20""")
   val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConf)
 
@@ -117,9 +118,19 @@ class RequestParserSpec extends Specification {
         parse(parser)("DEFGH") === (PUT, Uri("/resource/yes"), `HTTP/1.1`, List(Host("x"), `Content-Length`(4)),
           "ABCD", "EFGH", false)
       }
+      "reject requests with Content-Length > Int.MaxSize" in {
+        val request =
+          """PUT /resource/yes HTTP/1.1
+            |Content-length:    2147483649
+            |Host: x
+            |
+            |"""
+        val parser = new HttpRequestPartParser(ParserSettings(system).copy(autoChunkingThreshold = Long.MaxValue))()
+        parse(parser)(request) === (400: StatusCode, "Content-Length > Int.MaxSize not supported for non-(auto)-chunked requests")
+      }
     }
 
-    "properly parse a chunked" in {
+    "properly parse a chunked request" in {
       val start =
         """PATCH /data HTTP/1.1
           |Transfer-Encoding: chunked
@@ -211,6 +222,27 @@ class RequestParserSpec extends Specification {
         parse(parser)("rest5GET /data HTTP/1.1") === ("rest5", "", "\0GET /data HTTP/1.1", false) // we synthesize a \0 to keep parsing going
         parse(parser)("\0GET /data HTTP/1.1") === ("", Nil, "GET /data HTTP/1.1", false) // next parse run produced end
         parse(parser)("GET /data HTTP/1.1") === Result.NeedMoreData // start of next request
+      }
+      "don't reject requests with Content-Length > Int.MaxSize" in {
+        val request =
+          """PUT /resource/yes HTTP/1.1
+            |Content-length:    2147483649
+            |Host: x
+            |
+            |"""
+        val parser = newParser
+        parse(parser)(request) === (PUT, Uri("/resource/yes"), `HTTP/1.1`, List(Host("x"), `Content-Length`(2147483649L)), "", false)
+      }
+      "reject requests with Content-Length > Long.MaxSize" in {
+        // content-length = (Long.MaxValue + 1) * 10, which is 0 when calculated overflow
+        val request =
+          """PUT /resource/yes HTTP/1.1
+            |Content-length: 92233720368547758080
+            |Host: x
+            |
+            |"""
+        val parser = newParser
+        parse(parser)(request) === (400: StatusCode, "Illegal `Content-Length` header value")
       }
     }
 

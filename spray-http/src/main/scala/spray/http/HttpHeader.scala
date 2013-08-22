@@ -217,7 +217,7 @@ object HttpHeaders {
   }
 
   object `Content-Length` extends ModeledCompanion
-  case class `Content-Length`(length: Int)(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
+  case class `Content-Length`(length: Long)(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ length
     protected def companion = `Content-Length`
   }
