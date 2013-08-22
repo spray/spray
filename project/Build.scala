@@ -213,7 +213,7 @@ object Build extends Build with DocSupport {
     .dependsOn(sprayCan, sprayHttp)
     .settings(standaloneServerExampleSettings: _*)
     .settings(libraryDependencies ++=
-      compile(akkaActor) ++
+      compile(akkaActor, mimepull) ++
       runtime(akkaSlf4j, logback)
     )
 

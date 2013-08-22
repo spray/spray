@@ -15,6 +15,10 @@ class DemoService extends Actor with ActorLogging {
   implicit val timeout: Timeout = 1.second // for the actor 'asks'
   import context.dispatcher // ExecutionContext for the futures and scheduler
 
+  // a map from connections to chunk handlers
+  // will be created on ChunkedRequestStart and removed on ChunkedRequestEnd
+  var chunkHandlers = Map.empty[ActorRef, ActorRef]
+
   def receive = {
     // when a new connection comes in we register ourselves as the connection handler
     case _: Http.Connected => sender ! Http.Register(self)
@@ -49,6 +53,17 @@ class DemoService extends Actor with ActorLogging {
 
     case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
 
+    case s@ChunkedRequestStart(HttpRequest(POST, Uri.Path("/file-upload"), _, _, _)) =>
+      require(!chunkHandlers.contains(sender))
+      val client = sender
+      val handler = context.actorOf(Props(new FileUploadHandler(client, s)))
+      chunkHandlers += (client -> handler)
+      handler.tell(s, client)
+    case c: MessageChunk => chunkHandlers(sender).tell(c, sender)
+    case e: ChunkedMessageEnd =>
+      chunkHandlers(sender).tell(e, sender)
+      chunkHandlers -= sender
+
     case Timedout(HttpRequest(_, Uri.Path("/timeout/timeout"), _, _, _)) =>
       log.info("Dropping Timeout message")
 
@@ -76,6 +91,12 @@ class DemoService extends Actor with ActorLogging {
             <li><a href="/timeout/timeout">/timeout/timeout</a></li>
             <li><a href="/stop">/stop</a></li>
           </ul>
+          <p>Test file upload</p>
+          <form action ="/file-upload" enctype="multipart/form-data" method="post">
+            <input type="file" name="datafile" multiple=""></input>
+            <br/>
+            <input type="submit">Submit</input>
+          </form>
         </body>
       </html>.toString()
     )
