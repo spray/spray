@@ -284,6 +284,22 @@ object HttpHeaders {
     protected def companion = Origin
   }
 
+  object `Proxy-Authenticate` extends ModeledCompanion {
+    def apply(first: HttpChallenge, more: HttpChallenge*): `Proxy-Authenticate` = apply(first +: more)
+    implicit val challengesRenderer = Renderer.defaultSeqRenderer[HttpChallenge] // cache
+  }
+  case class `Proxy-Authenticate`(challenges: Seq[HttpChallenge]) extends ModeledHeader {
+    import `Proxy-Authenticate`.challengesRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ challenges
+    protected def companion = `Proxy-Authenticate`
+  }
+
+  object `Proxy-Authorization` extends ModeledCompanion
+  case class `Proxy-Authorization`(credentials: HttpCredentials) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ credentials
+    protected def companion = `Proxy-Authorization`
+  }
+
   object `Remote-Address` extends ModeledCompanion
   case class `Remote-Address`(ip: HttpIp) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ ip
