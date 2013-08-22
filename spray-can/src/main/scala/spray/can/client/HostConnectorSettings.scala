@@ -29,7 +29,7 @@ case class HostConnectorSettings(
 
   require(maxConnections > 0, "max-connections must be > 0")
   require(maxRetries >= 0, "max-retries must be >= 0")
-  requirePositiveOrUndefined(idleTimeout)
+  requirePositive(idleTimeout)
 }
 
 object HostConnectorSettings extends SettingsCompanion[HostConnectorSettings]("spray.can") {

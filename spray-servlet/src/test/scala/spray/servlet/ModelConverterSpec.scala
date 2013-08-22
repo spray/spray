@@ -33,8 +33,8 @@ class ModelConverterSpec extends Specification with NoTimeConversions {
   implicit def noLogging = NoLogging
   val settings = ConnectorSettings(
     bootClass = "xxx",
-    requestTimeout = Duration.Undefined,
-    timeoutTimeout = Duration.Undefined,
+    requestTimeout = Duration.Inf,
+    timeoutTimeout = Duration.Inf,
     timeoutHandler = "",
     rootPath = Uri.Path.Empty,
     remoteAddressHeader = false,

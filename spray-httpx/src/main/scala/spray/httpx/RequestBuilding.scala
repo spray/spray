@@ -17,7 +17,7 @@
 package spray.httpx
 
 import scala.reflect.ClassTag
-import akka.event.LoggingAdapter
+import akka.event.{ Logging, LoggingAdapter }
 import spray.httpx.encoding.Encoder
 import spray.httpx.marshalling._
 import spray.http.parser.HttpParser
@@ -87,7 +87,7 @@ trait RequestBuilding extends TransformerPipelineSupport {
 
   def addCredentials(credentials: HttpCredentials) = addHeader(HttpHeaders.Authorization(credentials))
 
-  def logRequest(log: LoggingAdapter) = logValue[HttpRequest](log)
+  def logRequest(log: LoggingAdapter, level: Logging.LogLevel = Logging.DebugLevel) = logValue[HttpRequest](log, level)
 
   def logRequest(logFun: HttpRequest ⇒ Unit) = logValue[HttpRequest](logFun)
 

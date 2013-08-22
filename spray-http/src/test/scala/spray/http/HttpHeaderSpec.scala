@@ -61,7 +61,7 @@ class HttpHeaderSpec extends Specification {
       example(`Access-Control-Max-Age`(3600))_ ^
       p ^
       "Access-Control-Allow-Credentials: true" !
-      example(`Access-Control-Allow-Credentials`(true))_ ^
+      example(`Access-Control-Allow-Credentials`(allow = true))_ ^
       p ^
       "Access-Control-Allow-Methods: GET, POST" !
       example(`Access-Control-Allow-Methods`(GET, POST))_ ^
@@ -159,6 +159,13 @@ class HttpHeaderSpec extends Specification {
         "URI, unexpected character ' ' at position 17", "\nhttps://spray.io/ sec\n                 ^\n"))_ ^
       p ^
       "Origin: http://spray.io" ! example(Origin(Uri("http://spray.io")))_ ^
+      p ^
+      "Proxy-Authenticate: Basic realm=WallyWorld,attr=\"val>ue\", Fancy realm=yeah" !
+      example(`Proxy-Authenticate`(HttpChallenge("Basic", "WallyWorld", Map("attr" -> "val>ue")), HttpChallenge("Fancy", "yeah")))_ ^
+      p ^
+      """Proxy-Authorization: Fancy yes=no,nonce="4\\2"""" !
+      example(`Proxy-Authorization`(GenericHttpCredentials("Fancy", Map("yes" -> "no", "nonce" -> """4\2"""))))_ ^
+      p ^
       "Remote-Address: 111.22.3.4" ! example(`Remote-Address`("111.22.3.4"))_ ^
       p ^
       "Server: as fghf.fdf/xx" ! example(`Server`(Seq(ProductVersion("as"), ProductVersion("fghf.fdf", "xx"))))_ ^
