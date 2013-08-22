@@ -64,6 +64,10 @@ private[parser] trait SimpleHeaders {
     oneOrMore(Text) ~> { uri ⇒ Location(Uri.parseAbsolute(uri)) } ~ EOI
   }
 
+  def `*Proxy-Authenticate` = rule {
+    oneOrMore(Challenge, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Proxy-Authenticate`(_))
+  }
+
   def `*Remote-Address` = rule {
     Ip ~ EOI ~~> (`Remote-Address`(_))
   }
@@ -75,6 +79,10 @@ private[parser] trait SimpleHeaders {
   }
 
   def `*User-Agent` = rule { ProductVersionComments ~~> (`User-Agent`(_)) }
+
+  def `*WWW-Authenticate` = rule {
+    oneOrMore(Challenge, separator = ListSep) ~ EOI ~~> (HttpHeaders.`WWW-Authenticate`(_))
+  }
 
   // de-facto standard as per http://en.wikipedia.org/w/index.php?title=X-Forwarded-For&oldid=563040890
   // It's not clear in which format IpV6 addresses are to be expected, the ones we've seen in the wild
