@@ -24,17 +24,20 @@ import scala.collection.immutable.ListMap
 abstract class SettingsCompanion[T](prefix: String) {
   private final val MaxCached = 8
   private[this] var cache = ListMap.empty[ActorSystem, T]
-  private[this] val lock = new AnyRef
 
   def apply(system: ActorSystem): T =
+    // we use and update the cache without any synchronization
+    // there are two possible "problems" resulting from this:
+    // - cache misses of things another thread has already put into the cache,
+    //   in these cases we do double work, but simply accept it
+    // - cache hits of things another thread has already dropped from the cache,
+    //   in these cases we avoid double work, which is nice
     cache.getOrElse(system, {
       val settings = apply(system.settings.config)
-      lock.synchronized {
-        val c =
-          if (cache.size < MaxCached) cache
-          else cache.tail // drop the first (and oldest) cache entry
-        cache = c.updated(system, settings)
-      }
+      val c =
+        if (cache.size < MaxCached) cache
+        else cache.tail // drop the first (and oldest) cache entry
+      cache = c.updated(system, settings)
       settings
     })
 
