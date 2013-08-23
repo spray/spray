@@ -32,7 +32,7 @@ private[parser] trait SimpleHeaders {
     oneOrMore(Token, separator = ListSep) ~ EOI ~~> (HttpHeaders.Connection(_)))
 
   def `*Content-Length` = rule {
-    oneOrMore(Digit) ~> (s ⇒ `Content-Length`(s.toInt)) ~ EOI
+    oneOrMore(Digit) ~> (s ⇒ `Content-Length`(s.toLong)) ~ EOI
   }
 
   def `*Content-Disposition` = rule {

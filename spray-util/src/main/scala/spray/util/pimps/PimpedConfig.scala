@@ -41,4 +41,8 @@ class PimpedConfig(underlying: Config) {
     case "infinite" ⇒ Int.MaxValue
     case x          ⇒ getIntBytes(path)
   }
+  def getPossiblyInfiniteLongBytes(path: String): Long = underlying.getString(path) match {
+    case "infinite" ⇒ Long.MaxValue
+    case x          ⇒ getIntBytes(path)
+  }
 }
