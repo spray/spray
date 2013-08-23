@@ -170,6 +170,37 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
       serverHandler.expectNoMsg(100.millis)
       probe.expectMsgType[HttpResponse].entity === HttpEntity("fast")
     }
+
+    "provide access to the undecoded URI via a header if spray.can.raw-request-uri-header is enabled" in {
+      class RawRequestTestSetup(target: String, protocol: HttpProtocol) extends TestSetup {
+        def request: List[String] = s"GET $target $protocol" :: Nil
+        def headers: List[HttpHeader] = HttpHeaders.`Raw-Request-URI`(target) :: Nil
+        override def configOverrides = """spray.can.server.raw-request-uri-header=true"""
+        val socket = openClientSocket()
+        val serverHandler = acceptConnection()
+        val writer = write(socket, request.mkString("\r\n") + "\r\n\r\n")
+        val dispatched = HttpRequest(uri = "http://example.com/foobar?q=baz", protocol = protocol, headers = headers)
+        serverHandler.expectMsgType[HttpRequest] === dispatched
+        socket.close()
+      }
+      class RawRequestHostTestSetup(target: String, protocol: HttpProtocol) extends RawRequestTestSetup(target, protocol) {
+        override def request = super.request :+ "Host: example.com"
+        override def headers = super.headers :+ HttpHeaders.Host("example.com")
+      }
+
+      "when a HTTP/1.1 request includes a relative URI" in new RawRequestHostTestSetup(
+        target = "/f%6f%6fbar?q=b%61z",
+        protocol = `HTTP/1.1`)
+      "when a HTTP/1.1 request includes an absolute URI" in new RawRequestHostTestSetup(
+        target = "http://ex%61mple.com/f%6f%6fbar?q=b%61z",
+        protocol = `HTTP/1.1`)
+      "when a HTTP/1.0 request includes a relative URI" in new RawRequestHostTestSetup(
+        target = "/f%6f%6fbar?q=b%61z",
+        protocol = `HTTP/1.0`)
+      "when a HTTP/1.0 request includes an absolute URI" in new RawRequestTestSetup(
+        target = "http://ex%61mple.com/f%6f%6fbar?q=b%61z",
+        protocol = `HTTP/1.0`)
+    }
   }
 
   step {
