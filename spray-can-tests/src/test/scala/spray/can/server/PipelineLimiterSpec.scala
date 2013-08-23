@@ -24,6 +24,7 @@ import spray.testkit.Specs2PipelineStageTest
 import spray.can.Http
 import spray.can.rendering.ResponsePartRenderingContext
 import spray.http._
+import spray.can.server.RequestParsing.HttpMessageStartEvent
 
 class PipelineLimiterSpec extends Specification with Specs2PipelineStageTest with NoTimeConversions {
   val stage = PipeliningLimiter(2)
@@ -125,8 +126,8 @@ class PipelineLimiterSpec extends Specification with Specs2PipelineStageTest wit
     }
   }
 
-  def request(body: String) = Http.MessageEvent(HttpRequest(entity = body))
-  def requestStart(body: String) = Http.MessageEvent(ChunkedRequestStart(HttpRequest(entity = body)))
+  def request(body: String) = HttpMessageStartEvent(HttpRequest(entity = body), false)
+  def requestStart(body: String) = HttpMessageStartEvent(ChunkedRequestStart(HttpRequest(entity = body)), false)
   def requestChunk(body: String) = Http.MessageEvent(MessageChunk(body))
   def requestEnd(ext: String) = Http.MessageEvent(ChunkedMessageEnd(ext))
 
