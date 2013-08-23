@@ -51,7 +51,7 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
         (host("nightlies.spray.cc") & unmatchedPath) { ump =>
           redirect("http://nightlies.spray.io" + ump, Found)
         } ~
-        host(_.endsWith(".parboiled.org")) {
+        host(_.endsWith("parboiled.org")) {
           redirect("https://github.com/sirthias/parboiled/wiki", Found)
         } ~
         host("spray.io", "localhost", "127.0.0.1") {
