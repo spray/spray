@@ -66,6 +66,10 @@ object RejectionHandler {
       val methods = rejections.collect { case MethodRejection(method) ⇒ method }
       complete(MethodNotAllowed, "HTTP method not allowed, supported methods: " + methods.mkString(", "))
 
+    case rejections @ (SchemeRejection(_) :: _) ⇒
+      val schemes = rejections.collect { case SchemeRejection(scheme) ⇒ scheme }
+      complete(BadRequest, "Uri scheme not allowed, supported schemes: " + schemes.mkString(", "))
+
     case MissingCookieRejection(cookieName) :: _ ⇒
       complete(BadRequest, "Request is missing required cookie '" + cookieName + '\'')
 

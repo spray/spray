@@ -98,6 +98,14 @@ class RejectionHandlerSpec extends RoutingSpec {
         entityAs[String] === "HTTP method not allowed, supported methods: GET, PUT"
       }
     }
+    "respond with BadRequest for requests resulting in SchemeRejections" in {
+      Get("http://example.com/hello") ~> wrap {
+        scheme("https") { complete("yes") }
+      } ~> check {
+        status === BadRequest
+        entityAs[String] === "Uri scheme not allowed, supported schemes: https"
+      }
+    }
     "respond with BadRequest for requests resulting in a MissingFormFieldRejection" in {
       Get() ~> wrap {
         formFields('amount, 'orderId) { (_, _) ⇒ completeOk }

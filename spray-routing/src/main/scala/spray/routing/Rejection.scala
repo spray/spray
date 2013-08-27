@@ -33,6 +33,12 @@ trait Rejection
 case class MethodRejection(supported: HttpMethod) extends Rejection
 
 /**
+ * Rejection created by scheme filters.
+ * Signals that the request was rejected because the Uri scheme is unsupported.
+ */
+case class SchemeRejection(supported: String) extends Rejection
+
+/**
  * Rejection created by parameter filters.
  * Signals that the request was rejected because a query parameter was not found.
  */

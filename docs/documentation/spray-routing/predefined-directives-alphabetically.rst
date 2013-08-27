@@ -151,6 +151,8 @@ Directive                              Description
 :ref:`-rewriteUnmatchedPath-`          Transforms the ``unmatchedPath`` of the ``RequestContext`` using a given function
 :ref:`-routeRouteResponse-`            Chains a partial function into the response chain, which, for certain responses
                                        from its inner route, produces another route that is to be applied instead
+:ref:`-scheme-`                        Rejects a request if its Uri scheme does not match a given one
+:ref:`-schemeName-`                    Extracts the request Uri scheme
 :ref:`-setCookie-`                     Adds a ``Set-Cookie`` header to all ``HttpResponse`` replies of its inner Route
 :ref:`-unmatchedPath-`                 Extracts the unmatched path from the RequestContext
 :ref:`-validate-`                      Passes or rejects the request depending on evaluation of a given conditional
