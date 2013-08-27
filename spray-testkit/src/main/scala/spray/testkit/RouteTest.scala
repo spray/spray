@@ -86,20 +86,26 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
     def apply(request: HttpRequest, f: A ⇒ B): Out
   }
 
+  case class DefaultHostInfo(host: HttpHeaders.Host, securedConnection: Boolean)
+  object DefaultHostInfo {
+    implicit def defaultHost: DefaultHostInfo =
+      DefaultHostInfo(HttpHeaders.Host("example.com"), securedConnection = false)
+  }
   object TildeArrow {
     implicit object InjectIntoRequestTransformer extends TildeArrow[HttpRequest, HttpRequest] {
       type Out = HttpRequest
       def apply(request: HttpRequest, f: HttpRequest ⇒ HttpRequest) = f(request)
     }
     implicit def injectIntoRoute(implicit timeout: RouteTestTimeout, settings: RoutingSettings,
-                                 log: LoggingContext, eh: ExceptionHandler) =
+                                 log: LoggingContext, eh: ExceptionHandler, defaultHostInfo: DefaultHostInfo) =
       new TildeArrow[RequestContext, Unit] {
         type Out = RouteResult
         def apply(request: HttpRequest, route: Route) = {
           val routeResult = new RouteResult(timeout.duration)
           val effectiveRequest =
-            try request.withEffectiveUri(securedConnection = false)
-            catch { case NonFatal(_) ⇒ request }
+            request.withEffectiveUri(
+              securedConnection = defaultHostInfo.securedConnection,
+              defaultHostHeader = defaultHostInfo.host)
           ExecutionDirectives.handleExceptions(eh orElse ExceptionHandler.default)(route) {
             RequestContext(
               request = effectiveRequest,
