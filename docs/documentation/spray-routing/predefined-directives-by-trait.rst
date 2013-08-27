@@ -32,4 +32,5 @@ You can browse the predefined directives by trait:
    path-directives/index
    respond-with-directives/index
    route-directives/index
+   scheme-directives/index
    security-directives/index
