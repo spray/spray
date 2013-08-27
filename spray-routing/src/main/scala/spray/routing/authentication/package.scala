@@ -19,9 +19,13 @@ package spray.routing
 import scala.concurrent.Future
 
 package object authentication {
-  type ContextAuthenticator[T] = RequestContext ⇒ Future[Authentication[T]]
+  //# auth-types
   type Authentication[T] = Either[Rejection, T]
+  type ContextAuthenticator[T] = RequestContext ⇒ Future[Authentication[T]]
+  //#
+  //# user-pass-authenticator
   type UserPassAuthenticator[T] = Option[UserPass] ⇒ Future[Option[T]]
+  //#
 }
 
 package authentication {
