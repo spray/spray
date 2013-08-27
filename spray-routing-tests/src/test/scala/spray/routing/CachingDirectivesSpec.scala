@@ -44,7 +44,7 @@ class CachingDirectivesSpec extends RoutingSpec with CachingDirectives {
     }
   }
   def prime(route: Route) = {
-    route(RequestContext(HttpRequest(), system.deadLetters, Uri.Path.Empty).withDefaultSender(system.deadLetters))
+    route(RequestContext(HttpRequest(uri = Uri("http://example.com/")), system.deadLetters, Uri.Path.Empty).withDefaultSender(system.deadLetters))
     route
   }
 
