@@ -22,7 +22,7 @@ class SecurityDirectivesExamplesSpec extends DirectivesSpec {
         }
       }
 
-    Get("/secured") ~> sealRoute(route) ~> check {
+    Get("/secured") ~> route ~> check {
       status === StatusCodes.Unauthorized
       entityAs[String] === "The resource requires authentication, which was not supplied with the request"
       header[HttpHeaders.`WWW-Authenticate`].get.challenges.head === HttpChallenge("Basic", "secure site")
@@ -38,7 +38,7 @@ class SecurityDirectivesExamplesSpec extends DirectivesSpec {
     val invalidCredentials = BasicHttpCredentials("Peter", "pan")
     Get("/secured") ~>
       addCredentials(invalidCredentials) ~>  // adds Authorization header
-      sealRoute(route) ~> check {
+      route ~> check {
         status === StatusCodes.Unauthorized
         entityAs[String] === "The supplied authentication is invalid"
         header[HttpHeaders.`WWW-Authenticate`].get.challenges.head === HttpChallenge("Basic", "secure site")
@@ -97,9 +97,9 @@ class SecurityDirectivesExamplesSpec extends DirectivesSpec {
         }
       }
 
-    val paulsCred = BasicHttpCredentials("John", "p4ssw0rd")
+    val johnsCred = BasicHttpCredentials("John", "p4ssw0rd")
     Get("/peters-lair") ~>
-      addCredentials(paulsCred) ~>  // adds Authorization header
+      addCredentials(johnsCred) ~>  // adds Authorization header
       route ~> check {
         status === StatusCodes.Forbidden
         entityAs[String] === "The supplied authentication is not authorized to access this resource"
