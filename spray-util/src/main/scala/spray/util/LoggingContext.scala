@@ -60,5 +60,5 @@ private[util] sealed abstract class LoggingContextLowerOrderImplicit2 {
   implicit val NoLogging = fromAdapter(akka.event.NoLogging)
 }
 
-@deprecated("Please use akka.actor.ActorLogging directly instead!")
+@deprecated("Please use akka.actor.ActorLogging directly instead!", "after M8")
 trait SprayActorLogging extends akka.actor.ActorLogging { _: Actor ⇒ }

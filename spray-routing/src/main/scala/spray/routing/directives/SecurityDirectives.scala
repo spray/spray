@@ -56,10 +56,9 @@ class AuthMagnet[T](authDirective: Directive1[Authentication[T]])(implicit execu
 }
 
 object AuthMagnet {
-
-  implicit def fromFutureAuth[T](auth: Future[Authentication[T]])(implicit executor: ExecutionContext) =
+  implicit def fromFutureAuth[T](auth: Future[Authentication[T]])(implicit executor: ExecutionContext): AuthMagnet[T] =
     new AuthMagnet(onSuccess(auth))
 
-  implicit def fromContextAuthenticator[T](auth: ContextAuthenticator[T])(implicit executor: ExecutionContext) =
+  implicit def fromContextAuthenticator[T](auth: ContextAuthenticator[T])(implicit executor: ExecutionContext): AuthMagnet[T] =
     new AuthMagnet(extract(auth).flatMap(onSuccess(_)))
 }
