@@ -1,3 +1,11 @@
+Version 1.0-M8.3 (2013-08-29)
+-----------------------------
+- spray-can:
+  - improved client-side connection closing logic
+  - fixed #350 (prevent `Received illegal response` warning after regular `PeerClosed` events)
+- spray-io: fixed #468 (quiet down exceptions from `Socket.shutdownOutput()`)
+
+
 Version 1.0-M8.2 (2013-08-28)
 -----------------------------
 - spray-can: fixed custom ClientSSLEngineProvider not used by host-level client-side API

@@ -8,7 +8,7 @@ import sbtassembly.Plugin._
 import spray.revolver.RevolverPlugin.Revolver
 
 object BuildSettings {
-  val VERSION = "1.0-M8.2"
+  val VERSION = "1.0-M8.3"
 
   lazy val basicSettings = seq(
     version               := NightlyBuildSupport.buildVersion(VERSION),
