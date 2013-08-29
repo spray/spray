@@ -211,6 +211,19 @@ class PathDirectivesSpec extends RoutingSpec {
     }
   }
 
+  "The predefined Segments PathMatcher" should {
+    val route = path("dir" / Segments) { echoComplete }
+    "properly extract zero segments into the empty list" in {
+      Get("/dir") ~> route ~> check { entityAs[String] === "List()" }
+    }
+    "properly extract n segments without trailing slash" in {
+      Get("/dir/a/b/c/d") ~> route ~> check { entityAs[String] === "List(a, b, c, d)" }
+    }
+    "properly extract n segments with trailing slash" in {
+      Get("/dir/a/b/c/d/e/") ~> route ~> check { entityAs[String] === "List(a, b, c, d, e)" }
+    }
+  }
+
   "The `separateOnSlashes` creator" should {
     "properly match several path segments" in {
       Get("/a/b") ~> path(separateOnSlashes("a/b")) { completeOk } ~> check { response === Ok }
