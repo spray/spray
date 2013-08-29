@@ -10,7 +10,7 @@ except :ref:`spray-http`, which is kept intentionally free of other *spray* depe
 Dependencies
 ------------
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-util* only depends on
+Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-util* only depends on
 *akka-actor* (with 'provided' scope, i.e. you need to pull it in yourself).
 
 
@@ -54,7 +54,7 @@ you bring them in scope with the following import::
   import spray.util._
 
 __ https://github.com/spray/spray/tree/release/1.2/spray-util/src/main/scala/spray/util/pimps
-__ https://github.com/spray/spray/blob/master/spray-util/src/main/scala/spray/util/package.scala
+__ https://github.com/spray/spray/blob/release/1.2/spray-util/src/main/scala/spray/util/package.scala
 
 .. admonition:: Side Note
 

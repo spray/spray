@@ -16,5 +16,5 @@ Simply mix in the ``TwirlSupport`` trait or ``import spray.httpx.TwirlSupport._`
    This site, for example, makes use of twirl-templates and TwirlSupport for serving all of its pages_.
 
 .. _twirl: https://github.com/spray/twirl
-.. _TwirlSupport: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/TwirlSupport.scala
-.. _pages: https://github.com/spray/spray/tree/release/1.2/site/src/main/twirl
+.. _TwirlSupport: https://github.com/spray/spray/blob/release/1.2/spray-httpx/src/main/scala/spray/httpx/TwirlSupport.scala
+.. _pages: https://github.com/spray/spray/tree/master/site/src/main/twirl

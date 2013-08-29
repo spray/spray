@@ -20,5 +20,5 @@ default ``spray.json.PrettyPrinter``.
    project yourself. Check the spray-json_ documentation for information on how to do this.
 
 
-.. _SprayJsonSupport: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/SprayJsonSupport.scala
+.. _SprayJsonSupport: https://github.com/spray/spray/blob/release/1.2/spray-httpx/src/main/scala/spray/httpx/SprayJsonSupport.scala
 .. _spray-json: https://github.com/spray/spray-json

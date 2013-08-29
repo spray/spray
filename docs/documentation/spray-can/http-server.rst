@@ -56,7 +56,7 @@ marked ``private`` to the *spray-can* package. All communication with these acto
 the majority of which are defined in the `spray.can.Http`_ object.
 
 .. _Akka IO: http://doc.akka.io/docs/akka/2.2.0-RC1/scala/io.html
-.. _spray.can.Http: https://github.com/spray/spray/blob/master/spray-can/src/main/scala/spray/can/Http.scala#L29
+.. _spray.can.Http: https://github.com/spray/spray/blob/release/1.2/spray-can/src/main/scala/spray/can/Http.scala#L29
 
 
 Starting and Stopping

@@ -1,7 +1,7 @@
 Dependencies
 ============
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-routing* depends on
+Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-routing* depends on
 
 - :ref:`spray-http`
 - :ref:`spray-httpx`
