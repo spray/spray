@@ -27,7 +27,7 @@ trait HostLevelApiDemo {
       _ <- hostConnector ? Http.CloseAll
     } yield {
       system.log.info("Host-Level API: received {} response with {} bytes",
-        response.status, response.entity.buffer.length)
+        response.status, response.entity.data.length)
       response.header[HttpHeaders.Server].get.products.head
     }
   }

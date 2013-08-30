@@ -79,7 +79,7 @@ The following inspectors are defined:
 ================================================ =======================================================================
 Inspector                                        Description
 ================================================ =======================================================================
-``body: HttpBody``                               Returns the contents of the response entity. If the response entity is
+``body: HttpEntity.NonEmpty``                    Returns the contents of the response entity. If the response entity is
                                                  empty a test failure is triggered.
 ``charset: HttpCharset``                         Identical to ``contentType.charset``
 ``chunks: List[MessageChunk]``                   Returns the list of message chunks produced by the route.

@@ -66,8 +66,8 @@ trait EncodingDirectives {
             ChunkedResponseStart(compressedResponse) :: Nil
           case None ⇒ x :: Nil
         }
-        case MessageChunk(body, exts) if compressor != null ⇒
-          MessageChunk(compressor.compress(body).flush(), exts) :: Nil
+        case MessageChunk(data, exts) if compressor != null ⇒
+          MessageChunk(HttpData(compressor.compress(data.toByteArray).flush()), exts) :: Nil
         case x: ChunkedMessageEnd if compressor != null ⇒
           val body = compressor.finish()
           if (body.length > 0) MessageChunk(body) :: x :: Nil else x :: Nil

@@ -4,18 +4,15 @@ import akka.actor._
 import scala.concurrent.duration._
 import java.io.{InputStream, FileInputStream, FileOutputStream, File}
 import org.jvnet.mimepull.{MIMEPart, MIMEMessage}
-import org.parboiled.common.FileUtils
 import spray.http._
 import MediaTypes._
 import HttpHeaders._
 import parser.HttpParser
 import HttpHeaders.RawHeader
 import spray.io.CommandWrapper
-import spray.util.SprayActorLogging
 import scala.annotation.tailrec
 
-
-class FileUploadHandler(client: ActorRef, start: ChunkedRequestStart) extends Actor with SprayActorLogging {
+class FileUploadHandler(client: ActorRef, start: ChunkedRequestStart) extends Actor with ActorLogging {
   import start.request._
   client ! CommandWrapper(SetRequestTimeout(Duration.Inf)) // cancel timeout
 
@@ -30,10 +27,10 @@ class FileUploadHandler(client: ActorRef, start: ChunkedRequestStart) extends Ac
 
   def receive = {
     case c: MessageChunk =>
-      log.debug(s"Got ${c.body.size} bytes of chunked request $method $uri")
+      log.debug(s"Got ${c.data.length} bytes of chunked request $method $uri")
 
-      output.write(c.body)
-      bytesWritten += c.body.size
+      output.write(c.data.toByteArray)
+      bytesWritten += c.data.length
 
     case e: ChunkedMessageEnd =>
       log.info(s"Got end of chunked request $method $uri")

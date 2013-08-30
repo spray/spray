@@ -153,7 +153,7 @@ class EncodingDirectivesSpec extends RoutingSpec {
       } ~> check {
         response must haveContentEncoding(gzip)
         chunks must haveSize(11)
-        val bytes = body.buffer ++ chunks.toArray.flatMap(_.body)
+        val bytes = chunks.foldLeft(body.data.toByteArray)(_ ++ _.data.toByteArray)
         Gzip.newDecompressor.decompress(bytes) must readAs(text)
       }
     }

@@ -42,7 +42,7 @@ trait Json4sSupport extends MetaMarshallers {
 
   implicit def json4sUnmarshaller[T: Manifest] =
     Unmarshaller[T](MediaTypes.`application/json`) {
-      case x: HttpBody ⇒ Serialization.read[T](x.asString(defaultCharset = HttpCharsets.`UTF-8`))
+      case x: HttpEntity.NonEmpty ⇒ Serialization.read[T](x.asString(defaultCharset = HttpCharsets.`UTF-8`))
     }
 
   implicit def json4sMarshaller[T <: AnyRef] =

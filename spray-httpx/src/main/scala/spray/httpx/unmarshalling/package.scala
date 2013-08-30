@@ -28,7 +28,7 @@ package object unmarshalling {
 
   implicit def formFieldExtractor(form: HttpForm) = FormFieldExtractor(form)
   implicit def pimpHttpEntity(entity: HttpEntity) = new PimpedHttpEntity(entity)
-  implicit def pimpHttpBodyPart(bodyPart: BodyPart) = new PimpedHttpEntity(bodyPart.entity)
+  implicit def pimpBodyPart(bodyPart: BodyPart) = new PimpedHttpEntity(bodyPart.entity)
 
   class PimpedHttpEntity(entity: HttpEntity) {
     def as[T](implicit unmarshaller: Unmarshaller[T]): Deserialized[T] = unmarshaller(entity)

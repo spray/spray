@@ -88,7 +88,7 @@ trait RespondWithDirectives {
     val rejection = UnacceptedResponseContentTypeRejection(ContentType(mediaType) :: Nil)
     extract(_.request.isMediaTypeAccepted(mediaType)).flatMap[HNil] { if (_) pass else reject(rejection) } &
       mapRequestContext(_.withContentNegotiationDisabled) &
-      mapHttpResponseEntity(_.flatMap { case HttpBody(ct, buf) ⇒ HttpEntity(ct.withMediaType(mediaType), buf) }) &
+      mapHttpResponseEntity(_.flatMap { case HttpEntity.NonEmpty(ct, buf) ⇒ HttpEntity(ct.withMediaType(mediaType), buf) }) &
       MiscDirectives.cancelRejection(rejection)
   }
 }

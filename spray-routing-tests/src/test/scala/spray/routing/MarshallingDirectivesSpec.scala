@@ -30,7 +30,7 @@ class MarshallingDirectivesSpec extends RoutingSpec {
 
   implicit val IntUnmarshaller =
     Unmarshaller[Int](ContentTypeRange(`text/xml`, HttpCharsets.getForKey("iso-8859-2").get), `text/html`, `application/xhtml+xml`) {
-      case HttpBody(_, buffer) ⇒ XML.load(new ByteArrayInputStream(buffer)).text.toInt
+      case HttpEntity.NonEmpty(_, data) ⇒ XML.load(new ByteArrayInputStream(data.toByteArray)).text.toInt
     }
 
   implicit val IntMarshaller =

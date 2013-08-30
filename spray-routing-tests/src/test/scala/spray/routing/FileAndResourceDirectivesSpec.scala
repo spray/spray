@@ -65,15 +65,16 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     }
     "return a chunked response for files larger than the configured file-chunking-threshold-size" in {
       val file = File.createTempFile("sprayTest2", ".xml")
-      FileUtils.writeAllText("<this could be XML if it were formatted correctly>", file)
-      Get() ~> getFromFile(file) ~> check {
-        mediaType === `text/xml`
-        definedCharset === Some(`UTF-8`)
-        body.asString === "<this co"
-        headers === List(`Last-Modified`(DateTime(file.lastModified)))
-        chunks.map(_.bodyAsString).mkString("|") === "uld be X|ML if it| were fo|rmatted |correctl|y>"
-      }
-      file.delete
+      try {
+        FileUtils.writeAllText("<this could be XML if it were formatted correctly>", file)
+        Get() ~> getFromFile(file) ~> check {
+          mediaType === `text/xml`
+          definedCharset === Some(`UTF-8`)
+          body.asString === "<this co"
+          headers === List(`Last-Modified`(DateTime(file.lastModified)))
+          chunks.map(_.data.asString).mkString("|") === "uld be X|ML if it| were fo|rmatted |correctl|y>"
+        }
+      } finally file.delete
     }
   }
 

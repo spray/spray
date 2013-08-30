@@ -211,7 +211,7 @@ case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPa
         status = redirectionType,
         headers = Location(uri) :: Nil,
         entity = redirectionType.htmlTemplate match {
-          case ""       ⇒ EmptyEntity
+          case ""       ⇒ HttpEntity.Empty
           case template ⇒ HttpEntity(`text/html`, template format uri)
         })
     }

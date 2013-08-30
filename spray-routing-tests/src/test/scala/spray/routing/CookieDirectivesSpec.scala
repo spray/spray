@@ -44,7 +44,7 @@ class CookieDirectivesSpec extends RoutingSpec {
       Get() ~> {
         deleteCookie("myCookie", "test.com") { completeOk }
       } ~> check {
-        response.toString === "HttpResponse(200 OK,EmptyEntity,List(Set-Cookie: myCookie=deleted; " +
+        response.toString === "HttpResponse(200 OK,Empty,List(Set-Cookie: myCookie=deleted; " +
           "Expires=Wed, 01 Jan 1800 00:00:00 GMT; Domain=test.com),HTTP/1.1)"
       }
     }
@@ -53,7 +53,7 @@ class CookieDirectivesSpec extends RoutingSpec {
       Get() ~> {
         deleteCookie(HttpCookie("myCookie", "test.com"), HttpCookie("myCookie2", "foobar.com")) { completeOk }
       } ~> check {
-        response.toString === "HttpResponse(200 OK,EmptyEntity,List(" +
+        response.toString === "HttpResponse(200 OK,Empty,List(" +
           "Set-Cookie: myCookie=deleted; Expires=Wed, 01 Jan 1800 00:00:00 GMT, " +
           "Set-Cookie: myCookie2=deleted; Expires=Wed, 01 Jan 1800 00:00:00 GMT" +
           "),HTTP/1.1)"
@@ -84,7 +84,7 @@ class CookieDirectivesSpec extends RoutingSpec {
       Get() ~> {
         setCookie(HttpCookie("myCookie", "test.com")) { completeOk }
       } ~> check {
-        response.toString === "HttpResponse(200 OK,EmptyEntity,List(Set-Cookie: myCookie=test.com),HTTP/1.1)"
+        response.toString === "HttpResponse(200 OK,Empty,List(Set-Cookie: myCookie=test.com),HTTP/1.1)"
       }
     }
 
@@ -92,7 +92,7 @@ class CookieDirectivesSpec extends RoutingSpec {
       Get() ~> {
         setCookie(HttpCookie("myCookie", "test.com"), HttpCookie("myCookie2", "foobar.com")) { completeOk }
       } ~> check {
-        response.toString === "HttpResponse(200 OK,EmptyEntity,List(" +
+        response.toString === "HttpResponse(200 OK,Empty,List(" +
           "Set-Cookie: myCookie=test.com, " +
           "Set-Cookie: myCookie2=foobar.com" +
           "),HTTP/1.1)"

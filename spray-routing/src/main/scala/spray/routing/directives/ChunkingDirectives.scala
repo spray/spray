@@ -18,9 +18,8 @@ package spray.routing
 package directives
 
 import akka.actor.ActorRefFactory
-import spray.http.{ HttpBody, HttpResponse }
+import spray.http.{ HttpEntity, HttpResponse }
 import spray.httpx.marshalling.BasicMarshallers
-import spray.util._
 
 trait ChunkingDirectives {
   import BasicDirectives._
@@ -33,21 +32,20 @@ trait ChunkingDirectives {
   def autoChunk(csm: ChunkSizeMagnet) = mapRequestContext { ctx ⇒
     import csm._
     ctx.withRouteResponseHandling {
-      case HttpResponse(_, HttpBody(contentType, buffer), _, _) if buffer.length > chunkSize ⇒
-        def split(ix: Int): Stream[Array[Byte]] = {
+      case HttpResponse(_, HttpEntity.NonEmpty(contentType, data), _, _) if data.length > chunkSize ⇒
+        def split(ix: Long = 0L): Stream[Array[Byte]] = {
           def chunkBuf(size: Int) = {
             val array = new Array[Byte](size)
-            System.arraycopy(buffer, ix, array, 0, size)
+            data.copyToArray(array, sourceOffset = ix, span = size)
             array
           }
-          if (ix < buffer.length - chunkSize) Stream.cons(chunkBuf(chunkSize), split(ix + chunkSize))
-          else Stream.cons(chunkBuf(buffer.length - ix), Stream.Empty)
+          if (ix < data.length - chunkSize) Stream.cons(chunkBuf(chunkSize), split(ix + chunkSize))
+          else Stream.cons(chunkBuf((data.length - ix).toInt), Stream.Empty)
         }
-        implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(contentType)
-        ctx.complete(split(0))
+        implicit val marshaller = BasicMarshallers.byteArrayMarshaller(contentType)
+        ctx.complete(split())
     }
   }
-
 }
 
 object ChunkingDirectives extends ChunkingDirectives

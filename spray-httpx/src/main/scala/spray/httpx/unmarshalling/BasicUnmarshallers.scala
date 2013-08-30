@@ -19,14 +19,13 @@ package spray.httpx.unmarshalling
 import java.nio.ByteBuffer
 import java.io.{ InputStreamReader, ByteArrayInputStream }
 import scala.xml.{ XML, NodeSeq }
-import spray.util._
 import spray.http._
 import MediaTypes._
 
 trait BasicUnmarshallers {
 
   implicit val ByteArrayUnmarshaller = new Unmarshaller[Array[Byte]] {
-    def apply(entity: HttpEntity) = Right(entity.buffer)
+    def apply(entity: HttpEntity) = Right(entity.data.toByteArray)
   }
 
   implicit val CharArrayUnmarshaller = new Unmarshaller[Array[Char]] {
@@ -37,7 +36,7 @@ trait BasicUnmarshallers {
           val array = new Array[Char](charBuffer.length())
           charBuffer.get(array)
           array
-        case EmptyEntity ⇒ Array.empty[Char]
+        case HttpEntity.Empty ⇒ Array.empty[Char]
       }
     }
   }
@@ -49,29 +48,24 @@ trait BasicUnmarshallers {
   //# nodeseq-unmarshaller
   implicit val NodeSeqUnmarshaller =
     Unmarshaller[NodeSeq](`text/xml`, `application/xml`, `text/html`, `application/xhtml+xml`) {
-      case HttpBody(contentType, buffer) ⇒
-        XML.load(new InputStreamReader(new ByteArrayInputStream(buffer), contentType.charset.nioCharset))
-      case EmptyEntity ⇒ NodeSeq.Empty
+      case HttpEntity.NonEmpty(contentType, data) ⇒
+        XML.load(new InputStreamReader(new ByteArrayInputStream(data.toByteArray), contentType.charset.nioCharset))
+      case HttpEntity.Empty ⇒ NodeSeq.Empty
     }
   //#
 
   implicit val FormDataUnmarshaller =
     Unmarshaller[FormData](`application/x-www-form-urlencoded`) {
-      case HttpBody(contentType, buffer) ⇒ FormData {
-        val data = buffer.asString(contentType.charset.nioCharset)
-        val charset = contentType.charset.value
-        data.fastSplit('&').flatMap {
-          case "" ⇒ Nil
-          case string ⇒ string.fastSplit('=') match {
-            case key :: value :: Nil ⇒
-              import java.net.URLDecoder.decode
-              Some(decode(key, charset) -> decode(value, charset))
-            case _ ⇒ throw new IllegalArgumentException("'" + data + "' is not a valid form content: '" +
-              string + "' does not constitute a valid key=value pair")
-          }
-        }(collection.breakOut)
-      }
-      case EmptyEntity ⇒ FormData.Empty
+      case HttpEntity.Empty ⇒ FormData.Empty
+      case entity: HttpEntity.NonEmpty ⇒
+        val data = entity.asString
+        try {
+          val query = Uri.Query(data, entity.contentType.charset.nioCharset)
+          FormData(query.toMap)
+        } catch {
+          case ex: IllegalUriException ⇒
+            throw new IllegalArgumentException(ex.info.formatPretty.replace("Query,", "form content,"))
+        }
     }
 }
 

@@ -45,4 +45,4 @@ object ResponseTransformation extends ResponseTransformation
 
 class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
 class UnsuccessfulResponseException(val response: HttpResponse) extends RuntimeException(s"Status: ${response.status}\n" +
-  s"Body: ${if (response.entity.buffer.length < 1024) response.entity.asString else response.entity.buffer.length + " bytes"}")
+  s"Body: ${if (response.entity.data.length < 1024) response.entity.asString else response.entity.data.length + " bytes"}")

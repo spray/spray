@@ -25,8 +25,8 @@ abstract class SimpleUnmarshaller[T] extends Unmarshaller[T] {
 
   def apply(entity: HttpEntity): Deserialized[T] =
     entity match {
-      case EmptyEntity ⇒ unmarshal(entity)
-      case x: HttpBody if canUnmarshalFrom.exists(_.matches(x.contentType)) ⇒ unmarshal(entity)
+      case HttpEntity.Empty ⇒ unmarshal(entity)
+      case x: HttpEntity.NonEmpty if canUnmarshalFrom.exists(_.matches(x.contentType)) ⇒ unmarshal(entity)
       case _ ⇒ Left(UnsupportedContentType(canUnmarshalFrom.map(_.value).mkString("Expected '", "' or '", "'")))
     }
 

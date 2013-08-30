@@ -52,19 +52,18 @@ class BasicUnmarshallersSpec extends Specification {
     }
     "be lenient on empty key/value pairs" in {
       HttpEntity(`application/x-www-form-urlencoded`, "&key=value&&key2=&").as[FormData] ===
-        Right(FormData(Map("key" -> "value", "key2" -> "")))
+        Right(FormData(Map("" -> "", "key" -> "value", "key2" -> "")))
     }
     "reject illegal form content" in {
       val Left(MalformedContent(msg, _)) = HttpEntity(`application/x-www-form-urlencoded`, "key=really=not_good").as[FormData]
-      msg === "'key=really=not_good' is not a valid form content: " +
-        "'key=really=not_good' does not constitute a valid key=value pair"
+      msg === "Illegal form content, unexpected character '=' at position 10: \nkey=really=not_good\n          ^\n"
     }
   }
 
   "Unmarshaller.forNonEmpty" should {
     "prevent the underlying unmarshaller from unmarshalling empty entities" in {
       implicit val um = Unmarshaller.forNonEmpty[String]
-      EmptyEntity.as[String] === Left(ContentExpected)
+      HttpEntity.Empty.as[String] === Left(ContentExpected)
     }
   }
 
