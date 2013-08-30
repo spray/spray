@@ -17,6 +17,7 @@ package spray.http
 package parser
 
 import org.parboiled.scala._
+import spray.util.identityFunc
 import BasicRules._
 
 // http://tools.ietf.org/html/draft-ietf-httpstate-cookie-23#section-4

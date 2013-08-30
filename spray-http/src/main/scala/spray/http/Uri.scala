@@ -23,6 +23,7 @@ import scala.annotation.tailrec
 import scala.collection.{ mutable, LinearSeqOptimized }
 import scala.collection.immutable.LinearSeq
 import spray.http.parser.{ ParserInput, UriParser }
+import spray.util.UTF8
 import UriParser._
 import Uri._
 

@@ -17,6 +17,7 @@
 package spray.http
 
 import org.specs2.mutable.Specification
+import spray.util.UTF8
 import Uri._
 
 class UriSpec extends Specification {

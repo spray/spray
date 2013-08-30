@@ -19,7 +19,7 @@ package spray.http
 
 import scala.annotation.{ implicitNotFound, tailrec }
 import java.net.InetSocketAddress
-import spray.util.SSLSessionInfo
+import spray.util._
 
 abstract class HttpHeader extends ToStringRenderable {
   def name: String
@@ -49,7 +49,7 @@ object HttpHeaders {
       n.substring(n.indexOf('$') + 1, n.length - 1).replace("$minus", "-")
     }
     val lowercaseName = name.toLowerCase
-    private[this] val nameBytes = asciiBytes(name)
+    private[this] val nameBytes = name.getAsciiBytes
     def render[R <: Rendering](r: R): r.type = r ~~ nameBytes ~~ ':' ~~ ' '
   }
 

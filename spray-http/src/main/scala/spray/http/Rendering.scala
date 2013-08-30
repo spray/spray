@@ -20,6 +20,7 @@ package spray.http
 import scala.annotation.tailrec
 import scala.collection.LinearSeq
 import spray.http.parser.CharPredicate
+import spray.util._
 
 trait Renderable {
   def render[R <: Rendering](r: R): r.type
@@ -39,7 +40,7 @@ trait LazyValueBytesRenderable extends Renderable {
   // that a synchronization overhead or even @volatile reads
   private[this] var _valueBytes: Array[Byte] = _
   private def valueBytes =
-    if (_valueBytes != null) _valueBytes else { _valueBytes = asciiBytes(value); _valueBytes }
+    if (_valueBytes != null) _valueBytes else { _valueBytes = value.getAsciiBytes; _valueBytes }
 
   def value: String
   def render[R <: Rendering](r: R): r.type = r ~~ valueBytes
@@ -47,7 +48,7 @@ trait LazyValueBytesRenderable extends Renderable {
 }
 
 trait SingletonValueRenderable extends Product with Renderable {
-  private[this] val valueBytes = asciiBytes(value)
+  private[this] val valueBytes = value.getAsciiBytes
   def value = productPrefix
   def render[R <: Rendering](r: R): r.type = r ~~ valueBytes
 }
