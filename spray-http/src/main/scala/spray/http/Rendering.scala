@@ -19,7 +19,7 @@ package spray.http
 
 import scala.annotation.tailrec
 import scala.collection.LinearSeq
-import spray.http.parser.CharPredicate
+import spray.http.parser.{ CharUtils, CharPredicate }
 import spray.util._
 
 trait Renderable {
@@ -129,6 +129,25 @@ trait Rendering {
       putNextChar(value, magnitude())
     } else this ~~ '0'
 
+  /**
+   * Renders the given Int in (lower case) hex notation.
+   */
+  def ~~%(int: Int): this.type = this ~~% int.toLong
+
+  /**
+   * Renders the given Long in (lower case) hex notation.
+   */
+  def ~~%(long: Long): this.type =
+    if (long != 0) {
+      @tailrec def putChar(shift: Int = 60): this.type = {
+        this ~~ CharUtils.lowerHexDigit(long >>> shift)
+        if (shift > 0) putChar(shift - 4) else this
+      }
+      @tailrec def skipZeros(shift: Int = 60): this.type =
+        if ((long >>> shift) > 0) putChar(shift) else skipZeros(shift - 4)
+      skipZeros()
+    } else this ~~ '0'
+
   def ~~(string: String): this.type = {
     @tailrec def rec(ix: Int = 0): this.type =
       if (ix < string.length) { this ~~ string.charAt(ix); rec(ix + 1) } else this
@@ -143,6 +162,10 @@ trait Rendering {
 
   def ~~[T](value: T)(implicit ev: Renderer[T]): this.type = ev.render(this, value)
 
+  /**
+   * Renders the given string either directly (if it only contains token chars)
+   * or in double quotes (if it contains at least one non-token char).
+   */
   def ~~#(s: String): this.type =
     if (CharPredicate.HttpToken.matchAll(s)) this ~~ s else ~~('"').putEscaped(s) ~~ '"'
 
