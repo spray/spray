@@ -71,6 +71,7 @@ object Build extends Build with DocSupport {
     .settings(osgiSettings(exports = Seq("spray.http")): _*)
     .settings(libraryDependencies ++=
       compile(parboiled) ++
+      provided(akkaActor) ++
       test(specs2)
     )
 

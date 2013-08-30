@@ -37,15 +37,15 @@ object MessagePredicate {
 
   def isRequest = apply(_.isRequest)
   def isResponse = apply(_.isResponse)
-  def minEntitySize(minSize: Int) = apply(_.entity.buffer.length >= minSize)
+  def minEntitySize(minSize: Int) = apply(_.entity.data.length >= minSize)
   def responseStatus(f: StatusCode ⇒ Boolean) = apply {
     case x: HttpResponse ⇒ f(x.status)
     case _: HttpRequest  ⇒ false
   }
   def isCompressible: MessagePredicate = apply {
     _.entity match {
-      case HttpBody(contentType, _) ⇒ contentType.mediaType.compressible
-      case EmptyEntity              ⇒ false
+      case HttpEntity.NonEmpty(contentType, _) ⇒ contentType.mediaType.compressible
+      case _                                   ⇒ false
     }
   }
 }
