@@ -79,7 +79,7 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
       serverHandler.reply(MessageChunk("234"))
       serverHandler.reply(MessageChunk("345"))
       serverHandler.reply(ChunkedMessageEnd)
-      probe.expectMsgType[ChunkedResponseStart].response.entity === EmptyEntity
+      probe.expectMsgType[ChunkedResponseStart].response.entity === HttpEntity.Empty
       probe.expectMsg(MessageChunk("yeah"))
       probe.expectMsg(MessageChunk("234"))
       probe.expectMsg(MessageChunk("345"))

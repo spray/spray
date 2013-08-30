@@ -361,8 +361,8 @@ class RequestParserSpec extends Specification {
     val data = CompactByteString(rawRequest)
     parser.parse(data) match {
       case Result.Ok(HttpRequest(m, u, h, e, p), rd, close) ⇒ (m, u, p, h, e.asString, rd.utf8String, close)
-      case Result.Ok(ChunkedRequestStart(HttpRequest(m, u, h, EmptyEntity, p)), rd, close) ⇒ (m, u, p, h, rd.utf8String, close)
-      case Result.Ok(MessageChunk(body, ext), rd, close) ⇒ (new String(body), ext, rd.utf8String, close)
+      case Result.Ok(ChunkedRequestStart(HttpRequest(m, u, h, HttpEntity.Empty, p)), rd, close) ⇒ (m, u, p, h, rd.utf8String, close)
+      case Result.Ok(MessageChunk(d, ext), rd, close) ⇒ (d.asString, ext, rd.utf8String, close)
       case Result.Ok(ChunkedMessageEnd(ext, trailer), rd, close) ⇒ (ext, trailer, rd.utf8String, close)
       case Result.ParsingError(status, info) ⇒ (status, info.formatPretty)
       case x ⇒ x

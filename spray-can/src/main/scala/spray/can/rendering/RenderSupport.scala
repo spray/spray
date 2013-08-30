@@ -31,9 +31,9 @@ private[rendering] object RenderSupport {
   implicit object MessageChunkRenderer extends Renderer[MessageChunk] {
     def render[R <: Rendering](r: R, chunk: MessageChunk): r.type = {
       import chunk._
-      r ~~ Integer.toHexString(body.length)
+      r ~~% data.length
       if (!extension.isEmpty) r ~~ ';' ~~ extension
-      r ~~ CrLf ~~ body ~~ CrLf
+      r ~~ CrLf ~~ data ~~ CrLf
     }
   }
 

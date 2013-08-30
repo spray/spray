@@ -140,7 +140,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
       }
 
       "a response chunk" in new TestSetup() {
-        render(MessageChunk("body123".getBytes("ISO-8859-1"), """key=value;another="tl;dr"""")) === result {
+        render(MessageChunk(HttpData("body123".getBytes), """key=value;another="tl;dr"""")) === result {
           """7;key=value;another="tl;dr"
             |body123
             |"""
@@ -180,7 +180,8 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
       }
 
       "a chunkless response chunk" in new TestSetup(chunklessStreaming = true) {
-        render(response = MessageChunk("body123".getBytes("ISO-8859-1"), """key=value;another="tl;dr"""")) === result {
+        render(response = MessageChunk(HttpData("body123".getBytes),
+          """key=value;another="tl;dr"""")) === result {
           "body123"
         } -> false
       }

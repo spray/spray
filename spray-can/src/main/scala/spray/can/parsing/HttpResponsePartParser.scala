@@ -95,7 +95,7 @@ class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeade
         case Some(te) if te.encodings.size == 1 && te.hasChunked ⇒
           if (clh.isEmpty) {
             parse = parseChunk(closeAfterResponseCompletion)
-            Result.Ok(ChunkedResponseStart(message(headers, EmptyEntity)), drop(input, bodyStart), closeAfterResponseCompletion)
+            Result.Ok(ChunkedResponseStart(message(headers, HttpEntity.Empty)), drop(input, bodyStart), closeAfterResponseCompletion)
           } else fail("A chunked request must not contain a Content-Length header.")
 
         case Some(te) ⇒ fail(te.toString + " is not supported by this client")
@@ -104,7 +104,7 @@ class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeade
           case Some(`Content-Length`(contentLength)) ⇒
             if (contentLength == 0) {
               parse = this
-              Result.Ok(message(headers, EmptyEntity), drop(input, bodyStart), closeAfterResponseCompletion)
+              Result.Ok(message(headers, HttpEntity.Empty), drop(input, bodyStart), closeAfterResponseCompletion)
             } else if (contentLength <= settings.maxContentLength)
               parseFixedLengthBody(headers, input, bodyStart, contentLength, cth, closeAfterResponseCompletion)
             else fail(s"Response Content-Length $contentLength exceeds the configured limit of " +
@@ -115,7 +115,7 @@ class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeade
       }
     } else {
       parse = this
-      Result.Ok(message(headers, EmptyEntity), drop(input, bodyStart), closeAfterResponseCompletion)
+      Result.Ok(message(headers, HttpEntity.Empty), drop(input, bodyStart), closeAfterResponseCompletion)
     }
   }
 
@@ -125,7 +125,7 @@ class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeade
       parse = { more ⇒
         if (more.isEmpty) {
           parse = this
-          val part = message(headers, entity(cth, input.iterator.drop(bodyStart).toArray[Byte]))
+          val part = message(headers, entity(cth, input drop bodyStart))
           Result.Ok(part, CompactByteString.empty, closeAfterResponseCompletion = true)
         } else parseToCloseBody(headers, input ++ more, bodyStart, cth)
       }
@@ -137,5 +137,5 @@ class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeade
     HttpResponse(statusCode, entity, headers, protocol)
 
   def chunkStartMessage(headers: List[HttpHeader]): ChunkedResponseStart =
-    ChunkedResponseStart(message(headers, EmptyEntity))
+    ChunkedResponseStart(message(headers, HttpEntity.Empty))
 }

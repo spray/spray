@@ -16,7 +16,6 @@
 
 package spray.can.client
 
-import akka.util.{ ByteString, ByteStringBuilder }
 import spray.http._
 import spray.io._
 import spray.can.Http
@@ -31,14 +30,15 @@ object ResponseChunkAggregation {
 
           val initialEventPipeline: EPL = {
             case Http.MessageEvent(ChunkedResponseStart(response)) ⇒
-              eventPipeline.become(aggregating(response))
+              eventPipeline.become(aggregating(response, HttpData.newBuilder += response.entity.data))
 
             case ev ⇒ eventPL(ev)
           }
 
-          def aggregating(response: HttpResponse, bb: ByteStringBuilder = ByteString.newBuilder): EPL = {
-            case Http.MessageEvent(MessageChunk(body, _)) ⇒
-              if (bb.length + body.length <= limit) bb.putBytes(body)
+          def aggregating(response: HttpResponse, builder: HttpData.Builder): EPL = {
+            case Http.MessageEvent(MessageChunk(data, _)) ⇒
+              if (builder.byteCount + data.length <= limit)
+                builder += data
               else closeWithError()
 
             case Http.MessageEvent(_: ChunkedMessageEnd) ⇒
@@ -46,7 +46,7 @@ object ResponseChunkAggregation {
                 case Some(x) ⇒ x.contentType
                 case None    ⇒ ContentTypes.`application/octet-stream`
               }
-              eventPL(Http.MessageEvent(response.copy(entity = HttpEntity(contentType, bb.result().toArray[Byte]))))
+              eventPL(Http.MessageEvent(response.copy(entity = HttpEntity(contentType, builder.result()))))
               eventPipeline.become(initialEventPipeline)
 
             case ev ⇒ eventPL(ev)
