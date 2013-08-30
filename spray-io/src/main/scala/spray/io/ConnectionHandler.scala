@@ -24,7 +24,7 @@ trait ConnectionHandler extends Actor with ActorLogging {
 
   //# final-stages
   def baseCommandPipeline(tcpConnection: ActorRef): Pipeline[Command] = {
-    case x: Tcp.Write ⇒ tcpConnection ! x
+    case x: Tcp.WriteCommand ⇒ tcpConnection ! x
     case Pipeline.Tell(receiver, msg, sender) ⇒ receiver.tell(msg, sender)
     case x: Tcp.CloseCommand ⇒ tcpConnection ! x
     case x @ (Tcp.SuspendReading | Tcp.ResumeReading | Tcp.ResumeWriting) ⇒ tcpConnection ! x

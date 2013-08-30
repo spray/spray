@@ -234,9 +234,21 @@ object Tcp extends ExtensionKey[TcpExt] {
   object NoAck extends NoAck(null)
 
   /**
-   * Common interface for all write commands, currently [[akka.io.Tcp.Write]] and [[akka.io.Tcp.WriteFile]].
+   * Common interface for all write commands, i.e. [[akka.io.Tcp.Write]], [[akka.io.Tcp.WriteFile]]
+   * and [[akka.io.Tcp.CompoundWrite]]
    */
-  sealed trait WriteCommand extends Command {
+  sealed abstract class WriteCommand extends Command {
+    /**
+     * Prepends this command with another `Write` or `WriteFile` to form
+     * a `CompoundWrite`.
+     */
+    def +:(other: SimpleWriteCommand): CompoundWrite = CompoundWrite(other, this)
+  }
+
+  /**
+   * Common supertype of [[akka.io.Tcp.Write]] and [[akka.io.Tcp.WriteFile]].
+   */
+  sealed abstract class SimpleWriteCommand extends WriteCommand {
     require(ack != null, "ack must be non-null. Use NoAck if you don't want acks.")
 
     /**
@@ -261,7 +273,7 @@ object Tcp extends ExtensionKey[TcpExt] {
    * or have been sent!</b> Unfortunately there is no way to determine whether
    * a particular write has been sent by the O/S.
    */
-  case class Write(data: ByteString, ack: Event) extends WriteCommand
+  case class Write(data: ByteString, ack: Event) extends SimpleWriteCommand
   object Write {
     /**
      * The empty Write doesn't write anything and isn't acknowledged.
@@ -288,10 +300,20 @@ object Tcp extends ExtensionKey[TcpExt] {
    * or have been sent!</b> Unfortunately there is no way to determine whether
    * a particular write has been sent by the O/S.
    */
-  case class WriteFile(filePath: String, position: Long, count: Long, ack: Event) extends WriteCommand {
+  case class WriteFile(filePath: String, position: Long, count: Long, ack: Event) extends SimpleWriteCommand {
     require(position >= 0, "WriteFile.position must be >= 0")
     require(count > 0, "WriteFile.count must be > 0")
   }
+
+  /**
+   * A write command which aggregates two other write commands. Using this construct
+   * you can chain a number of [[akka.io.Tcp.Write]] and/or [[akka.io.Tcp.WriteFile]] commands together in a way
+   * that allows them to be handled as a single write which gets written out to the
+   * network as quickly as possible.
+   * If the sub commands contain `ack` requests they will be honored as soon as the
+   * respective write has been written completely.
+   */
+  case class CompoundWrite(head: SimpleWriteCommand, tail: WriteCommand) extends WriteCommand
 
   /**
    * When `useResumeWriting` is in effect as was indicated in the [[akka.io.Tcp.Register]] message
