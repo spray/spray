@@ -27,16 +27,24 @@ Directive                              Description
 :ref:`-clientIP-`                      Extracts the IP address of the client from either the ``X-Forwarded-For``,
                                        ``Remote-Address`` or ``X-Real-IP`` request header
 :ref:`-complete-`                      Completes the request with a given response, several overloads
+:ref:`-compressResponse-`              Compresses responses coming back from its inner Route using either ``Gzip`` or
+                                       ``Deflate`` unless the request explicitly sets ``Accept-Encoding`` to ``identity``.
+:ref:`-compressResponseIfRequested-`   Compresses responses coming back from its inner Route using either ``Gzip`` or
+                                       ``Deflate``, but only when the request explicitly accepts one of them.
+:ref:`-compressResponseWith-`          Compresses responses coming back from its inner Route using one of the
+                                       specified Encoders.
 :ref:`-cookie-`                        Extracts an ``HttpCookie`` with a given name or rejects if no such cookie is
                                        present in the request
 :ref:`-decodeRequest-`                 Decompresses incoming requests using a given Decoder
+:ref:`-decompressRequest-`             Decompresses incoming requests using either ``Gzip``, ``Deflate``, or ``NoEncoding``
+:ref:`-decompressRequestWith-`         Decompresses incoming requests using one of the specified Decoders
 :ref:`-delete-`                        Rejects all non-DELETE requests
 :ref:`-deleteCookie-`                  Adds a ``Set-Cookie`` header expiring the given cookie to all ``HttpResponse``
                                        replies of its inner Route
 :ref:`-detach-`                        Executes its inner Route in a ``Future``
 :ref:`-dynamic-`                       Rebuilds its inner Route for every request anew
 :ref:`-dynamicIf-`                     Conditionally rebuilds its inner Route for every request anew
-:ref:`-encodeResponse-`                Compresses responses coming back from its inner Route using a given Decoder
+:ref:`-encodeResponse-`                Compresses responses coming back from its inner Route using a given Encoder
 :ref:`-entity-`                        Unmarshalls the requests entity according to a given definition, rejects in
                                        case of problems
 :ref:`-extract-`                       Extracts a single value from the ``RequestContext`` using a function
