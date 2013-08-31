@@ -66,6 +66,14 @@ trait Cache[V] { cache ⇒
    * Clears the cache by removing all entries.
    */
   def clear()
+
+  /**
+   * Returns the upper bound for the number of currently cached entries.
+   * Note that this number might not reflect the exact number of active, unexpired
+   * cache entries, since expired entries are only evicted upon next access
+   * (or by being thrown out by a capacity constraint).
+   */
+  def size: Int
 }
 
 class ValueMagnet[V](val future: Future[V])

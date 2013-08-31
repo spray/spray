@@ -80,6 +80,8 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
   def remove(key: Any) = Option(store.remove(key))
 
   def clear(): Unit = { store.clear() }
+
+  def size = store.size
 }
 
 /**
@@ -159,6 +161,8 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
   }
 
   def clear(): Unit = { store.clear() }
+
+  def size = store.size
 
   private def isAlive(entry: Entry[V]) = {
     val now = System.currentTimeMillis
