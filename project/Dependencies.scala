@@ -22,7 +22,7 @@ object Dependencies {
   val specs2        = "org.specs2"                              %%  "specs2"                      % "1.14"
   val sprayJson     = "io.spray"                                %%  "spray-json"                  % "1.2.5"
   val twirlApi      = "io.spray"                                %%  "twirl-api"                   % "0.6.2"
-  val clHashMap     = "com.googlecode.concurrentlinkedhashmap"  %   "concurrentlinkedhashmap-lru" % "1.3.2"
+  val clHashMap     = "com.googlecode.concurrentlinkedhashmap"  %   "concurrentlinkedhashmap-lru" % "1.4"
   val jettyWebApp   = "org.eclipse.jetty"                       %   "jetty-webapp"                % "8.1.11.v20130520"
   val servlet30     = "org.eclipse.jetty.orbit"                 %   "javax.servlet"               % "3.0.0.v201112011016" artifacts Artifact("javax.servlet", "jar", "jar")
   val logback       = "ch.qos.logback"                          %   "logback-classic"             % "1.0.13"

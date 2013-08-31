@@ -66,7 +66,7 @@ class ExpiringLruCacheSpec extends Specification with NoTimeConversions {
       cache(1)("A").await === "A"
       cache(2)(Future.successful("B")).await === "B"
       cache(3)("C").await === "C"
-      cache.store.toString === "{2=B, 1=A, 3=C}"
+      cache.store.toString === "{1=A, 2=B, 3=C}"
       cache(4)("D")
       Thread.sleep(10)
       cache.store.toString === "{2=B, 3=C, 4=D}"
@@ -94,7 +94,7 @@ class ExpiringLruCacheSpec extends Specification with NoTimeConversions {
       cache(2)("B").await === "B"
       cache(3)("C").await === "C"
       cache(1)("").await === "A" // refresh
-      cache.store.toString === "{2=B, 1=A, 3=C}"
+      cache.store.toString === "{1=A, 2=B, 3=C}"
     }
     "be thread-safe" in {
       val cache = lruCache[Int](maxCapacity = 1000)
