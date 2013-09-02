@@ -190,7 +190,7 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
         try f(tempBuf)
         catch {
           case e: SSLException ⇒
-            log.error("Closing encrypted connection to {} due to {}", context.remoteAddress, e)
+            log.error("Closing encrypted connection to {} due to {}", context.remoteAddress, Utils.fullErrorMessageFor(e))
             commandPL(Tcp.Close)
         } finally SslBufferPool release tempBuf
       }
