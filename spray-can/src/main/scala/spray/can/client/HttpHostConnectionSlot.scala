@@ -57,10 +57,6 @@ private[client] class HttpHostConnectionSlot(host: String, port: Int,
           case ctx: RequestContext  ⇒ context.parent ! ctx
           case _: Http.CloseCommand ⇒ context.stop(self)
         }
-
-      case Terminated(conn) ⇒
-      // ignore, may happen if in closing we unwatch too late
-      // and this message is already in the mailbox
     }
   }
 
@@ -134,18 +130,16 @@ private[client] class HttpHostConnectionSlot(host: String, port: Int,
       context.become(terminating(httpConnection))
 
     case ev: Http.ConnectionClosed ⇒
-      context.parent ! Disconnected(openRequests.size)
+
       val errorMsgForOpenRequests = ev match {
         case Http.PeerClosed ⇒ "Premature connection close (the server doesn't appear to support request pipelining)"
         case x               ⇒ x.toString
       }
-      openRequests foreach clear(errorMsgForOpenRequests, retry = true)
-      context.unwatch(httpConnection)
-      context.become(unconnected)
+      reportDisconnection(openRequests, errorMsgForOpenRequests, retry = true)
+      context.become(waitingForConnectionTermination(httpConnection))
 
     case Terminated(`httpConnection`) ⇒
-      context.parent ! Disconnected(openRequests.size)
-      openRequests foreach clear("Unexpected connection termination", retry = true)
+      reportDisconnection(openRequests, "Unexpected connection termination", retry = true)
       context.become(unconnected)
   }
 
@@ -154,21 +148,37 @@ private[client] class HttpHostConnectionSlot(host: String, port: Int,
 
   def closing(httpConnection: ActorRef, openRequests: Queue[RequestContext], error: Http.ConnectionException,
               retry: Boolean): Receive = {
+    case _: Http.ConnectionClosed ⇒
+      reportDisconnection(openRequests, error, retry)
+      context.become(waitingForConnectionTermination(httpConnection))
 
-    case ev @ (_: Http.ConnectionClosed | Terminated(`httpConnection`)) ⇒
-      context.parent ! Disconnected(openRequests.size)
-      openRequests foreach clear(error, retry)
-      context.unwatch(httpConnection)
+    case Terminated(`httpConnection`) ⇒
+      reportDisconnection(openRequests, error, retry)
       context.become(unconnected)
+  }
+  def waitingForConnectionTermination(httpConnection: ActorRef): Receive = {
+    var buffered = Queue.empty[Any]
+
+    {
+      case Terminated(`httpConnection`) ⇒
+        context.become(unconnected)
+        buffered.foreach(self ! _)
+      case x ⇒ buffered = buffered.enqueue(x)
+    }
   }
 
   def terminating(httpConnection: ActorRef): Receive = {
     case _: Http.ConnectionClosed     ⇒ // ignore
     case Terminated(`httpConnection`) ⇒ context.stop(self)
   }
+  def reportDisconnection(openRequests: Queue[RequestContext], error: String, retry: Boolean): Unit =
+    reportDisconnection(openRequests, new Http.ConnectionException(error), retry)
+  def reportDisconnection(openRequests: Queue[RequestContext], error: Http.ConnectionException, retry: Boolean): Unit = {
+    context.parent ! Disconnected(openRequests.size)
+    openRequests foreach clear(error, retry)
+  }
 
   def clear(error: String, retry: Boolean): RequestContext ⇒ Unit = clear(new Http.ConnectionException(error), retry)
-
   def clear(error: Http.ConnectionException, retry: Boolean): RequestContext ⇒ Unit = {
     case ctx @ RequestContext(request, retriesLeft, _) if retry && request.canBeRetried && retriesLeft > 0 ⇒
       log.warning("{} in response to {} with {} retries left, retrying...", error.getMessage, format(request), retriesLeft)
