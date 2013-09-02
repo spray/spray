@@ -40,7 +40,7 @@ trait EncodingDirectives {
     requestEntityEmpty | (
       requestEncodedWith(decoder.encoding) &
       applyDecoder &
-      cancelAllRejections(ofType[UnsupportedRequestEncodingRejection]))
+      cancelAllRejections(ofTypes(classOf[UnsupportedRequestEncodingRejection], classOf[CorruptRequestEncodingRejection])))
   }
 
   /**
@@ -87,6 +87,42 @@ trait EncodingDirectives {
     extract(_.request.isEncodingAccepted(encoding))
       .flatMap(if (_) pass else reject(UnacceptedResponseEncodingRejection(encoding)))
 
+  /**
+   * Wraps its inner Route with response compression, only falling back to
+   * uncompressed responses if the client specifically requests the "identity"
+   * encoding and preferring Gzip over Deflate.
+   */
+  def compressResponse: Directive0 = compressResponseWith(Gzip, Deflate, NoEncoding)
+
+  /**
+   * Wraps its inner Route with response compression if and only if the client
+   * specifically requests compression with an Accept-Encoding header.
+   */
+  def compressResponseIfRequested: Directive0 = compressResponseWith(NoEncoding, Gzip, Deflate)
+
+  /**
+   * Wraps its inner Route with response compression, using the specified
+   * encoders in order of preference.
+   */
+  def compressResponseWith(first: Encoder, more: Encoder*): Directive0 =
+    if (more.isEmpty) encodeResponse(first)
+    else more.foldLeft(encodeResponse(first)) { (r, encoder) ⇒ r | encodeResponse(encoder) }
+
+  /**
+   * Wraps its inner Route with request decompression, assuming
+   * Gzip compressed requests but falling back to Deflate or no
+   * compression if the request contains the relevant Content-Encoding
+   * header.
+   */
+  def decompressRequest: Directive0 = decompressRequestWith(Gzip, Deflate, NoEncoding)
+
+  /**
+   * Wraps its inner Route with request decompression, trying the specified
+   * decoders in turn.
+   */
+  def decompressRequestWith(first: Decoder, more: Decoder*): Directive0 =
+    if (more.isEmpty) decodeRequest(first)
+    else more.foldLeft(decodeRequest(first)) { (r, decoder) ⇒ r | decodeRequest(decoder) }
 }
 
 object EncodingDirectives extends EncodingDirectives
