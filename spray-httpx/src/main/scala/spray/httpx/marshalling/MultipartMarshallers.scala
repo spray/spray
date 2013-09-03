@@ -62,8 +62,9 @@ trait MultipartMarshallers {
         case _ ⇒ mcm(
           value = MultipartContent {
             value.fields.map {
-              case (name, part) ⇒ part.copy(
+              case (name, part) if !part.headers.exists(_.is("content-disposition")) ⇒ part.copy(
                 headers = `Content-Disposition`("form-data", Map("name" -> name)) :: part.headers)
+              case (name, part) ⇒ part
             }(collection.breakOut)
           },
           ctx = new DelegatingMarshallingContext(ctx) {

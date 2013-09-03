@@ -17,6 +17,7 @@
 package spray.httpx.marshalling
 
 import java.util.Random
+import scala.collection.immutable.ListMap
 import org.specs2.mutable.Specification
 import spray.util._
 import spray.http._
@@ -88,7 +89,7 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
   "The MultipartFormDataMarshaller" should {
 
     "correctly marshal 'multipart/form-data' with two fields" in {
-      marshal(MultipartFormData(Map("surname" -> BodyPart("Mike"), "age" -> BodyPart(marshal(<int>42</int>).get)))) ===
+      marshal(MultipartFormData(ListMap("surname" -> BodyPart("Mike"), "age" -> BodyPart(marshal(<int>42</int>).get)))) ===
         Right {
           HttpEntity(
             contentType = ContentType(`multipart/form-data` withBoundary "WA+a+wgbEuEHsegF8rT18PHQ"),
@@ -103,6 +104,38 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
                         |
                         |<int>42</int>
                         |--WA+a+wgbEuEHsegF8rT18PHQ--""".stripMargin.replace(EOL, "\r\n"))
+        }
+    }
+
+    "correctly marshal 'multipart/form-data' with two fields having a custom Content-Disposition" in {
+      marshal(MultipartFormData(ListMap(
+        "first-attachment" -> BodyPart(
+          HttpEntity(`text/csv`, "name,age\r\n\"John Doe\",20\r\n"),
+          List(`Content-Disposition`("form-data", Map("name" -> "attachment", "filename" -> "attachment.csv")))),
+        "second-attachment" -> BodyPart(
+          HttpEntity("name,age\r\n\"John Doe\",20\r\n".getBytes),
+          List(
+            `Content-Disposition`("form-data", Map("name" -> "attachment", "filename" -> "attachment.csv")),
+            RawHeader("Content-Transfer-Encoding", "binary")))))) ===
+        Right {
+          HttpEntity(
+            contentType = ContentType(`multipart/form-data` withBoundary "D2JjRnCSHFBYZ-8g9qgzXpiv"),
+            string = """|--D2JjRnCSHFBYZ-8g9qgzXpiv
+                       |Content-Disposition: form-data; name=attachment; filename=attachment.csv
+                       |Content-Type: text/csv
+                       |
+                       |name,age
+                       |"John Doe",20
+                       |
+                       |--D2JjRnCSHFBYZ-8g9qgzXpiv
+                       |Content-Disposition: form-data; name=attachment; filename=attachment.csv
+                       |Content-Transfer-Encoding: binary
+                       |Content-Type: application/octet-stream
+                       |
+                       |name,age
+                       |"John Doe",20
+                       |
+                       |--D2JjRnCSHFBYZ-8g9qgzXpiv--""".stripMargin.replace(EOL, "\r\n"))
         }
     }
 
