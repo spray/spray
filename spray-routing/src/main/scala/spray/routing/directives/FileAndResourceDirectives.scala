@@ -19,6 +19,7 @@ package directives
 
 import java.io.File
 import org.parboiled.common.FileUtils
+import scala.annotation.tailrec
 import akka.actor.ActorRefFactory
 import spray.httpx.marshalling.{ Marshaller, BasicMarshallers }
 import spray.util._
@@ -131,7 +132,10 @@ trait FileAndResourceDirectives {
                                               refFactory: ActorRefFactory, log: LoggingContext): Route = {
     val base = withTrailingSlash(directoryName)
     unmatchedPath { path ⇒
-      getFromFile(base + stripLeadingSlash(path))
+      fileSystemPath(base, path) match {
+        case ""       ⇒ reject
+        case fileName ⇒ getFromFile(fileName)
+      }
     }
   }
 
@@ -183,14 +187,31 @@ trait FileAndResourceDirectives {
                                                       refFactory: ActorRefFactory, log: LoggingContext): Route = {
     val base = if (directoryName.isEmpty) "" else withTrailingSlash(directoryName)
     unmatchedPath { path ⇒
-      getFromResource(base + stripLeadingSlash(path).toString)
+      fileSystemPath(base, path, separator = '/') match {
+        case ""           ⇒ reject
+        case resourceName ⇒ getFromResource(resourceName)
+      }
     }
   }
 }
 
 object FileAndResourceDirectives extends FileAndResourceDirectives {
-  def stripLeadingSlash(path: Uri.Path) = if (path.startsWithSlash) path.tail else path
-  def withTrailingSlash(path: String) = if (path endsWith "/") path else path + '/'
+  private def withTrailingSlash(path: String): String = if (path endsWith "/") path else path + '/'
+  private def fileSystemPath(base: String, path: Uri.Path, separator: Char = File.separatorChar)(implicit log: LoggingContext): String = {
+    import java.lang.StringBuilder
+    @tailrec def rec(p: Uri.Path, result: StringBuilder = new StringBuilder(base)): String =
+      p match {
+        case Uri.Path.Empty       ⇒ result.toString
+        case Uri.Path.Slash(tail) ⇒ rec(tail, result.append(separator))
+        case Uri.Path.Segment(head, tail) ⇒
+          if (head.indexOf('/') >= 0 || head == "..") {
+            log.warning("File-system path for base [{}] and Uri.Path [{}] contains suspicious path segment [{}], " +
+              "GET access was disallowed", base, path, head)
+            ""
+          } else rec(tail, result.append(head))
+      }
+    rec(if (path.startsWithSlash) path.tail else path)
+  }
 }
 
 trait ContentTypeResolver {
