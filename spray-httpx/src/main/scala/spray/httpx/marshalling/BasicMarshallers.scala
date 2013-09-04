@@ -18,19 +18,35 @@ package spray.httpx.marshalling
 
 import java.nio.CharBuffer
 import scala.xml.NodeSeq
+import akka.util.ByteString
 import spray.http._
 import MediaTypes._
 
 trait BasicMarshallers {
 
-  def byteArrayMarshaller(contentType: ContentType) =
+  implicit val ByteArrayMarshaller = byteArrayMarshaller(ContentTypes.`application/octet-stream`)
+  def byteArrayMarshaller(contentType: ContentType): Marshaller[Array[Byte]] =
     Marshaller.of[Array[Byte]](contentType) { (value, _, ctx) ⇒
       // we marshal to the ContentType given as argument to the method, not the one established by content-negotiation,
       // since the former is the one belonging to the byte array
       ctx.marshalTo(HttpEntity(contentType, value))
     }
 
-  implicit val ByteArrayMarshaller = byteArrayMarshaller(ContentTypes.`application/octet-stream`)
+  implicit val ByteStringMarshaller = byteStringMarshaller(ContentTypes.`application/octet-stream`)
+  def byteStringMarshaller(contentType: ContentType): Marshaller[ByteString] =
+    Marshaller.of[ByteString](contentType) { (value, _, ctx) ⇒
+      // we marshal to the ContentType given as argument to the method, not the one established by content-negotiation,
+      // since the former is the one belonging to the ByteString
+      ctx.marshalTo(HttpEntity(contentType, value))
+    }
+
+  implicit val HttpDataMarshaller = httpDataMarshaller(ContentTypes.`application/octet-stream`)
+  def httpDataMarshaller(contentType: ContentType): Marshaller[HttpData] =
+    Marshaller.of[HttpData](contentType) { (value, _, ctx) ⇒
+      // we marshal to the ContentType given as argument to the method, not the one established by content-negotiation,
+      // since the former is the one belonging to the HttpData
+      ctx.marshalTo(HttpEntity(contentType, value))
+    }
 
   implicit val CharArrayMarshaller =
     Marshaller.of[Array[Char]](ContentTypes.`text/plain(UTF-8)`) { (value, contentType, ctx) ⇒
