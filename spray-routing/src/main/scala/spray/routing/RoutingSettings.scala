@@ -23,7 +23,7 @@ import spray.util._
 case class RoutingSettings(
     verboseErrorMessages: Boolean,
     fileChunkingThresholdSize: Long,
-    fileChunkingChunkSize: Long,
+    fileChunkingChunkSize: Int,
     users: Config,
     renderVanityFooter: Boolean) {
 
@@ -35,7 +35,7 @@ object RoutingSettings extends SettingsCompanion[RoutingSettings]("spray.routing
   def fromSubConfig(c: Config) = apply(
     c getBoolean "verbose-error-messages",
     c getBytes "file-chunking-threshold-size",
-    c getBytes "file-chunking-chunk-size",
+    math.min(c getBytes "file-chunking-chunk-size", Int.MaxValue).toInt,
     c getConfig "users",
     c getBoolean "render-vanity-footer")
 
