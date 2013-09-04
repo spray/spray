@@ -24,10 +24,10 @@ package object rendering {
     data match {
       case HttpData.Empty                ⇒ Tcp.Write.empty
       case HttpData.Compound(head, tail) ⇒ toTcpWriteCommand(head, ack) +: toTcpWriteCommand(tail, ack)
-      case x: HttpData.CompactNonEmpty   ⇒ toTcpWriteCommand(x, ack)
+      case x: HttpData.SimpleNonEmpty    ⇒ toTcpWriteCommand(x, ack)
     }
 
-  def toTcpWriteCommand(data: HttpData.CompactNonEmpty, ack: Tcp.Event): Tcp.CompactWriteCommand =
+  def toTcpWriteCommand(data: HttpData.SimpleNonEmpty, ack: Tcp.Event): Tcp.SimpleWriteCommand =
     data match {
       case HttpData.Bytes(byteString)                ⇒ Tcp.Write(byteString, ack)
       case HttpData.FileBytes(fileName, offset, len) ⇒ Tcp.WriteFile(fileName, offset, len, ack)

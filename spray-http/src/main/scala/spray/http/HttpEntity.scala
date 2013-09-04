@@ -16,6 +16,8 @@
 
 package spray.http
 
+import akka.util.ByteString
+
 /**
  * Models the entity (aka "body" or "content) of an HTTP message.
  */
@@ -37,6 +39,7 @@ object HttpEntity {
   def apply(contentType: ContentType, string: String): HttpEntity =
     if (string.isEmpty) Empty else apply(contentType, HttpData(string, contentType.charset))
   def apply(contentType: ContentType, bytes: Array[Byte]): HttpEntity = apply(contentType, HttpData(bytes))
+  def apply(contentType: ContentType, bytes: ByteString): HttpEntity = apply(contentType, HttpData(bytes))
   def apply(contentType: ContentType, data: HttpData): HttpEntity =
     data match {
       case x: HttpData.NonEmpty ⇒ new NonEmpty(contentType, x)
