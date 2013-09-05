@@ -73,8 +73,8 @@ trait ResponseRenderingComponent {
       if (status eq StatusCodes.OK) r ~~ DefaultStatusLine else r ~~ StatusLineStart ~~ status ~~ CrLf
       r ~~ serverAndDateHeader
       entity match {
+        case HttpBody(ContentTypes.NoContentType, _) | EmptyEntity ⇒ // don't render Content-Type header
         case HttpBody(contentType, _) ⇒ r ~~ `Content-Type` ~~ contentType ~~ CrLf
-        case EmptyEntity              ⇒
       }
       renderHeaders(headers)()
     }

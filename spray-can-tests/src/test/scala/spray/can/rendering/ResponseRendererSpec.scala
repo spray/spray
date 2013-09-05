@@ -76,6 +76,24 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         } -> false
       }
 
+      "a response with status 400, a few headers and a body with an explicitly supressed Content Type header" in new TestSetup() {
+        render {
+          HttpResponse(
+            status = 400,
+            headers = List(RawHeader("Age", "30"), Connection("Keep-Alive")),
+            entity = HttpEntity(contentType = ContentTypes.NoContentType, "Small f*ck up overhere!"))
+        } === result {
+          """HTTP/1.1 400 Bad Request
+            |Server: spray-can/1.0.0
+            |Date: Thu, 25 Aug 2011 09:10:29 GMT
+            |Age: 30
+            |Connection: Keep-Alive
+            |Content-Length: 23
+            |
+            |Small f*ck up overhere!"""
+        } -> false
+      }
+
       "a response to a HEAD request" in new TestSetup() {
         render(requestMethod = HEAD,
           response = HttpResponse(
