@@ -154,9 +154,10 @@ class HttpHeaderSpec extends Specification {
       "Last-Modified: Wed, 13 Jul 2011 08:12:31 GMT" ! example(`Last-Modified`(DateTime(2011, 7, 13, 8, 12, 31)))_ ^
       p ^
       "Location: https://spray.io/secure" ! example(Location(Uri("https://spray.io/secure")))_ ^
+      "Location: /en-us/default.aspx" ! example(Location(Uri("/en-us/default.aspx")))_ ^
       "Location: https://spray.io/{sec}" ! example(Location(Uri("https://spray.io/{sec}")), fix(_).replace("{", "%7B").replace("}", "%7D"))_ ^
-      "Location: https://spray.io/ sec" ! errorExample(ErrorInfo("Illegal HTTP header 'Location': Illegal absolute " +
-        "URI, unexpected character ' ' at position 17", "\nhttps://spray.io/ sec\n                 ^\n"))_ ^
+      "Location: https://spray.io/ sec" ! errorExample(ErrorInfo("Illegal HTTP header 'Location': Illegal URI " +
+        "reference, unexpected character ' ' at position 17", "\nhttps://spray.io/ sec\n                 ^\n"))_ ^
       p ^
       "Origin: http://spray.io" ! example(Origin(Uri("http://spray.io")))_ ^
       p ^
