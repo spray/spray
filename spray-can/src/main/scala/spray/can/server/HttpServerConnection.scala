@@ -23,6 +23,7 @@ import akka.io.Tcp
 import spray.can.server.StatsSupport.StatsHolder
 import spray.io._
 import spray.can.Http
+import spray.can.parsing.SSLSessionInfoSupport
 import spray.http.{ SetTimeoutTimeout, SetRequestTimeout }
 
 private[can] class HttpServerConnection(tcpConnection: ActorRef,
@@ -91,104 +92,115 @@ private[can] object HttpServerConnection {
    * |                 MessageHandlerDispatch.DispatchCommand,
    * |                 generates HttpResponsePartRenderingContext
    * |------------------------------------------------------------------------------------------
-   *    /\                                |
-   *    | HttpMessagePart                 | HttpResponsePartRenderingContext
-   *    | IOServer.Closed                 | IOServer.Tell
-   *    | IOServer.SentOk                |
-   *    | TickGenerator.Tick              |
-   *    |                                \/
+   *    /\                                    |
+   *    | HttpMessagePart                     | HttpResponsePartRenderingContext
+   *    | IOServer.Closed                     | IOServer.Tell
+   *    | IOServer.SentOK                     |
+   *    | TickGenerator.Tick                  |
+   *    |                                    \/
    * |------------------------------------------------------------------------------------------
    * | RequestChunkAggregation: listens to HttpMessagePart events, generates HttpRequest events
    * |------------------------------------------------------------------------------------------
-   *    /\                                |
-   *    | HttpMessagePart                 | HttpResponsePartRenderingContext
-   *    | IOServer.Closed                 | IOServer.Tell
-   *    | IOServer.SentOk                |
-   *    | TickGenerator.Tick              |
-   *    |                                \/
+   *    /\                                    |
+   *    | HttpMessagePart                     | HttpResponsePartRenderingContext
+   *    | IOServer.Closed                     | IOServer.Tell
+   *    | IOServer.SentOK                     |
+   *    | TickGenerator.Tick                  |
+   *    |                                    \/
    * |------------------------------------------------------------------------------------------
    * | PipeliningLimiter: throttles incoming requests according to the PipeliningLimit, listens
    * |                    to HttpResponsePartRenderingContext commands and HttpRequestPart events,
    * |                    generates StopReading and ResumeReading commands
    * |------------------------------------------------------------------------------------------
-   *    /\                                |
-   *    | HttpMessagePart                 | HttpResponsePartRenderingContext
-   *    | IOServer.Closed                 | IOServer.Tell
-   *    | IOServer.SentOk                | IOServer.StopReading
-   *    | TickGenerator.Tick              | IOServer.ResumeReading
-   *    |                                \/
+   *    /\                                    |
+   *    | HttpMessagePart                     | HttpResponsePartRenderingContext
+   *    | IOServer.Closed                     | IOServer.Tell
+   *    | IOServer.SentOK                     | IOServer.StopReading
+   *    | TickGenerator.Tick                  | IOServer.ResumeReading
+   *    |                                    \/
    * |------------------------------------------------------------------------------------------
    * | StatsSupport: listens to most commands and events to collect statistics
    * |------------------------------------------------------------------------------------------
-   *    /\                                |
-   *    | HttpMessagePart                 | HttpResponsePartRenderingContext
-   *    | IOServer.Closed                 | IOServer.Tell
-   *    | IOServer.SentOk                | IOServer.StopReading
-   *    | TickGenerator.Tick              | IOServer.ResumeReading
-   *    |                                \/
+   *    /\                                    |
+   *    | HttpMessagePart                     | HttpResponsePartRenderingContext
+   *    | IOServer.Closed                     | IOServer.Tell
+   *    | IOServer.SentOK                     | IOServer.StopReading
+   *    | TickGenerator.Tick                  | IOServer.ResumeReading
+   *    |                                    \/
    * |------------------------------------------------------------------------------------------
    * | RemoteAddressHeaderSupport: add `Remote-Address` headers to incoming requests
    * |------------------------------------------------------------------------------------------
-   *    /\                                |
-   *    | HttpMessagePart                 | HttpResponsePartRenderingContext
-   *    | IOServer.Closed                 | IOServer.Tell
-   *    | IOServer.SentOk                | IOServer.StopReading
-   *    | TickGenerator.Tick              | IOServer.ResumeReading
-   *    |                                \/
+   *    /\                                    |
+   *    | HttpMessagePart                     | HttpResponsePartRenderingContext
+   *    | IOServer.Closed                     | IOServer.Tell
+   *    | IOServer.SentOK                     | IOServer.StopReading
+   *    | TickGenerator.Tick                  | IOServer.ResumeReading
+   *    |                                    \/
+   * |------------------------------------------------------------------------------------------
+   * | SSLSessionInfoSupport: add `SSL-Session-Info` header to incoming requests
+   * |------------------------------------------------------------------------------------------
+   *    /\                                    |
+   *    | HttpMessagePart                     | HttpResponsePartRenderingContext
+   *    | IOServer.Closed                     | IOServer.Tell
+   *    | IOServer.SentOK                     | IOServer.StopReading
+   *    | TickGenerator.Tick                  | IOServer.ResumeReading
+   *    | SslTlsSupport.SSLSessionEstablished |
+   *    |                                    \/
    * |------------------------------------------------------------------------------------------
    * | RequestParsing: converts Received events to HttpMessagePart,
    * |                 generates HttpResponsePartRenderingContext (in case of errors)
    * |------------------------------------------------------------------------------------------
-   *    /\                                |
-   *    | IOServer.Closed                 | HttpResponsePartRenderingContext
-   *    | IOServer.SentOk                | IOServer.Tell
-   *    | IOServer.Received               | IOServer.StopReading
-   *    | TickGenerator.Tick              | IOServer.ResumeReading
-   *    |                                \/
+   *    /\                                    |
+   *    | IOServer.Closed                     | HttpResponsePartRenderingContext
+   *    | IOServer.SentOK                     | IOServer.Tell
+   *    | IOServer.Received                   | IOServer.StopReading
+   *    | TickGenerator.Tick                  | IOServer.ResumeReading
+   *    | SslTlsSupport.SSLSessionEstablished |
+   *    |                                    \/
    * |------------------------------------------------------------------------------------------
    * | ResponseRendering: converts HttpResponsePartRenderingContext
    * |                    to Send and Close commands
    * |------------------------------------------------------------------------------------------
-   *    /\                                |
-   *    | IOServer.Closed                 | IOServer.Send
-   *    | IOServer.SentOk                | IOServer.Close
-   *    | IOServer.Received               | IOServer.Tell
-   *    | TickGenerator.Tick              | IOServer.StopReading
-   *    |                                 | IOServer.ResumeReading
-   *    |                                \/
+   *    /\                                    |
+   *    | IOServer.Closed                     | IOServer.Send
+   *    | IOServer.SentOK                     | IOServer.Close
+   *    | IOServer.Received                   | IOServer.Tell
+   *    | TickGenerator.Tick                  | IOServer.StopReading
+   *    | SslTlsSupport.SSLSessionEstablished | IOServer.ResumeReading
+   *    |                                    \/
    * |------------------------------------------------------------------------------------------
    * | ConnectionTimeouts: listens to Received events and Send commands and
    * |                     TickGenerator.Tick, generates Close commands
    * |------------------------------------------------------------------------------------------
-   *    /\                                |
-   *    | IOServer.Closed                 | IOServer.Send
-   *    | IOServer.SentOk                | IOServer.Close
-   *    | IOServer.Received               | IOServer.Tell
-   *    | TickGenerator.Tick              | IOServer.StopReading
-   *    |                                 | IOServer.ResumeReading
-   *    |                                \/
+   *    /\                                    |
+   *    | IOServer.Closed                     | IOServer.Send
+   *    | IOServer.SentOK                     | IOServer.Close
+   *    | IOServer.Received                   | IOServer.Tell
+   *    | TickGenerator.Tick                  | IOServer.StopReading
+   *    | SslTlsSupport.SSLSessionEstablished | IOServer.ResumeReading
+   *    |                                    \/
    * |------------------------------------------------------------------------------------------
    * | SslTlsSupport: listens to event Send and Close commands and Received events,
    * |                provides transparent encryption/decryption in both directions
    * |------------------------------------------------------------------------------------------
-   *    /\                                |
-   *    | IOServer.Closed                 | IOServer.Send
-   *    | IOServer.SentOk                | IOServer.Close
-   *    | IOServer.Received               | IOServer.Tell
-   *    | TickGenerator.Tick              | IOServer.StopReading
-   *    |                                 | IOServer.ResumeReading
-   *    |                                \/
+   *    /\                                    |
+   *    | IOServer.Closed                     | IOServer.Send
+   *    | IOServer.SentOK                     | IOServer.Close
+   *    | IOServer.Received                   | IOServer.Tell
+   *    | TickGenerator.Tick                  | IOServer.StopReading
+   *    |                                     | IOServer.ResumeReading
+   *    |                                    \/
    * |------------------------------------------------------------------------------------------
    * | TickGenerator: listens to Closed events,
    * |                dispatches TickGenerator.Tick events to the head of the event PL
    * |------------------------------------------------------------------------------------------
-   *    /\                                |
-   *    | IOServer.Closed                 | IOServer.Send
-   *    | IOServer.SentOk                | IOServer.Close
-   *    | IOServer.Received               | IOServer.Tell
-   *    | TickGenerator.Tick              | IOServer.StopReading
-   *    |                                 | IOServer.ResumeReading
-   *    |                                \/
+   *    /\                                    |
+   *    | IOServer.Closed                     | IOServer.Send
+   *    | IOServer.SentOK                     | IOServer.Close
+   *    | IOServer.Received                   | IOServer.Tell
+   *    | TickGenerator.Tick                  | IOServer.StopReading
+   *    |                                     | IOServer.ResumeReading
+   *    |                                    \/
    */
   def pipelineStage(settings: ServerSettings, statsHolder: Option[StatsHolder]) = {
     import settings._
@@ -197,10 +209,11 @@ private[can] object HttpServerConnection {
       PipeliningLimiter(pipeliningLimit) ? (pipeliningLimit > 0) >>
       StatsSupport(statsHolder.get) ? statsSupport >>
       RemoteAddressHeaderSupport ? remoteAddressHeader >>
+      SSLSessionInfoSupport ? parserSettings.sslSessionInfoHeader >>
       RequestParsing(settings) >>
       ResponseRendering(settings) >>
       ConnectionTimeouts(idleTimeout) ? (reapingCycle.isFinite && idleTimeout.isFinite) >>
-      SslTlsSupport(false) ? sslEncryption >>
+      SslTlsSupport(parserSettings.sslSessionInfoHeader) ? sslEncryption >>
       TickGenerator(reapingCycle) ? (reapingCycle.isFinite && (idleTimeout.isFinite || requestTimeout.isFinite)) >>
       BackPressureHandling(backpressureSettings.get.noAckRate, backpressureSettings.get.readingLowWatermark) ? backpressureSettings.isDefined
   }
