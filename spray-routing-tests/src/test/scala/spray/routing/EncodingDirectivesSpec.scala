@@ -392,10 +392,11 @@ class EncodingDirectivesSpec extends RoutingSpec {
       Get("/", helloGzipped) ~> `Content-Encoding`(deflate) ~> {
         decompressRequest { echoRequestContent }
       } ~> check {
-        rejections === Seq(
-          UnsupportedRequestEncodingRejection(gzip),
-          CorruptRequestEncodingRejection("incorrect header check"),
-          UnsupportedRequestEncodingRejection(identity))
+        rejections must beLike {
+          case Seq(UnsupportedRequestEncodingRejection(`gzip`),
+            CorruptRequestEncodingRejection(_),
+            UnsupportedRequestEncodingRejection(`identity`)) ⇒ ok
+        }
       }
     }
   }
