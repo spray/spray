@@ -94,12 +94,12 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
             contentType = ContentType(`multipart/form-data` withBoundary "WA+a+wgbEuEHsegF8rT18PHQ"),
             string = """|--WA+a+wgbEuEHsegF8rT18PHQ
                         |Content-Disposition: form-data; name=surname
-                        |Content-Type: text/plain
+                        |Content-Type: text/plain; charset=UTF-8
                         |
                         |Mike
                         |--WA+a+wgbEuEHsegF8rT18PHQ
                         |Content-Disposition: form-data; name=age
-                        |Content-Type: text/xml
+                        |Content-Type: text/xml; charset=UTF-8
                         |
                         |<int>42</int>
                         |--WA+a+wgbEuEHsegF8rT18PHQ--""".stripMargin.replace(EOL, "\r\n"))

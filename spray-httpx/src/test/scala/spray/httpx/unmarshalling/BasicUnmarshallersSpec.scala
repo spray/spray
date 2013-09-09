@@ -25,19 +25,19 @@ import HttpCharsets._
 class BasicUnmarshallersSpec extends Specification {
 
   "The StringUnmarshaller" should {
-    "decode `text/plain` content in ISO-8859-1 to Strings" in {
+    "decode `text/plain` content in UTF-8 to Strings" in {
       HttpEntity("Hällö").as[String] === Right("Hällö")
     }
   }
 
   "The CharArrayUnmarshaller" should {
-    "decode `text/plain` content in ISO-8859-1 to char arrays" in {
+    "decode `text/plain` content in UTF-8 to char arrays" in {
       HttpEntity("Hällö").as[Array[Char]].right.get.mkString === "Hällö"
     }
   }
 
   "The NodeSeqUnmarshaller" should {
-    "decode `text/xml` content in ISO-8859-1 to NodeSeqs" in {
+    "decode `text/xml` content in UTF-8 to NodeSeqs" in {
       HttpEntity(`text/xml`, "<int>Hällö</int>").as[NodeSeq].right.get.text === "Hällö"
     }
   }
