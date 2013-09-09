@@ -71,7 +71,7 @@ class ModelConverterSpec extends Specification with NoTimeConversions {
           RequestMock(
             content = c,
             headers = "Content-Type" -> "text/plain" :: Nil)
-        } === HttpRequest(entity = c, headers = textPlain :: Nil)
+        } === HttpRequest(entity = HttpEntity(ContentTypes.`text/plain`, c), headers = textPlain :: Nil)
       }
       "example 6" in {
         implicit def s = settings

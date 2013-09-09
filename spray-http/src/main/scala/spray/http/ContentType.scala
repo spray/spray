@@ -68,5 +68,6 @@ object ContentTypes {
   // RFC4627 defines JSON to always be UTF encoded, we always render JSON to UTF-8
   val `application/json` = ContentType(MediaTypes.`application/json`, HttpCharsets.`UTF-8`)
   val `text/plain` = ContentType(MediaTypes.`text/plain`)
+  val `text/plain(UTF-8)` = ContentType(MediaTypes.`text/plain`, HttpCharsets.`UTF-8`)
   val `application/octet-stream` = ContentType(MediaTypes.`application/octet-stream`)
 }

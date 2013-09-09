@@ -76,7 +76,7 @@ object HttpBody {
 
 object HttpEntity {
   implicit def apply(string: String): HttpEntity =
-    apply(ContentTypes.`text/plain`, string)
+    apply(ContentTypes.`text/plain(UTF-8)`, string)
 
   implicit def apply(buffer: Array[Byte]): HttpEntity =
     apply(ContentTypes.`application/octet-stream`, buffer)

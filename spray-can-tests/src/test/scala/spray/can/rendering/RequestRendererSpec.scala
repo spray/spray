@@ -67,7 +67,7 @@ class RequestRendererSpec extends Specification {
              |Cache-Control: public
              |Host: spray.io
              |User-Agent: spray-can/1.0.0
-             |Content-Type: text/plain
+             |Content-Type: text/plain; charset=UTF-8
              |Content-Length: 19
              |
              |The content please!"""
@@ -91,7 +91,7 @@ class RequestRendererSpec extends Specification {
           """|POST /abc/xyz HTTP/1.1
              |Host: test.com:8080
              |User-Agent: spray-can/1.0.0
-             |Content-Type: text/plain
+             |Content-Type: text/plain; charset=UTF-8
              |Transfer-Encoding: chunked
              |
              |1a

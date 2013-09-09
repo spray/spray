@@ -33,22 +33,29 @@ trait BasicMarshallers {
   implicit val ByteArrayMarshaller = byteArrayMarshaller(ContentTypes.`application/octet-stream`)
 
   implicit val CharArrayMarshaller =
-    Marshaller.of[Array[Char]](ContentTypes.`text/plain`) { (value, contentType, ctx) ⇒
+    Marshaller.of[Array[Char]](ContentTypes.`text/plain(UTF-8)`) { (value, contentType, ctx) ⇒
       ctx.marshalTo {
         if (value.length > 0) {
-          val nioCharset = contentType.charset.nioCharset
           val charBuffer = CharBuffer.wrap(value)
-          val byteBuffer = nioCharset.encode(charBuffer)
-          HttpEntity(contentType, byteBuffer.array)
+          val byteBuffer = contentType.charset.nioCharset.encode(charBuffer)
+          val array = new Array[Byte](byteBuffer.remaining())
+          byteBuffer.get(array)
+          HttpEntity(contentType, array)
         } else EmptyEntity
       }
     }
 
   //# string-marshaller
-  implicit val StringMarshaller =
-    Marshaller.of[String](ContentTypes.`text/plain`) { (value, contentType, ctx) ⇒
+  def stringMarshaller(charset: HttpCharset, more: HttpCharset*): Marshaller[String] =
+    stringMarshaller(ContentType(`text/plain`, charset), more map (ContentType(`text/plain`, _)): _*)
+
+  def stringMarshaller(contentType: ContentType, more: ContentType*): Marshaller[String] =
+    Marshaller.of[String](contentType +: more: _*) { (value, contentType, ctx) ⇒
       ctx.marshalTo(HttpEntity(contentType, value))
     }
+
+  // prefer UTF-8 encoding, but also render with other encodings if the client requests them
+  implicit val StringMarshaller = stringMarshaller(ContentTypes.`text/plain(UTF-8)`, ContentTypes.`text/plain`)
   //#
 
   //# nodeseq-marshaller

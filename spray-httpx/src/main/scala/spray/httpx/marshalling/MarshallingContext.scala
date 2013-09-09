@@ -67,7 +67,13 @@ trait MarshallingContext { self ⇒
       override def startChunkedMessage(entity: HttpEntity, ack: Option[Any])(implicit sender: ActorRef) =
         self.startChunkedMessage(overrideContentType(entity), ack)
       def overrideContentType(entity: HttpEntity) =
-        entity.flatMap { case HttpBody(ct, buf) ⇒ HttpEntity(contentType, buf) }
+        entity.flatMap {
+          case HttpBody(ct, buf) ⇒
+            val c =
+              if (contentType.noCharsetDefined && ct.isCharsetDefined) contentType.withCharset(ct.charset)
+              else contentType
+            HttpEntity(c, buf)
+        }
     }
 }
 

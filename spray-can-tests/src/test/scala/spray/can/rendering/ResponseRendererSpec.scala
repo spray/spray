@@ -67,7 +67,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           """HTTP/1.1 400 Bad Request
             |Server: spray-can/1.0.0
             |Date: Thu, 25 Aug 2011 09:10:29 GMT
-            |Content-Type: text/plain
+            |Content-Type: text/plain; charset=UTF-8
             |Age: 30
             |Connection: Keep-Alive
             |Content-Length: 23
@@ -84,7 +84,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
             """HTTP/1.1 200 OK
             |Server: spray-can/1.0.0
             |Date: Thu, 25 Aug 2011 09:10:29 GMT
-            |Content-Type: text/plain
+            |Content-Type: text/plain; charset=UTF-8
             |Age: 30
             |Connection: Keep-Alive
             |Content-Length: 23
@@ -112,7 +112,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           """HTTP/1.1 200 OK
             |Server: spray-can/1.0.0
             |Date: Thu, 25 Aug 2011 09:10:29 GMT
-            |Content-Type: text/plain
+            |Content-Type: text/plain; charset=UTF-8
             |Transfer-Encoding: chunked
             |
             |7
@@ -155,7 +155,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           """HTTP/1.1 200 OK
             |Server: spray-can/1.0.0
             |Date: Thu, 25 Aug 2011 09:10:29 GMT
-            |Content-Type: text/plain
+            |Content-Type: text/plain; charset=UTF-8
             |
             |Yahoooo"""
         } -> false

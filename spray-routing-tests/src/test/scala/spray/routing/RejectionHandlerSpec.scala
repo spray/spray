@@ -137,7 +137,7 @@ class RejectionHandlerSpec extends RoutingSpec {
       } ~> check {
         status === NotAcceptable
         entityAs[String] === "Resource representation is only available " +
-          "with these Content-Types:\ntext/plain"
+          "with these Content-Types:\ntext/plain; charset=UTF-8\ntext/plain"
       }
     }
     "respond with NotAcceptable for requests resulting in UnacceptedResponseEncodingRejection" in {

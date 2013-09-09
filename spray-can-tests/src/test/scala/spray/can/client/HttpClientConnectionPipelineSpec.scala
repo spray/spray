@@ -140,7 +140,7 @@ class HttpClientConnectionPipelineSpec extends Specification with RawSpecs2Pipel
            |Server: spray/1.0
            |Date: Thu, 25 Aug 2011 09:10:29 GMT
            |Content-Length: 8
-           |Content-Type: text/plain
+           |Content-Type: text/plain; charset=UTF-8
            |
            |"""
       }))
