@@ -61,7 +61,7 @@ private[parser] trait SimpleHeaders {
   }
 
   def `*Location` = rule {
-    oneOrMore(Text) ~> { uri ⇒ Location(Uri.parseAbsolute(uri)) } ~ EOI
+    oneOrMore(Text) ~> { uri ⇒ Location(Uri(uri)) } ~ EOI
   }
 
   def `*Proxy-Authenticate` = rule {
