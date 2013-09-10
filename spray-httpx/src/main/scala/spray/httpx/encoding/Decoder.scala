@@ -22,10 +22,10 @@ trait Decoder {
   def encoding: HttpEncoding
 
   def decode[T <: HttpMessage](message: T): T#Self = message.entity match {
-    case HttpBody(contentType, buffer) if message.headers exists Encoder.isContentEncodingHeader ⇒
+    case HttpEntity.NonEmpty(contentType, data) if message.headers exists Encoder.isContentEncodingHeader ⇒
       message.withHeadersAndEntity(
         headers = message.headers filterNot Encoder.isContentEncodingHeader,
-        entity = HttpEntity(contentType, newDecompressor.decompress(buffer)))
+        entity = HttpEntity(contentType, newDecompressor.decompress(data.toByteArray)))
 
     case _ ⇒ message.message
   }

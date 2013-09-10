@@ -16,10 +16,10 @@
 
 package spray.can.server
 
-import akka.io.Tcp
-import spray.can.rendering.{ ByteStringRendering, ResponseRenderingComponent, ResponsePartRenderingContext }
-import spray.io._
 import spray.can.Http
+import spray.http.HttpDataRendering
+import spray.can.rendering._
+import spray.io._
 
 object ResponseRendering {
 
@@ -33,10 +33,9 @@ object ResponseRendering {
         new Pipelines {
           val commandPipeline: CPL = {
             case ctx: ResponsePartRenderingContext ⇒
-              val rendering = new ByteStringRendering(settings.responseSizeHint)
+              val rendering = new HttpDataRendering(settings.responseHeaderSizeHint)
               val close = renderResponsePartRenderingContext(rendering, ctx, context.log)
-              val data = rendering.get
-              if (!data.isEmpty) commandPL(Tcp.Write(data, ctx.ack))
+              commandPL(toTcpWriteCommand(rendering.get, ctx.ack))
               if (close) commandPL(Http.Close)
 
             case cmd ⇒ commandPL(cmd)

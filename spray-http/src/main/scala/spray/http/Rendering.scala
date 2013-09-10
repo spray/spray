@@ -19,7 +19,9 @@ package spray.http
 
 import scala.annotation.tailrec
 import scala.collection.LinearSeq
-import spray.http.parser.CharPredicate
+import akka.util.{ ByteString, ByteStringBuilder }
+import spray.http.parser.{ CharUtils, CharPredicate }
+import spray.util._
 
 trait Renderable {
   def render[R <: Rendering](r: R): r.type
@@ -39,7 +41,7 @@ trait LazyValueBytesRenderable extends Renderable {
   // that a synchronization overhead or even @volatile reads
   private[this] var _valueBytes: Array[Byte] = _
   private def valueBytes =
-    if (_valueBytes != null) _valueBytes else { _valueBytes = asciiBytes(value); _valueBytes }
+    if (_valueBytes != null) _valueBytes else { _valueBytes = value.getAsciiBytes; _valueBytes }
 
   def value: String
   def render[R <: Rendering](r: R): r.type = r ~~ valueBytes
@@ -47,7 +49,7 @@ trait LazyValueBytesRenderable extends Renderable {
 }
 
 trait SingletonValueRenderable extends Product with Renderable {
-  private[this] val valueBytes = asciiBytes(value)
+  private[this] val valueBytes = value.getAsciiBytes
   def value = productPrefix
   def render[R <: Rendering](r: R): r.type = r ~~ valueBytes
 }
@@ -63,8 +65,8 @@ object Renderer {
   implicit object StringRenderer extends Renderer[String] {
     def render[R <: Rendering](r: R, value: String): r.type = r ~~ value
   }
-  implicit object BytesRenderer extends Renderer[Array[Byte]] {
-    def render[R <: Rendering](r: R, value: Array[Byte]): r.type = r ~~ value
+  implicit object HttpDataRenderer extends Renderer[HttpData] {
+    def render[R <: Rendering](r: R, value: HttpData): r.type = r ~~ value
   }
   implicit object CharsRenderer extends Renderer[Array[Char]] {
     def render[R <: Rendering](r: R, value: Array[Char]): r.type = r ~~ value
@@ -110,6 +112,7 @@ object Renderer {
 trait Rendering {
   def ~~(char: Char): this.type
   def ~~(bytes: Array[Byte]): this.type
+  def ~~(data: HttpData): this.type
 
   def ~~(f: Float): this.type = this ~~ f.toString
   def ~~(d: Double): this.type = this ~~ d.toString
@@ -128,6 +131,25 @@ trait Rendering {
       putNextChar(value, magnitude())
     } else this ~~ '0'
 
+  /**
+   * Renders the given Int in (lower case) hex notation.
+   */
+  def ~~%(int: Int): this.type = this ~~% int.toLong
+
+  /**
+   * Renders the given Long in (lower case) hex notation.
+   */
+  def ~~%(long: Long): this.type =
+    if (long != 0) {
+      @tailrec def putChar(shift: Int = 60): this.type = {
+        this ~~ CharUtils.lowerHexDigit(long >>> shift)
+        if (shift > 0) putChar(shift - 4) else this
+      }
+      @tailrec def skipZeros(shift: Int = 60): this.type =
+        if ((long >>> shift) > 0) putChar(shift) else skipZeros(shift - 4)
+      skipZeros()
+    } else this ~~ '0'
+
   def ~~(string: String): this.type = {
     @tailrec def rec(ix: Int = 0): this.type =
       if (ix < string.length) { this ~~ string.charAt(ix); rec(ix + 1) } else this
@@ -142,6 +164,10 @@ trait Rendering {
 
   def ~~[T](value: T)(implicit ev: Renderer[T]): this.type = ev.render(this, value)
 
+  /**
+   * Renders the given string either directly (if it only contains token chars)
+   * or in double quotes (if it contains at least one non-token char).
+   */
   def ~~#(s: String): this.type =
     if (CharPredicate.HttpToken.matchAll(s)) this ~~ s else ~~('"').putEscaped(s) ~~ '"'
 
@@ -175,26 +201,98 @@ class StringRendering extends Rendering {
       if (ix < bytes.length) { this ~~ bytes(ix).asInstanceOf[Char]; rec(ix + 1) } else this
     rec()
   }
-
+  def ~~(data: HttpData): this.type = this ~~ data.toByteArray
   def get: String = sb.toString
 }
 
-class ByteArrayRendering(sizeHint: Int = 32) extends Rendering {
-  import java.util.Arrays._
-  private[this] var array = new Array[Byte](sizeHint)
-  private[this] var cursor = 0
-  def ~~(char: Char): this.type = put(char.toByte)
+abstract class ByteArrayBasedRendering(sizeHint: Int) extends Rendering {
+  protected var array = new Array[Byte](sizeHint)
+  protected var size = 0
+
+  def ~~(char: Char): this.type = {
+    val oldSize = growBy(1)
+    array(oldSize) = char.toByte
+    this
+  }
+
   def ~~(bytes: Array[Byte]): this.type = {
-    if (cursor + bytes.length > array.length) array = copyOf(array, math.max(cursor + bytes.length, array.length * 2))
-    System.arraycopy(bytes, 0, array, cursor, bytes.length)
-    cursor += bytes.length
+    if (bytes.length > 0) {
+      val oldSize = growBy(bytes.length)
+      System.arraycopy(bytes, 0, array, oldSize, bytes.length)
+    }
     this
   }
-  def put(byte: Byte): this.type = {
-    if (cursor == array.length) array = copyOf(array, cursor * 2)
-    array(cursor) = byte
-    cursor += 1
+
+  def ~~(data: HttpData): this.type = {
+    if (data.nonEmpty) {
+      if (data.length <= Int.MaxValue) {
+        val oldSize = growBy(data.length.toInt)
+        data.copyToArray(array, targetOffset = oldSize)
+      } else sys.error("Cannot create byte array greater than 2GB in size")
+    }
     this
   }
-  def get: Array[Byte] = if (cursor == array.length) array else copyOfRange(array, 0, cursor)
+
+  private def growBy(delta: Int): Int = {
+    val oldSize = size
+    val neededSize = oldSize.toLong + delta
+    if (array.length < neededSize)
+      if (neededSize < Int.MaxValue) {
+        val newLen = math.min(math.max(array.length.toLong * 2, neededSize), Int.MaxValue).toInt
+        val newArray = new Array[Byte](newLen)
+        System.arraycopy(array, 0, newArray, 0, array.length)
+        array = newArray
+      } else sys.error("Cannot create byte array greater than 2GB in size")
+    size = neededSize.toInt
+    oldSize
+  }
+}
+
+class ByteArrayRendering(sizeHint: Int) extends ByteArrayBasedRendering(sizeHint) {
+  def get: Array[Byte] =
+    if (size == array.length) array
+    else java.util.Arrays.copyOfRange(array, 0, size)
+}
+
+class ByteStringRendering(sizeHint: Int) extends ByteArrayBasedRendering(sizeHint) {
+  def get: ByteString = akka.spray.createByteStringUnsafe(array, 0, size)
+}
+
+class HttpDataRendering(rawBytesSizeHint: Int) extends Rendering {
+  private[this] val bsb = new ByteStringBuilder
+  private[this] val hdb = HttpData.newBuilder
+
+  bsb.sizeHint(rawBytesSizeHint)
+
+  def ~~(char: Char): this.type = {
+    bsb.putByte(char.toByte)
+    this
+  }
+
+  def ~~(bytes: Array[Byte]): this.type = {
+    bsb.putBytes(bytes)
+    this
+  }
+
+  def ~~(data: HttpData): this.type = {
+    data match {
+      case HttpData.Empty        ⇒
+      case HttpData.Bytes(bytes) ⇒ bsb ++= bytes
+      case x ⇒
+        closeBsb()
+        hdb += x
+    }
+    this
+  }
+
+  def get: HttpData = {
+    closeBsb()
+    hdb.result()
+  }
+
+  private def closeBsb(): Unit =
+    if (bsb.length > 0) {
+      hdb += HttpData(bsb.result())
+      bsb.clear()
+    }
 }

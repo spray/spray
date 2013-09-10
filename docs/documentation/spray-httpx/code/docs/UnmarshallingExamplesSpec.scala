@@ -20,15 +20,15 @@ class UnmarshallingExamplesSpec extends Specification {
   object Person {
     implicit val PersonUnmarshaller =
       Unmarshaller[Person](`application/vnd.acme.person`) {
-        case HttpBody(contentType, buffer) =>
+        case HttpEntity.NonEmpty(contentType, buffer) =>
           // unmarshal from the string format used in the marshaller example
           val Array(_, name, first, age) =
             buffer.asString.split(":,".toCharArray).map(_.trim)
           Person(name, first, age.toInt)
 
-        // if we had meaningful semantics for the EmptyEntity
-        // we could add a case for the EmptyEntity:
-        // case EmptyEntity => ...
+        // if we had meaningful semantics for the HttpEntity.Empty
+        // we could add a case for the HttpEntity.Empty:
+        // case HttpEntity.Empty => ...
       }
   }
   //#
@@ -56,6 +56,6 @@ class UnmarshallingExamplesSpec extends Specification {
     implicit val myNodeSeqUnmarshaller = Unmarshaller.forNonEmpty[NodeSeq]
 
     HttpEntity(MediaTypes.`text/xml`, "<xml>yeah</xml>").as[NodeSeq] === Right(<xml>yeah</xml>)
-    EmptyEntity.as[NodeSeq] === Left(ContentExpected)
+    HttpEntity.Empty.as[NodeSeq] === Left(ContentExpected)
   }
 }

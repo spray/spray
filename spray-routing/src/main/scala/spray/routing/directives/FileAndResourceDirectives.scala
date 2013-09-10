@@ -19,6 +19,7 @@ package directives
 
 import java.io.File
 import org.parboiled.common.FileUtils
+import scala.annotation.tailrec
 import akka.actor.ActorRefFactory
 import spray.httpx.marshalling.{ Marshaller, BasicMarshallers }
 import spray.util._
@@ -26,6 +27,7 @@ import spray.http._
 import HttpHeaders._
 
 trait FileAndResourceDirectives {
+  import ChunkingDirectives._
   import ExecutionDirectives._
   import MethodDirectives._
   import RespondWithDirectives._
@@ -58,13 +60,14 @@ trait FileAndResourceDirectives {
    */
   def getFromFile(file: File, contentType: ContentType)(implicit settings: RoutingSettings,
                                                         refFactory: ActorRefFactory): Route =
-    (get & detach()) {
-      respondWithLastModifiedHeader(file.lastModified) {
+    get {
+      detach() {
         if (file.isFile && file.canRead) {
-          implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(contentType)
-          if (0 < settings.fileChunkingThresholdSize && settings.fileChunkingThresholdSize <= file.length)
-            complete(file.toByteArrayStream(settings.fileChunkingChunkSize.toInt))
-          else complete(FileUtils.readAllBytes(file))
+          respondWithLastModifiedHeader(file.lastModified) {
+            autoChunk(settings.fileChunkingThresholdSize, settings.fileChunkingChunkSize) {
+              complete(HttpEntity(contentType, HttpData(file)))
+            }
+          }
         } else reject
       }
     }
@@ -92,16 +95,28 @@ trait FileAndResourceDirectives {
    */
   def getFromResource(resourceName: String, contentType: ContentType)(implicit refFactory: ActorRefFactory): Route =
     if (!resourceName.endsWith("/"))
-      (get & detach()) {
-        val theClassLoader = actorSystem(refFactory).dynamicAccess.classLoader
-        theClassLoader.getResource(resourceName) match {
-          case null ⇒ reject
-          case url ⇒
-            val lastModified = url.openConnection().getLastModified
-            implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(contentType)
-            respondWithLastModifiedHeader(lastModified) {
-              complete(FileUtils.readAllBytes(theClassLoader.getResourceAsStream(resourceName)))
-            }
+      get {
+        detach() {
+          val theClassLoader = actorSystem(refFactory).dynamicAccess.classLoader
+          theClassLoader.getResource(resourceName) match {
+            case null ⇒ reject
+            case url ⇒
+              val lastModified = {
+                val conn = url.openConnection()
+                conn.setUseCaches(false) // otherwise the JDK will keep the JAR file open when we close!
+                val lm = conn.getLastModified
+                conn.getInputStream.close()
+                lm
+              }
+              implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(contentType)
+              respondWithLastModifiedHeader(lastModified) {
+                complete {
+                  // readAllBytes closes the InputStream when done, which ends up closing the JAR file
+                  // if caching has been disabled on the connection
+                  FileUtils.readAllBytes(url.openStream())
+                }
+              }
+          }
         }
       }
     else reject // don't serve the content of resource "directories"
@@ -114,10 +129,13 @@ trait FileAndResourceDirectives {
    * current thread. If the file cannot be read the Route rejects the request.
    */
   def getFromDirectory(directoryName: String)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
-                                              refFactory: ActorRefFactory): Route = {
+                                              refFactory: ActorRefFactory, log: LoggingContext): Route = {
     val base = withTrailingSlash(directoryName)
     unmatchedPath { path ⇒
-      getFromFile(base + stripLeadingSlash(path))
+      fileSystemPath(base, path) match {
+        case ""       ⇒ reject
+        case fileName ⇒ getFromFile(fileName)
+      }
     }
   }
 
@@ -126,13 +144,19 @@ trait FileAndResourceDirectives {
    * The actual rendering of the directory contents is performed by the in-scope `Marshaller[DirectoryListing]`.
    */
   def listDirectoryContents(directories: String*)(implicit renderer: Marshaller[DirectoryListing],
-                                                  refFactory: ActorRefFactory): Route =
+                                                  refFactory: ActorRefFactory, log: LoggingContext): Route =
     (get & detach()) {
       unmatchedPath { path ⇒
-        val pathString = path.toString
-        val dirs = directories.map(new File(_, pathString)).filter(dir ⇒ dir.isDirectory && dir.canRead)
+        val dirs = directories flatMap { dir ⇒
+          fileSystemPath(withTrailingSlash(dir), path) match {
+            case "" ⇒ None
+            case fileName ⇒
+              val file = new File(fileName)
+              if (file.isDirectory && file.canRead) Some(file) else None
+          }
+        }
         if (dirs.isEmpty) reject
-        else complete(DirectoryListing(withTrailingSlash(pathString), dirs.flatMap(_.listFiles)))
+        else complete(DirectoryListing(withTrailingSlash(fileSystemPath("/", path)), dirs.flatMap(_.listFiles)))
       }
     }
 
@@ -140,7 +164,8 @@ trait FileAndResourceDirectives {
    * Same as `getFromBrowseableDirectories` with only one directory.
    */
   def getFromBrowseableDirectory(directory: String)(implicit renderer: Marshaller[DirectoryListing], settings: RoutingSettings,
-                                                    resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route =
+                                                    resolver: ContentTypeResolver, refFactory: ActorRefFactory,
+                                                    log: LoggingContext): Route =
     getFromBrowseableDirectories(directory)
 
   /**
@@ -148,9 +173,10 @@ trait FileAndResourceDirectives {
    * served as browsable listings.
    */
   def getFromBrowseableDirectories(directories: String*)(implicit renderer: Marshaller[DirectoryListing], settings: RoutingSettings,
-                                                         resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route = {
+                                                         resolver: ContentTypeResolver, refFactory: ActorRefFactory,
+                                                         log: LoggingContext): Route = {
     import RouteConcatenation._
-    directories.map(getFromDirectory(_)).reduceLeft(_ ~ _) ~ listDirectoryContents(directories: _*)
+    directories.map(getFromDirectory).reduceLeft(_ ~ _) ~ listDirectoryContents(directories: _*)
   }
 
   /**
@@ -158,17 +184,34 @@ trait FileAndResourceDirectives {
    * "resource directory".
    */
   def getFromResourceDirectory(directoryName: String)(implicit resolver: ContentTypeResolver,
-                                                      refFactory: ActorRefFactory): Route = {
+                                                      refFactory: ActorRefFactory, log: LoggingContext): Route = {
     val base = if (directoryName.isEmpty) "" else withTrailingSlash(directoryName)
     unmatchedPath { path ⇒
-      getFromResource(base + stripLeadingSlash(path).toString)
+      fileSystemPath(base, path, separator = '/') match {
+        case ""           ⇒ reject
+        case resourceName ⇒ getFromResource(resourceName)
+      }
     }
   }
 }
 
 object FileAndResourceDirectives extends FileAndResourceDirectives {
-  def stripLeadingSlash(path: Uri.Path) = if (path.startsWithSlash) path.tail else path
-  def withTrailingSlash(path: String) = if (path endsWith "/") path else path + '/'
+  private def withTrailingSlash(path: String): String = if (path endsWith "/") path else path + '/'
+  private def fileSystemPath(base: String, path: Uri.Path, separator: Char = File.separatorChar)(implicit log: LoggingContext): String = {
+    import java.lang.StringBuilder
+    @tailrec def rec(p: Uri.Path, result: StringBuilder = new StringBuilder(base)): String =
+      p match {
+        case Uri.Path.Empty       ⇒ result.toString
+        case Uri.Path.Slash(tail) ⇒ rec(tail, result.append(separator))
+        case Uri.Path.Segment(head, tail) ⇒
+          if (head.indexOf('/') >= 0 || head == "..") {
+            log.warning("File-system path for base [{}] and Uri.Path [{}] contains suspicious path segment [{}], " +
+              "GET access was disallowed", base, path, head)
+            ""
+          } else rec(tail, result.append(head))
+      }
+    rec(if (path.startsWithSlash) path.tail else path)
+  }
 }
 
 trait ContentTypeResolver {
@@ -186,12 +229,11 @@ object ContentTypeResolver {
   def withDefaultCharset(charset: HttpCharset): ContentTypeResolver =
     new ContentTypeResolver {
       def apply(fileName: String) = {
-        val mediaType =
-          MediaTypes.forExtension(
-            fileName.lastIndexOf('.') match {
-              case -1 ⇒ ""
-              case x  ⇒ fileName.substring(x + 1)
-            }).getOrElse(MediaTypes.`application/octet-stream`)
+        val ext = fileName.lastIndexOf('.') match {
+          case -1 ⇒ ""
+          case x  ⇒ fileName.substring(x + 1)
+        }
+        val mediaType = MediaTypes.forExtension(ext) getOrElse MediaTypes.`application/octet-stream`
         mediaType match {
           case x if !x.binary ⇒ ContentType(x, charset)
           case x              ⇒ ContentType(x)

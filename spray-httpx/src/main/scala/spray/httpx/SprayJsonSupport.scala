@@ -30,7 +30,7 @@ trait SprayJsonSupport {
 
   implicit def sprayJsonUnmarshaller[T: RootJsonReader] =
     Unmarshaller[T](MediaTypes.`application/json`) {
-      case x: HttpBody ⇒
+      case x: HttpEntity.NonEmpty ⇒
         val json = JsonParser(x.asString(defaultCharset = HttpCharsets.`UTF-8`))
         jsonReader[T].read(json)
     }

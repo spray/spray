@@ -29,7 +29,7 @@ class HttpModelSerializabilitySpec extends Specification {
         HttpRequest(uri = Uri("/test?blub=28&x=5+3")) must beSerializable
       }
       "with content type" in {
-        HttpRequest().withEntity(HttpEntity(ContentTypes.`application/json`, Array.empty[Byte])) must beSerializable
+        HttpRequest().withEntity(HttpEntity(ContentTypes.`application/json`, HttpData.Empty)) must beSerializable
       }
       "with accepted media types" in {
         HttpRequest().withHeaders(Accept(MediaTypes.`application/json`)) must beSerializable

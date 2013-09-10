@@ -127,7 +127,7 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
     else if (bodyStart.toLong + length <= input.length) {
       val intLength = length.toInt
       parse = this
-      val part = message(headers, entity(cth, input.iterator.slice(bodyStart, bodyStart + intLength).toArray[Byte]))
+      val part = message(headers, entity(cth, input.slice(bodyStart, bodyStart + intLength)))
       Result.Ok(part, drop(input, bodyStart + intLength), closeAfterResponseCompletion)
     } else {
       parse = more ⇒ parseFixedLengthBody(headers, input ++ more, bodyStart, length, cth, closeAfterResponseCompletion)
@@ -154,7 +154,7 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
         val chunkBodyEnd = cursor + chunkSize
         def result(terminatorLen: Int) = {
           parse = parseChunk(closeAfterResponseCompletion)
-          val chunk = MessageChunk(input.iterator.slice(cursor, chunkBodyEnd).toArray[Byte], extension)
+          val chunk = MessageChunk(HttpData(input.slice(cursor, chunkBodyEnd)), extension)
           Result.Ok(chunk.asInstanceOf[Part], drop(input, chunkBodyEnd + terminatorLen), closeAfterResponseCompletion)
         }
         byteChar(input, chunkBodyEnd) match {
@@ -202,7 +202,7 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
     }
 
     val consumed = math.min(remainingBytes, input.size).toInt // safe conversion because input.size returns an Int
-    val chunk = MessageChunk(input.take(consumed).toArray[Byte])
+    val chunk = MessageChunk(HttpData(input.take(consumed)))
 
     val remaining =
       consumed match {
@@ -223,12 +223,12 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
     Result.Ok(chunk.asInstanceOf[Part], remaining, closeAfterResponseCompletion)
   }
 
-  def entity(cth: Option[`Content-Type`], body: Array[Byte]): HttpEntity = {
+  def entity(cth: Option[`Content-Type`], body: ByteString): HttpEntity = {
     val contentType = cth match {
       case Some(x) ⇒ x.contentType
       case None    ⇒ ContentTypes.`application/octet-stream`
     }
-    HttpEntity(contentType, body)
+    HttpEntity(contentType, HttpData(body))
   }
 
   def closeAfterResponseCompletion(connectionHeader: Option[Connection]) =

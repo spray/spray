@@ -35,7 +35,7 @@ trait LiftJsonSupport {
 
   implicit def liftJsonUnmarshaller[T: Manifest] =
     Unmarshaller[T](MediaTypes.`application/json`) {
-      case x: HttpBody ⇒
+      case x: HttpEntity.NonEmpty ⇒
         val jsonSource = x.asString(defaultCharset = HttpCharsets.`UTF-8`)
         parse(jsonSource).extract[T]
     }

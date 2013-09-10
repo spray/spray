@@ -38,7 +38,7 @@ trait RequestBuilding extends TransformerPipelineSupport {
     def apply[T: Marshaller](uri: Uri, content: Option[T]): HttpRequest =
       HttpRequest(method, uri,
         entity = content match {
-          case None ⇒ EmptyEntity
+          case None ⇒ HttpEntity.Empty
           case Some(value) ⇒ marshal(value) match {
             case Right(entity) ⇒ entity
             case Left(error)   ⇒ throw error

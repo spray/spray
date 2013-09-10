@@ -19,6 +19,7 @@ package parser
 
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import org.parboiled.scala._
+import spray.util.identityFunc
 
 // direct implementation of http://www.w3.org/Protocols/rfc2616/rfc2616-sec2.html#sec2
 private[parser] object BasicRules extends Parser {

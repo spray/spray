@@ -57,15 +57,15 @@ trait MultipartUnmarshallers {
   implicit val MultipartContentUnmarshaller = multipartContentUnmarshaller(`UTF-8`)
   def multipartContentUnmarshaller(defaultCharset: HttpCharset): Unmarshaller[MultipartContent] =
     Unmarshaller[MultipartContent](`multipart/*`) {
-      case HttpBody(contentType, buffer) ⇒
+      case HttpEntity.NonEmpty(contentType, data) ⇒
         contentType.mediaType.parameters.get("boundary") match {
           case None | Some("") ⇒
             sys.error("Content-Type with a multipart media type must have a non-empty 'boundary' parameter")
           case Some(boundary) ⇒
-            val mimeMsg = new MIMEMessage(new ByteArrayInputStream(buffer), boundary, mimeParsingConfig)
+            val mimeMsg = new MIMEMessage(new ByteArrayInputStream(data.toByteArray), boundary, mimeParsingConfig)
             MultipartContent(convertMimeMessage(mimeMsg, defaultCharset))
         }
-      case EmptyEntity ⇒ MultipartContent.Empty
+      case HttpEntity.Empty ⇒ MultipartContent.Empty
     }
 
   implicit val MultipartFormDataUnmarshaller = new SimpleUnmarshaller[MultipartFormData] {

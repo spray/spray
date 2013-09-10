@@ -107,7 +107,7 @@ class HttpClientConnectionPipelineSpec extends Specification with RawSpecs2Pipel
       }
       commands.expectMsgPF() {
         case Pipeline.Tell(`probeRef`, response: HttpResponse, `connectionActor`) ⇒ response.entity
-      } === HttpEntity("body123body123")
+      } === HttpEntity(ContentTypes.`text/plain(UTF-8)`, HttpData("body123") +: HttpData("body123"))
     }
 
     "properly complete a 3 requests pipelined dialog" in new Fixture(stage) {

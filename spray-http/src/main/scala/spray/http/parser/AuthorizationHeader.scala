@@ -19,6 +19,7 @@ package parser
 
 import org.parboiled.scala._
 import org.parboiled.common.Base64
+import spray.util.identityFunc
 import BasicRules._
 
 private[parser] trait AuthorizationHeader {

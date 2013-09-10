@@ -41,7 +41,7 @@ case class ServerSettings(
     chunklessStreaming: Boolean,
     verboseErrorMessages: Boolean,
     requestChunkAggregationLimit: Int,
-    responseSizeHint: Int,
+    responseHeaderSizeHint: Int,
     bindTimeout: Duration,
     unbindTimeout: Duration,
     registrationTimeout: Duration,
@@ -56,7 +56,7 @@ case class ServerSettings(
   require(0 <= pipeliningLimit && pipeliningLimit <= 128, "pipelining-limit must be >= 0 and <= 128")
   require(0 <= requestChunkAggregationLimit && requestChunkAggregationLimit <= Int.MaxValue,
     "request-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
-  require(0 <= responseSizeHint && responseSizeHint <= Int.MaxValue,
+  require(0 <= responseHeaderSizeHint && responseHeaderSizeHint <= Int.MaxValue,
     "response-size-hint must be >= 0 and <= Int.MaxValue")
   requirePositive(bindTimeout)
   requirePositive(unbindTimeout)
@@ -83,7 +83,7 @@ object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.serve
     c getBoolean "chunkless-streaming",
     c getBoolean "verbose-error-messages",
     c getBytes "request-chunk-aggregation-limit" toInt,
-    c getBytes "response-size-hint" toInt,
+    c getBytes "response-header-size-hint" toInt,
     c getDuration "bind-timeout",
     c getDuration "unbind-timeout",
     c getDuration "registration-timeout",

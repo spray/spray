@@ -115,7 +115,7 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
           }
           if (contentLength == 0) {
             parse = this
-            Result.Ok(message(headers, EmptyEntity), drop(input, bodyStart), closeAfterResponseCompletion)
+            Result.Ok(message(headers, HttpEntity.Empty), drop(input, bodyStart), closeAfterResponseCompletion)
           } else if (contentLength <= settings.maxContentLength)
             parseFixedLengthBody(headers, input, bodyStart, contentLength, cth, closeAfterResponseCompletion)
           else fail(RequestEntityTooLarge, s"Request Content-Length $contentLength exceeds the configured limit of " +
@@ -127,5 +127,5 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
     HttpRequest(method, uri, headers, entity, protocol)
 
   def chunkStartMessage(headers: List[HttpHeader]) =
-    ChunkedRequestStart(message(headers, EmptyEntity))
+    ChunkedRequestStart(message(headers, HttpEntity.Empty))
 }

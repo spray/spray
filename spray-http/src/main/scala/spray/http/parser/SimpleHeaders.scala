@@ -18,6 +18,7 @@ package spray.http
 package parser
 
 import org.parboiled.scala._
+import spray.util.identityFunc
 import BasicRules._
 import HttpHeaders._
 import ProtectedHeaderCreation.enable

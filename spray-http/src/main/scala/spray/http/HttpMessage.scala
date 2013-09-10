@@ -16,8 +16,6 @@
 
 package spray.http
 
-import java.util
-import java.nio.charset.Charset
 import scala.annotation.tailrec
 import scala.reflect.{ classTag, ClassTag }
 import HttpHeaders._
@@ -117,7 +115,7 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
 case class HttpRequest(method: HttpMethod = HttpMethods.GET,
                        uri: Uri = Uri./,
                        headers: List[HttpHeader] = Nil,
-                       entity: HttpEntity = EmptyEntity,
+                       entity: HttpEntity = HttpEntity.Empty,
                        protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`) extends HttpMessage with HttpRequestPart {
   require(!uri.isEmpty, "An HttpRequest must not have an empty Uri")
 
@@ -246,7 +244,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
  * Immutable HTTP response model.
  */
 case class HttpResponse(status: StatusCode = StatusCodes.OK,
-                        entity: HttpEntity = EmptyEntity,
+                        entity: HttpEntity = HttpEntity.Empty,
                         headers: List[HttpHeader] = Nil,
                         protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`) extends HttpMessage with HttpResponsePart {
   type Self = HttpResponse
@@ -268,18 +266,7 @@ case class HttpResponse(status: StatusCode = StatusCodes.OK,
 /**
  * Instance of this class represent the individual chunks of a chunked HTTP message (request or response).
  */
-case class MessageChunk(body: Array[Byte], extension: String) extends HttpRequestPart with HttpResponsePart {
-  require(body.length > 0, "MessageChunk must not have empty body")
-  def bodyAsString: String = bodyAsString(HttpCharsets.`ISO-8859-1`.nioCharset)
-  def bodyAsString(charset: HttpCharset): String = bodyAsString(charset.nioCharset)
-  def bodyAsString(charset: Charset): String = if (body.isEmpty) "" else new String(body, charset)
-  def bodyAsString(charset: String): String = if (body.isEmpty) "" else new String(body, charset)
-  override def hashCode = extension.## * 31 + util.Arrays.hashCode(body)
-  override def equals(obj: Any) = obj match {
-    case x: MessageChunk ⇒ (this eq x) || extension == x.extension && util.Arrays.equals(body, x.body)
-    case _               ⇒ false
-  }
-}
+case class MessageChunk(data: HttpData.NonEmpty, extension: String) extends HttpRequestPart with HttpResponsePart
 
 object MessageChunk {
   import HttpCharsets._
@@ -288,11 +275,18 @@ object MessageChunk {
   def apply(body: String, charset: HttpCharset): MessageChunk =
     apply(body, charset, "")
   def apply(body: String, extension: String): MessageChunk =
-    apply(body, `ISO-8859-1`, extension)
+    apply(body, `UTF-8`, extension)
   def apply(body: String, charset: HttpCharset, extension: String): MessageChunk =
-    apply(body.getBytes(charset.nioCharset), extension)
-  def apply(body: Array[Byte]): MessageChunk =
-    apply(body, "")
+    apply(HttpData(body, charset), extension)
+  def apply(bytes: Array[Byte]): MessageChunk =
+    apply(HttpData(bytes))
+  def apply(data: HttpData): MessageChunk =
+    apply(data, "")
+  def apply(data: HttpData, extension: String): MessageChunk =
+    data match {
+      case x: HttpData.NonEmpty ⇒ new MessageChunk(x, extension)
+      case _                    ⇒ throw new IllegalArgumentException("Cannot create MessageChunk with empty data")
+    }
 }
 
 case class ChunkedRequestStart(request: HttpRequest) extends HttpMessageStart with HttpRequestPart {

@@ -37,7 +37,7 @@ class MetaMarshallersSpec extends Specification {
       val stream = "abc" #:: "def" #:: "ghi" #:: "jkl" #:: Stream.empty
       val ctx = marshalCollecting(stream)
       ctx.entity === Some(HttpEntity("abc"))
-      ctx.chunks.map(_.bodyAsString) === Seq("def", "ghi", "jkl")
+      ctx.chunks.map(_.data.asString) === Seq("def", "ghi", "jkl")
       ctx.chunkedMessageEnd === Some(ChunkedMessageEnd)
     }
   }
