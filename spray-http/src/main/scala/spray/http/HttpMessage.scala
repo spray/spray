@@ -64,6 +64,8 @@ object HttpResponsePart {
 
 sealed trait HttpMessageStart extends HttpMessagePart {
   def message: HttpMessage
+
+  def mapHeaders(f: List[HttpHeader] ⇒ List[HttpHeader]): HttpMessageStart
 }
 
 object HttpMessageStart {
@@ -295,10 +297,16 @@ object MessageChunk {
 
 case class ChunkedRequestStart(request: HttpRequest) extends HttpMessageStart with HttpRequestPart {
   def message = request
+
+  def mapHeaders(f: List[HttpHeader] ⇒ List[HttpHeader]): ChunkedRequestStart =
+    ChunkedRequestStart(request mapHeaders f)
 }
 
 case class ChunkedResponseStart(response: HttpResponse) extends HttpMessageStart with HttpResponsePart {
   def message = response
+
+  def mapHeaders(f: List[HttpHeader] ⇒ List[HttpHeader]): ChunkedResponseStart =
+    ChunkedResponseStart(response mapHeaders f)
 }
 
 object ChunkedMessageEnd extends ChunkedMessageEnd("", Nil)

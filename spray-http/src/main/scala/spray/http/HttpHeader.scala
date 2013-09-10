@@ -19,6 +19,7 @@ package spray.http
 
 import scala.annotation.{ implicitNotFound, tailrec }
 import java.net.InetSocketAddress
+import spray.util.SSLSessionInfo
 
 abstract class HttpHeader extends ToStringRenderable {
   def name: String
@@ -376,6 +377,18 @@ object HttpHeaders {
     import `X-Forwarded-For`.ipsRenderer
     def renderValue[R <: Rendering](r: R): r.type = r ~~ ips
     protected def companion = `X-Forwarded-For`
+  }
+
+  /**
+   * Provides information about the SSL session the message was received over.
+   *
+   * For non-certificate based cipher suites (e.g., Kerberos), `localCertificates` and `peerCertificates` are both empty lists.
+   */
+  object `SSL-Session-Info` extends ModeledCompanion
+  case class `SSL-Session-Info`(info: SSLSessionInfo) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ "peer = " ~~ info.peerPrincipal.map { _.toString }.getOrElse("none")
+    protected def companion = `SSL-Session-Info`
+    override def toString = s"$name($info)"
   }
 
   case class RawHeader(name: String, value: String) extends HttpHeader {

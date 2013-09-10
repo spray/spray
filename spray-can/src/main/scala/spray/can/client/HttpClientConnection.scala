@@ -20,6 +20,7 @@ package client
 import scala.concurrent.duration.Duration
 import akka.actor.{ SupervisorStrategy, ReceiveTimeout, ActorRef }
 import akka.io.{ Tcp, IO }
+import spray.can.parsing.SSLSessionInfoSupport
 import spray.http.{ SetRequestTimeout, Confirmed, HttpRequestPart }
 import spray.io._
 
@@ -81,10 +82,11 @@ private[can] object HttpClientConnection {
     import settings._
     ClientFrontend(requestTimeout) >>
       ResponseChunkAggregation(responseChunkAggregationLimit) ? (responseChunkAggregationLimit > 0) >>
+      SSLSessionInfoSupport ? parserSettings.sslSessionInfoHeader >>
       ResponseParsing(parserSettings) >>
       RequestRendering(settings) >>
       ConnectionTimeouts(idleTimeout) ? (reapingCycle.isFinite && idleTimeout.isFinite) >>
-      SslTlsSupport >>
+      SslTlsSupport(parserSettings.sslSessionInfoHeader) >>
       TickGenerator(reapingCycle) ? (idleTimeout.isFinite || requestTimeout.isFinite)
   }
 
