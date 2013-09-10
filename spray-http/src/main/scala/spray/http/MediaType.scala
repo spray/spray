@@ -251,6 +251,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   val `application/java-archive`                                                  = app("java-archive", uncompressible, binary, "jar", "war", "ear")
   val `application/javascript`                                                    = app("javascript", compressible, notBinary, "js")
   val `application/json`                                                          = app("json", compressible, binary, "json") // we treat JSON as binary, since it's encoding is not variable but defined by RFC4627
+  val `application/json-patch+json`                                               = app("json-patch+json", compressible, binary) // we treat JSON as binary, since it's encoding is not variable but defined by RFC4627
   val `application/lha`                                                           = app("lha", uncompressible, binary, "lha")
   val `application/lzx`                                                           = app("lzx", uncompressible, binary, "lzx")
   val `application/mspowerpoint`                                                  = app("mspowerpoint", uncompressible, binary, "pot", "pps", "ppt", "ppz")
@@ -260,6 +261,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   val `application/postscript`                                                    = app("postscript", compressible, binary, "ai", "eps", "ps")
   val `application/rss+xml`                                                       = app("rss+xml", compressible, notBinary, "rss")
   val `application/soap+xml`                                                      = app("soap+xml", compressible, notBinary)
+  val `application/vnd.api+json`                                                  = app("vnd.api+json", compressible, binary) // we treat JSON as binary, since it's encoding is not variable but defined by RFC4627
   val `application/vnd.google-earth.kml+xml`                                      = app("vnd.google-earth.kml+xml", compressible, notBinary, "kml")
   val `application/vnd.google-earth.kmz`                                          = app("vnd.google-earth.kmz", uncompressible, binary, "kmz")
   val `application/vnd.ms-fontobject`                                             = app("vnd.ms-fontobject", compressible, binary, "eot")
