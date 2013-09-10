@@ -225,7 +225,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
           }
 
           val eventPipeline: EPL = {
-            case ev: Tcp.Received if commander != null ⇒ commander ! ev
+            case ev @ (Tcp.Received(_) | SslTlsSupport.SSLSessionEstablished(_)) if commander != null ⇒ commander ! ev
             case ev ⇒
               if (commander != null) commander ! ev
               eventPL(ev)
@@ -260,7 +260,8 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
               }
 
               buffer = consume(buffer ++ data)
-            case ev ⇒ eventPL(ev)
+            case _: SslTlsSupport.SSLSessionEstablished ⇒
+            case ev                                     ⇒ eventPL(ev)
           }
         }
     }
@@ -372,7 +373,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
 
   def sessions(f: SSLContext ⇒ SSLSessionContext): Seq[SSLSession] = {
     val ctx = f(sslContext)
-    val ids = ctx.getIds().asScala.toIndexedSeq
+    val ids = ctx.getIds.asScala.toIndexedSeq
     ids.map(ctx.getSession)
   }
   def invalidateSessions() = {
