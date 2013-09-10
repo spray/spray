@@ -55,7 +55,7 @@ trait RequestRenderingComponent {
       if (userAgent.isDefined) r ~~ userAgent.get ~~ CrLf
       entity match {
         case HttpBody(ContentTypes.NoContentType, _) | EmptyEntity ⇒ // don't render Content-Type header
-        case HttpBody(contentType, _) ⇒ r ~~ `Content-Type` ~~ contentType ~~ CrLf
+        case HttpBody(contentType, _)                              ⇒ r ~~ `Content-Type` ~~ contentType ~~ CrLf
       }
     }
 

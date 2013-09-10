@@ -66,9 +66,8 @@ trait BasicMarshallers {
 
   implicit val FormDataMarshaller =
     Marshaller.delegate[FormData, String](`application/x-www-form-urlencoded`) { (formData, contentType) ⇒
-      import java.net.URLEncoder.encode
-      val charset = contentType.charset.value
-      formData.fields.map { case (key, value) ⇒ encode(key, charset) + '=' + encode(value, charset) }.mkString("&")
+      val charset = contentType.charset.nioCharset
+      Uri.Query(formData.fields).render(new StringRendering, charset).get
     }
 
   implicit val ThrowableMarshaller = Marshaller[Throwable] { (value, ctx) ⇒ ctx.handleError(value) }
