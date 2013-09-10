@@ -74,6 +74,22 @@ class RequestRendererSpec extends Specification {
         }
       }
 
+      "PUT request, a few headers and a body with suppressed content type" in new TestSetup() {
+        HttpRequest(PUT, "/abc/xyz", List(
+          RawHeader("X-Fancy", "naa"),
+          RawHeader("Cache-Control", "public"),
+          RawHeader("Host", "spray.io"))).withEntity(HttpEntity(ContentTypes.NoContentType, "The content please!")) must beRenderedTo {
+          """|PUT /abc/xyz HTTP/1.1
+             |X-Fancy: naa
+             |Cache-Control: public
+             |Host: spray.io
+             |User-Agent: spray-can/1.0.0
+             |Content-Length: 19
+             |
+             |The content please!"""
+        }
+      }
+
       "PUT request start (chunked) without body" in new TestSetup() {
         ChunkedRequestStart(HttpRequest(PUT, "/abc/xyz")) must beRenderedTo {
           """|PUT /abc/xyz HTTP/1.1
