@@ -30,7 +30,8 @@ case class ClientConnectionSettings(
     responseChunkAggregationLimit: Int,
     requestHeaderSizeHint: Int,
     connectingTimeout: Duration,
-    parserSettings: ParserSettings) {
+    parserSettings: ParserSettings,
+    proxySettings: Map[String, ProxySettings]) {
 
   requirePositive(idleTimeout)
   requirePositive(requestTimeout)
@@ -57,7 +58,8 @@ object ClientConnectionSettings extends SettingsCompanion[ClientConnectionSettin
       c getBytes "response-chunk-aggregation-limit" toInt,
       c getBytes "request-header-size-hint" toInt,
       c getDuration "connecting-timeout",
-      ParserSettings fromSubConfig c.getConfig("parsing"))
+      ParserSettings fromSubConfig c.getConfig("parsing"),
+      ProxySettings fromSubConfig c.getConfig("proxy"))
   }
 
   def apply(optionalSettings: Option[ClientConnectionSettings])(implicit actorRefFactory: ActorRefFactory): ClientConnectionSettings =

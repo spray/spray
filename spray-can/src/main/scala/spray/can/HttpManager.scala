@@ -18,19 +18,20 @@ package spray.can
 
 import scala.util.control.NonFatal
 import akka.actor._
-import spray.can.client.{ HttpHostConnector, HttpClientSettingsGroup, ClientConnectionSettings }
+import spray.can.client._
 import spray.can.server.HttpListener
 import spray.http._
-import Http.HostConnectorSetup
+import spray.can.Http.{ ConnectionType, HostConnectorSetup }
 
 private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor with ActorLogging {
   import httpSettings._
   private[this] val listenerCounter = Iterator from 0
   private[this] val groupCounter = Iterator from 0
   private[this] val hostConnectorCounter = Iterator from 0
+  private[this] val proxyConnectorCounter = Iterator from 0
 
   private[this] var settingsGroups = Map.empty[ClientConnectionSettings, ActorRef]
-  private[this] var hostConnectors = Map.empty[HostConnectorSetup, ActorRef]
+  private[this] var connectors = Map.empty[HostConnectorSetup, ActorRef]
   private[this] var listeners = Seq.empty[ActorRef]
 
   def receive = withTerminationManagement {
@@ -39,7 +40,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
         val req = request.withEffectiveUri(securedConnection = false)
         val Uri.Authority(host, port, _) = req.uri.authority
         val effectivePort = if (port == 0) Uri.defaultPorts(req.uri.scheme) else port
-        val connector = hostConnectorFor(HostConnectorSetup(host.toString, effectivePort, sslEncryption = req.uri.scheme == "https"))
+        val connector = connectorFor(HostConnectorSetup(host.toString, effectivePort, sslEncryption = req.uri.scheme == "https"))
         // never render absolute URIs here and we also drop any potentially existing fragment
         val relativeUri = Uri(
           path = if (req.uri.path.isEmpty) Uri.Path./ else req.uri.path,
@@ -52,10 +53,10 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
       }
 
     case (request: HttpRequest, setup: HostConnectorSetup) ⇒
-      hostConnectorFor(setup).forward(request)
+      connectorFor(setup).forward(request)
 
     case setup: HostConnectorSetup ⇒
-      val connector = hostConnectorFor(setup)
+      val connector = connectorFor(setup)
       sender.tell(Http.HostConnectorInfo(connector, setup), connector)
 
     case connect: Http.Connect ⇒
@@ -76,22 +77,22 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
     case ev @ Terminated(child) ⇒
       if (listeners contains child)
         listeners = listeners filter (_ != child)
-      else if (hostConnectors exists (_._2 == child))
-        hostConnectors = hostConnectors filter { _._2 != child }
+      else if (connectors exists (_._2 == child))
+        connectors = connectors filter { _._2 != child }
       else
         settingsGroups = settingsGroups filter { _._2 != child }
       behavior.applyOrElse(ev, (_: Terminated) ⇒ ())
 
     case HttpHostConnector.DemandIdleShutdown ⇒
-      hostConnectors = hostConnectors filter { _._2 != sender }
+      connectors = connectors filter { _._2 != sender }
       sender ! PoisonPill
   }: Receive) orElse behavior
 
   def shutdownSettingsGroups(cmd: Http.CloseAll, commanders: Set[ActorRef]): Unit =
     if (!settingsGroups.isEmpty) {
-      val running: Set[ActorRef] = settingsGroups.map { x ⇒ x._2 ! cmd; x._2 }(collection.breakOut)
+      val running: Set[ActorRef] = settingsGroups.values.map { (x: ActorRef) ⇒ x ! cmd; x }(collection.breakOut)
       context.become(closingSettingsGroups(cmd, running, commanders))
-    } else shutdownHostConnectors(cmd, commanders)
+    } else shutdownConnectors(cmd, commanders)
 
   def closingSettingsGroups(cmd: Http.CloseAll, running: Set[ActorRef], commanders: Set[ActorRef]): Receive =
     withTerminationManagement {
@@ -99,26 +100,26 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
 
       case Http.ClosedAll ⇒
         val stillRunning = running - sender
-        if (stillRunning.isEmpty) shutdownHostConnectors(cmd, commanders)
+        if (stillRunning.isEmpty) shutdownConnectors(cmd, commanders)
         else context.become(closingSettingsGroups(cmd, stillRunning, commanders))
 
       case Terminated(child) if running contains child ⇒ self.tell(Http.ClosedAll, child)
     }
 
-  def shutdownHostConnectors(cmd: Http.CloseAll, commanders: Set[ActorRef]): Unit =
-    if (!hostConnectors.isEmpty) {
-      val running: Set[ActorRef] = hostConnectors.map { x ⇒ x._2 ! cmd; x._2 }(collection.breakOut)
-      context.become(closingHostConnectors(running, commanders))
+  def shutdownConnectors(cmd: Http.CloseAll, commanders: Set[ActorRef]): Unit =
+    if (!connectors.isEmpty) {
+      val running: Set[ActorRef] = connectors.values.map { (x: ActorRef) ⇒ x ! cmd; x }(collection.breakOut)
+      context.become(closingConnectors(running, commanders))
     } else shutdownListeners(commanders)
 
-  def closingHostConnectors(running: Set[ActorRef], commanders: Set[ActorRef]): Receive =
+  def closingConnectors(running: Set[ActorRef], commanders: Set[ActorRef]): Receive =
     withTerminationManagement {
-      case cmd: Http.CloseCommand ⇒ context.become(closingHostConnectors(running, commanders + sender))
+      case cmd: Http.CloseCommand ⇒ context.become(closingConnectors(running, commanders + sender))
 
       case Http.ClosedAll ⇒
         val stillRunning = running - sender
         if (stillRunning.isEmpty) shutdownListeners(commanders)
-        else context.become(closingHostConnectors(stillRunning, commanders))
+        else context.become(closingConnectors(stillRunning, commanders))
 
       case Terminated(child) if running contains child ⇒ self.tell(Http.ClosedAll, child)
     }
@@ -143,19 +144,39 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
       case Terminated(child) if running contains child ⇒ self.tell(Http.Unbound, child)
     }
 
-  def hostConnectorFor(setup: HostConnectorSetup): ActorRef = {
-    val normalizedSetup = setup.normalized
+  def connectorFor(setup: HostConnectorSetup) = {
+    val normalizedSetup = ProxySupport.resolveAutoProxied(setup.normalized)
+    import ConnectionType._
+    normalizedSetup.connection match {
+      case _: Proxied  ⇒ proxiedConnectorFor(normalizedSetup)
+      case Direct      ⇒ hostConnectorFor(normalizedSetup)
+      case AutoProxied ⇒ sys.error("unresolved connection type 'AutoProxied'")
+    }
+  }
 
+  def proxiedConnectorFor(normalizedSetup: HostConnectorSetup): ActorRef = {
+    val ConnectionType.Proxied(proxyHost, proxyPort) = normalizedSetup.connection
+    val proxyConnector = hostConnectorFor(normalizedSetup.copy(host = proxyHost, port = proxyPort))
+    def createAndRegisterProxiedConnector = {
+      val proxiedConnector = context.actorOf(
+        props = Props(new ProxiedHostConnector(normalizedSetup.host, normalizedSetup.port, proxyConnector)),
+        name = "proxy-connector-" + proxyConnectorCounter.next())
+      connectors = connectors.updated(normalizedSetup, proxiedConnector)
+      context.watch(proxiedConnector)
+    }
+    connectors.getOrElse(normalizedSetup, createAndRegisterProxiedConnector)
+  }
+
+  def hostConnectorFor(normalizedSetup: HostConnectorSetup): ActorRef = {
     def createAndRegisterHostConnector = {
-      import normalizedSetup._
-      val settingsGroup = settingsGroupFor(settings.get.connectionSettings) // must not be moved into the Props(...)!
+      val settingsGroup = settingsGroupFor(normalizedSetup.settings.get.connectionSettings) // must not be moved into the Props(...)!
       val hostConnector = context.actorOf(
         props = Props(new HttpHostConnector(normalizedSetup, settingsGroup)) withDispatcher HostConnectorDispatcher,
         name = "host-connector-" + hostConnectorCounter.next())
-      hostConnectors = hostConnectors.updated(normalizedSetup, hostConnector)
+      connectors = connectors.updated(normalizedSetup, hostConnector)
       context.watch(hostConnector)
     }
-    hostConnectors.getOrElse(normalizedSetup, createAndRegisterHostConnector)
+    connectors.getOrElse(normalizedSetup, createAndRegisterHostConnector)
   }
 
   def settingsGroupFor(settings: ClientConnectionSettings): ActorRef = {

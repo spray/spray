@@ -92,4 +92,7 @@ class PimpedString(underlying: String) {
    */
   def secure_==(other: String): Boolean = getAsciiBytes secure_== other.getAsciiBytes
 
+  def startsWith(c: Char) = underlying.nonEmpty && underlying.charAt(0) == c
+
+  def endsWith(c: Char) = underlying.nonEmpty && underlying.charAt(underlying.length - 1) == c
 }

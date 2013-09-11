@@ -138,7 +138,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
           else defaultHostHeader
         case Some(x) ⇒ x
       }
-      copy(uri = uri.toEffectiveHttpRequestUri(securedConnection, Uri.Host(host), port))
+      copy(uri = uri.toEffectiveHttpRequestUri(Uri.Host(host), port, securedConnection))
     } else // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.4
     if (hostHeader.isEmpty || uri.authority.isEmpty && hostHeader.get.isEmpty ||
       hostHeader.get.host.equalsIgnoreCase(uri.authority.host.address) && hostHeader.get.port == uri.authority.port) this
@@ -233,8 +233,17 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   }
 
   def canBeRetried = method.isIdempotent
-
   def withHeaders(headers: List[HttpHeader]) = if (headers eq this.headers) this else copy(headers = headers)
+  def withDefaultHeaders(defaultHeaders: List[HttpHeader]) = {
+    @annotation.tailrec
+    def patch(headers: List[HttpHeader], remaining: List[HttpHeader]): List[HttpHeader] = remaining match {
+      case h :: hs ⇒
+        if (headers.exists(_.is(h.lowercaseName))) patch(headers, hs)
+        else patch(h :: headers, hs)
+      case Nil ⇒ headers
+    }
+    withHeaders(patch(headers, defaultHeaders))
+  }
   def withEntity(entity: HttpEntity) = if (entity eq this.entity) this else copy(entity = entity)
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) =
     if ((headers eq this.headers) && (entity eq this.entity)) this else copy(headers = headers, entity = entity)

@@ -22,6 +22,7 @@ import akka.actor.{ ActorRef, Status, ActorSystem }
 import akka.io.IO
 import akka.testkit.TestProbe
 import spray.can.Http
+import spray.can.Http.ConnectionType
 import spray.io.ClientSSLEngineProvider
 import spray.util.Utils._
 import spray.httpx.RequestBuilding._
@@ -126,6 +127,17 @@ class SprayCanClientSpec extends Specification {
       closeHostConnector(hostConnector)
     }
 
+    "add default headers to requests if they don't contain them" in new TestSetup {
+      val probe = TestProbe()
+      val defaultHeader = RawHeader("X-Custom-Header", "Default")
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, defaultHeaders = List(defaultHeader)))
+      val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      send(hostConnector, Get("/pqr"))
+      acceptConnection().expectMsgType[HttpRequest].headers.find(_.name == "X-Custom-Header") === Some(defaultHeader)
+      send(hostConnector, Get("/pqr") ~> RawHeader("X-Custom-Header", "Customized!"))
+      acceptConnection().expectMsgType[HttpRequest].headers.find(_.name == "X-Custom-Header").get.value === "Customized!"
+    }
+
     "accept absolute URIs and render them unchanged" in new TestSetup {
       val uri = s"http://$hostname:$port/foo"
       val (probe, hostConnector) = sendViaHostConnector(Get(uri))
@@ -173,6 +185,52 @@ class SprayCanClientSpec extends Specification {
 
       closeHostConnector(hostConnector)
     }
+
+    "use a configured proxy" in new TestSetup {
+      val (probe, hostConnector) = sendViaProxiedConnector("example.com", 8080,
+        settingsConf = proxyConf(hostname, port))
+      probe.reply(Get("/foo"))
+      verifyServerSideRequestAndReply("http://example.com:8080/foo", probe)
+      closeHostConnector(hostConnector)
+    }
+
+    "ignore configured non-proxy-hosts" in new TestSetup {
+      val (probe, hostConnector) = sendViaProxiedConnector(hostname, port,
+        settingsConf = proxyConf("proxy.com", 9999, List(hostname)))
+      probe.reply(Get("/foo"))
+      verifyServerSideRequestAndReply(s"http://$hostname:$port/foo", probe)
+      closeHostConnector(hostConnector)
+    }
+
+    "use a proxy specified via 'ConnectionType.Proxied'" in new TestSetup {
+      val (probe, hostConnector) = sendViaProxiedConnector("example.com", 8080,
+        connection = ConnectionType.Proxied(hostname, port))
+      probe.reply(Get("/foo"))
+      verifyServerSideRequestAndReply("http://example.com:8080/foo", probe)
+      closeHostConnector(hostConnector)
+    }
+
+    "directly access hosts with ConnectionType.Direct" in new TestSetup {
+      val (probe, hostConnector) = sendViaProxiedConnector(hostname, port,
+        settingsConf = proxyConf("proxy.com", 9999),
+        connection = ConnectionType.Direct)
+      probe.reply(Get("/foo"))
+      verifyServerSideRequestAndReply(s"http://$hostname:$port/foo", probe)
+      closeHostConnector(hostConnector)
+    }
+
+    "correctly reuse proxied connectors" in new TestSetup {
+      val probe = TestProbe()
+      val proxied = ConnectionType.Proxied(hostname, port)
+      probe.send(IO(Http), Http.HostConnectorSetup("example.com", 8080, connection = proxied))
+      val Http.HostConnectorInfo(hostConnector1, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      probe.send(IO(Http), Http.HostConnectorSetup("example.com", 8080, connection = proxied))
+      val Http.HostConnectorInfo(hostConnector2, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      probe.send(IO(Http), Http.HostConnectorSetup("domain.net", 8080, connection = proxied))
+      val Http.HostConnectorInfo(hostConnector3, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      hostConnector1 === hostConnector2
+      hostConnector2 !== hostConnector3
+    }
   }
 
   "The request-level client infrastructure" should {
@@ -205,6 +263,22 @@ class SprayCanClientSpec extends Specification {
       probe.send(IO(Http), Get("/abc") ~> Host(hostname, port))
       acceptConnection()
       probe.expectMsgType[Status.Failure].cause must beAnInstanceOf[Http.RequestTimeoutException]
+    }
+
+    "use a configured proxy" in new TestSetup {
+      val conf = proxyConf(hostname, port).withFallback(testConf)
+      implicit val system = ActorSystem(actorSystemNameFrom(getClass), conf)
+      val probe = TestProbe()
+      probe.send(IO(Http), Get("http://example.com:9999/xyz"))
+      verifyServerSideRequestAndReply("http://example.com:9999/xyz", probe)
+    }
+
+    "ignore configured non-proxy-hosts" in new TestSetup {
+      val conf = proxyConf("proxy.org", 9999, List(hostname)).withFallback(testConf)
+      implicit val system = ActorSystem(actorSystemNameFrom(getClass), conf)
+      val probe = TestProbe()
+      probe.send(IO(Http), Get(s"http://$hostname:$port/xyz"))
+      verifyServerSideRequestAndReply(s"http://$hostname:$port/xyz", probe)
     }
   }
 
@@ -273,6 +347,24 @@ class SprayCanClientSpec extends Specification {
       val probe = TestProbe()
       probe.send(hostConnector, Http.CloseAll)
       probe.expectMsg(Http.ClosedAll)
+    }
+
+    def proxyConf(proxyHost: String, proxyPort: Int, ignore: List[String] = Nil) =
+      ConfigFactory.parseString(s"""
+        spray.can.client.proxy.http {
+        host = "$proxyHost"
+        port = $proxyPort
+        non-proxy-hosts = [${ignore.map('"' + _ + '"').mkString(", ")}]}""")
+
+    def sendViaProxiedConnector(hostname: String, port: Int, settingsConf: Config = testConf, connection: ConnectionType = ConnectionType.AutoProxied): (TestProbe, ActorRef) = {
+      val probe = TestProbe()
+      val settings = HostConnectorSettings(settingsConf
+        .withFallback(testConf)
+        .withFallback(ConfigFactory.load()))
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, settings = Some(settings), connection = connection))
+      val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      probe.sender === hostConnector
+      probe -> hostConnector
     }
   }
 }

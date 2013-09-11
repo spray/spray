@@ -87,7 +87,7 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
    * Converts this URI to an "effective HTTP request URI" as defined by
    * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.5.
    */
-  def toEffectiveHttpRequestUri(securedConnection: Boolean, hostHeaderHost: Host, hostHeaderPort: Int,
+  def toEffectiveHttpRequestUri(hostHeaderHost: Host, hostHeaderPort: Int, securedConnection: Boolean = false,
                                 defaultAuthority: Authority = Authority.Empty): Uri =
     effectiveHttpRequestUri(scheme, authority.host, authority.port, path, query, fragment, securedConnection,
       hostHeaderHost, hostHeaderPort, defaultAuthority)
@@ -220,7 +220,7 @@ object Uri {
     var _host = host
     var _port = port
     if (_scheme.isEmpty) {
-      _scheme = if (securedConnection) "https" else "http"
+      _scheme = httpScheme(securedConnection)
       if (_host.isEmpty) {
         if (hostHeaderHost.isEmpty) {
           _host = defaultAuthority.host
@@ -233,6 +233,10 @@ object Uri {
     }
     create(_scheme, "", _host, _port, collapseDotSegments(path), query, fragment)
   }
+
+  private final val http = "http"
+  private final val https = "https"
+  def httpScheme(securedConnection: Boolean = false) = if (securedConnection) https else http
 
   case class Authority(host: Host, port: Int = 0, userinfo: String = "") extends ToStringRenderable {
     def isEmpty = host.isEmpty
@@ -248,6 +252,8 @@ object Uri {
         }
         else r
       }
+    def normalizedForHttp(encrypted: Boolean = false) =
+      normalizedFor(httpScheme(encrypted))
     def normalizedFor(scheme: String): Authority = {
       val normalizedPort = normalizePort(port, scheme)
       if (normalizedPort == port) this else copy(port = normalizedPort)
