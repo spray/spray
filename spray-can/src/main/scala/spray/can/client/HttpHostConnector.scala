@@ -34,12 +34,9 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
   private[this] val headers =
     if (defaultHeaders.exists(_.isInstanceOf[HttpHeaders.Host])) defaultHeaders
     else {
-      val hostHeader = {
-        import Uri._
-        val Authority(_, normalizedPort, _) = Authority(Host(host), port).normalizedForHttp(sslEncryption)
-        HttpHeaders.Host(host, normalizedPort)
-      }
-      hostHeader :: defaultHeaders
+      import Uri._
+      val Authority(_, normalizedPort, _) = Authority(Host(host), port).normalizedForHttp(sslEncryption)
+      HttpHeaders.Host(host, normalizedPort) :: defaultHeaders
     }
 
   context.setReceiveTimeout(settings.idleTimeout)
