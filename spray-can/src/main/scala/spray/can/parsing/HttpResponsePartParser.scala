@@ -120,17 +120,32 @@ class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeade
   }
 
   def parseToCloseBody(headers: List[HttpHeader], input: ByteString, bodyStart: Int,
-                       cth: Option[`Content-Type`]): Result[HttpResponse] = {
-    if (input.length - bodyStart <= settings.maxContentLength) {
-      parse = { more ⇒
-        if (more.isEmpty) {
-          parse = this
-          val part = message(headers, entity(cth, input drop bodyStart))
-          Result.Ok(part, CompactByteString.empty, closeAfterResponseCompletion = true)
-        } else parseToCloseBody(headers, input ++ more, bodyStart, cth)
+                       cth: Option[`Content-Type`]): Result[HttpResponsePart] = {
+    val currentBodySize = input.length - bodyStart
+
+    if (currentBodySize <= settings.maxContentLength) {
+      if (currentBodySize >= settings.autoChunkingThreshold) {
+        parse = autoChunkToCloseBody
+        Result.Ok(chunkStartMessage(headers), input.drop(bodyStart).compact, closeAfterResponseCompletion = true)
+      } else {
+        parse = { more ⇒
+          if (more.isEmpty) {
+            parse = this
+            val part = message(headers, entity(cth, input drop bodyStart))
+            Result.Ok(part, CompactByteString.empty, closeAfterResponseCompletion = true)
+          } else parseToCloseBody(headers, input ++ more, bodyStart, cth)
+        }
+        Result.NeedMoreData
       }
-      Result.NeedMoreData
     } else fail(s"Response entity exceeds the configured limit of ${settings.maxContentLength} bytes")
+  }
+  def autoChunkToCloseBody: CompactByteString ⇒ Result[HttpResponsePart] = { more ⇒
+    val part =
+      if (more.isEmpty) {
+        parse = this
+        ChunkedMessageEnd
+      } else MessageChunk(HttpData(more))
+    Result.Ok(part, CompactByteString.empty, closeAfterResponseCompletion = true)
   }
 
   def message(headers: List[HttpHeader], entity: HttpEntity): HttpResponse =
