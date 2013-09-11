@@ -204,6 +204,7 @@ private[can] object HttpServerConnection {
    */
   def pipelineStage(settings: ServerSettings, statsHolder: Option[StatsHolder]) = {
     import settings._
+    import timeouts._
     ServerFrontend(settings) >>
       RequestChunkAggregation(requestChunkAggregationLimit) ? (requestChunkAggregationLimit > 0) >>
       PipeliningLimiter(pipeliningLimit) ? (pipeliningLimit > 0) >>
