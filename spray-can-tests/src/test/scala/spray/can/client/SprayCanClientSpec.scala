@@ -127,6 +127,17 @@ class SprayCanClientSpec extends Specification {
       closeHostConnector(hostConnector)
     }
 
+    "add default headers to requests if they don't contain them" in new TestSetup {
+      val probe = TestProbe()
+      val defaultHeader = RawHeader("X-Custom-Header", "Default")
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, defaultHeaders = List(defaultHeader)))
+      val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      send(hostConnector, Get("/pqr"))
+      acceptConnection().expectMsgType[HttpRequest].headers.find(_.name == "X-Custom-Header") === Some(defaultHeader)
+      send(hostConnector, Get("/pqr") ~> RawHeader("X-Custom-Header", "Customized!"))
+      acceptConnection().expectMsgType[HttpRequest].headers.find(_.name == "X-Custom-Header").get.value === "Customized!"
+    }
+
     "accept absolute URIs and render them unchanged" in new TestSetup {
       val uri = s"http://$hostname:$port/foo"
       val (probe, hostConnector) = sendViaHostConnector(Get(uri))

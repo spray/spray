@@ -31,11 +31,16 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
   private[this] val counter = Iterator from 0
   private[this] val dispatchStrategy = if (settings.pipelining) new PipelinedStrategy else new NonPipelinedStrategy
   private[this] var openRequestCounts = Map.empty[ActorRef, Int] // open requests per child, holds -1 if unconnected
-  private[this] val hostHeader = {
-    import Uri._
-    val Authority(_, normalizedPort, _) = Authority(Host(host), port).normalizedForHttp(sslEncryption)
-    HttpHeaders.Host(host, normalizedPort)
-  }
+  private[this] val headers =
+    if (defaultHeaders.exists(_.isInstanceOf[HttpHeaders.Host])) defaultHeaders
+    else {
+      val hostHeader = {
+        import Uri._
+        val Authority(_, normalizedPort, _) = Authority(Host(host), port).normalizedForHttp(sslEncryption)
+        HttpHeaders.Host(host, normalizedPort)
+      }
+      hostHeader :: defaultHeaders
+    }
 
   context.setReceiveTimeout(settings.idleTimeout)
 
@@ -44,10 +49,8 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
 
   def receive: Receive = {
     case request: HttpRequest ⇒
-      val requestWithHostHeader =
-        if (request.headers.exists(_.isInstanceOf[HttpHeaders.Host])) request
-        else request.withHeaders(hostHeader :: request.headers)
-      dispatchStrategy(RequestContext(requestWithHostHeader, settings.maxRetries, sender))
+      val requestWithDefaultHeaders = request.withDefaultHeaders(headers)
+      dispatchStrategy(RequestContext(requestWithDefaultHeaders, settings.maxRetries, sender))
 
     case ctx: RequestContext ⇒ dispatchStrategy(ctx) // retry
 

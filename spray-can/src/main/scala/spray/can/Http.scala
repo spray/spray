@@ -65,7 +65,8 @@ object Http extends ExtensionKey[HttpExt] {
                                 sslEncryption: Boolean = false,
                                 options: immutable.Traversable[Inet.SocketOption] = Nil,
                                 settings: Option[HostConnectorSettings] = None,
-                                connection: ConnectionType = ConnectionType.AutoProxied)(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command {
+                                connection: ConnectionType = ConnectionType.AutoProxied,
+                                defaultHeaders: List[HttpHeader] = Nil)(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command {
     private[can] def normalized(implicit refFactory: ActorRefFactory) =
       if (settings.isDefined) this
       else copy(settings = Some(HostConnectorSettings(actorSystem)))
