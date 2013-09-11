@@ -234,9 +234,7 @@ object Uri {
     create(_scheme, "", _host, _port, collapseDotSegments(path), query, fragment)
   }
 
-  private final val http = "http"
-  private final val https = "https"
-  def httpScheme(securedConnection: Boolean = false) = if (securedConnection) https else http
+  def httpScheme(securedConnection: Boolean = false) = if (securedConnection) "https" else "http"
 
   case class Authority(host: Host, port: Int = 0, userinfo: String = "") extends ToStringRenderable {
     def isEmpty = host.isEmpty

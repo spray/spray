@@ -17,14 +17,18 @@
 package spray.can
 
 import scala.util.control.NonFatal
+import scala.collection.immutable
 import akka.actor._
+import akka.io.Inet
 import spray.can.client._
 import spray.can.server.HttpListener
 import spray.http._
-import spray.can.Http.{ ConnectionType, HostConnectorSetup }
+import Http.{ ClientConnectionType, HostConnectorSetup }
 
 private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor with ActorLogging {
+  import HttpManager._
   import httpSettings._
+
   private[this] val listenerCounter = Iterator from 0
   private[this] val groupCounter = Iterator from 0
   private[this] val hostConnectorCounter = Iterator from 0
@@ -84,13 +88,22 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
       behavior.applyOrElse(ev, (_: Terminated) ⇒ ())
 
     case HttpHostConnector.DemandIdleShutdown ⇒
-      connectors = connectors filter { _._2 != sender }
-      sender ! PoisonPill
+      val hostConnector = sender
+      var sendPoisonPill = true
+      connectors = connectors filter {
+        case (x: ProxyConnectorSetup, proxiedConnector) if x.proxyConnector == hostConnector ⇒
+          proxiedConnector ! HttpHostConnector.DemandIdleShutdown
+          sendPoisonPill = false // the PoisonPill will be sent by the proxiedConnector
+          false
+        case (_, `hostConnector`) ⇒ false
+        case _                    ⇒ true
+      }
+      if (sendPoisonPill) hostConnector ! PoisonPill
   }: Receive) orElse behavior
 
   def shutdownSettingsGroups(cmd: Http.CloseAll, commanders: Set[ActorRef]): Unit =
     if (!settingsGroups.isEmpty) {
-      val running: Set[ActorRef] = settingsGroups.values.map { (x: ActorRef) ⇒ x ! cmd; x }(collection.breakOut)
+      val running: Set[ActorRef] = settingsGroups.values.map { x ⇒ x ! cmd; x }(collection.breakOut)
       context.become(closingSettingsGroups(cmd, running, commanders))
     } else shutdownConnectors(cmd, commanders)
 
@@ -108,7 +121,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
 
   def shutdownConnectors(cmd: Http.CloseAll, commanders: Set[ActorRef]): Unit =
     if (!connectors.isEmpty) {
-      val running: Set[ActorRef] = connectors.values.map { (x: ActorRef) ⇒ x ! cmd; x }(collection.breakOut)
+      val running: Set[ActorRef] = connectors.values.map { x ⇒ x ! cmd; x }(collection.breakOut)
       context.become(closingConnectors(running, commanders))
     } else shutdownListeners(commanders)
 
@@ -145,26 +158,27 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
     }
 
   def connectorFor(setup: HostConnectorSetup) = {
-    val normalizedSetup = ProxySupport.resolveAutoProxied(setup.normalized)
-    import ConnectionType._
-    normalizedSetup.connection match {
+    val normalizedSetup = resolveAutoProxied(setup)
+    import ClientConnectionType._
+    normalizedSetup.connectionType match {
       case _: Proxied  ⇒ proxiedConnectorFor(normalizedSetup)
       case Direct      ⇒ hostConnectorFor(normalizedSetup)
-      case AutoProxied ⇒ sys.error("unresolved connection type 'AutoProxied'")
+      case AutoProxied ⇒ throw new IllegalStateException
     }
   }
 
   def proxiedConnectorFor(normalizedSetup: HostConnectorSetup): ActorRef = {
-    val ConnectionType.Proxied(proxyHost, proxyPort) = normalizedSetup.connection
+    val ClientConnectionType.Proxied(proxyHost, proxyPort) = normalizedSetup.connectionType
     val proxyConnector = hostConnectorFor(normalizedSetup.copy(host = proxyHost, port = proxyPort))
+    val proxySetup = proxyConnectorSetup(normalizedSetup, proxyConnector)
     def createAndRegisterProxiedConnector = {
       val proxiedConnector = context.actorOf(
         props = Props(new ProxiedHostConnector(normalizedSetup.host, normalizedSetup.port, proxyConnector)),
         name = "proxy-connector-" + proxyConnectorCounter.next())
-      connectors = connectors.updated(normalizedSetup, proxiedConnector)
+      connectors = connectors.updated(proxySetup, proxiedConnector)
       context.watch(proxiedConnector)
     }
-    connectors.getOrElse(normalizedSetup, createAndRegisterProxiedConnector)
+    connectors.getOrElse(proxySetup, createAndRegisterProxiedConnector)
   }
 
   def hostConnectorFor(normalizedSetup: HostConnectorSetup): ActorRef = {
@@ -188,5 +202,36 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
       context.watch(group)
     }
     settingsGroups.getOrElse(settings, createAndRegisterSettingsGroup)
+  }
+}
+
+private[can] object HttpManager {
+  private class ProxyConnectorSetup(host: String, port: Int, sslEncryption: Boolean,
+                                    options: immutable.Traversable[Inet.SocketOption],
+                                    settings: Option[HostConnectorSettings], connectionType: ClientConnectionType,
+                                    defaultHeaders: List[HttpHeader], val proxyConnector: ActorRef)
+      extends HostConnectorSetup(host, port, sslEncryption, options, settings, connectionType, defaultHeaders)
+
+  private def proxyConnectorSetup(normalizedSetup: HostConnectorSetup, proxyConnector: ActorRef) = {
+    import normalizedSetup._
+    new ProxyConnectorSetup(host, port, sslEncryption, options, settings, connectionType, defaultHeaders, proxyConnector)
+  }
+
+  def resolveAutoProxied(setup: HostConnectorSetup)(implicit refFactory: ActorRefFactory) = {
+    val normalizedSetup = setup.normalized
+    import normalizedSetup._
+    val resolved =
+      if (sslEncryption) ClientConnectionType.Direct // TODO
+      else connectionType match {
+        case ClientConnectionType.AutoProxied ⇒
+          val scheme = Uri.httpScheme(sslEncryption)
+          val proxySettings = settings.get.connectionSettings.proxySettings.get(scheme)
+          proxySettings.filter(_.matchesHost(host)) match {
+            case Some(ProxySettings(proxyHost, proxyPort, _)) ⇒ ClientConnectionType.Proxied(proxyHost, proxyPort)
+            case None                                         ⇒ ClientConnectionType.Direct
+          }
+        case x ⇒ x
+      }
+    normalizedSetup.copy(connectionType = resolved)
   }
 }

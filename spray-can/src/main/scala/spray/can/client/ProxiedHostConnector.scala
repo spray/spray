@@ -50,9 +50,14 @@ private[can] class ProxiedHostConnector(host: String, port: Int, proxyConnector:
           request.uri
         }
       proxyConnector.forward(request.copy(uri = effectiveUri).withHeaders(headers))
+
+    case HttpHostConnector.DemandIdleShutdown ⇒
+      proxyConnector ! PoisonPill
+      context.stop(self)
+
     case Terminated(`proxyConnector`) ⇒
       context.stop(self)
-    case x ⇒
-      proxyConnector.forward(x)
+
+    case x ⇒ proxyConnector.forward(x)
   }
 }
