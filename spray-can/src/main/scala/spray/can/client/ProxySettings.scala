@@ -18,13 +18,33 @@ package spray.can.client
 
 import com.typesafe.config.{ ConfigValueType, Config }
 import spray.util._
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
-import ProxySupport.validIgnore
 
 case class ProxySettings(host: String, port: Int, nonProxyHosts: List[String]) {
   require(host.nonEmpty, "proxy host must be non-empty")
   require(0 < port && port < 65536, "illegal proxy port")
   require(nonProxyHosts forall validIgnore, "illegal nonProxyHosts")
+
+  // see http://docs.oracle.com/javase/6/docs/technotes/guides/net/proxies.html
+  private def validIgnore(pattern: String) = pattern.exists(_ != '*') && !pattern.drop(1).dropRight(1).contains('*')
+
+  val matchesHost: String ⇒ Boolean = {
+    @tailrec def rec(remainingNonProxyHosts: List[String], result: String ⇒ Boolean): String ⇒ Boolean =
+      remainingNonProxyHosts match {
+        case Nil ⇒ result
+        case pattern :: remaining ⇒
+          val check: String ⇒ Boolean =
+            (pattern endsWith '*', pattern startsWith '*') match {
+              case (true, true)  ⇒ val p = pattern.drop(1).dropRight(1); _.contains(p)
+              case (true, false) ⇒ val p = pattern.dropRight(1); _.startsWith(p)
+              case (false, true) ⇒ val p = pattern.drop(1); _.endsWith(p)
+              case _             ⇒ _ == pattern
+            }
+          rec(remaining, host ⇒ !check(host) && result(host))
+      }
+    rec(nonProxyHosts, result = _ ⇒ true)
+  }
 }
 
 object ProxySettings extends SettingsCompanion[Map[String, ProxySettings]]("spray.can.client.proxy") {

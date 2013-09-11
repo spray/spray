@@ -27,7 +27,7 @@ class ProxySpec extends Specification {
   "ProxySupport" should {
     def proxytest(proxyConf: String)(host: String) = {
       val proxySettings = ProxySettings(parseString(proxyConf), Map.empty[String, String])
-      ProxySupport.proxyFor(host, proxySettings.get(http))
+      proxySettings.get(http).filter(_.matchesHost(host))
     }
 
     "ignore missing proxy settings" in {
@@ -42,7 +42,7 @@ class ProxySpec extends Specification {
           port = 8080
           non-proxy-hosts = []
         }
-        https = none""")("example.com") === Some("some-proxy.com", 8080)
+        https = none""")("example.com") must beLike { case Some(ProxySettings("some-proxy.com", 8080, _)) ⇒ ok }
     }
     "correctly ignore non-proxy-hosts" in {
       val withIgnore = proxytest("""
@@ -52,7 +52,7 @@ class ProxySpec extends Specification {
           non-proxy-hosts = ["*.suffix", "prefix.*", ignored.net]
         }
         https = none""") _
-      withIgnore("example.com") === Some("some-proxy.com", 8080)
+      withIgnore("example.com") must beLike { case Some(ProxySettings("some-proxy.com", 8080, _)) ⇒ ok }
       withIgnore("test.suffix") === None
       withIgnore("prefix.test") === None
       withIgnore("ignored.net") === None
