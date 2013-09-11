@@ -233,8 +233,17 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   }
 
   def canBeRetried = method.isIdempotent
-
   def withHeaders(headers: List[HttpHeader]) = if (headers eq this.headers) this else copy(headers = headers)
+  def withDefaultHeaders(defaultHeaders: List[HttpHeader]) = {
+    @annotation.tailrec
+    def patch(headers: List[HttpHeader], remaining: List[HttpHeader]): List[HttpHeader] = remaining match {
+      case h :: hs ⇒
+        if (headers.exists(_.is(h.lowercaseName))) patch(headers, hs)
+        else patch(h :: headers, hs)
+      case Nil ⇒ headers
+    }
+    withHeaders(patch(headers, defaultHeaders))
+  }
   def withEntity(entity: HttpEntity) = if (entity eq this.entity) this else copy(entity = entity)
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) =
     if ((headers eq this.headers) && (entity eq this.entity)) this else copy(headers = headers, entity = entity)
