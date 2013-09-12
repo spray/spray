@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ class MultipartUnmarshallersSpec extends Specification {
            |--12345--""".stripMargin).as[MultipartContent] === Right {
           MultipartContent(
             Seq(
-              BodyPart(HttpEntity(ContentType(`text/plain`, Some(`US-ASCII`)), "first part, with a trailing EOL" + EOL)),
+              BodyPart(HttpEntity(ContentTypes.`text/plain(UTF-8)`, "first part, with a trailing EOL" + EOL)),
               BodyPart(
                 HttpEntity(`application/octet-stream`, "filecontent"),
                 List(
@@ -88,7 +88,7 @@ class MultipartUnmarshallersSpec extends Specification {
            |--XYZABC--""".stripMargin).as[MultipartFormData] === Right {
           MultipartFormData(
             Map("email" -> BodyPart(
-              HttpEntity(ContentType(`text/plain`, `US-ASCII`), "test@there.com"),
+              HttpEntity(ContentTypes.`text/plain(UTF-8)`, "test@there.com"),
               List(`Content-Disposition`("form-data", Map("name" -> "email"))))))
         })
     "correctly unmarshal 'multipart/form-data' content mixed with a file" in {

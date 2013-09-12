@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package spray.http.parser
 
 import java.nio.charset.Charset
+import spray.util.UTF8
 
 sealed abstract class ParserInput {
   def charAt(ix: Int): Char
@@ -29,7 +30,7 @@ sealed abstract class ParserInput {
 // Note: make sure to not add another implementation, otherwise usage of this class
 // might turn megamorphic at the call-sites thereby effectively disabling method inlining!
 object ParserInput {
-  implicit def apply(bytes: Array[Byte]): ParserInput = apply(bytes, spray.http.UTF8)
+  implicit def apply(bytes: Array[Byte]): ParserInput = apply(bytes, UTF8)
   def apply(bytes: Array[Byte], charset: Charset): ParserInput =
     new ParserInput {
       def charAt(ix: Int) = bytes(ix).toChar

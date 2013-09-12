@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,9 +62,9 @@ trait MiscDirectives {
       case Some(wrapper) ⇒
         if (validJsonpChars.matchAll(wrapper)) {
           mapHttpResponseEntity {
-            case HttpBody(ct @ ContentType(`application/json`, _), buffer) ⇒ HttpEntity(
+            case HttpEntity.NonEmpty(ct @ ContentType(`application/json`, _), data) ⇒ HttpEntity(
               contentType = ct.withMediaType(`application/javascript`),
-              string = wrapper + '(' + buffer.asString(ct.charset.nioCharset) + ')')
+              string = wrapper + '(' + data.asString(ct.charset.nioCharset) + ')')
             case entity ⇒ entity
           }
         } else reject(MalformedQueryParamRejection(parameterName, "Invalid JSONP callback identifier"))
@@ -126,7 +126,7 @@ trait MiscDirectives {
    * not be matched.
    */
   def rejectEmptyResponse: Directive0 = mapRouteResponse {
-    case HttpMessagePartWrapper(HttpResponse(_, EmptyEntity, _, _), _) ⇒ Rejected(Nil)
+    case HttpMessagePartWrapper(HttpResponse(_, HttpEntity.Empty, _, _), _) ⇒ Rejected(Nil)
     case x ⇒ x
   }
 }

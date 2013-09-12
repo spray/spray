@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -338,6 +338,24 @@ trait PathMatchers {
       case Path.Segment(segment, tail) ⇒ Matched(tail, segment :: HNil)
       case _                           ⇒ Unmatched
     }
+  }
+
+  /**
+   * A PathMatcher that matches all remaining segments as a List[String].
+   * This can also be no segments resulting in the empty list. This matcher will
+   * consume the complete remaining path so it isn't possible to match a suffix
+   * after this matcher has run.
+   */
+  object Segments extends PathMatcher1[List[String]] {
+    def apply(path: Path): Matching[List[String] :: HNil] =
+      path match {
+        case Path.Segment(segment, tail) ⇒
+          apply(tail).map {
+            case rest :: HNil ⇒ (segment :: rest) :: HNil
+          }
+        case Path.Slash(tail) ⇒ apply(tail)
+        case Path.Empty       ⇒ Matched(Path.Empty, Nil :: HNil)
+      }
   }
 
   @deprecated("Use `Segment` instead", "1.0-M8/1.1-M8")

@@ -70,7 +70,8 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
             }
           } ~
           post {
-            (decodeRequest(Gzip) | decodeRequest(NoEncoding)) {
+            // decompresses the request with Gzip or Deflate when required
+            decompressRequest() {
               // unmarshal with in-scope unmarshaller
               entity(as[Order]) { order =>
                 // transfer to newly spawned actor
@@ -123,8 +124,10 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
       path("documentation") {
         // cache responses to GET requests
         cache(simpleCache) {
-          // serve up static content from a JAR resource
-          encodeResponse(Gzip) {
+          // optionally compresses the response with Gzip or Deflate
+          // if the client accepts compressed responses
+          compressResponse() {
+            // serve up static content from a JAR resource
             getFromResourceDirectory("docs")
           }
         }

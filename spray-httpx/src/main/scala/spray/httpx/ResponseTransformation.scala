@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,4 +45,4 @@ object ResponseTransformation extends ResponseTransformation
 
 class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
 class UnsuccessfulResponseException(val response: HttpResponse) extends RuntimeException(s"Status: ${response.status}\n" +
-  s"Body: ${if (response.entity.buffer.length < 1024) response.entity.asString else response.entity.buffer.length + " bytes"}")
+  s"Body: ${if (response.entity.data.length < 1024) response.entity.asString else response.entity.data.length + " bytes"}")

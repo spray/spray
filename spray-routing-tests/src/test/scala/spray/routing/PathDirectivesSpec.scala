@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -208,6 +208,19 @@ class PathDirectivesSpec extends RoutingSpec {
     }
     "reject empty matches" in {
       Get("/id/") ~> route ~> check { handled must beFalse }
+    }
+  }
+
+  "The predefined Segments PathMatcher" should {
+    val route = path("dir" / Segments) { echoComplete }
+    "properly extract zero segments into the empty list" in {
+      Get("/dir") ~> route ~> check { entityAs[String] === "List()" }
+    }
+    "properly extract n segments without trailing slash" in {
+      Get("/dir/a/b/c/d") ~> route ~> check { entityAs[String] === "List(a, b, c, d)" }
+    }
+    "properly extract n segments with trailing slash" in {
+      Get("/dir/a/b/c/d/e/") ~> route ~> check { entityAs[String] === "List(a, b, c, d, e)" }
     }
   }
 

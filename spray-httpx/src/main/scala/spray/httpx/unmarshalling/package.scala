@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ package object unmarshalling {
 
   implicit def formFieldExtractor(form: HttpForm) = FormFieldExtractor(form)
   implicit def pimpHttpEntity(entity: HttpEntity) = new PimpedHttpEntity(entity)
-  implicit def pimpHttpBodyPart(bodyPart: BodyPart) = new PimpedHttpEntity(bodyPart.entity)
+  implicit def pimpBodyPart(bodyPart: BodyPart) = new PimpedHttpEntity(bodyPart.entity)
 
   class PimpedHttpEntity(entity: HttpEntity) {
     def as[T](implicit unmarshaller: Unmarshaller[T]): Deserialized[T] = unmarshaller(entity)

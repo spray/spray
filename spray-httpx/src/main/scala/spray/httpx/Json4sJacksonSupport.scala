@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io> <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ trait Json4sJacksonSupport extends MetaMarshallers {
 
   implicit def json4sUnmarshaller[T: Manifest] =
     Unmarshaller[T](MediaTypes.`application/json`) {
-      case x: HttpBody ⇒ Serialization.read[T](x.asString(defaultCharset = HttpCharsets.`UTF-8`))
+      case x: HttpEntity.NonEmpty ⇒ Serialization.read[T](x.asString(defaultCharset = HttpCharsets.`UTF-8`))
     }
 
   implicit def json4sMarshaller[T <: AnyRef] =

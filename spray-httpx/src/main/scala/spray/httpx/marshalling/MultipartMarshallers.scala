@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,19 +39,19 @@ trait MultipartMarshallers {
   implicit def multipartContentMarshaller = {
     val boundary = randomBoundary
     Marshaller.of[MultipartContent](`multipart/mixed` withBoundary boundary) { (value, contentType, ctx) ⇒
-      val r = new ByteArrayRendering(512)
       if (!value.parts.isEmpty) {
+        val r = new HttpDataRendering(rawBytesSizeHint = 512)
         value.parts.foreach { part ⇒
           r ~~ '-' ~~ '-' ~~ boundary ~~ CrLf
           part.headers.foreach { header ⇒ if (header.isNot("content-type")) r ~~ header ~~ CrLf }
           part.entity match {
-            case EmptyEntity       ⇒
-            case HttpBody(ct, buf) ⇒ if (buf.length > 0) r ~~ `Content-Type` ~~ ct ~~ CrLf ~~ CrLf ~~ buf ~~ CrLf
+            case HttpEntity.Empty              ⇒
+            case HttpEntity.NonEmpty(ct, data) ⇒ r ~~ `Content-Type` ~~ ct ~~ CrLf ~~ CrLf ~~ data ~~ CrLf
           }
         }
         r ~~ '-' ~~ '-' ~~ boundary ~~ '-' ~~ '-'
         ctx.marshalTo(HttpEntity(contentType, r.get))
-      } else ctx.marshalTo(EmptyEntity)
+      } else ctx.marshalTo(HttpData.Empty)
     }
   }
 
@@ -72,11 +72,11 @@ trait MultipartMarshallers {
               boundary = contentTypes.head.mediaType.parameters("boundary")
               contentTypes.headOption
             }
-            override def marshalTo(entity: HttpEntity): Unit = { ctx.marshalTo(overrideContentType(entity)) }
+            override def marshalTo(entity: HttpEntity): Unit = ctx.marshalTo(overrideContentType(entity))
             override def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) =
               ctx.startChunkedMessage(overrideContentType(entity), sentAck)
             def overrideContentType(entity: HttpEntity) =
-              entity.flatMap(body ⇒ HttpEntity(`multipart/form-data` withBoundary boundary, body.buffer))
+              entity.flatMap(body ⇒ HttpEntity(`multipart/form-data` withBoundary boundary, body.data))
           })
       }
     }

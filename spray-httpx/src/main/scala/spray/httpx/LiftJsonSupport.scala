@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ trait LiftJsonSupport {
 
   implicit def liftJsonUnmarshaller[T: Manifest] =
     Unmarshaller[T](MediaTypes.`application/json`) {
-      case x: HttpBody ⇒
+      case x: HttpEntity.NonEmpty ⇒
         val jsonSource = x.asString(defaultCharset = HttpCharsets.`UTF-8`)
         parse(jsonSource).extract[T]
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -142,7 +142,7 @@ class ResponseParserSpec extends Specification {
       }
     }
 
-    "properly auto-chunk" in {
+    "properly auto-chunk with content-length given" in {
       def start(contentSize: Int) =
         f"""HTTP/1.1 200 OK
            |Content-Length: $contentSize%d
@@ -174,6 +174,38 @@ class ResponseParserSpec extends Specification {
         parse(parser)("rest4") === ("rest4", "", "", false)
         parse(parser)("rest5") === ("rest5", "", "\0", false)
         parse(parser)("\0") === ("", Nil, "", false)
+      }
+    }
+
+    "properly auto-chunk without content-length" in {
+      val start =
+        f"""HTTP/1.1 200 OK
+           |Server: spray-can
+           |
+           |"""
+
+      "full response if size < incoming-auto-chunking-threshold-size" in {
+        val parser = newParser()
+        parse(parser)(start + "re") === Result.NeedMoreData
+        // connection closed
+        parse(parser)("") === (OK, "re", List(Server("spray-can")), `HTTP/1.1`, "", true)
+      }
+
+      "response start" in {
+        val parser = newParser()
+        parse(parser)(start + "rest1rest2rest3rest41") === // 21 bytes means should now be in chunking mode
+          (OK, List(Server("spray-can")), `HTTP/1.1`, "rest1rest2rest3rest41", true)
+        parse(parser)("rest1rest2rest3rest41") ===
+          ("rest1rest2rest3rest41", "", "", true)
+      }
+
+      "response end" in {
+        val parser = newParser()
+        parse(parser)(start + "rest1rest2rest3rest41") ===
+          (OK, List(Server("spray-can")), `HTTP/1.1`, "rest1rest2rest3rest41", true)
+        parse(parser)("rest1rest2rest3rest41") === ("rest1rest2rest3rest41", "", "", true)
+        parse(parser)("more") === ("more", "", "", true)
+        parse(parser)("") === ("", Nil, "", true)
       }
     }
 
@@ -211,8 +243,8 @@ class ResponseParserSpec extends Specification {
     val data = CompactByteString(rawResponse)
     parser.parse(data) match {
       case Result.Ok(HttpResponse(s, e, h, p), rd, close) ⇒ (s, e.asString, h, p, rd.utf8String, close)
-      case Result.Ok(ChunkedResponseStart(HttpResponse(s, EmptyEntity, h, p)), rd, close) ⇒ (s, h, p, rd.utf8String, close)
-      case Result.Ok(MessageChunk(body, ext), rd, close) ⇒ (new String(body), ext, rd.utf8String, close)
+      case Result.Ok(ChunkedResponseStart(HttpResponse(s, HttpEntity.Empty, h, p)), rd, close) ⇒ (s, h, p, rd.utf8String, close)
+      case Result.Ok(MessageChunk(d, ext), rd, close) ⇒ (d.asString, ext, rd.utf8String, close)
       case Result.Ok(ChunkedMessageEnd(ext, trailer), rd, close) ⇒ (ext, trailer, rd.utf8String, close)
       case Result.ParsingError(BadRequest, info) ⇒ info.formatPretty
       case x ⇒ x

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,16 +28,17 @@ case class ClientConnectionSettings(
     requestTimeout: Duration,
     reapingCycle: Duration,
     responseChunkAggregationLimit: Int,
-    requestSizeHint: Int,
+    requestHeaderSizeHint: Int,
     connectingTimeout: Duration,
-    parserSettings: ParserSettings) {
+    parserSettings: ParserSettings,
+    proxySettings: Map[String, ProxySettings]) {
 
   requirePositive(idleTimeout)
   requirePositive(requestTimeout)
   requirePositive(reapingCycle)
   require(0 <= responseChunkAggregationLimit && responseChunkAggregationLimit <= Int.MaxValue,
     "response-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
-  require(0 <= requestSizeHint && requestSizeHint <= Int.MaxValue,
+  require(0 <= requestHeaderSizeHint && requestHeaderSizeHint <= Int.MaxValue,
     "request-size-hint must be >= 0 and <= Int.MaxValue")
   requirePositive(connectingTimeout)
 }
@@ -55,9 +56,10 @@ object ClientConnectionSettings extends SettingsCompanion[ClientConnectionSettin
       c getDuration "request-timeout",
       c getDuration "reaping-cycle",
       c getBytes "response-chunk-aggregation-limit" toInt,
-      c getBytes "request-size-hint" toInt,
+      c getBytes "request-header-size-hint" toInt,
       c getDuration "connecting-timeout",
-      ParserSettings fromSubConfig c.getConfig("parsing"))
+      ParserSettings fromSubConfig c.getConfig("parsing"),
+      ProxySettings fromSubConfig c.getConfig("proxy"))
   }
 
   def apply(optionalSettings: Option[ClientConnectionSettings])(implicit actorRefFactory: ActorRefFactory): ClientConnectionSettings =

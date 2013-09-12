@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ class MarshallingDirectivesSpec extends RoutingSpec {
 
   implicit val IntUnmarshaller =
     Unmarshaller[Int](ContentTypeRange(`text/xml`, HttpCharsets.getForKey("iso-8859-2").get), `text/html`, `application/xhtml+xml`) {
-      case HttpBody(_, buffer) ⇒ XML.load(new ByteArrayInputStream(buffer)).text.toInt
+      case HttpEntity.NonEmpty(_, data) ⇒ XML.load(new ByteArrayInputStream(data.toByteArray)).text.toInt
     }
 
   implicit val IntMarshaller =

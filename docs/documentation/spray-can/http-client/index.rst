@@ -109,7 +109,7 @@ SSL Support
 SSL support is enabled
 
  - for the connection-level API by setting ``Http.Connect(sslEncryption = true)`` when connecting to a server
- - for the host-level API by setting ``Http.HostConnectorSetup(sslEncryption = true`` when creating a host connector
+ - for the host-level API by setting ``Http.HostConnectorSetup(sslEncryption = true)`` when creating a host connector
  - for the request-level API by using an ``https`` URL in the request
 
 Particular SSL settings can be configured via the implicit

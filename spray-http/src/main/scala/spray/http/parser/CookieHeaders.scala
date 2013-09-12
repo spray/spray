@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package spray.http
 package parser
 
 import org.parboiled.scala._
+import spray.util.identityFunc
 import BasicRules._
 
 // http://tools.ietf.org/html/draft-ietf-httpstate-cookie-23#section-4

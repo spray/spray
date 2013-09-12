@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -117,16 +117,18 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
                   cth: Option[`Content-Type`], teh: Option[`Transfer-Encoding`], hostHeaderPresent: Boolean,
                   closeAfterResponseCompletion: Boolean): Result[Part]
 
-  def parseFixedLengthBody(headers: List[HttpHeader], input: ByteString, bodyStart: Int, length: Int,
+  def parseFixedLengthBody(headers: List[HttpHeader], input: ByteString, bodyStart: Int, length: Long,
                            cth: Option[`Content-Type`], closeAfterResponseCompletion: Boolean): Result[Part] =
     if (length >= settings.autoChunkingThreshold) {
       parse = parseAutoChunk(length, closeAfterResponseCompletion)
       val part = chunkStartMessage(headers)
       Result.Ok(part, drop(input, bodyStart), closeAfterResponseCompletion)
-    } else if (bodyStart + length <= input.length) {
+    } else if (length > Int.MaxValue) fail(s"Content-Length > Int.MaxSize not supported for non-(auto)-chunked requests")
+    else if (bodyStart.toLong + length <= input.length) {
+      val intLength = length.toInt
       parse = this
-      val part = message(headers, entity(cth, input.iterator.slice(bodyStart, bodyStart + length).toArray[Byte]))
-      Result.Ok(part, drop(input, bodyStart + length), closeAfterResponseCompletion)
+      val part = message(headers, entity(cth, input.slice(bodyStart, bodyStart + intLength)))
+      Result.Ok(part, drop(input, bodyStart + intLength), closeAfterResponseCompletion)
     } else {
       parse = more ⇒ parseFixedLengthBody(headers, input ++ more, bodyStart, length, cth, closeAfterResponseCompletion)
       Result.NeedMoreData
@@ -152,7 +154,7 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
         val chunkBodyEnd = cursor + chunkSize
         def result(terminatorLen: Int) = {
           parse = parseChunk(closeAfterResponseCompletion)
-          val chunk = MessageChunk(input.iterator.slice(cursor, chunkBodyEnd).toArray[Byte], extension)
+          val chunk = MessageChunk(HttpData(input.slice(cursor, chunkBodyEnd)), extension)
           Result.Ok(chunk.asInstanceOf[Part], drop(input, chunkBodyEnd + terminatorLen), closeAfterResponseCompletion)
         }
         byteChar(input, chunkBodyEnd) match {
@@ -192,15 +194,15 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
     }
   }
 
-  def parseAutoChunk(remainingBytes: Int, closeAfterResponseCompletion: Boolean)(input: CompactByteString): Result[Part] = {
+  def parseAutoChunk(remainingBytes: Long, closeAfterResponseCompletion: Boolean)(input: CompactByteString): Result[Part] = {
 
     def finishAutoChunking(input: CompactByteString): Result[Part] = {
       parse = this
       Result.Ok(ChunkedMessageEnd.asInstanceOf[Part], input.drop(1).compact, closeAfterResponseCompletion)
     }
 
-    val consumed = math.min(remainingBytes, input.size)
-    val chunk = MessageChunk(input.take(consumed).toArray[Byte])
+    val consumed = math.min(remainingBytes, input.size).toInt // safe conversion because input.size returns an Int
+    val chunk = MessageChunk(HttpData(input.take(consumed)))
 
     val remaining =
       consumed match {
@@ -221,12 +223,12 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
     Result.Ok(chunk.asInstanceOf[Part], remaining, closeAfterResponseCompletion)
   }
 
-  def entity(cth: Option[`Content-Type`], body: Array[Byte]): HttpEntity = {
+  def entity(cth: Option[`Content-Type`], body: ByteString): HttpEntity = {
     val contentType = cth match {
       case Some(x) ⇒ x.contentType
       case None    ⇒ ContentTypes.`application/octet-stream`
     }
-    HttpEntity(contentType, body)
+    HttpEntity(contentType, HttpData(body))
   }
 
   def closeAfterResponseCompletion(connectionHeader: Option[Connection]) =

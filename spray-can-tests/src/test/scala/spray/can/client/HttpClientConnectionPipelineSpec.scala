@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -107,7 +107,7 @@ class HttpClientConnectionPipelineSpec extends Specification with RawSpecs2Pipel
       }
       commands.expectMsgPF() {
         case Pipeline.Tell(`probeRef`, response: HttpResponse, `connectionActor`) ⇒ response.entity
-      } === HttpEntity("body123body123")
+      } === HttpEntity(ContentTypes.`text/plain(UTF-8)`, HttpData("body123") +: HttpData("body123"))
     }
 
     "properly complete a 3 requests pipelined dialog" in new Fixture(stage) {
@@ -140,7 +140,7 @@ class HttpClientConnectionPipelineSpec extends Specification with RawSpecs2Pipel
            |Server: spray/1.0
            |Date: Thu, 25 Aug 2011 09:10:29 GMT
            |Content-Length: 8
-           |Content-Type: text/plain
+           |Content-Type: text/plain; charset=UTF-8
            |
            |"""
       }))
