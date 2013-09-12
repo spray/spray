@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ package object util {
 
   val EOL = System.getProperty("line.separator")
   val UTF8 = Charset.forName("UTF8")
+  val US_ASCII = Charset.forName("US-ASCII")
   val EmptyByteArray = Array.empty[Byte]
 
   private[this] val _identityFunc: Any ⇒ Any = x ⇒ x

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   def entity: HttpEntity = response.entity
   def entityAs[T: Unmarshaller: ClassTag]: T = entity.as[T].fold(error ⇒ failTest("Could not unmarshal response " +
     s"to type '${implicitly[ClassTag[T]]}' for `entityAs` assertion: $error\n\nResponse was: $response"), identityFunc)
-  def body: HttpBody = entity.toOption getOrElse failTest("Response has no body")
+  def body: HttpEntity.NonEmpty = entity.toOption getOrElse failTest("Response has no body")
   def contentType: ContentType = body.contentType
   def mediaType: MediaType = contentType.mediaType
   def charset: HttpCharset = contentType.charset
@@ -86,20 +86,26 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
     def apply(request: HttpRequest, f: A ⇒ B): Out
   }
 
+  case class DefaultHostInfo(host: HttpHeaders.Host, securedConnection: Boolean)
+  object DefaultHostInfo {
+    implicit def defaultHost: DefaultHostInfo =
+      DefaultHostInfo(HttpHeaders.Host("example.com"), securedConnection = false)
+  }
   object TildeArrow {
     implicit object InjectIntoRequestTransformer extends TildeArrow[HttpRequest, HttpRequest] {
       type Out = HttpRequest
       def apply(request: HttpRequest, f: HttpRequest ⇒ HttpRequest) = f(request)
     }
     implicit def injectIntoRoute(implicit timeout: RouteTestTimeout, settings: RoutingSettings,
-                                 log: LoggingContext, eh: ExceptionHandler) =
+                                 log: LoggingContext, eh: ExceptionHandler, defaultHostInfo: DefaultHostInfo) =
       new TildeArrow[RequestContext, Unit] {
         type Out = RouteResult
         def apply(request: HttpRequest, route: Route) = {
           val routeResult = new RouteResult(timeout.duration)
           val effectiveRequest =
-            try request.withEffectiveUri(securedConnection = false)
-            catch { case NonFatal(_) ⇒ request }
+            request.withEffectiveUri(
+              securedConnection = defaultHostInfo.securedConnection,
+              defaultHostHeader = defaultHostInfo.host)
           ExecutionDirectives.handleExceptions(eh orElse ExceptionHandler.default)(route) {
             RequestContext(
               request = effectiveRequest,

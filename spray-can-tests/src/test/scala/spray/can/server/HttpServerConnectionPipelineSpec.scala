@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,9 +56,9 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
         uri = "http://test.com/",
         headers = List(
           `Transfer-Encoding`("chunked"),
-          `Content-Type`(`text/plain`),
+          `Content-Type`(ContentTypes.`text/plain(UTF-8)`),
           `Host`("test.com")),
-        entity = HttpEntity("body123body123"))
+        entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, HttpData("body123") +: HttpData("body123")))
     }
 
     "dispatch Ack messages" in {
@@ -261,7 +261,7 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
         connectionActor ! Tcp.Received(ByteString(prep(
           """GET / HTTP/1.1
             |Host: test.com
-            |Content-Type: text/plain
+            |Content-Type: text/plain; charset=UTF-8
             |Content-Length: 12
             |Expect: %s
             |
@@ -272,7 +272,7 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
           headers = List(
             Expect(expectValue),
             `Content-Length`(12),
-            `Content-Type`(`text/plain`),
+            `Content-Type`(ContentTypes.`text/plain(UTF-8)`),
             Host("test.com"))).withEntity("bodybodybody")
       }
       "with a header value fully matching the spec" in example("100-continue")
@@ -293,7 +293,7 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
         """HTTP/1.1 200 OK
           |Server: spray/test
           |Date: XXXX
-          |Content-Type: text/plain
+          |Content-Type: text/plain; charset=UTF-8
           |Content-Length: 7
           |
           |"""
@@ -316,7 +316,7 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
         """HTTP/1.1 200 OK
           |Server: spray/test
           |Date: XXXX
-          |Content-Type: text/plain
+          |Content-Type: text/plain; charset=UTF-8
           |Content-Length: 7
           |
           |"""
@@ -347,7 +347,7 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
         """HTTP/1.1 500 Internal Server Error
           |Server: spray/test
           |Date: XXXX
-          |Content-Type: text/plain
+          |Content-Type: text/plain; charset=UTF-8
           |Connection: close
           |Content-Length: 111
           |

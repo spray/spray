@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,8 @@ class ChunkingDirectivesSpec extends RoutingSpec {
       val text = "This is a somewhat lengthy text that is being chunked by the autochunk directive!"
       Get() ~> autoChunk(8) { complete(text) } ~> check {
         chunks must haveSize(10)
-        new String(body.buffer ++ chunks.toArray.flatMap(_.body)) === text
+        val bytes = chunks.foldLeft(body.data.toByteArray)(_ ++ _.data.toByteArray)
+        new String(bytes) === text
       }
     }
   }

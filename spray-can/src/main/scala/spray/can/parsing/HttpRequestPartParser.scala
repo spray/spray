@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
 
   private[this] var method: HttpMethod = GET
   private[this] var uri: Uri = Uri.Empty
+  var uriBytes: Array[Byte] = Array()
 
   def copyWith(warnOnIllegalHeader: ErrorInfo ⇒ Unit): HttpRequestPartParser =
     new HttpRequestPartParser(settings)(headerParser.copyWith(warnOnIllegalHeader))
@@ -84,6 +85,7 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
     try {
       val uriBytes = input.iterator.slice(uriStart, uriEnd).toArray[Byte]
       uri = Uri.parseHttpRequestTarget(uriBytes, mode = settings.uriParsingMode)
+      this.uriBytes = uriBytes
     } catch {
       case e: IllegalUriException ⇒ throw new ParsingException(BadRequest, e.info)
     }
@@ -113,7 +115,7 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
           }
           if (contentLength == 0) {
             parse = this
-            Result.Ok(message(headers, EmptyEntity), drop(input, bodyStart), closeAfterResponseCompletion)
+            Result.Ok(message(headers, HttpEntity.Empty), drop(input, bodyStart), closeAfterResponseCompletion)
           } else if (contentLength <= settings.maxContentLength)
             parseFixedLengthBody(headers, input, bodyStart, contentLength, cth, closeAfterResponseCompletion)
           else fail(RequestEntityTooLarge, s"Request Content-Length $contentLength exceeds the configured limit of " +
@@ -125,5 +127,5 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
     HttpRequest(method, uri, headers, entity, protocol)
 
   def chunkStartMessage(headers: List[HttpHeader]) =
-    ChunkedRequestStart(message(headers, EmptyEntity))
+    ChunkedRequestStart(message(headers, HttpEntity.Empty))
 }

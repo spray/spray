@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -140,14 +140,14 @@ class Servlet30ConnectorServlet extends HttpServlet {
                   log.warning("Received a ChunkedResponseStart for a request that was already completed, dropping ...\nRequest: {}\nResponse: {}", req, response)
               }
 
-            case MessageChunk(body, _) ⇒ state.get match {
+            case MessageChunk(data, _) ⇒ state.get match {
               case OPEN ⇒
-                log.warning("Received a MessageChunk before a ChunkedResponseStart, dropping ...\nRequest: {}\nChunk: {} bytes\n", req, body.length)
+                log.warning("Received a MessageChunk before a ChunkedResponseStart, dropping ...\nRequest: {}\nChunk: {} bytes\n", req, data.length)
               case STARTED ⇒
-                val error = writeChunk(body, hsResponse, req)
+                val error = writeChunk(data, hsResponse, req)
                 postProcess(error, wrapper.ack, close = false)
               case COMPLETED ⇒
-                log.warning("Received a MessageChunk for a request that was already completed, dropping ...\nRequest: {}\nChunk: {} bytes", req, body.length)
+                log.warning("Received a MessageChunk for a request that was already completed, dropping ...\nRequest: {}\nChunk: {} bytes", req, data.length)
             }
 
             case _: ChunkedMessageEnd ⇒
@@ -221,11 +221,11 @@ class Servlet30ConnectorServlet extends HttpServlet {
         }
       }
       resp.entity match {
-        case EmptyEntity ⇒
-        case HttpBody(contentType, buffer) ⇒
+        case HttpEntity.Empty ⇒
+        case HttpEntity.NonEmpty(contentType, data) ⇒
           hsResponse.addHeader("Content-Type", contentType.value)
-          if (response.isInstanceOf[HttpResponse]) hsResponse.addHeader("Content-Length", buffer.length.toString)
-          hsResponse.getOutputStream.write(buffer)
+          if (response.isInstanceOf[HttpResponse]) hsResponse.addHeader("Content-Length", data.length.toString)
+          hsResponse.getOutputStream.write(data.toByteArray)
           hsResponse.getOutputStream.flush()
       }
       complete
@@ -241,18 +241,18 @@ class Servlet30ConnectorServlet extends HttpServlet {
     }
   }
 
-  def writeChunk(buffer: Array[Byte], hsResponse: HttpServletResponse, req: HttpRequest): Option[Throwable] = {
+  def writeChunk(data: HttpData, hsResponse: HttpServletResponse, req: HttpRequest): Option[Throwable] = {
     try {
-      hsResponse.getOutputStream.write(buffer)
+      hsResponse.getOutputStream.write(data.toByteArray)
       hsResponse.getOutputStream.flush()
       None
     } catch {
       case e: IOException ⇒
         log.error("Could not write response chunk, probably the request has either timed out or the client has " +
-          "disconnected\nRequest: {}\nChunk: {} bytes\nError: {}", req, buffer.length, e)
+          "disconnected\nRequest: {}\nChunk: {} bytes\nError: {}", req, data.length, e)
         Some(e)
       case NonFatal(e) ⇒
-        log.error("Could not write response chunk\nRequest: {}\nChunk: {} bytes\nError: {}", req, buffer.length, e)
+        log.error("Could not write response chunk\nRequest: {}\nChunk: {} bytes\nError: {}", req, data.length, e)
         Some(e)
     }
   }

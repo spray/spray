@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -158,7 +158,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
     val handler = system.actorOf(
       props = Props {
         new ConnectionHandler {
-          val receiver = running(connection, frontend >> SslTlsSupport, sslTlsContext[ClientSSLEngineProvider](connected))
+          val receiver = running(connection, frontend >> SslTlsSupport(true), sslTlsContext[ClientSSLEngineProvider](connected))
 
           def receive: Receive = receiver orElse {
             case HookNetwork(hook) ⇒ context.become(hooked(hook))
@@ -184,6 +184,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
 
     def run(): Unit = {
       probe.send(handler, Tcp.Write(ByteString("3+4\n")))
+      probe.expectMsgType[SslTlsSupport.SSLSessionEstablished]
       expectReceived(probe, ByteString("7\n"))
       probe.send(handler, Tcp.Write(ByteString("20+22\n")))
       expectReceived(probe, ByteString("42\n"))
@@ -224,7 +225,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
           }
 
           val eventPipeline: EPL = {
-            case ev: Tcp.Received if commander != null ⇒ commander ! ev
+            case ev @ (Tcp.Received(_) | SslTlsSupport.SSLSessionEstablished(_)) if commander != null ⇒ commander ! ev
             case ev ⇒
               if (commander != null) commander ! ev
               eventPL(ev)
@@ -259,7 +260,8 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
               }
 
               buffer = consume(buffer ++ data)
-            case ev ⇒ eventPL(ev)
+            case _: SslTlsSupport.SSLSessionEstablished ⇒
+            case ev                                     ⇒ eventPL(ev)
           }
         }
     }
@@ -269,7 +271,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
         val handler = system.actorOf(
           props = Props {
             new ConnectionHandler {
-              def receive = running(connection, frontend >> SslTlsSupport, sslTlsContext[ServerSSLEngineProvider](x))
+              def receive = running(connection, frontend >> SslTlsSupport(true), sslTlsContext[ServerSSLEngineProvider](x))
             }
           },
           name = "server" + counter.incrementAndGet())
@@ -371,7 +373,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
 
   def sessions(f: SSLContext ⇒ SSLSessionContext): Seq[SSLSession] = {
     val ctx = f(sslContext)
-    val ids = ctx.getIds().asScala.toIndexedSeq
+    val ids = ctx.getIds.asScala.toIndexedSeq
     ids.map(ctx.getSession)
   }
   def invalidateSessions() = {

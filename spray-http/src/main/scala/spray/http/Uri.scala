@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
- * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +22,7 @@ import scala.annotation.tailrec
 import scala.collection.{ mutable, LinearSeqOptimized }
 import scala.collection.immutable.LinearSeq
 import spray.http.parser.{ ParserInput, UriParser }
+import spray.util.UTF8
 import UriParser._
 import Uri._
 
@@ -87,7 +87,7 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
    * Converts this URI to an "effective HTTP request URI" as defined by
    * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.5.
    */
-  def toEffectiveHttpRequestUri(securedConnection: Boolean, hostHeaderHost: Host, hostHeaderPort: Int,
+  def toEffectiveHttpRequestUri(hostHeaderHost: Host, hostHeaderPort: Int, securedConnection: Boolean = false,
                                 defaultAuthority: Authority = Authority.Empty): Uri =
     effectiveHttpRequestUri(scheme, authority.host, authority.port, path, query, fragment, securedConnection,
       hostHeaderHost, hostHeaderPort, defaultAuthority)
@@ -163,7 +163,7 @@ object Uri {
   def from(scheme: String = "", userinfo: String = "", host: String = "", port: Int = 0, path: String = "",
            query: Query = Query.Empty, fragment: Option[String] = None,
            mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Uri =
-    apply(scheme, Authority(Host(host, mode), normalizePort(port, scheme), userinfo), Path(path), query, fragment)
+    apply(scheme, Authority(Host(host, UTF8, mode), normalizePort(port, scheme), userinfo), Path(path), query, fragment)
 
   /**
    * Parses a string into a normalized absolute URI as defined by http://tools.ietf.org/html/rfc3986#section-4.3.
@@ -220,7 +220,7 @@ object Uri {
     var _host = host
     var _port = port
     if (_scheme.isEmpty) {
-      _scheme = if (securedConnection) "https" else "http"
+      _scheme = httpScheme(securedConnection)
       if (_host.isEmpty) {
         if (hostHeaderHost.isEmpty) {
           _host = defaultAuthority.host
@@ -233,6 +233,8 @@ object Uri {
     }
     create(_scheme, "", _host, _port, collapseDotSegments(path), query, fragment)
   }
+
+  def httpScheme(securedConnection: Boolean = false) = if (securedConnection) "https" else "http"
 
   case class Authority(host: Host, port: Int = 0, userinfo: String = "") extends ToStringRenderable {
     def isEmpty = host.isEmpty
@@ -248,6 +250,8 @@ object Uri {
         }
         else r
       }
+    def normalizedForHttp(encrypted: Boolean = false) =
+      normalizedFor(httpScheme(encrypted))
     def normalizedFor(scheme: String): Authority = {
       val normalizedPort = normalizePort(port, scheme)
       if (normalizedPort == port) this else copy(port = normalizedPort)
@@ -269,7 +273,7 @@ object Uri {
       def toOption = None
       def render[R <: Rendering](r: R): r.type = r
     }
-    def apply(string: String, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Host =
+    def apply(string: String, charset: Charset = UTF8, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Host =
       if (!string.isEmpty) {
         val parser = new UriParser(string, UTF8, mode)
         import parser._
@@ -415,6 +419,11 @@ object Uri {
         if (q.isEmpty) result else fetch(q.tail, if (q.key == key) q.value :: result else result)
       fetch(this)
     }
+    def toMap: Map[String, String] = {
+      @tailrec def append(map: Map[String, String], q: Query): Map[String, String] =
+        if (q.isEmpty) map else append(map.updated(q.key, q.value), q.tail)
+      append(Map.empty, this)
+    }
     def toMultiMap: Map[String, List[String]] = {
       @tailrec def append(map: Map[String, List[String]], q: Query): Map[String, List[String]] =
         if (q.isEmpty) map else append(map.updated(q.key, q.value :: map.getOrElse(q.key, Nil)), q.tail)
@@ -444,8 +453,8 @@ object Uri {
      * Empty strings will be parsed to `("", "") +: Query.Empty`
      * If you want to allow for Query.Empty creation use the apply overload taking an `Option[String`.
      */
-    def apply(string: String, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Query = {
-      val parser = new UriParser(string, UTF8, mode)
+    def apply(string: String, charset: Charset = UTF8, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Query = {
+      val parser = new UriParser(string, charset, mode)
       import parser._
       complete("Query", query)
       _query
@@ -453,7 +462,7 @@ object Uri {
     def apply(input: Option[String]): Query = apply(input, Uri.ParsingMode.Relaxed)
     def apply(input: Option[String], mode: Uri.ParsingMode): Query = input match {
       case None         ⇒ Query.Empty
-      case Some(string) ⇒ apply(string, mode)
+      case Some(string) ⇒ apply(string, mode = mode)
     }
     def apply(kvp: (String, String)*): Query =
       kvp.foldRight(Query.Empty: Query) { case ((key, value), acc) ⇒ Cons(key, value, acc) }

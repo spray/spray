@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
- * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,6 +55,8 @@ object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   import Redirection  .{apply => r}
   import ClientError  .{apply => c}
   import ServerError  .{apply => e}
+
+  // main source: http://en.wikipedia.org/wiki/List_of_HTTP_status_codes
 
   val Continue           = reg(i(100)("Continue", "The server has received the request headers, and the client should proceed to send the request body."))
   val SwitchingProtocols = reg(i(101)("Switching Protocols", "The server is switching protocols, because the client requested the switch."))

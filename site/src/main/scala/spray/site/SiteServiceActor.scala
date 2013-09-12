@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
         (host("nightlies.spray.cc") & unmatchedPath) { ump =>
           redirect("http://nightlies.spray.io" + ump, Found)
         } ~
-        host(_.endsWith(".parboiled.org")) {
+        host(_.endsWith("parboiled.org")) {
           redirect("https://github.com/sirthias/parboiled/wiki", Found)
         } ~
         host("spray.io", "localhost", "127.0.0.1") {

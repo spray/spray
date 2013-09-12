@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
- * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,15 +36,15 @@ object MessagePredicate {
 
   def isRequest = apply(_.isRequest)
   def isResponse = apply(_.isResponse)
-  def minEntitySize(minSize: Int) = apply(_.entity.buffer.length >= minSize)
+  def minEntitySize(minSize: Int) = apply(_.entity.data.length >= minSize)
   def responseStatus(f: StatusCode ⇒ Boolean) = apply {
     case x: HttpResponse ⇒ f(x.status)
     case _: HttpRequest  ⇒ false
   }
   def isCompressible: MessagePredicate = apply {
     _.entity match {
-      case HttpBody(contentType, _) ⇒ contentType.mediaType.compressible
-      case EmptyEntity              ⇒ false
+      case HttpEntity.NonEmpty(contentType, _) ⇒ contentType.mediaType.compressible
+      case _                                   ⇒ false
     }
   }
 }

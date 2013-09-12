@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package spray.http
 
 import org.specs2.mutable.Specification
+import spray.util.UTF8
 import Uri._
 
 class UriSpec extends Specification {
@@ -219,7 +220,7 @@ class UriSpec extends Specification {
   }
 
   "Uri.Query instances" should {
-    def parser(mode: Uri.ParsingMode): String ⇒ Query = Query(_, mode)
+    def parser(mode: Uri.ParsingMode): String ⇒ Query = Query(_, mode = mode)
     "be parsed and rendered correctly in strict mode" in {
       val test = parser(Uri.ParsingMode.Strict)
       test("") === ("", "") +: Query.Empty

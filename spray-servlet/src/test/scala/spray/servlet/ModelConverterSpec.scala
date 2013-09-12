@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ class ModelConverterSpec extends Specification with NoTimeConversions {
           RequestMock(
             content = c,
             headers = "Content-Type" -> "text/plain" :: Nil)
-        } === HttpRequest(entity = c, headers = textPlain :: Nil)
+        } === HttpRequest(entity = HttpEntity(ContentTypes.`text/plain`, c), headers = textPlain :: Nil)
       }
       "example 6" in {
         implicit def s = settings

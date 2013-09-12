@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ trait MetaMarshallers {
     Marshaller[Option[T]] { (value, ctx) ⇒
       value match {
         case Some(v) ⇒ m(v, ctx)
-        case None    ⇒ ctx.marshalTo(EmptyEntity)
+        case None    ⇒ ctx.marshalTo(HttpEntity.Empty)
       }
     }
 
@@ -74,7 +74,7 @@ object MetaMarshallers extends MetaMarshallers {
         val chunkingCtx = new DelegatingMarshallingContext(ctx) {
           override def marshalTo(entity: HttpEntity): Unit = {
             if (connectionActor == null) connectionActor = ctx.startChunkedMessage(entity, Some(SentOk(rest)))
-            else connectionActor ! MessageChunk(entity.buffer).withAck(SentOk(rest))
+            else connectionActor ! MessageChunk(entity.data).withAck(SentOk(rest))
           }
           override def handleError(error: Throwable): Unit = {
             context.stop(self)

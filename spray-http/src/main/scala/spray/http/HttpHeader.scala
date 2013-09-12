@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
- * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes) 
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +18,7 @@ package spray.http
 
 import scala.annotation.{ implicitNotFound, tailrec }
 import java.net.InetSocketAddress
+import spray.util._
 
 abstract class HttpHeader extends ToStringRenderable {
   def name: String
@@ -48,7 +48,7 @@ object HttpHeaders {
       n.substring(n.indexOf('$') + 1, n.length - 1).replace("$minus", "-")
     }
     val lowercaseName = name.toLowerCase
-    private[this] val nameBytes = asciiBytes(name)
+    private[this] val nameBytes = name.getAsciiBytes
     def render[R <: Rendering](r: R): r.type = r ~~ nameBytes ~~ ':' ~~ ' '
   }
 
@@ -217,7 +217,7 @@ object HttpHeaders {
   }
 
   object `Content-Length` extends ModeledCompanion
-  case class `Content-Length`(length: Int)(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
+  case class `Content-Length`(length: Long)(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ length
     protected def companion = `Content-Length`
   }
@@ -300,6 +300,12 @@ object HttpHeaders {
     protected def companion = `Proxy-Authorization`
   }
 
+  object `Raw-Request-URI` extends ModeledCompanion
+  case class `Raw-Request-URI`(uri: String) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ uri
+    protected def companion = `Raw-Request-URI`
+  }
+
   object `Remote-Address` extends ModeledCompanion
   case class `Remote-Address`(ip: HttpIp) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ ip
@@ -370,6 +376,18 @@ object HttpHeaders {
     import `X-Forwarded-For`.ipsRenderer
     def renderValue[R <: Rendering](r: R): r.type = r ~~ ips
     protected def companion = `X-Forwarded-For`
+  }
+
+  /**
+   * Provides information about the SSL session the message was received over.
+   *
+   * For non-certificate based cipher suites (e.g., Kerberos), `localCertificates` and `peerCertificates` are both empty lists.
+   */
+  object `SSL-Session-Info` extends ModeledCompanion
+  case class `SSL-Session-Info`(info: SSLSessionInfo) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ "peer = " ~~ info.peerPrincipal.map { _.toString }.getOrElse("none")
+    protected def companion = `SSL-Session-Info`
+    override def toString = s"$name($info)"
   }
 
   case class RawHeader(name: String, value: String) extends HttpHeader {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,13 @@ import spray.util.actorSystem
 
 object Http extends ExtensionKey[HttpExt] {
 
+  sealed trait ClientConnectionType
+  object ClientConnectionType {
+    object Direct extends ClientConnectionType
+    object AutoProxied extends ClientConnectionType
+    case class Proxied(proxyHost: String, proxyPort: Int) extends ClientConnectionType
+  }
+
   /// COMMANDS
   type Command = Tcp.Command
 
@@ -57,19 +64,16 @@ object Http extends ExtensionKey[HttpExt] {
   case class HostConnectorSetup(host: String, port: Int = 80,
                                 sslEncryption: Boolean = false,
                                 options: immutable.Traversable[Inet.SocketOption] = Nil,
-                                settings: Option[HostConnectorSettings] = None)(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command {
+                                settings: Option[HostConnectorSettings] = None,
+                                connectionType: ClientConnectionType = ClientConnectionType.AutoProxied,
+                                defaultHeaders: List[HttpHeader] = Nil)(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command {
     private[can] def normalized(implicit refFactory: ActorRefFactory) =
       if (settings.isDefined) this
       else copy(settings = Some(HostConnectorSettings(actorSystem)))
   }
   object HostConnectorSetup {
-    def apply(host: String, port: Int, sslEncryption: Boolean)(implicit refFactory: ActorRefFactory, sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup = {
-      val connectionSettings = ClientConnectionSettings(actorSystem)
-      apply(
-        host, port,
-        sslEncryption = sslEncryption,
-        settings = Some(HostConnectorSettings(actorSystem).copy(connectionSettings = connectionSettings)))
-    }
+    def apply(host: String, port: Int, sslEncryption: Boolean)(implicit refFactory: ActorRefFactory, sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup =
+      apply(host, port, sslEncryption, Nil).normalized
   }
 
   type FastPath = PartialFunction[HttpRequest, HttpResponse]

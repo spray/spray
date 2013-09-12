@@ -66,10 +66,12 @@ object Build extends Build with DocSupport {
 
 
   lazy val sprayHttp = Project("spray-http", file("spray-http"))
+    .dependsOn(sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(osgiSettings(exports = Seq("spray.http")): _*)
     .settings(libraryDependencies ++=
       compile(parboiled) ++
+      provided(akkaActor) ++
       test(specs2)
     )
 

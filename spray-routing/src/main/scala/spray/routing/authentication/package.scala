@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,13 @@ package spray.routing
 import scala.concurrent.Future
 
 package object authentication {
-  type ContextAuthenticator[T] = RequestContext ⇒ Future[Authentication[T]]
+  //# auth-types
   type Authentication[T] = Either[Rejection, T]
+  type ContextAuthenticator[T] = RequestContext ⇒ Future[Authentication[T]]
+  //#
+  //# user-pass-authenticator
   type UserPassAuthenticator[T] = Option[UserPass] ⇒ Future[Option[T]]
+  //#
 }
 
 package authentication {
