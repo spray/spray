@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,17 +33,20 @@ class ExpiringLruCacheSpec extends Specification with NoTimeConversions {
   "An LruCache" should {
     "be initially empty" in {
       lruCache().store.toString === "{}"
+      lruCache().size === 0
     }
     "store uncached values" in {
       val cache = lruCache[String]()
       cache(1)("A").await === "A"
       cache.store.toString === "{1=A}"
+      cache.size === 1
     }
     "return stored values upon cache hit on existing values" in {
       val cache = lruCache[String]()
       cache(1)("A").await === "A"
       cache(1)(failure("Cached expression was evaluated despite a cache hit"): String).await === "A"
       cache.store.toString === "{1=A}"
+      cache.size === 1
     }
     "return Futures on uncached values during evaluation and replace these with the value afterwards" in {
       val cache = lruCache[String]()
@@ -60,16 +63,18 @@ class ExpiringLruCacheSpec extends Specification with NoTimeConversions {
       future1.await === "A"
       future2.await === "A"
       cache.store.toString === "{1=A}"
+      cache.size === 1
     }
     "properly limit capacity" in {
       val cache = lruCache[String](maxCapacity = 3)
       cache(1)("A").await === "A"
       cache(2)(Promise.successful("B")).await === "B"
       cache(3)("C").await === "C"
-      cache.store.toString === "{2=B, 1=A, 3=C}"
+      cache.store.toString === "{1=A, 2=B, 3=C}"
       cache(4)("D")
       Thread.sleep(10)
       cache.store.toString === "{2=B, 3=C, 4=D}"
+      cache.size === 3
     }
     "expire old entries" in {
       val cache = lruCache[String](timeToLive = Duration(75, TimeUnit.MILLISECONDS))
@@ -77,10 +82,10 @@ class ExpiringLruCacheSpec extends Specification with NoTimeConversions {
       cache(2)("B").await === "B"
       Thread.sleep(50)
       cache(3)("C").await === "C"
-      cache.store.size === 3
+      cache.size === 3
       Thread.sleep(50)
       cache.get(2) must beNone // removed on request
-      cache.store.size === 2 // expired entry 1 still there
+      cache.size === 2 // expired entry 1 still there
       cache.get(1) must beNone // but not retrievable anymore
     }
     "not cache exceptions" in {
@@ -94,7 +99,7 @@ class ExpiringLruCacheSpec extends Specification with NoTimeConversions {
       cache(2)("B").await === "B"
       cache(3)("C").await === "C"
       cache(1)("").await === "A" // refresh
-      cache.store.toString === "{2=B, 1=A, 3=C}"
+      cache.store.toString === "{1=A, 2=B, 3=C}"
     }
     "be thread-safe" in {
       val cache = lruCache[Int](maxCapacity = 1000)

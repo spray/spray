@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import spray.can.parsing._
 import spray.http._
 import spray.util._
 import spray.io._
+import HttpHeaders.`Raw-Request-URI`
 
 object RequestParsing {
 
@@ -45,13 +46,19 @@ object RequestParsing {
 
           def withEffectiveUri(req: HttpRequest) = req.withEffectiveUri(https, settings.defaultHostHeader)
 
+          def withRawRequestUriHeader(req: HttpRequest): HttpRequest =
+            if (settings.rawRequestUriHeader) req.withHeaders(`Raw-Request-URI`(new String(parser.uriBytes, US_ASCII)) :: req.headers)
+            else req
+
+          def normalize(req: HttpRequest): HttpRequest = withRawRequestUriHeader(withEffectiveUri(req))
+
           @tailrec def parse(data: ByteString): Unit =
             if (!data.isEmpty) parser.parse(data) match {
               case Result.Ok(part, remainingData, closeAfterResponseCompletion) ⇒
                 eventPL {
                   part match {
-                    case x: HttpRequest         ⇒ HttpMessageStartEvent(withEffectiveUri(x), closeAfterResponseCompletion)
-                    case x: ChunkedRequestStart ⇒ HttpMessageStartEvent(ChunkedRequestStart(withEffectiveUri(x.request)), closeAfterResponseCompletion)
+                    case x: HttpRequest         ⇒ HttpMessageStartEvent(normalize(x), closeAfterResponseCompletion)
+                    case x: ChunkedRequestStart ⇒ HttpMessageStartEvent(ChunkedRequestStart(normalize(x.request)), closeAfterResponseCompletion)
                     case x                      ⇒ Http.MessageEvent(x)
                   }
                 }

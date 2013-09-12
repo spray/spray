@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package client
 
 import akka.actor.{ ReceiveTimeout, ActorRef }
 import akka.io.{ ExtraStrategies, Tcp, IO }
+import spray.can.parsing.SSLSessionInfoSupport
 import spray.http.{ SetRequestTimeout, Confirmed, HttpRequestPart }
 import spray.io._
 
@@ -80,10 +81,11 @@ private[can] object HttpClientConnection {
     import settings._
     ClientFrontend(requestTimeout) >>
       (responseChunkAggregationLimit > 0) ? ResponseChunkAggregation(responseChunkAggregationLimit) >>
+      parserSettings.sslSessionInfoHeader ? SSLSessionInfoSupport >>
       ResponseParsing(parserSettings) >>
       RequestRendering(settings) >>
       (reapingCycle.isFinite && idleTimeout.isFinite) ? ConnectionTimeouts(idleTimeout) >>
-      SslTlsSupport >>
+      SslTlsSupport(parserSettings.sslSessionInfoHeader) >>
       (idleTimeout.isFinite || requestTimeout.isFinite) ? TickGenerator(reapingCycle)
   }
 

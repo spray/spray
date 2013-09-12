@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 
 package spray.http
 
-import java.util
-import java.nio.charset.Charset
 import scala.annotation.tailrec
 import HttpHeaders._
 import HttpCharsets._
@@ -63,6 +61,8 @@ object HttpResponsePart {
 
 sealed trait HttpMessageStart extends HttpMessagePart {
   def message: HttpMessage
+
+  def mapHeaders(f: List[HttpHeader] ⇒ List[HttpHeader]): HttpMessageStart
 }
 
 object HttpMessageStart {
@@ -114,7 +114,7 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
 case class HttpRequest(method: HttpMethod = HttpMethods.GET,
                        uri: Uri = Uri./,
                        headers: List[HttpHeader] = Nil,
-                       entity: HttpEntity = EmptyEntity,
+                       entity: HttpEntity = HttpEntity.Empty,
                        protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`) extends HttpMessage with HttpRequestPart {
   require(!uri.isEmpty, "An HttpRequest must not have an empty Uri")
 
@@ -137,7 +137,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
           else defaultHostHeader
         case Some(x) ⇒ x
       }
-      copy(uri = uri.toEffectiveHttpRequestUri(securedConnection, Uri.Host(host), port))
+      copy(uri = uri.toEffectiveHttpRequestUri(Uri.Host(host), port, securedConnection))
     } else // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.4
     if (hostHeader.isEmpty || uri.authority.isEmpty && hostHeader.get.isEmpty ||
       hostHeader.get.host.equalsIgnoreCase(uri.authority.host.address) && hostHeader.get.port == uri.authority.port) this
@@ -232,8 +232,17 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   }
 
   def canBeRetried = method.isIdempotent
-
   def withHeaders(headers: List[HttpHeader]) = if (headers eq this.headers) this else copy(headers = headers)
+  def withDefaultHeaders(defaultHeaders: List[HttpHeader]) = {
+    @annotation.tailrec
+    def patch(headers: List[HttpHeader], remaining: List[HttpHeader]): List[HttpHeader] = remaining match {
+      case h :: hs ⇒
+        if (headers.exists(_.is(h.lowercaseName))) patch(headers, hs)
+        else patch(h :: headers, hs)
+      case Nil ⇒ headers
+    }
+    withHeaders(patch(headers, defaultHeaders))
+  }
   def withEntity(entity: HttpEntity) = if (entity eq this.entity) this else copy(entity = entity)
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) =
     if ((headers eq this.headers) && (entity eq this.entity)) this else copy(headers = headers, entity = entity)
@@ -243,7 +252,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
  * Immutable HTTP response model.
  */
 case class HttpResponse(status: StatusCode = StatusCodes.OK,
-                        entity: HttpEntity = EmptyEntity,
+                        entity: HttpEntity = HttpEntity.Empty,
                         headers: List[HttpHeader] = Nil,
                         protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`) extends HttpMessage with HttpResponsePart {
   type Self = HttpResponse
@@ -265,18 +274,7 @@ case class HttpResponse(status: StatusCode = StatusCodes.OK,
 /**
  * Instance of this class represent the individual chunks of a chunked HTTP message (request or response).
  */
-case class MessageChunk(body: Array[Byte], extension: String) extends HttpRequestPart with HttpResponsePart {
-  require(body.length > 0, "MessageChunk must not have empty body")
-  def bodyAsString: String = bodyAsString(HttpCharsets.`ISO-8859-1`.nioCharset)
-  def bodyAsString(charset: HttpCharset): String = bodyAsString(charset.nioCharset)
-  def bodyAsString(charset: Charset): String = if (body.isEmpty) "" else new String(body, charset)
-  def bodyAsString(charset: String): String = if (body.isEmpty) "" else new String(body, charset)
-  override def hashCode = extension.## * 31 + util.Arrays.hashCode(body)
-  override def equals(obj: Any) = obj match {
-    case x: MessageChunk ⇒ (this eq x) || extension == x.extension && util.Arrays.equals(body, x.body)
-    case _               ⇒ false
-  }
-}
+case class MessageChunk(data: HttpData.NonEmpty, extension: String) extends HttpRequestPart with HttpResponsePart
 
 object MessageChunk {
   import HttpCharsets._
@@ -285,19 +283,32 @@ object MessageChunk {
   def apply(body: String, charset: HttpCharset): MessageChunk =
     apply(body, charset, "")
   def apply(body: String, extension: String): MessageChunk =
-    apply(body, `ISO-8859-1`, extension)
+    apply(body, `UTF-8`, extension)
   def apply(body: String, charset: HttpCharset, extension: String): MessageChunk =
-    apply(body.getBytes(charset.nioCharset), extension)
-  def apply(body: Array[Byte]): MessageChunk =
-    apply(body, "")
+    apply(HttpData(body, charset), extension)
+  def apply(bytes: Array[Byte]): MessageChunk =
+    apply(HttpData(bytes))
+  def apply(data: HttpData): MessageChunk =
+    apply(data, "")
+  def apply(data: HttpData, extension: String): MessageChunk =
+    data match {
+      case x: HttpData.NonEmpty ⇒ new MessageChunk(x, extension)
+      case _                    ⇒ throw new IllegalArgumentException("Cannot create MessageChunk with empty data")
+    }
 }
 
 case class ChunkedRequestStart(request: HttpRequest) extends HttpMessageStart with HttpRequestPart {
   def message = request
+
+  def mapHeaders(f: List[HttpHeader] ⇒ List[HttpHeader]): ChunkedRequestStart =
+    ChunkedRequestStart(request mapHeaders f)
 }
 
 case class ChunkedResponseStart(response: HttpResponse) extends HttpMessageStart with HttpResponsePart {
   def message = response
+
+  def mapHeaders(f: List[HttpHeader] ⇒ List[HttpHeader]): ChunkedResponseStart =
+    ChunkedResponseStart(response mapHeaders f)
 }
 
 object ChunkedMessageEnd extends ChunkedMessageEnd("", Nil)

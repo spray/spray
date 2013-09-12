@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,12 @@ trait Rejection
  * Signals that the request was rejected because the HTTP method is unsupported.
  */
 case class MethodRejection(supported: HttpMethod) extends Rejection
+
+/**
+ * Rejection created by scheme filters.
+ * Signals that the request was rejected because the Uri scheme is unsupported.
+ */
+case class SchemeRejection(supported: String) extends Rejection
 
 /**
  * Rejection created by parameter filters.

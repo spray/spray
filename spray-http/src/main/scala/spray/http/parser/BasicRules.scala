@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package parser
 
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import org.parboiled.scala._
+import spray.util.identityFunc
 
 // direct implementation of http://www.w3.org/Protocols/rfc2616/rfc2616-sec2.html#sec2
 private[parser] object BasicRules extends Parser {

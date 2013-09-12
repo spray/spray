@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,7 +88,7 @@ trait RespondWithDirectives {
     val rejection = UnacceptedResponseContentTypeRejection(ContentType(mediaType) :: Nil)
     extract(_.request.isMediaTypeAccepted(mediaType)).flatMap[HNil] { if (_) pass else reject(rejection) } &
       mapRequestContext(_.withContentNegotiationDisabled) &
-      mapHttpResponseEntity(_.flatMap { case HttpBody(ct, buf) ⇒ HttpEntity(ct.withMediaType(mediaType), buf) }) &
+      mapHttpResponseEntity(_.flatMap { case HttpEntity.NonEmpty(ct, buf) ⇒ HttpEntity(ct.withMediaType(mediaType), buf) }) &
       MiscDirectives.cancelRejection(rejection)
   }
 }

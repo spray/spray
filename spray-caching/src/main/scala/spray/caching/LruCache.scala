@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,6 +79,8 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
   def remove(key: Any) = Option(store.remove(key))
 
   def clear(): Unit = { store.clear() }
+
+  def size = store.size
 }
 
 /**
@@ -158,6 +160,8 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
   }
 
   def clear(): Unit = { store.clear() }
+
+  def size = store.size
 
   private def isAlive(entry: Entry[V]) = {
     val now = System.currentTimeMillis

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ class HttpModelSerializabilitySpec extends Specification {
         HttpRequest(uri = Uri("/test?blub=28&x=5+3")) must beSerializable
       }
       "with content type" in {
-        HttpRequest().withEntity(HttpEntity(ContentTypes.`application/json`, Array.empty[Byte])) must beSerializable
+        HttpRequest().withEntity(HttpEntity(ContentTypes.`application/json`, HttpData.Empty)) must beSerializable
       }
       "with accepted media types" in {
         HttpRequest().withHeaders(Accept(MediaTypes.`application/json`)) must beSerializable

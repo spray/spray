@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ class CachingDirectivesSpec extends RoutingSpec with CachingDirectives {
     }
   }
   def prime(route: Route) = {
-    route(RequestContext(HttpRequest(), system.deadLetters, Uri.Path.Empty).withDefaultSender(system.deadLetters))
+    route(RequestContext(HttpRequest(uri = Uri("http://example.com/")), system.deadLetters, Uri.Path.Empty).withDefaultSender(system.deadLetters))
     route
   }
 

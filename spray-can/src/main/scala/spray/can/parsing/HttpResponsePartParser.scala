@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -95,7 +95,7 @@ class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeade
         case Some(te) if te.encodings.size == 1 && te.hasChunked ⇒
           if (clh.isEmpty) {
             parse = parseChunk(closeAfterResponseCompletion)
-            Result.Ok(ChunkedResponseStart(message(headers, EmptyEntity)), drop(input, bodyStart), closeAfterResponseCompletion)
+            Result.Ok(ChunkedResponseStart(message(headers, HttpEntity.Empty)), drop(input, bodyStart), closeAfterResponseCompletion)
           } else fail("A chunked request must not contain a Content-Length header.")
 
         case Some(te) ⇒ fail(te.toString + " is not supported by this client")
@@ -104,7 +104,7 @@ class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeade
           case Some(`Content-Length`(contentLength)) ⇒
             if (contentLength == 0) {
               parse = this
-              Result.Ok(message(headers, EmptyEntity), drop(input, bodyStart), closeAfterResponseCompletion)
+              Result.Ok(message(headers, HttpEntity.Empty), drop(input, bodyStart), closeAfterResponseCompletion)
             } else if (contentLength <= settings.maxContentLength)
               parseFixedLengthBody(headers, input, bodyStart, contentLength, cth, closeAfterResponseCompletion)
             else fail("Response Content-Length " + contentLength + " exceeds the configured limit of " +
@@ -115,27 +115,42 @@ class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeade
       }
     } else {
       parse = this
-      Result.Ok(message(headers, EmptyEntity), drop(input, bodyStart), closeAfterResponseCompletion)
+      Result.Ok(message(headers, HttpEntity.Empty), drop(input, bodyStart), closeAfterResponseCompletion)
     }
   }
 
   def parseToCloseBody(headers: List[HttpHeader], input: ByteString, bodyStart: Int,
-                       cth: Option[`Content-Type`]): Result[HttpResponse] = {
-    if (input.length - bodyStart <= settings.maxContentLength) {
-      parse = { more ⇒
-        if (more.isEmpty) {
-          parse = this
-          val part = message(headers, entity(cth, input.iterator.drop(bodyStart).toArray[Byte]))
-          Result.Ok(part, ByteString.empty, closeAfterResponseCompletion = true)
-        } else parseToCloseBody(headers, input ++ more, bodyStart, cth)
+                       cth: Option[`Content-Type`]): Result[HttpResponsePart] = {
+    val currentBodySize = input.length - bodyStart
+
+    if (currentBodySize <= settings.maxContentLength) {
+      if (currentBodySize >= settings.autoChunkingThreshold) {
+        parse = autoChunkToCloseBody
+        Result.Ok(chunkStartMessage(headers), input.drop(bodyStart).compact, closeAfterResponseCompletion = true)
+      } else {
+        parse = { more ⇒
+          if (more.isEmpty) {
+            parse = this
+            val part = message(headers, entity(cth, input drop bodyStart))
+            Result.Ok(part, ByteString.empty, closeAfterResponseCompletion = true)
+          } else parseToCloseBody(headers, input ++ more, bodyStart, cth)
+        }
+        Result.NeedMoreData
       }
-      Result.NeedMoreData
     } else fail("Response entity exceeds the configured limit of " + settings.maxContentLength + " bytes")
+  }
+  def autoChunkToCloseBody: ByteString ⇒ Result[HttpResponsePart] = { more ⇒
+    val part =
+      if (more.isEmpty) {
+        parse = this
+        ChunkedMessageEnd
+      } else MessageChunk(HttpData(more))
+    Result.Ok(part, ByteString.empty, closeAfterResponseCompletion = true)
   }
 
   def message(headers: List[HttpHeader], entity: HttpEntity): HttpResponse =
     HttpResponse(statusCode, entity, headers, protocol)
 
   def chunkStartMessage(headers: List[HttpHeader]): ChunkedResponseStart =
-    ChunkedResponseStart(message(headers, EmptyEntity))
+    ChunkedResponseStart(message(headers, HttpEntity.Empty))
 }

@@ -49,7 +49,7 @@ trait ConnectionLevelApiDemo {
 
     def waitingForResponse(commander: ActorRef): Receive = {
       case response@ HttpResponse(status, entity, _, _) =>
-        log.info("Connection-Level API: received {} response with {} bytes", status, entity.buffer.length)
+        log.info("Connection-Level API: received {} response with {} bytes", status, entity.data.length)
         sender ! Http.Close
         context.become(waitingForClose(commander, response))
 

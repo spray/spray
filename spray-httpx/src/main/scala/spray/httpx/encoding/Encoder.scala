@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,22 +26,24 @@ trait Encoder {
   def messageFilter: HttpMessage ⇒ Boolean
 
   def encode[T <: HttpMessage](message: T): T#Self = message.entity match {
-    case HttpBody(contentType, buffer) if messageFilter(message) && !message.headers.exists(Encoder.isContentEncodingHeader) ⇒
+    case HttpEntity.NonEmpty(contentType, data) if messageFilter(message) && !message.headers.exists(Encoder.isContentEncodingHeader) ⇒
       message.withHeadersAndEntity(
         headers = `Content-Encoding`(encoding) :: message.headers,
-        entity = HttpEntity(contentType, newCompressor.compress(buffer).finish()))
+        entity = HttpEntity(contentType, newCompressor.compress(data.toByteArray).finish()))
 
     case _ ⇒ message.message
   }
 
   def startEncoding[T <: HttpMessage](message: T): Option[(T#Self, Compressor)] =
     if (messageFilter(message) && !message.headers.exists(Encoder.isContentEncodingHeader))
-      message.entity.toOption.map {
-        case HttpBody(contentType, buffer) ⇒
+      message.entity match {
+        case HttpEntity.Empty ⇒ None
+        case HttpEntity.NonEmpty(contentType, data) ⇒ Some {
           val compressor = newCompressor
           message.withHeadersAndEntity(
             headers = `Content-Encoding`(encoding) :: message.headers,
-            entity = HttpEntity(contentType, compressor.compress(buffer).flush())) -> compressor
+            entity = HttpEntity(contentType, compressor.compress(data.toByteArray).flush())) -> compressor
+        }
       }
     else None
 

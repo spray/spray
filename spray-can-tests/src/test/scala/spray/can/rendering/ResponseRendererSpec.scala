@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,7 +67,25 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           """HTTP/1.1 400 Bad Request
             |Server: spray-can/1.0.0
             |Date: Thu, 25 Aug 2011 09:10:29 GMT
-            |Content-Type: text/plain
+            |Content-Type: text/plain; charset=UTF-8
+            |Age: 30
+            |Connection: Keep-Alive
+            |Content-Length: 23
+            |
+            |Small f*ck up overhere!"""
+        } -> false
+      }
+
+      "a response with status 400, a few headers and a body with an explicitly supressed Content Type header" in new TestSetup() {
+        render {
+          HttpResponse(
+            status = 400,
+            headers = List(RawHeader("Age", "30"), Connection("Keep-Alive")),
+            entity = HttpEntity(ContentTypes.NoContentType, "Small f*ck up overhere!"))
+        } === result {
+          """HTTP/1.1 400 Bad Request
+            |Server: spray-can/1.0.0
+            |Date: Thu, 25 Aug 2011 09:10:29 GMT
             |Age: 30
             |Connection: Keep-Alive
             |Content-Length: 23
@@ -84,7 +102,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
             """HTTP/1.1 200 OK
             |Server: spray-can/1.0.0
             |Date: Thu, 25 Aug 2011 09:10:29 GMT
-            |Content-Type: text/plain
+            |Content-Type: text/plain; charset=UTF-8
             |Age: 30
             |Connection: Keep-Alive
             |Content-Length: 23
@@ -112,7 +130,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           """HTTP/1.1 200 OK
             |Server: spray-can/1.0.0
             |Date: Thu, 25 Aug 2011 09:10:29 GMT
-            |Content-Type: text/plain
+            |Content-Type: text/plain; charset=UTF-8
             |Transfer-Encoding: chunked
             |
             |7
@@ -122,7 +140,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
       }
 
       "a response chunk" in new TestSetup() {
-        render(MessageChunk("body123".getBytes("ISO-8859-1"), """key=value;another="tl;dr"""")) === result {
+        render(MessageChunk(HttpData("body123".getBytes), """key=value;another="tl;dr"""")) === result {
           """7;key=value;another="tl;dr"
             |body123
             |"""
@@ -155,14 +173,15 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           """HTTP/1.1 200 OK
             |Server: spray-can/1.0.0
             |Date: Thu, 25 Aug 2011 09:10:29 GMT
-            |Content-Type: text/plain
+            |Content-Type: text/plain; charset=UTF-8
             |
             |Yahoooo"""
         } -> false
       }
 
       "a chunkless response chunk" in new TestSetup(chunklessStreaming = true) {
-        render(response = MessageChunk("body123".getBytes("ISO-8859-1"), """key=value;another="tl;dr"""")) === result {
+        render(response = MessageChunk(HttpData("body123".getBytes),
+          """key=value;another="tl;dr"""")) === result {
           "body123"
         } -> false
       }

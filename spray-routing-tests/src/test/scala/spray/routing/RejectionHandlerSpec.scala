@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -98,6 +98,14 @@ class RejectionHandlerSpec extends RoutingSpec {
         entityAs[String] === "HTTP method not allowed, supported methods: GET, PUT"
       }
     }
+    "respond with BadRequest for requests resulting in SchemeRejections" in {
+      Get("http://example.com/hello") ~> wrap {
+        scheme("https") { complete("yes") }
+      } ~> check {
+        status === BadRequest
+        entityAs[String] === "Uri scheme not allowed, supported schemes: https"
+      }
+    }
     "respond with BadRequest for requests resulting in a MissingFormFieldRejection" in {
       Get() ~> wrap {
         formFields('amount, 'orderId) { (_, _) ⇒ completeOk }
@@ -129,7 +137,7 @@ class RejectionHandlerSpec extends RoutingSpec {
       } ~> check {
         status === NotAcceptable
         entityAs[String] === "Resource representation is only available " +
-          "with these Content-Types:\ntext/plain"
+          "with these Content-Types:\ntext/plain; charset=UTF-8\ntext/plain"
       }
     }
     "respond with NotAcceptable for requests resulting in UnacceptedResponseEncodingRejection" in {

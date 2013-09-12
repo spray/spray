@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,12 +27,13 @@ case class ParserSettings(
     maxHeaderNameLength: Int,
     maxHeaderValueLength: Int,
     maxHeaderCount: Int,
-    maxContentLength: Int,
+    maxContentLength: Long,
     maxChunkExtLength: Int,
     maxChunkSize: Int,
-    autoChunkingThreshold: Int,
+    autoChunkingThreshold: Long,
     uriParsingMode: Uri.ParsingMode,
     illegalHeaderWarnings: Boolean,
+    sslSessionInfoHeader: Boolean,
     headerValueCacheLimits: Map[String, Int]) {
 
   require(maxUriLength > 0, "max-uri-length must be > 0")
@@ -61,12 +62,13 @@ object ParserSettings extends SettingsCompanion[ParserSettings]("spray.can.parsi
       c getIntBytes "max-header-name-length",
       c getIntBytes "max-header-value-length",
       c getIntBytes "max-header-count",
-      c getIntBytes "max-content-length",
+      c getBytes "max-content-length",
       c getIntBytes "max-chunk-ext-length",
       c getIntBytes "max-chunk-size",
-      c getPossiblyInfiniteIntBytes "incoming-auto-chunking-threshold-size",
+      c getPossiblyInfiniteLongBytes "incoming-auto-chunking-threshold-size",
       Uri.ParsingMode(c getString "uri-parsing-mode"),
       c getBoolean "illegal-header-warnings",
+      c getBoolean "ssl-session-info-header",
       cacheConfig.entrySet.asScala.map(kvp ⇒ kvp.getKey -> cacheConfig.getInt(kvp.getKey))(collection.breakOut))
   }
 }

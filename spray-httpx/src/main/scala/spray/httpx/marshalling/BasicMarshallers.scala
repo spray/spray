@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,37 +18,60 @@ package spray.httpx.marshalling
 
 import java.nio.CharBuffer
 import scala.xml.NodeSeq
+import akka.util.ByteString
 import spray.http._
 import MediaTypes._
 
 trait BasicMarshallers {
 
-  def byteArrayMarshaller(contentType: ContentType) =
+  implicit val ByteArrayMarshaller = byteArrayMarshaller(ContentTypes.`application/octet-stream`)
+  def byteArrayMarshaller(contentType: ContentType): Marshaller[Array[Byte]] =
     Marshaller.of[Array[Byte]](contentType) { (value, _, ctx) ⇒
       // we marshal to the ContentType given as argument to the method, not the one established by content-negotiation,
       // since the former is the one belonging to the byte array
       ctx.marshalTo(HttpEntity(contentType, value))
     }
 
-  implicit val ByteArrayMarshaller = byteArrayMarshaller(ContentTypes.`application/octet-stream`)
+  implicit val ByteStringMarshaller = byteStringMarshaller(ContentTypes.`application/octet-stream`)
+  def byteStringMarshaller(contentType: ContentType): Marshaller[ByteString] =
+    Marshaller.of[ByteString](contentType) { (value, _, ctx) ⇒
+      // we marshal to the ContentType given as argument to the method, not the one established by content-negotiation,
+      // since the former is the one belonging to the ByteString
+      ctx.marshalTo(HttpEntity(contentType, value))
+    }
+
+  implicit val HttpDataMarshaller = httpDataMarshaller(ContentTypes.`application/octet-stream`)
+  def httpDataMarshaller(contentType: ContentType): Marshaller[HttpData] =
+    Marshaller.of[HttpData](contentType) { (value, _, ctx) ⇒
+      // we marshal to the ContentType given as argument to the method, not the one established by content-negotiation,
+      // since the former is the one belonging to the HttpData
+      ctx.marshalTo(HttpEntity(contentType, value))
+    }
 
   implicit val CharArrayMarshaller =
-    Marshaller.of[Array[Char]](ContentTypes.`text/plain`) { (value, contentType, ctx) ⇒
+    Marshaller.of[Array[Char]](ContentTypes.`text/plain(UTF-8)`) { (value, contentType, ctx) ⇒
       ctx.marshalTo {
         if (value.length > 0) {
-          val nioCharset = contentType.charset.nioCharset
           val charBuffer = CharBuffer.wrap(value)
-          val byteBuffer = nioCharset.encode(charBuffer)
-          HttpEntity(contentType, byteBuffer.array)
-        } else EmptyEntity
+          val byteBuffer = contentType.charset.nioCharset.encode(charBuffer)
+          val array = new Array[Byte](byteBuffer.remaining())
+          byteBuffer.get(array)
+          HttpEntity(contentType, array)
+        } else HttpEntity.Empty
       }
     }
 
   //# string-marshaller
-  implicit val StringMarshaller =
-    Marshaller.of[String](ContentTypes.`text/plain`) { (value, contentType, ctx) ⇒
+  def stringMarshaller(charset: HttpCharset, more: HttpCharset*): Marshaller[String] =
+    stringMarshaller(ContentType(`text/plain`, charset), more map (ContentType(`text/plain`, _)): _*)
+
+  def stringMarshaller(contentType: ContentType, more: ContentType*): Marshaller[String] =
+    Marshaller.of[String](contentType +: more: _*) { (value, contentType, ctx) ⇒
       ctx.marshalTo(HttpEntity(contentType, value))
     }
+
+  // prefer UTF-8 encoding, but also render with other encodings if the client requests them
+  implicit val StringMarshaller = stringMarshaller(ContentTypes.`text/plain(UTF-8)`, ContentTypes.`text/plain`)
   //#
 
   //# nodeseq-marshaller
@@ -59,17 +82,16 @@ trait BasicMarshallers {
 
   implicit val FormDataMarshaller =
     Marshaller.delegate[FormData, String](`application/x-www-form-urlencoded`) { (formData, contentType) ⇒
-      import java.net.URLEncoder.encode
-      val charset = contentType.charset.value
-      formData.fields.map { case (key, value) ⇒ encode(key, charset) + '=' + encode(value, charset) }.mkString("&")
+      val charset = contentType.charset.nioCharset
+      Uri.Query(formData.fields).render(new StringRendering, charset).get
     }
 
   implicit val ThrowableMarshaller = Marshaller[Throwable] { (value, ctx) ⇒ ctx.handleError(value) }
 
   implicit val HttpEntityMarshaller = Marshaller[HttpEntity] { (value, ctx) ⇒
     value match {
-      case EmptyEntity ⇒ ctx.marshalTo(EmptyEntity)
-      case body @ HttpBody(contentType, _) ⇒ ctx.tryAccept(contentType :: Nil) match {
+      case HttpEntity.Empty ⇒ ctx.marshalTo(HttpEntity.Empty)
+      case body @ HttpEntity.NonEmpty(contentType, _) ⇒ ctx.tryAccept(contentType :: Nil) match {
         case Some(_) ⇒ ctx.marshalTo(body) // we do NOT use the accepted CT here, since we do not want to recode
         case None    ⇒ ctx.rejectMarshalling(Seq(contentType))
       }

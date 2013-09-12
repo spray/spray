@@ -58,7 +58,7 @@ The basic structure of a test built with *spray-testkit* is this (expression pla
 
 In this template *REQUEST* is an expression evaluating to an ``HttpRequest`` instance. Since both *RouteTest* traits
 extend the *spray-httpx* :ref:`RequestBuilding` trait you have access to its mini-DSL for convenient and concise request
-construction.
+construction. [1]_
 
 *ROUTE* is an expression evaluating to a *spray-routing* ``Route``. You can specify one inline or simply refer to the
 route structure defined in your service.
@@ -79,7 +79,7 @@ The following inspectors are defined:
 ================================================ =======================================================================
 Inspector                                        Description
 ================================================ =======================================================================
-``body: HttpBody``                               Returns the contents of the response entity. If the response entity is
+``body: HttpEntity.NonEmpty``                    Returns the contents of the response entity. If the response entity is
                                                  empty a test failure is triggered.
 ``charset: HttpCharset``                         Identical to ``contentType.charset``
 ``chunks: List[MessageChunk]``                   Returns the list of message chunks produced by the route.
@@ -110,6 +110,10 @@ Inspector                                        Description
                                                  ``ChunkedMessageEnd`` response part.
 ================================================ =======================================================================
 
+.. [1] If the request URI is relative it will be made absolute using an implicitly available instance of
+        ``DefaultHostInfo`` whose value is "http://example.com" by default. This mirrors the behavior of *spray-can*
+        which always produces absolute URIs for incoming request based on the request URI and the ``Host``-header of
+        the request. You can customize this behavior by bringing an instance of ``DefaultHostInfo`` into scope.
 
 Sealing Routes
 --------------

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,14 +37,14 @@ trait MultipartUnmarshallers {
     config
   }
 
-  private def convertMimeMessage(mimeMsg: MIMEMessage): Seq[BodyPart] = {
+  private def convertMimeMessage(mimeMsg: MIMEMessage, defaultCharset: HttpCharset): Seq[BodyPart] = {
     mimeMsg.getAttachments.asScala.map { part ⇒
       val rawHeaders: List[HttpHeader] =
         part.getAllHeaders.asScala.map(h ⇒ RawHeader(h.getName, h.getValue))(collection.breakOut)
       HttpParser.parseHeaders(rawHeaders) match {
         case (Nil, headers) ⇒
           val contentType = headers.mapFind { case `Content-Type`(t) ⇒ Some(t); case _ ⇒ None }
-            .getOrElse(ContentType(`text/plain`, `US-ASCII`)) // RFC 2046 section 5.1
+            .getOrElse(ContentType(`text/plain`, defaultCharset)) // RFC 2046 section 5.1
           val outputStream = new ByteArrayOutputStream
           FileUtils.copyAll(part.readOnce(), outputStream)
           BodyPart(HttpEntity(contentType, outputStream.toByteArray), headers)
@@ -54,17 +54,19 @@ trait MultipartUnmarshallers {
     }(collection.breakOut)
   }
 
-  implicit val MultipartContentUnmarshaller = Unmarshaller[MultipartContent](`multipart/*`) {
-    case HttpBody(contentType, buffer) ⇒
-      contentType.mediaType.parameters.get("boundary") match {
-        case None | Some("") ⇒
-          sys.error("Content-Type with a multipart media type must have a non-empty 'boundary' parameter")
-        case Some(boundary) ⇒
-          val mimeMsg = new MIMEMessage(new ByteArrayInputStream(buffer), boundary, mimeParsingConfig)
-          MultipartContent(convertMimeMessage(mimeMsg))
-      }
-    case EmptyEntity ⇒ MultipartContent.Empty
-  }
+  implicit val MultipartContentUnmarshaller = multipartContentUnmarshaller(`UTF-8`)
+  def multipartContentUnmarshaller(defaultCharset: HttpCharset): Unmarshaller[MultipartContent] =
+    Unmarshaller[MultipartContent](`multipart/*`) {
+      case HttpEntity.NonEmpty(contentType, data) ⇒
+        contentType.mediaType.parameters.get("boundary") match {
+          case None | Some("") ⇒
+            sys.error("Content-Type with a multipart media type must have a non-empty 'boundary' parameter")
+          case Some(boundary) ⇒
+            val mimeMsg = new MIMEMessage(new ByteArrayInputStream(data.toByteArray), boundary, mimeParsingConfig)
+            MultipartContent(convertMimeMessage(mimeMsg, defaultCharset))
+        }
+      case HttpEntity.Empty ⇒ MultipartContent.Empty
+    }
 
   implicit val MultipartFormDataUnmarshaller = new SimpleUnmarshaller[MultipartFormData] {
     val canUnmarshalFrom = ContentTypeRange(`multipart/form-data`) :: Nil

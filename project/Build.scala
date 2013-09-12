@@ -65,6 +65,7 @@ object Build extends Build {
 
 
   lazy val sprayHttp = Project("spray-http", file("spray-http"))
+    .dependsOn(sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(osgiSettings(exports = Seq("spray.http")): _*)
     .settings(libraryDependencies ++=

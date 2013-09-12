@@ -22,12 +22,12 @@ import akka.actor._
  *
  * This extension implements the connectionless UDP protocol without
  * calling `connect` on the underlying sockets, i.e. without restricting
- * from whom data can be received. For “connected” UDP mode see [[UdpConnected]].
+ * from whom data can be received. For “connected” UDP mode see [[akka.io.UdpConnected]].
  *
  * For a full description of the design and philosophy behind this IO
- * implementation please refer to {@see <a href="http://doc.akka.io/">the Akka online documentation</a>}.
+ * implementation please refer to <a href="http://doc.akka.io/">the Akka online documentation</a>.
  *
- * The Java API for generating UDP commands is available at [[UdpMessage]].
+ * The Java API for generating UDP commands is available at [[akka.io.UdpMessage]].
  */
 object Udp extends ExtensionKey[UdpExt] {
 
@@ -37,7 +37,7 @@ object Udp extends ExtensionKey[UdpExt] {
   override def get(system: ActorSystem): UdpExt = super.get(system)
 
   /**
-   * The common interface for [[Command]] and [[Event]].
+   * The common interface for [[akka.io.Udp.Command]] and [[akka.io.Udp.Event]].
    */
   sealed trait Message
 
@@ -49,34 +49,34 @@ object Udp extends ExtensionKey[UdpExt] {
   }
 
   /**
-   * Each [[Send]] can optionally request a positive acknowledgment to be sent
-   * to the commanding actor. If such notification is not desired the [[Send#ack]]
+   * Each [[akka.io.Udp.Send]] can optionally request a positive acknowledgment to be sent
+   * to the commanding actor. If such notification is not desired the [[akka.io.Udp.Send#ack]]
    * must be set to an instance of this class. The token contained within can be used
-   * to recognize which write failed when receiving a [[CommandFailed]] message.
+   * to recognize which write failed when receiving a [[akka.io.Udp.CommandFailed]] message.
    */
   case class NoAck(token: Any) extends Event
 
   /**
-   * Default [[NoAck]] instance which is used when no acknowledgment information is
+   * Default [[akka.io.Udp.NoAck]] instance which is used when no acknowledgment information is
    * explicitly provided. Its “token” is `null`.
    */
   object NoAck extends NoAck(null)
 
   /**
    * This message is understood by the “simple sender” which can be obtained by
-   * sending the [[SimpleSender]] query to the [[UdpExt#manager]] as well as by
-   * the listener actors which are created in response to [[Bind]]. It will send
+   * sending the [[akka.io.Udp.SimpleSender]] query to the [[akka.io.Udp.UdpExt#manager]] as well as by
+   * the listener actors which are created in response to [[akka.io.Udp.Bind]]. It will send
    * the given payload data as one UDP datagram to the given target address. The
-   * UDP actor will respond with [[CommandFailed]] if the send could not be
+   * UDP actor will respond with [[akka.io.Udp.CommandFailed]] if the send could not be
    * enqueued to the O/S kernel because the send buffer was full. If the given
-   * `ack` is not of type [[NoAck]] the UDP actor will reply with the given
+   * `ack` is not of type [[akka.io.Udp.NoAck]] the UDP actor will reply with the given
    * object as soon as the datagram has been successfully enqueued to the O/S
    * kernel.
    *
    * The sending UDP socket’s address belongs to the “simple sender” which does
    * not handle inbound datagrams and sends from an ephemeral port; therefore
    * sending using this mechanism is not suitable if replies are expected, use
-   * [[Bind]] in that case.
+   * [[akka.io.Udp.Bind]] in that case.
    */
   case class Send(payload: ByteString, target: InetSocketAddress, ack: Event) extends Command {
     require(ack != null, "ack must be non-null. Use NoAck if you don't want acks.")
@@ -88,25 +88,25 @@ object Udp extends ExtensionKey[UdpExt] {
   }
 
   /**
-   * Send this message to the [[UdpExt#manager]] in order to bind to the given
+   * Send this message to the [[akka.io.Udp.UdpExt#manager]] in order to bind to the given
    * local port (or an automatically assigned one if the port number is zero).
-   * The listener actor for the newly bound port will reply with a [[Bound]]
-   * message, or the manager will reply with a [[CommandFailed]] message.
+   * The listener actor for the newly bound port will reply with a [[akka.io.Udp.Bound]]
+   * message, or the manager will reply with a [[akka.io.Udp.CommandFailed]] message.
    */
   case class Bind(handler: ActorRef,
                   localAddress: InetSocketAddress,
                   options: immutable.Traversable[SocketOption] = Nil) extends Command
 
   /**
-   * Send this message to the listener actor that previously sent a [[Bound]]
+   * Send this message to the listener actor that previously sent a [[akka.io.Udp.Bound]]
    * message in order to close the listening socket. The recipient will reply
-   * with an [[Unbound]] message.
+   * with an [[akka.io.Udp.Unbound]] message.
    */
   case object Unbind extends Command
 
   /**
    * Retrieve a reference to a “simple sender” actor of the UDP extension.
-   * The newly created “simple sender” will reply with the [[SimpleSenderReady]] notification.
+   * The newly created “simple sender” will reply with the [[akka.io.Udp.SimpleSenderReady]] notification.
    *
    * The “simple sender” is a convenient service for being able to send datagrams
    * when the originating address is meaningless, i.e. when no reply is expected.
@@ -118,16 +118,16 @@ object Udp extends ExtensionKey[UdpExt] {
   object SimpleSender extends SimpleSender(Nil)
 
   /**
-   * Send this message to a listener actor (which sent a [[Bound]] message) to
+   * Send this message to a listener actor (which sent a [[akka.io.Udp.Bound]] message) to
    * have it stop reading datagrams from the network. If the O/S kernel’s receive
    * buffer runs full then subsequent datagrams will be silently discarded.
-   * Re-enable reading from the socket using the [[ResumeReading]] command.
+   * Re-enable reading from the socket using the [[akka.io.Udp.ResumeReading]] command.
    */
   case object SuspendReading extends Command
 
   /**
    * This message must be sent to the listener actor to re-enable reading from
-   * the socket after a [[SuspendReading]] command.
+   * the socket after a [[akka.io.Udp.SuspendReading]] command.
    */
   case object ResumeReading extends Command
 
@@ -138,7 +138,7 @@ object Udp extends ExtensionKey[UdpExt] {
 
   /**
    * When a listener actor receives a datagram from its socket it will send
-   * it to the handler designated in the [[Bind]] message using this message type.
+   * it to the handler designated in the [[akka.io.Udp.Bind]] message using this message type.
    */
   case class Received(data: ByteString, sender: InetSocketAddress) extends Event
 
@@ -149,20 +149,20 @@ object Udp extends ExtensionKey[UdpExt] {
   case class CommandFailed(cmd: Command) extends Event
 
   /**
-   * This message is sent by the listener actor in response to a [[Bind]] command.
+   * This message is sent by the listener actor in response to a [[akka.io.Udp.Bind]] command.
    * If the address to bind to specified a port number of zero, then this message
    * can be inspected to find out which port was automatically assigned.
    */
   case class Bound(localAddress: InetSocketAddress) extends Event
 
   /**
-   * The “simple sender” sends this message type in response to a [[SimpleSender]] query.
+   * The “simple sender” sends this message type in response to a [[akka.io.Udp.SimpleSender]] query.
    */
   sealed trait SimpleSenderReady extends Event
   case object SimpleSenderReady extends SimpleSenderReady
 
   /**
-   * This message is sent by the listener actor in response to an [[Unbind]] command
+   * This message is sent by the listener actor in response to an [[akka.io.Udp.Unbind]] command
    * after the socket has been closed.
    */
   sealed trait Unbound
@@ -171,7 +171,7 @@ object Udp extends ExtensionKey[UdpExt] {
   /**
    * Scala API: This object provides access to all socket options applicable to UDP sockets.
    *
-   * For the Java API see [[UdpSO]].
+   * For the Java API see [[akka.io.Udp.UdpSO]].
    */
   object SO extends Inet.SoForwarders {
 
@@ -240,33 +240,33 @@ object UdpMessage {
   import scala.collection.JavaConverters._
 
   /**
-   * Each [[Send]] can optionally request a positive acknowledgment to be sent
-   * to the commanding actor. If such notification is not desired the [[Send#ack]]
+   * Each [[akka.io.Udp.Send]] can optionally request a positive acknowledgment to be sent
+   * to the commanding actor. If such notification is not desired the [[akka.io.Udp.Send#ack]]
    * must be set to an instance of this class. The token contained within can be used
-   * to recognize which write failed when receiving a [[CommandFailed]] message.
+   * to recognize which write failed when receiving a [[akka.io.Udp.CommandFailed]] message.
    */
   def noAck(token: AnyRef): NoAck = NoAck(token)
   /**
-   * Default [[NoAck]] instance which is used when no acknowledgment information is
+   * Default [[akka.io.Udp.NoAck]] instance which is used when no acknowledgment information is
    * explicitly provided. Its “token” is `null`.
    */
   def noAck: NoAck = NoAck
 
   /**
    * This message is understood by the “simple sender” which can be obtained by
-   * sending the [[SimpleSender]] query to the [[UdpExt#manager]] as well as by
-   * the listener actors which are created in response to [[Bind]]. It will send
+   * sending the [[akka.io.Udp.SimpleSender]] query to the [[akka.io.Udp.UdpExt#manager]] as well as by
+   * the listener actors which are created in response to [[akka.io.Udp.Bind]]. It will send
    * the given payload data as one UDP datagram to the given target address. The
-   * UDP actor will respond with [[CommandFailed]] if the send could not be
+   * UDP actor will respond with [[akka.io.Udp.CommandFailed]] if the send could not be
    * enqueued to the O/S kernel because the send buffer was full. If the given
-   * `ack` is not of type [[NoAck]] the UDP actor will reply with the given
+   * `ack` is not of type [[akka.io.Udp.NoAck]] the UDP actor will reply with the given
    * object as soon as the datagram has been successfully enqueued to the O/S
    * kernel.
    *
    * The sending UDP socket’s address belongs to the “simple sender” which does
    * not handle inbound datagrams and sends from an ephemeral port; therefore
    * sending using this mechanism is not suitable if replies are expected, use
-   * [[Bind]] in that case.
+   * [[akka.io.Udp.Bind]] in that case.
    */
   def send(payload: ByteString, target: InetSocketAddress, ack: Event): Command = Send(payload, target, ack)
   /**
@@ -275,10 +275,10 @@ object UdpMessage {
   def send(payload: ByteString, target: InetSocketAddress): Command = Send(payload, target)
 
   /**
-   * Send this message to the [[UdpExt#manager]] in order to bind to the given
+   * Send this message to the [[akka.io.Udp.UdpExt#manager]] in order to bind to the given
    * local port (or an automatically assigned one if the port number is zero).
-   * The listener actor for the newly bound port will reply with a [[Bound]]
-   * message, or the manager will reply with a [[CommandFailed]] message.
+   * The listener actor for the newly bound port will reply with a [[akka.io.Udp.Bound]]
+   * message, or the manager will reply with a [[akka.io.Udp.CommandFailed]] message.
    */
   def bind(handler: ActorRef, endpoint: InetSocketAddress, options: JIterable[SocketOption]): Command =
     Bind(handler, endpoint, options.asScala.toIndexedSeq)
@@ -288,15 +288,15 @@ object UdpMessage {
   def bind(handler: ActorRef, endpoint: InetSocketAddress): Command = Bind(handler, endpoint, Nil)
 
   /**
-   * Send this message to the listener actor that previously sent a [[Bound]]
+   * Send this message to the listener actor that previously sent a [[akka.io.Udp.Bound]]
    * message in order to close the listening socket. The recipient will reply
-   * with an [[Unbound]] message.
+   * with an [[akka.io.Udp.Unbound]] message.
    */
   def unbind: Command = Unbind
 
   /**
    * Retrieve a reference to a “simple sender” actor of the UDP extension.
-   * The newly created “simple sender” will reply with the [[SimpleSenderReady]] notification.
+   * The newly created “simple sender” will reply with the [[akka.io.Udp.SimpleSenderReady]] notification.
    *
    * The “simple sender” is a convenient service for being able to send datagrams
    * when the originating address is meaningless, i.e. when no reply is expected.
@@ -311,16 +311,16 @@ object UdpMessage {
   def simpleSender: Command = SimpleSender
 
   /**
-   * Send this message to a listener actor (which sent a [[Bound]] message) to
+   * Send this message to a listener actor (which sent a [[akka.io.Udp.Bound]] message) to
    * have it stop reading datagrams from the network. If the O/S kernel’s receive
    * buffer runs full then subsequent datagrams will be silently discarded.
-   * Re-enable reading from the socket using the [[ResumeReading]] command.
+   * Re-enable reading from the socket using the [[akka.io.Udp.ResumeReading]] command.
    */
   def suspendReading: Command = SuspendReading
 
   /**
    * This message must be sent to the listener actor to re-enable reading from
-   * the socket after a [[SuspendReading]] command.
+   * the socket after a [[akka.io.Udp.SuspendReading]] command.
    */
   def resumeReading: Command = ResumeReading
 }

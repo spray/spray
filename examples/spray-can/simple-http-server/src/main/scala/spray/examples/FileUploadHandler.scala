@@ -3,19 +3,17 @@ package spray.examples
 import akka.actor._
 import akka.util.duration._
 import akka.util.Duration
-import java.io.{FileInputStream, FileOutputStream, File}
+import java.io.{InputStream, FileInputStream, FileOutputStream, File}
 import org.jvnet.mimepull.{MIMEPart, MIMEMessage}
-import org.parboiled.common.FileUtils
 import spray.http._
 import MediaTypes._
 import HttpHeaders._
 import parser.HttpParser
 import HttpHeaders.RawHeader
 import spray.io.CommandWrapper
-import spray.util.SprayActorLogging
+import scala.annotation.tailrec
 
-
-class FileUploadHandler(client: ActorRef, start: ChunkedRequestStart) extends Actor with SprayActorLogging {
+class FileUploadHandler(client: ActorRef, start: ChunkedRequestStart) extends Actor with ActorLogging {
   import start.request._
   client ! CommandWrapper(SetRequestTimeout(Duration.Inf)) // cancel timeout
 
@@ -26,14 +24,14 @@ class FileUploadHandler(client: ActorRef, start: ChunkedRequestStart) extends Ac
   val boundary = multipart.parameters("boundary")
 
   log.info("Got start of chunked request " + method + ' ' + uri + " with multipart boundary '" + boundary + "' writing to " + tmpFile)
-  var bytesWritten = 0
+  var bytesWritten = 0L
 
   def receive = {
     case c: MessageChunk =>
-      log.info("Got " + c.body.size + " bytes of chunked request " + method + ' ' + uri)
+      log.info("Got " + c.data.length + " bytes of chunked request " + method + ' ' + uri)
 
-      output.write(c.body)
-      bytesWritten += c.body.size
+      output.write(c.data.toByteArray)
+      bytesWritten += c.data.length
 
     case e: ChunkedMessageEnd =>
       log.info("Got end of chunked request " + method + ' ' + uri)
@@ -48,6 +46,9 @@ class FileUploadHandler(client: ActorRef, start: ChunkedRequestStart) extends Ac
   import collection.JavaConverters._
   def renderResult(): HttpEntity = {
     val message = new MIMEMessage(new FileInputStream(tmpFile), boundary)
+    // caution: the next line will read the complete file regardless of its size
+    // In the end the mime pull parser is not a decent way of parsing multipart attachments
+    // properly
     val parts = message.getAttachments.asScala.toSeq
 
     HttpEntity(`text/html`,
@@ -58,7 +59,7 @@ class FileUploadHandler(client: ActorRef, start: ChunkedRequestStart) extends Ac
           {
             parts.map { part =>
               val name = fileNameForPart(part).getOrElse("<unknown>")
-              <div>{name}: {part.getContentType} of size {FileUtils.readAllBytes(part.read()).size}</div>
+              <div>{name}: {part.getContentType} of size {sizeOf(part.readOnce())}</div>
             }
           }
         </body>
@@ -71,4 +72,16 @@ class FileUploadHandler(client: ActorRef, start: ChunkedRequestStart) extends Ac
       Right(disp: `Content-Disposition`) = HttpParser.parseHeader(RawHeader("Content-Disposition", dispHeader))
       name <- disp.parameters.get("filename")
     } yield name
+
+  def sizeOf(is: InputStream): Long = {
+    val buffer = new Array[Byte](65000)
+
+    @tailrec def inner(cur: Long): Long = {
+      val read = is.read(buffer)
+      if (read > 0) inner(cur + read)
+      else cur
+    }
+
+    inner(0)
+  }
 }

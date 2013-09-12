@@ -72,7 +72,7 @@ Content-Type Header
 
 One thing worth highlighting is the special treatment of the HTTP ``Content-Type`` header. Since the binary content of
 HTTP message entities can only be properly interpreted when the corresponding content-type is known *spray-http* puts
-the content-type value very close to the entity data. The ``HttpBody`` type (the non-empty variant of the
+the content-type value very close to the entity data. The ``HttpEntity.NonEmpty`` type (the non-empty variant of the
 ``HttpEntity``) is essentially little more than a tuple of the ``ContentType`` and the entity's bytes.
 All logic in *spray* that needs to access the content-type of an HTTP message always works with the ``ContentType``
 value in the ``HttpEntity``. Potentially existing instances of the ``Content-Type`` header in the ``HttpMessage``'s

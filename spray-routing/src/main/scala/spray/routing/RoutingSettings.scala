@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import spray.util._
 case class RoutingSettings(
     verboseErrorMessages: Boolean,
     fileChunkingThresholdSize: Long,
-    fileChunkingChunkSize: Long,
+    fileChunkingChunkSize: Int,
     users: Config,
     renderVanityFooter: Boolean) {
 
@@ -35,7 +35,7 @@ object RoutingSettings extends SettingsCompanion[RoutingSettings]("spray.routing
   def fromSubConfig(c: Config) = apply(
     c getBoolean "verbose-error-messages",
     c getBytes "file-chunking-threshold-size",
-    c getBytes "file-chunking-chunk-size",
+    math.min(c getBytes "file-chunking-chunk-size", Int.MaxValue).toInt,
     c getConfig "users",
     c getBoolean "render-vanity-footer")
 

@@ -25,7 +25,7 @@ trait RequestLevelApiDemo {
       _ <- IO(Http) ? Http.CloseAll
     } yield {
       system.log.info("Request-Level API: received {} response with {} bytes",
-        response.status, response.entity.buffer.length)
+        response.status, response.entity.data.length)
       response.header[HttpHeaders.Server].get.products.head
     }
   }
