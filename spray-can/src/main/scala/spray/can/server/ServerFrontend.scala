@@ -109,7 +109,7 @@ object ServerFrontend {
                 }
                 else throw new NotImplementedError("fastPath is not yet supported with pipelining enabled")
 
-              } else openNewRequest(request, closeAfterResponseCompletion, System.currentTimeMillis)
+              } else openNewRequest(request, closeAfterResponseCompletion, System.nanoTime())
 
             case HttpMessageStartEvent(ChunkedRequestStart(request), closeAfterResponseCompletion) ⇒
               openNewRequest(request, closeAfterResponseCompletion, 0L)
@@ -137,7 +137,7 @@ object ServerFrontend {
 
             case TickGenerator.Tick ⇒
               if (requestTimeout.isFinite())
-                firstOpenRequest checkForTimeout System.currentTimeMillis
+                firstOpenRequest checkForTimeout System.nanoTime()
               eventPL(TickGenerator.Tick)
 
             case Pipeline.ActorDeath(actor) if actor == context.handler ⇒

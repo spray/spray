@@ -95,7 +95,7 @@ trait OpenRequestComponent { component ⇒
 
     def checkForTimeout(now: Long): Unit = {
       if (timestamp > 0) {
-        if (timestamp + requestTimeout.toMillis < now) {
+        if (timestamp + requestTimeout.toNanos < now) {
           val timeoutHandler =
             if (settings.timeoutHandler.isEmpty) handler
             else context.actorContext.actorFor(settings.timeoutHandler)
@@ -105,7 +105,7 @@ trait OpenRequestComponent { component ⇒
             "timeout handler", timeoutHandler)
           timestamp = -now // we record the time of the Timeout dispatch as negative timestamp value
         }
-      } else if (timestamp < -1 && timeoutTimeout.isFinite() && (-timestamp + timeoutTimeout.toMillis < now)) {
+      } else if (timestamp < -1 && timeoutTimeout.isFinite() && (-timestamp + timeoutTimeout.toNanos < now)) {
         val response = timeoutResponse(request)
         // we always close the connection after a timeout-timeout
         sendPart(response.withHeaders(HttpHeaders.Connection("close") :: response.headers))
@@ -154,7 +154,7 @@ trait OpenRequestComponent { component ⇒
     def handleChunkedMessageEnd(part: ChunkedMessageEnd): Unit = {
       if (nextInChain.isEmpty) {
         // only start request timeout checking after request has been completed
-        timestamp = System.currentTimeMillis
+        timestamp = System.nanoTime()
         downstreamCommandPL(Pipeline.Tell(handler, part, receiverRef))
       } else
         // we accept non-tail recursion since HTTP pipeline depth is limited (and small)

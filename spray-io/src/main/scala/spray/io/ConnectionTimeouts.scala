@@ -16,10 +16,10 @@
 
 package spray.io
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{ FiniteDuration, Deadline, Duration }
 import akka.io.Tcp
 import spray.util.requirePositive
-import System.{ currentTimeMillis ⇒ now }
+import System.{ nanoTime ⇒ now }
 
 object ConnectionTimeouts {
 
@@ -47,7 +47,7 @@ object ConnectionTimeouts {
             eventPL(x)
 
           case tick @ TickGenerator.Tick ⇒
-            if (timeout.isFinite && (lastActivity + timeout.toMillis < System.currentTimeMillis)) {
+            if (timeout.isFinite && (lastActivity + timeout.toNanos < System.nanoTime())) {
               context.log.debug("Closing connection due to idle timeout...")
               commandPL(Tcp.Close)
             }

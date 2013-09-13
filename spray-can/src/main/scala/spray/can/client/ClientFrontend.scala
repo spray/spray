@@ -24,7 +24,7 @@ import spray.can.rendering.RequestPartRenderingContext
 import spray.can.Http
 import spray.http._
 import spray.io._
-import System.{ currentTimeMillis ⇒ now }
+import System.{ nanoTime ⇒ now }
 
 object ClientFrontend {
 
@@ -127,7 +127,7 @@ object ClientFrontend {
           def checkForTimeout(): Unit =
             if (!openRequests.isEmpty && requestTimeout.isFinite) {
               val rec = openRequests.head
-              if (rec.timestamp > 0 && rec.timestamp + requestTimeout.toMillis < now) {
+              if (rec.timestamp > 0 && rec.timestamp + requestTimeout.toNanos < now) {
                 log.warning("Request timed out after {}, closing connection", requestTimeout)
                 dispatch(rec.sender, Timedout(rec.request))
                 commandPL(Http.Close)

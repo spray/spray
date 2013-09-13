@@ -27,7 +27,7 @@ import spray.util.PaddedAtomicLong
 object StatsSupport {
 
   class StatsHolder {
-    val startTimestamp = System.currentTimeMillis
+    val startTimestamp = System.nanoTime()
     val requestStarts = new PaddedAtomicLong
     val responseStarts = new PaddedAtomicLong
     val maxOpenRequests = new PaddedAtomicLong
@@ -57,7 +57,7 @@ object StatsSupport {
     }
 
     def toStats = Stats(
-      uptime = (System.currentTimeMillis - startTimestamp) millis span,
+      uptime = (System.nanoTime() - startTimestamp).nanos,
       totalRequests = requestStarts.get,
       openRequests = requestStarts.get - responseStarts.get,
       maxOpenRequests = maxOpenRequests.get,
