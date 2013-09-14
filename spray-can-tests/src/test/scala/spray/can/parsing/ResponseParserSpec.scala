@@ -179,7 +179,7 @@ class ResponseParserSpec extends Specification {
 
     "properly auto-chunk without content-length" in {
       val start =
-        f"""HTTP/1.1 200 OK
+        """HTTP/1.1 200 OK
            |Server: spray-can
            |
            |"""

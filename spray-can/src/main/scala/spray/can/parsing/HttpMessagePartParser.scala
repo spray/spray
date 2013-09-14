@@ -123,7 +123,7 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
       parse = parseAutoChunk(length, closeAfterResponseCompletion)
       val part = chunkStartMessage(headers)
       Result.Ok(part, drop(input, bodyStart), closeAfterResponseCompletion)
-    } else if (length > Int.MaxValue) fail(s"Content-Length > Int.MaxSize not supported for non-(auto)-chunked requests")
+    } else if (length > Int.MaxValue) fail("Content-Length > Int.MaxSize not supported for non-(auto)-chunked requests")
     else if (bodyStart.toLong + length <= input.length) {
       val intLength = length.toInt
       parse = this
