@@ -8,7 +8,7 @@
         </encoder>
     </appender>
 
-    <logger name="site.user.IO-HTTP" level="INFO" />
+    <logger name="spray.can.server.HttpServerConnection" level="INFO" />
     <logger name="akka.io.TcpListener" level="INFO" />
 
     <root level="DEBUG">
