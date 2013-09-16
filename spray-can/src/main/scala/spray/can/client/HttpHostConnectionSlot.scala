@@ -25,13 +25,14 @@ import spray.can.client.HttpHostConnector._
 import spray.can.Http
 import spray.io.ClientSSLEngineProvider
 import spray.http._
+import spray.util.SimpleStash
 
 private[client] class HttpHostConnectionSlot(host: String, port: Int,
                                              sslEncryption: Boolean,
                                              options: immutable.Traversable[Inet.SocketOption],
                                              idleTimeout: Duration,
                                              clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
-    extends Actor with ActorLogging {
+    extends Actor with SimpleStash with ActorLogging {
 
   // we cannot sensibly recover from crashes
   override def supervisorStrategy = SupervisorStrategy.stoppingStrategy
@@ -91,16 +92,21 @@ private[client] class HttpHostConnectionSlot(host: String, port: Int,
       val RequestContext(request, _, commander) = openRequests.head
       if (log.isDebugEnabled) log.debug("Delivering {} for {}", formatResponse(part), format(request))
       commander ! part
-      def handleResponseCompletion(): Unit = {
+      def handleResponseCompletion(closeAfterResponseEnd: Boolean): Unit = {
         context.parent ! RequestCompleted
-        context.become(connected(httpConnection, openRequests.tail))
+        context.become {
+          if (closeAfterResponseEnd)
+            closing(httpConnection, openRequests.tail,
+              "Connection was closed by the peer through `Connection: close`", retry = true)
+          else connected(httpConnection, openRequests.tail)
+        }
       }
       part match {
-        case x: HttpResponse ⇒ handleResponseCompletion()
+        case x: HttpResponse ⇒ handleResponseCompletion(x.connectionCloseExpected)
         case ChunkedResponseStart(x: HttpResponse) ⇒
           context.become(connected(httpConnection, openRequests, x.connectionCloseExpected))
         case _: MessageChunk      ⇒ // nothing to do
-        case _: ChunkedMessageEnd ⇒ handleResponseCompletion()
+        case _: ChunkedMessageEnd ⇒ handleResponseCompletion(closeAfterResponseEnd)
       }
 
     case x: HttpResponsePart ⇒
@@ -154,17 +160,16 @@ private[client] class HttpHostConnectionSlot(host: String, port: Int,
 
     case Terminated(`httpConnection`) ⇒
       reportDisconnection(openRequests, error, retry)
+      unstashAll()
       context.become(unconnected)
+
+    case x ⇒ stash(x)
   }
   def waitingForConnectionTermination(httpConnection: ActorRef): Receive = {
-    var buffered = Queue.empty[Any]
-
-    {
-      case Terminated(`httpConnection`) ⇒
-        context.become(unconnected)
-        buffered.foreach(self ! _)
-      case x ⇒ buffered = buffered.enqueue(x)
-    }
+    case Terminated(`httpConnection`) ⇒
+      unstashAll()
+      context.become(unconnected)
+    case x ⇒ stash(x)
   }
 
   def terminating(httpConnection: ActorRef): Receive = {

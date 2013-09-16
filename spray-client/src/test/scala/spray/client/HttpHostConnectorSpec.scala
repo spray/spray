@@ -60,6 +60,8 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
           case x: HttpRequest if x.uri.path.toString.startsWith("/drop1of2") && dropNext ⇒
             log.info("Dropping " + x)
             dropNext = random.nextBoolean()
+          case x: HttpRequest if x.uri.path.toString.startsWith("/closeConnection") ⇒
+            sender ! HttpResponse(entity = "now closing", headers = List(HttpHeaders.Connection("close")))
           case x @ HttpRequest(method, uri, _, entity, _) ⇒
             log.debug("Responding to " + x)
             dropNext = random.nextBoolean()
@@ -112,6 +114,13 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
       val Http.HostConnectorInfo(connector, _) = IO(Http).ask(Http.HostConnectorSetup(interface, port)).await
       val pipeline = sendReceive(connector)
       pipeline(HttpRequest()).await.header[HttpHeaders.`User-Agent`].get.value === "RequestMachine"
+    }
+    "should handle `Connection: close` properly" in {
+      val pipeline = newPipeline(pipelined = false, maxConnections = 1)
+      val requests = List.fill(2)(HttpRequest(method = HttpMethods.POST, uri = "/closeConnection"))
+
+      val future = Future.traverse(requests)(pipeline)
+      future.await.forall(_.status.isSuccess) === true
     }
   }
 
