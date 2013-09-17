@@ -63,7 +63,7 @@ class AnyParamDirectivesSpec extends RoutingSpec {
     }
 
     "extract None if no form" in {
-      Post("/test", FormData(Map())) ~> route ~> check {
+      Post("/test", FormData(Seq())) ~> route ~> check {
         entityAs[String] === "None"
       }
     }

@@ -71,18 +71,27 @@ trait MultipartUnmarshallers {
 
     def unmarshal(entity: HttpEntity) =
       MultipartContentUnmarshaller(entity).right.flatMap { mpContent ⇒
-        try Right(MultipartFormData(mpContent.parts.map(part ⇒ nameOf(part) -> part)(collection.breakOut)))
-        catch {
+        try {
+          checkValid(mpContent.parts)
+          Right(MultipartFormData(mpContent.parts))
+        } catch {
           case NonFatal(ex) ⇒
             Left(MalformedContent("Illegal multipart/form-data content: " + ex.getMessage.nullAsEmpty, ex))
         }
       }
 
-    def nameOf(part: BodyPart): String =
-      part.headers.mapFind {
+    def checkValid(parts: Seq[BodyPart]): Unit = {
+      parts.foreach { part ⇒
+        if (part.headers.map(_.lowercaseName).toSet.size != part.headers.size)
+          sys.error("duplicate header names")
+      }
+      val contentDispositionNames = parts.map(_.headers.mapFind {
         case `Content-Disposition`("form-data", parms) ⇒ parms.get("name")
         case _                                         ⇒ None
-      } getOrElse sys.error("unnamed body part (no Content-Disposition header or no 'name' parameter)")
+      } getOrElse sys.error("unnamed body part (no Content-Disposition header or no 'name' parameter)"))
+      if (contentDispositionNames.size != contentDispositionNames.toSet.size)
+        sys.error("duplicate 'name' parameter values in Content-Disposition headers")
+    }
   }
 }
 

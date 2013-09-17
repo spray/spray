@@ -60,13 +60,7 @@ trait MultipartMarshallers {
       ctx.tryAccept(`multipart/form-data` :: Nil) match {
         case None ⇒ ctx.rejectMarshalling(Seq(`multipart/form-data`))
         case _ ⇒ mcm(
-          value = MultipartContent {
-            value.fields.map {
-              case (name, part) if !part.headers.exists(_.is("content-disposition")) ⇒ part.copy(
-                headers = `Content-Disposition`("form-data", Map("name" -> name)) :: part.headers)
-              case (name, part) ⇒ part
-            }(collection.breakOut)
-          },
+          value = MultipartContent(value.fields),
           ctx = new DelegatingMarshallingContext(ctx) {
             var boundary = ""
             override def tryAccept(contentTypes: Seq[ContentType]) = {

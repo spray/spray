@@ -11,11 +11,10 @@ import HttpHeaders._
 import parser.HttpParser
 import HttpHeaders.RawHeader
 import spray.io.CommandWrapper
-import spray.util.SprayActorLogging
 import scala.annotation.tailrec
 
 
-class FileUploadHandler(client: ActorRef, start: ChunkedRequestStart) extends Actor with SprayActorLogging {
+class FileUploadHandler(client: ActorRef, start: ChunkedRequestStart) extends Actor with ActorLogging {
   import start.request._
   client ! CommandWrapper(SetRequestTimeout(Duration.Inf)) // cancel timeout
 

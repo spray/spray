@@ -16,29 +16,38 @@
 
 package spray.http
 
+import spray.http.HttpHeaders._
+
 sealed trait HttpForm {
   type FieldType
-  def fields: Map[String, FieldType]
+  def fields: Seq[FieldType]
 }
 
 /**
  * Model for `application/x-www-form-urlencoded` form data.
  */
-case class FormData(fields: Map[String, String]) extends HttpForm {
-  type FieldType = String
+case class FormData(fields: Seq[(String, String)]) extends HttpForm {
+  type FieldType = (String, String)
 }
 
 object FormData {
-  val Empty = FormData(Map.empty)
+  val Empty = FormData(Seq.empty)
+  def apply(fields: Map[String, String]): FormData = this(fields.toSeq)
 }
 
 /**
  * Model for `multipart/form-data` content as defined in RFC 2388.
+ * All parts must contain a Content-Disposition header with a type form-data
+ * and a name parameter that is unique
  */
-case class MultipartFormData(fields: Map[String, BodyPart]) extends HttpForm {
+case class MultipartFormData(fields: Seq[BodyPart]) extends HttpForm {
   type FieldType = BodyPart
+  def get(partName: String): Option[BodyPart] = fields.find(_.getName == Some(partName))
 }
 
 object MultipartFormData {
-  val Empty = MultipartFormData(Map.empty)
+  val Empty = MultipartFormData(Seq.empty)
+  def apply(fields: Map[String, BodyPart]): MultipartFormData = this(fields.map {
+    case (key, value) ⇒ value.copy(headers = `Content-Disposition`("form-data", Map("name" -> key)) +: value.headers)
+  }.toSeq)
 }

@@ -88,8 +88,7 @@ class MultipartUnmarshallersSpec extends Specification {
            |--XYZABC--""".stripMargin).as[MultipartFormData] === Right {
           MultipartFormData(
             Map("email" -> BodyPart(
-              HttpEntity(ContentType(`text/plain`, `US-ASCII`), "test@there.com"),
-              List(`Content-Disposition`("form-data", Map("name" -> "email"))))))
+              HttpEntity(ContentType(`text/plain`, `US-ASCII`), "test@there.com"))))
         })
     "correctly unmarshal 'multipart/form-data' content mixed with a file" in {
       HttpEntity(`multipart/form-data` withBoundary "XYZABC",
@@ -104,7 +103,7 @@ class MultipartUnmarshallersSpec extends Specification {
            |
            |filecontent
            |--XYZABC--""".stripMargin).as[MultipartFormData].get.fields.map {
-          case (name, BodyPart(entity, _)) ⇒ name + ": " + entity.as[String].get
+          case part @ BodyPart(entity, _) ⇒ part.getName.get + ": " + entity.as[String].get
         }.mkString("|") === "email: test@there.com|userfile: filecontent"
     }
     "reject illegal multipart content" in {
