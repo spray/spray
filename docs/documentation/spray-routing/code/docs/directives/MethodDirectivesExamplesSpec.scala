@@ -1,8 +1,10 @@
 package docs.directives
 
+import spray.routing.Directives
+
 class MethodDirectivesExamplesSpec extends DirectivesSpec {
   "delete-method" in {
-    val route = delete { complete("This is a DELETE request.") }
+    val route = Directives.delete { complete("This is a DELETE request.") }
 
     Delete("/") ~> route ~> check { 
       entityAs[String] === "This is a DELETE request." 
@@ -29,7 +31,7 @@ class MethodDirectivesExamplesSpec extends DirectivesSpec {
     val route = options { complete("This is an OPTIONS request.") }
 
     Options("/") ~> route ~> check { 
-      entityAs[String] === "This is a OPTIONS request."
+      entityAs[String] === "This is an OPTIONS request."
     }
   }
 
