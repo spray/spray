@@ -100,6 +100,25 @@ class HttpDataSpec extends Specification {
           HttpData("!"))
       }
     }
+    "properly support `toByteString`" in {
+      "HttpData.Bytes" in {
+        val bytes = HttpData("Ken sent me!").toByteString
+        bytes.isCompact === true
+        bytes === ByteString("Ken sent me!")
+      }
+      "HttpData.FileBytes" in {
+        val file = File.createTempFile("spray-http_HttpDataSpec", ".txt")
+        try {
+          FileUtils.writeAllText("Ken sent me!", file)
+          HttpData(file).toByteString === ByteString("Ken sent me!")
+
+        } finally file.delete
+      }
+      "HttpData.Compound" in {
+        val data = HttpData("Ken") +: HttpData(" sent ") +: HttpData("me") +: HttpData("!")
+        data.toByteString === ByteString("Ken sent me!")
+      }
+    }
   }
 
   def testCopyToArray(data: HttpData): Unit = {

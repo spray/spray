@@ -335,17 +335,7 @@ object HttpData {
         rec()
       }
     }
-    def sliceBytes(offset: Long, span: Int): ByteString = {
-      require(offset >= 0, "offset must be >= 0")
-      require(span >= 0, "span must be >= 0")
-
-      if (offset < length && span > 0) {
-        val len = math.min(length - offset, span).toInt // valid because span < Int.MaxValue
-        val buf = new Array[Byte](len)
-        copyToArray(buf, offset, 0, span)
-        createByteStringUnsafe(buf)
-      } else ByteString.empty
-    }
+    def sliceBytes(offset: Long, span: Int): ByteString = slice(offset, span).toByteString
 
     def slice(offset: Long, span: Long): HttpData = {
       require(offset >= 0, "offset must be >= 0")
@@ -365,13 +355,20 @@ object HttpData {
         rec()
       } else HttpData.Empty
     }
+    def toByteString = {
+      @tailrec def rec(data: HttpData, result: ByteString): ByteString = data match {
+        case Compound(head, tail) ⇒ rec(tail, result ++ head.toByteString)
+        case d                    ⇒ result ++ d.toByteString
+      }
+
+      rec(this, ByteString.empty)
+    }
 
     // overridden to run lazily
     override def toChunkStream(maxChunkSize: Long): Stream[HttpData] =
       head.toChunkStream(maxChunkSize) append tail.toChunkStream(maxChunkSize)
 
     override def toString = head.toString + " +: " + tail
-    def toByteString = createByteStringUnsafe(toByteArray)
   }
 
   def newBuilder: Builder = new Builder
