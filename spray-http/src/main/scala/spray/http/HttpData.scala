@@ -66,7 +66,10 @@ sealed abstract class HttpData {
    * If this instance is a `FileBytes` instance containing more than 2GB of data
    * the method will throw an `IllegalArgumentException`.
    */
-  def slice(offset: Long = 0, span: Int = length.toInt): ByteString
+  def sliceBytes(offset: Long = 0, span: Int = length.toInt): ByteString
+
+  /** Returns a slice of this instance as an `HttpData`. */
+  def slice(offset: Long = 0, span: Long = length): HttpData
 
   /**
    * Copies the contents of this instance into a new byte array.
@@ -93,10 +96,10 @@ sealed abstract class HttpData {
   def toByteString: ByteString
 
   /**
-   * Returns the contents of this instance as a `Stream[ByteString]` with each
+   * Returns the contents of this instance as a `Stream[HttpData]` with each
    * chunk not being larger than the given `maxChunkSize`.
    */
-  def toChunkStream(maxChunkSize: Int): Stream[ByteString]
+  def toChunkStream(maxChunkSize: Long): Stream[HttpData]
 
   /**
    * Efficiently prepends this instance with another `HttpData` instance to possibly
@@ -186,10 +189,11 @@ object HttpData {
   case object Empty extends HttpData {
     def length = 0L
     def copyToArray(xs: Array[Byte], sourceOffset: Long, targetOffset: Int, span: Int) = ()
-    def slice(offset: Long, span: Int): ByteString = toByteString
+    def sliceBytes(offset: Long, span: Int): ByteString = toByteString
+    def slice(offset: Long, span: Long): HttpData = Empty
     val toByteArray = Array.empty[Byte]
     def toByteString = ByteString.empty
-    def toChunkStream(maxChunkSize: Int) = Stream.empty
+    def toChunkStream(maxChunkSize: Long) = Stream.empty
     def +:(other: HttpData) = other
     override def asString(charset: Charset) = ""
   }
@@ -208,6 +212,16 @@ object HttpData {
       copyToArray(array)
       array
     }
+
+    def toChunkStream(maxChunkSize: Long): Stream[HttpData] = {
+      require(maxChunkSize > 0, "chunkSize must be > 0")
+      val lastChunkStart = length - maxChunkSize
+      def nextChunk(ix: Long = 0): Stream[HttpData] = {
+        if (ix < lastChunkStart) Stream.cons(slice(ix, maxChunkSize), nextChunk(ix + maxChunkSize))
+        else Stream.cons(slice(ix, length - ix), Stream.Empty)
+      }
+      nextChunk()
+    }
   }
 
   sealed abstract class SimpleNonEmpty extends NonEmpty { _: Product ⇒
@@ -221,7 +235,7 @@ object HttpData {
       if (sourceOffset < length)
         bytes.iterator.drop(sourceOffset.toInt).copyToArray(xs, targetOffset, span)
     }
-    def slice(offset: Long, span: Int): ByteString = {
+    def sliceBytes(offset: Long, span: Int): ByteString = {
       require(offset >= 0, "offset must be >= 0")
       require(span >= 0, "span must be >= 0")
       if (offset < length && span > 0)
@@ -230,14 +244,14 @@ object HttpData {
       else ByteString.empty
     }
     def toByteString = bytes
-    def toChunkStream(maxChunkSize: Int): Stream[ByteString] = {
-      require(maxChunkSize > 0, "chunkSize must be > 0")
-      val lastChunkStart = length - maxChunkSize
-      def nextChunk(ix: Int = 0): Stream[ByteString] = {
-        if (ix < lastChunkStart) Stream.cons(slice(ix, maxChunkSize), nextChunk(ix + maxChunkSize))
-        else Stream.cons(slice(ix, (length - ix).toInt), Stream.Empty)
-      }
-      nextChunk()
+    def slice(offset: Long, span: Long): HttpData = {
+      require(offset >= 0, "offset must be >= 0")
+      require(span >= 0, "span must be >= 0")
+
+      if (offset < length && span > 0)
+        if (offset > 0 || span < length) Bytes(bytes.slice(offset.toInt, math.min(offset + span, Int.MaxValue).toInt))
+        else this
+      else HttpData.Empty
     }
   }
 
@@ -261,7 +275,7 @@ object HttpData {
         } finally input.close()
       }
     }
-    def slice(offset: Long, span: Int): ByteString = {
+    def sliceBytes(offset: Long, span: Int): ByteString = {
       require(offset >= 0, "offset must be >= 0")
       require(span >= 0, "span must be >= 0")
       if (offset < length && span > 0) {
@@ -271,23 +285,15 @@ object HttpData {
       } else ByteString.empty
     }
     def toByteString = createByteStringUnsafe(toByteArray)
-    def toChunkStream(maxChunkSize: Int): Stream[ByteString] = {
-      require(maxChunkSize > 0, "chunkSize must be > 0")
-      val input = new FileInputStream(fileName)
-      def nextChunk(): Stream[ByteString] =
-        try {
-          val array = new Array[Byte](maxChunkSize)
-          input.read(array, 0, maxChunkSize) match {
-            case -1             ⇒ Stream.empty
-            case `maxChunkSize` ⇒ Stream.cons(createByteStringUnsafe(array), nextChunk())
-            case count          ⇒ Stream.cons(createByteStringUnsafe(array, 0, count), Stream.empty)
-          }
-        } catch {
-          case NonFatal(_) ⇒
-            input.close()
-            Stream.empty
-        }
-      nextChunk()
+    def slice(offset: Long, span: Long): HttpData = {
+      require(offset >= 0, "offset must be >= 0")
+      require(span >= 0, "span must be >= 0")
+
+      if (offset < length && span > 0) {
+        val newOffset = this.offset + offset
+        val newLength = math.min(length - offset, span)
+        FileBytes(fileName, newOffset, newLength)
+      } else HttpData.Empty
     }
   }
 
@@ -329,24 +335,39 @@ object HttpData {
         rec()
       }
     }
-    def slice(offset: Long, span: Int): ByteString = {
+    def sliceBytes(offset: Long, span: Int): ByteString = {
+      require(offset >= 0, "offset must be >= 0")
+      require(span >= 0, "span must be >= 0")
+
+      if (offset < length && span > 0) {
+        val len = math.min(length - offset, span).toInt // valid because span < Int.MaxValue
+        val buf = new Array[Byte](len)
+        copyToArray(buf, offset, 0, span)
+        createByteStringUnsafe(buf)
+      } else ByteString.empty
+    }
+
+    def slice(offset: Long, span: Long): HttpData = {
       require(offset >= 0, "offset must be >= 0")
       require(span >= 0, "span must be >= 0")
       if (offset < length && span > 0) {
         val iter = iterator
-        val builder = ByteString.newBuilder
-        @tailrec def rec(offset: Long = offset, span: Int = span): ByteString =
+        val builder = newBuilder
+        @tailrec def rec(offset: Long = offset, span: Long = span): HttpData =
           if (span > 0 && iter.hasNext) {
             val current = iter.next()
             if (offset < current.length) {
-              builder ++= current.slice(offset, span)
-              rec(0, math.max(0, span - current.length).toInt)
+              val piece = current.slice(offset, span)
+              builder += piece
+              rec(0, math.max(0, span - piece.length))
             } else rec(offset - current.length, span)
           } else builder.result()
         rec()
-      } else ByteString.empty
+      } else HttpData.Empty
     }
-    def toChunkStream(maxChunkSize: Int): Stream[ByteString] =
+
+    // overridden to run lazily
+    override def toChunkStream(maxChunkSize: Long): Stream[HttpData] =
       head.toChunkStream(maxChunkSize) append tail.toChunkStream(maxChunkSize)
 
     override def toString = head.toString + " +: " + tail

@@ -19,29 +19,90 @@ package spray.http
 import java.io.File
 import org.parboiled.common.FileUtils
 import org.specs2.mutable.Specification
+import akka.util.ByteString
 
 class HttpDataSpec extends Specification {
 
   "HttpData" should {
     "properly support `copyToArray`" in {
       "HttpData.Bytes" in {
-        test(HttpData("Ken sent me!"))
+        testCopyToArray(HttpData("Ken sent me!"))
       }
       "HttpData.FileBytes" in {
         val file = File.createTempFile("spray-http_HttpDataSpec", ".txt")
         try {
           FileUtils.writeAllText("Ken sent me!", file)
-          test(HttpData(file))
+          testCopyToArray(HttpData(file))
 
         } finally file.delete
       }
       "HttpData.Compound" in {
-        test(HttpData("Ken") +: HttpData(" sent") +: HttpData(" me") +: HttpData("!"))
+        testCopyToArray(HttpData("Ken") +: HttpData(" sent") +: HttpData(" me") +: HttpData("!"))
+      }
+    }
+    "properly support `slice`" in {
+      "HttpData.Bytes" in {
+        HttpData("Ken sent me!").sliceBytes(4, 3) === ByteString("sen")
+      }
+      "HttpData.FileBytes" in {
+        val file = File.createTempFile("spray-http_HttpDataSpec", ".txt")
+        try {
+          FileUtils.writeAllText(" Ken sent me!", file)
+          HttpData(file, 1).sliceBytes(4, 3) === ByteString("sen")
+        } finally file.delete
+      }
+      "HttpData.Compound" in {
+        val data = HttpData("Ken") +: HttpData(" sent ") +: HttpData("me") +: HttpData("!")
+        data.sliceBytes(2, 5) === ByteString("n sen")
+      }
+    }
+    "properly support `sliceData`" in {
+      "HttpData.Bytes" in {
+        HttpData("Ken sent me!").slice(4, 3) === HttpData("sen")
+      }
+      "HttpData.FileBytes" in {
+        val file = File.createTempFile("spray-http_HttpDataSpec", ".txt")
+        try {
+          FileUtils.writeAllText(" Ken sent me!", file)
+          HttpData(file, 1).slice(4, 3) === HttpData(file, 5, 3)
+        } finally file.delete
+      }
+      "HttpData.Compound" in {
+        val data = HttpData("Ken") +: HttpData(" sent ") +: HttpData("me") +: HttpData("!")
+        data.slice(2, 5) === (HttpData("n") +: HttpData(" sen"))
+      }
+    }
+    "properly support `toChunkStream`" in {
+      "HttpData.Bytes" in {
+        HttpData("Ken sent me!").toChunkStream(5) === Stream(
+          HttpData("Ken s"),
+          HttpData("ent m"),
+          HttpData("e!"))
+      }
+      "HttpData.FileBytes" in {
+        val file = File.createTempFile("spray-http_HttpDataSpec", ".txt")
+        try {
+          FileUtils.writeAllText("Ken sent me!", file)
+          HttpData(file).toChunkStream(5) === Stream(
+            HttpData(file, 0, 5),
+            HttpData(file, 5, 5),
+            HttpData(file, 10, 2))
+
+        } finally file.delete
+      }
+      "HttpData.Compound" in {
+        val data = HttpData("Ken") +: HttpData(" sent ") +: HttpData("me") +: HttpData("!")
+        data.toChunkStream(5) === Stream(
+          HttpData("Ken"),
+          HttpData(" sent"),
+          HttpData(" "),
+          HttpData("me"),
+          HttpData("!"))
       }
     }
   }
 
-  def test(data: HttpData) = {
+  def testCopyToArray(data: HttpData): Unit = {
     testCopyToArray(data, sourceOffset = 0, targetOffset = 0, span = 12) === "Ken sent me!xxxx"
     testCopyToArray(data, sourceOffset = 0, targetOffset = 2, span = 12) === "xxKen sent me!xx"
     testCopyToArray(data, sourceOffset = 0, targetOffset = 4, span = 12) === "xxxxKen sent me!"
