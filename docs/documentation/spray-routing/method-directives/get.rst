@@ -5,6 +5,12 @@ get
 
 Matches requests with HTTP method ``GET``.
 
+Signature
+---------
+
+.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/MethodDirectives.scala
+   :snippet: get
+
 Description
 -----------
 
@@ -17,5 +23,5 @@ by the default :ref:`RejectionHandler`.
 Example
 -------
 
-.. includecode:: ../code/docs/directives/MethodDirectivesExampleSpec.scala
+.. includecode:: ../code/docs/directives/MethodDirectivesExamplesSpec.scala
   :snippet: get-method

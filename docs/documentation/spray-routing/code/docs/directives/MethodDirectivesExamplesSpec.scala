@@ -1,6 +1,7 @@
 package docs.directives
 
 import spray.routing.Directives
+import spray.http.{StatusCodes, HttpMethods}
 
 class MethodDirectivesExamplesSpec extends DirectivesSpec {
   "delete-method" in {
@@ -56,6 +57,19 @@ class MethodDirectivesExamplesSpec extends DirectivesSpec {
     
     Put("/", "put content") ~> route ~> check { 
       entityAs[String] === "This is a PUT request." 
+    }
+  }
+
+  "method-example" in {
+    val route = method(HttpMethods.PUT) { complete("This is a PUT request.") }
+
+    Put("/", "put content") ~> route ~> check {
+      entityAs[String] === "This is a PUT request."
+    }
+
+    Get("/") ~> sealRoute(route) ~> check {
+      status === StatusCodes.MethodNotAllowed
+      entityAs[String] === "HTTP method not allowed, supported methods: PUT"
     }
   }
 }

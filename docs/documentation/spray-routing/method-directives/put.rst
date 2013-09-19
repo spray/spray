@@ -5,6 +5,12 @@ put
 
 Matches requests with HTTP method ``PUT``.
 
+Signature
+---------
+
+.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/MethodDirectives.scala
+   :snippet: put
+
 Description
 -----------
 
@@ -16,5 +22,5 @@ by the default :ref:`RejectionHandler`.
 Example
 -------
 
-.. includecode:: ../code/docs/directives/MethodDirectivesExampleSpec.scala
+.. includecode:: ../code/docs/directives/MethodDirectivesExamplesSpec.scala
   :snippet: put-method
