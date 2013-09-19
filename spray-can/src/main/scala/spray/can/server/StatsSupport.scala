@@ -22,12 +22,12 @@ import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.io._
 import spray.can.Http
-import spray.util.PaddedAtomicLong
+import spray.util.{ Timestamp, PaddedAtomicLong }
 
 object StatsSupport {
 
   class StatsHolder {
-    val startTimestamp = System.nanoTime()
+    val startTimestamp = Timestamp.now
     val requestStarts = new PaddedAtomicLong
     val responseStarts = new PaddedAtomicLong
     val maxOpenRequests = new PaddedAtomicLong
@@ -57,7 +57,7 @@ object StatsSupport {
     }
 
     def toStats = Stats(
-      uptime = (System.nanoTime() - startTimestamp).nanos,
+      uptime = (Timestamp.now - startTimestamp).asInstanceOf[FiniteDuration],
       totalRequests = requestStarts.get,
       openRequests = requestStarts.get - responseStarts.get,
       maxOpenRequests = maxOpenRequests.get,

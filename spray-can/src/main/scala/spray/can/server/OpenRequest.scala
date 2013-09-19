@@ -26,6 +26,7 @@ import spray.http._
 import spray.can.Http
 import spray.can.server.ServerFrontend.Context
 import akka.io.Tcp
+import spray.util.Timestamp
 
 sealed trait OpenRequest {
   def context: ServerFrontend.Context
@@ -34,7 +35,7 @@ sealed trait OpenRequest {
   def appendToEndOfChain(openRequest: OpenRequest): OpenRequest
   def dispatchInitialRequestPartToHandler()
   def dispatchNextQueuedResponse()
-  def checkForTimeout(now: Long)
+  def checkForTimeout(now: Timestamp)
   def nextIfNoAcksPending: OpenRequest
 
   // commands
@@ -58,7 +59,7 @@ trait OpenRequestComponent { component ⇒
 
   class DefaultOpenRequest(val request: HttpRequest,
                            private[this] val closeAfterResponseCompletion: Boolean,
-                           private[this] var timestamp: Long) extends OpenRequest {
+                           private[this] var state: RequestState) extends OpenRequest {
     private[this] val receiverRef = new ResponseReceiverRef(this)
     private[this] var handler = context.handler
     private[this] var nextInChain: OpenRequest = EmptyOpenRequest
@@ -79,7 +80,7 @@ trait OpenRequestComponent { component ⇒
           request.copy(method = HttpMethods.GET)
         else request
       val partToDispatch: HttpRequestPart =
-        if (timestamp == 0L) ChunkedRequestStart(requestToDispatch)
+        if (state == WaitingForChunkedEnd) ChunkedRequestStart(requestToDispatch)
         else requestToDispatch
       if (context.log.isDebugEnabled)
         context.log.debug("Dispatching {} to handler {}", format(partToDispatch), handler)
@@ -93,22 +94,26 @@ trait OpenRequestComponent { component ⇒
       }
     }
 
-    def checkForTimeout(now: Long): Unit = {
-      if (timestamp > 0) {
-        if (timestamp + requestTimeout.toNanos < now) {
-          val timeoutHandler =
-            if (settings.timeoutHandler.isEmpty) handler
-            else context.actorContext.actorFor(settings.timeoutHandler)
-          if (RefUtils.isLocal(timeoutHandler))
-            downstreamCommandPL(Pipeline.Tell(timeoutHandler, Timedout(request), receiverRef))
-          else context.log.warning("The TimeoutHandler '{}' is not a local actor and thus cannot be used as a " +
-            "timeout handler", timeoutHandler)
-          timestamp = -now // we record the time of the Timeout dispatch as negative timestamp value
-        }
-      } else if (timestamp < -1 && timeoutTimeout.isFinite() && (-timestamp + timeoutTimeout.toNanos < now)) {
-        val response = timeoutResponse(request)
-        // we always close the connection after a timeout-timeout
-        sendPart(response.withHeaders(HttpHeaders.Connection("close") :: response.headers))
+    def checkForTimeout(now: Timestamp): Unit = {
+      state match {
+        case WaitingForChunkedEnd ⇒
+        case WaitingForResponse(timestamp) ⇒
+          if ((timestamp + requestTimeout).isPast) {
+            val timeoutHandler =
+              if (settings.timeoutHandler.isEmpty) handler
+              else context.actorContext.actorFor(settings.timeoutHandler)
+            if (RefUtils.isLocal(timeoutHandler))
+              downstreamCommandPL(Pipeline.Tell(timeoutHandler, Timedout(request), receiverRef))
+            else context.log.warning("The TimeoutHandler '{}' is not a local actor and thus cannot be used as a " +
+              "timeout handler", timeoutHandler)
+            state = WaitingForTimeoutResponse()
+          }
+        case WaitingForTimeoutResponse(timestamp) ⇒
+          if ((timestamp + timeoutTimeout).isPast) {
+            val response = timeoutResponse(request)
+            // we always close the connection after a timeout-timeout
+            sendPart(response.withHeaders(HttpHeaders.Connection("close") :: response.headers))
+          }
       }
       nextInChain checkForTimeout now // we accept non-tail recursion since HTTP pipeline depth is limited (and small)
     }
@@ -131,7 +136,7 @@ trait OpenRequestComponent { component ⇒
     }
 
     def handleResponsePart(part: HttpMessagePartWrapper): Unit = {
-      timestamp = 0L // disable request timeout checking once the first response part has come in
+      state = WaitingForChunkedEnd // disable request timeout checking once the first response part has come in
       handler = context.actorContext.sender // remember who to send Closed events to
       sendPart(part)
       dispatchNextQueuedResponse()
@@ -154,7 +159,7 @@ trait OpenRequestComponent { component ⇒
     def handleChunkedMessageEnd(part: ChunkedMessageEnd): Unit = {
       if (nextInChain.isEmpty) {
         // only start request timeout checking after request has been completed
-        timestamp = System.nanoTime()
+        state = WaitingForResponse()
         downstreamCommandPL(Pipeline.Tell(handler, part, receiverRef))
       } else
         // we accept non-tail recursion since HTTP pipeline depth is limited (and small)
@@ -206,7 +211,7 @@ trait OpenRequestComponent { component ⇒
     def request = throw new IllegalStateException
     def dispatchInitialRequestPartToHandler(): Unit = { throw new IllegalStateException }
     def dispatchNextQueuedResponse(): Unit = {}
-    def checkForTimeout(now: Long): Unit = {}
+    def checkForTimeout(now: Timestamp): Unit = {}
     def nextIfNoAcksPending = throw new IllegalStateException
 
     // commands
@@ -234,3 +239,8 @@ trait OpenRequestComponent { component ⇒
 
 private[server] case class AckEventWithReceiver(ack: Any, receiver: ActorRef) extends Event
 private[server] case class PartAndSender(part: HttpResponsePart, sender: ActorRef)
+
+private[server] sealed trait RequestState
+private[server] case object WaitingForChunkedEnd extends RequestState
+private[server] case class WaitingForResponse(timestamp: Timestamp = Timestamp.now) extends RequestState
+private[server] case class WaitingForTimeoutResponse(timestamp: Timestamp = Timestamp.now) extends RequestState
