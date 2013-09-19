@@ -240,8 +240,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   private final val notBinary = false      // compile-time constant
 
   // dummy value currently only used by ContentType.NoContentType
-  private[http] val NoMediaType = new NonMultipartMediaType("none", "none", false, false, Seq.empty) {
-  }
+  private[http] val NoMediaType = new NonMultipartMediaType("none", "none", false, false, Seq.empty) {}
 
   val `application/atom+xml`                                                      = app("atom+xml", compressible, notBinary, "atom")
   val `application/base64`                                                        = app("base64", compressible, binary, "mm", "mme")
@@ -327,6 +326,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   val `audio/x-realaudio` = aud("x-pn-realaudio", uncompressible, "ra", "ram", "rmm", "rmp")
   val `audio/x-psid`      = aud("x-psid", compressible, "sid")
   val `audio/xm`          = aud("xm", uncompressible, "xm")
+  val `audio/webm`        = aud("webm", uncompressible)
 
   val `image/gif`         = img("gif", uncompressible, binary, "gif")
   val `image/jpeg`        = img("jpeg", uncompressible, binary, "jpe", "jpeg", "jpg")
@@ -423,5 +423,6 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   val `video/x-ms-asf`      = vid("x-ms-asf", "asf")
   val `video/x-msvideo`     = vid("x-msvideo", "avi")
   val `video/x-sgi-movie`   = vid("x-sgi-movie", "movie", "mv")
+  val `video/webm`          = vid("webm", "webm")
   // format: ON
 }
