@@ -77,7 +77,7 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
     if (result != null) result
     else headerParser.resultHeader match {
       case HttpHeaderParser.EmptyHeader ⇒
-        val close = closeAfterResponseCompletion(ch)
+        val close = HttpMessage.connectionCloseExpected(protocol, ch)
         if (e100) {
           parse = parseEntity(headers, _, 0, clh, cth, teh, hh, close)
           Result.Expect100Continue(drop(input, lineEnd))
@@ -230,12 +230,6 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
     }
     HttpEntity(contentType, HttpData(body))
   }
-
-  def closeAfterResponseCompletion(connectionHeader: Option[Connection]) =
-    protocol match {
-      case `HTTP/1.1` ⇒ connectionHeader.isDefined && connectionHeader.get.hasClose
-      case `HTTP/1.0` ⇒ connectionHeader.isEmpty || !connectionHeader.get.hasKeepAlive
-    }
 
   def message(headers: List[HttpHeader], entity: HttpEntity): Part
   def chunkStartMessage(headers: List[HttpHeader]): Part with HttpMessageStart
