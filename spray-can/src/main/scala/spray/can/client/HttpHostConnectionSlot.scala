@@ -27,11 +27,11 @@ import spray.io.ClientSSLEngineProvider
 import spray.http._
 import spray.util.SimpleStash
 
-private[client] class HttpHostConnectionSlot(host: String, port: Int,
-                                             sslEncryption: Boolean,
-                                             options: immutable.Traversable[Inet.SocketOption],
-                                             idleTimeout: Duration,
-                                             clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
+private class HttpHostConnectionSlot(host: String, port: Int,
+                                     sslEncryption: Boolean,
+                                     options: immutable.Traversable[Inet.SocketOption],
+                                     idleTimeout: Duration,
+                                     clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
     extends Actor with SimpleStash with ActorLogging {
 
   // we cannot sensibly recover from crashes

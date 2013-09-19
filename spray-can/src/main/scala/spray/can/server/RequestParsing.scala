@@ -28,7 +28,7 @@ import spray.util._
 import spray.io._
 import HttpHeaders.`Raw-Request-URI`
 
-object RequestParsing {
+private[can] object RequestParsing {
 
   val continue = ByteString("HTTP/1.1 100 Continue\r\n\r\n")
 

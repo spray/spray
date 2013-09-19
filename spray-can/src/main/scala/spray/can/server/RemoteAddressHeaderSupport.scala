@@ -20,7 +20,7 @@ import spray.io._
 import spray.http._
 import HttpHeaders._
 
-object RemoteAddressHeaderSupport extends PipelineStage {
+private object RemoteAddressHeaderSupport extends PipelineStage {
   def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
     new Pipelines {
       val raHeader = `Remote-Address`(context.remoteAddress.getAddress)

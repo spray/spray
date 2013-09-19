@@ -23,7 +23,7 @@ import HttpHeaders._
 import StatusCodes._
 import CharUtils._
 
-class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeaderParser = HttpHeaderParser(_settings))
+private[can] class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeaderParser = HttpHeaderParser(_settings))
     extends HttpMessagePartParser[HttpResponsePart](_settings, _headerParser) {
 
   private[this] var isResponseToHeadRequest: Boolean = false

@@ -26,7 +26,7 @@ import spray.can.parsing._
 import spray.http._
 import spray.io._
 
-object ResponseParsing {
+private object ResponseParsing {
 
   def apply(settings: ParserSettings): PipelineStage = {
     val rootParser = new HttpResponsePartParser(settings)()

@@ -27,7 +27,7 @@ import spray.http._
 import spray.io._
 import spray.util.Timestamp
 
-object ServerFrontend {
+private object ServerFrontend {
 
   trait Context extends PipelineContext {
     // the application-level request handler

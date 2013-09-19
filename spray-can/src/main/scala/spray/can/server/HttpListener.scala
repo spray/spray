@@ -28,10 +28,10 @@ private[can] class HttpListener(bindCommander: ActorRef,
   import context.system
   import bind._
 
-  val connectionCounter = Iterator from 0
-  val settings = bind.settings getOrElse ServerSettings(system)
-  val statsHolder = if (settings.statsSupport) Some(new StatsHolder) else None
-  val pipelineStage = HttpServerConnection.pipelineStage(settings, statsHolder)
+  private val connectionCounter = Iterator from 0
+  private val settings = bind.settings getOrElse ServerSettings(system)
+  private val statsHolder = if (settings.statsSupport) Some(new StatsHolder) else None
+  private val pipelineStage = HttpServerConnection.pipelineStage(settings, statsHolder)
 
   context.watch(listener)
 

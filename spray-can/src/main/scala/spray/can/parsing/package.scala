@@ -20,12 +20,12 @@ import akka.util.CompactByteString
 import spray.util.SingletonException
 import spray.http._
 
-trait Parser[Part <: HttpMessagePart] extends (CompactByteString ⇒ Result[Part]) {
+private[can] trait Parser[Part <: HttpMessagePart] extends (CompactByteString ⇒ Result[Part]) {
   def parse: CompactByteString ⇒ Result[Part]
 }
 
-sealed trait Result[+T <: HttpMessagePart]
-object Result {
+private[can] sealed trait Result[+T <: HttpMessagePart]
+private[can] object Result {
   case object NeedMoreData extends Result[Nothing]
   case class Ok[T <: HttpMessagePart](part: T, remainingData: CompactByteString,
                                       closeAfterResponseCompletion: Boolean) extends Result[T]
@@ -40,4 +40,4 @@ class ParsingException(val status: StatusCode, val info: ErrorInfo) extends Runt
     this(StatusCodes.BadRequest, ErrorInfo(summary))
 }
 
-object NotEnoughDataException extends SingletonException
+private object NotEnoughDataException extends SingletonException

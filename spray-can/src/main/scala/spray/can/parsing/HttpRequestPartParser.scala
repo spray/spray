@@ -25,7 +25,7 @@ import StatusCodes._
 import HttpHeaders._
 import CharUtils._
 
-class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeaderParser = HttpHeaderParser(_settings))
+private[can] class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeaderParser = HttpHeaderParser(_settings))
     extends HttpMessagePartParser[HttpRequestPart](_settings, _headerParser) {
 
   private[this] var method: HttpMethod = GET
