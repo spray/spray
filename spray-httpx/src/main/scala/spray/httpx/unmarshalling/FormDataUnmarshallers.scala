@@ -29,7 +29,7 @@ import MediaRanges._
 import HttpHeaders._
 import HttpCharsets._
 
-trait MultipartUnmarshallers {
+trait FormDataUnmarshallers {
 
   private[this] val mimeParsingConfig = {
     val config = new MIMEConfig
@@ -86,6 +86,21 @@ trait MultipartUnmarshallers {
         case _                                         ⇒ None
       } getOrElse sys.error("unnamed body part (no Content-Disposition header or no 'name' parameter)")
   }
+
+  implicit val UrlEncodedFormDataUnmarshaller: Unmarshaller[FormData] = urlEncodedFormDataUnmarshaller(`UTF-8`)
+  def urlEncodedFormDataUnmarshaller(defaultCharset: HttpCharset): Unmarshaller[FormData] =
+    Unmarshaller[FormData](`application/x-www-form-urlencoded`) {
+      case HttpEntity.Empty ⇒ FormData.Empty
+      case entity: HttpEntity.NonEmpty ⇒
+        val data = entity.asString(defaultCharset)
+        try {
+          val query = Uri.Query(data, entity.contentType.definedCharset.getOrElse(defaultCharset).nioCharset)
+          FormData(query.toMap)
+        } catch {
+          case ex: IllegalUriException ⇒
+            throw new IllegalArgumentException(ex.info.formatPretty.replace("Query,", "form content,"))
+        }
+    }
 }
 
-object MultipartUnmarshallers extends MultipartUnmarshallers
+object FormDataUnmarshallers extends FormDataUnmarshallers
