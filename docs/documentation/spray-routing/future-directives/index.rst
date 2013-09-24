@@ -3,6 +3,8 @@
 FuturesDirectives
 =================
 
+Future directives can be used to run inner routes once the provided ``Future[T]`` is completed.
+
 .. toctree::
    :maxdepth: 1
 
