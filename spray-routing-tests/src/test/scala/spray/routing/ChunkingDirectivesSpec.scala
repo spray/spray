@@ -16,6 +16,9 @@
 
 package spray.routing
 
+import spray.http.HttpHeaders.RawHeader
+import spray.http.StatusCodes
+
 class ChunkingDirectivesSpec extends RoutingSpec {
 
   "The `autoChunk` directive" should {
@@ -26,6 +29,23 @@ class ChunkingDirectivesSpec extends RoutingSpec {
         val bytes = chunks.foldLeft(body.data.toByteArray)(_ ++ _.data.toByteArray)
         new String(bytes) === text
       }
+    }
+    "must reproduce status code and headers of the original response" in {
+      val text = "This is a somewhat lengthy text that is being chunked by the autochunk directive!"
+      val responseHeader = RawHeader("X-Custom", "Test")
+      val route = autoChunk(8) {
+        respondWithHeader(responseHeader) {
+          complete((StatusCodes.PartialContent, text))
+        }
+      }
+
+      Get() ~> route ~> check {
+        chunks must haveSize(10)
+        val bytes = chunks.foldLeft(body.data.toByteArray)(_ ++ _.data.toByteArray)
+        new String(bytes) === text
+        status === StatusCodes.PartialContent
+        header("x-custom") === Some(responseHeader)
+      } pendingUntilFixed
     }
   }
 }
