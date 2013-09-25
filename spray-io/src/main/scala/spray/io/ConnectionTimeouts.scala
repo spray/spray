@@ -18,8 +18,7 @@ package spray.io
 
 import scala.concurrent.duration.Duration
 import akka.io.Tcp
-import spray.util.requirePositive
-import System.{ currentTimeMillis ⇒ now }
+import spray.util.{ Timestamp, requirePositive }
 
 object ConnectionTimeouts {
 
@@ -29,25 +28,20 @@ object ConnectionTimeouts {
     new PipelineStage {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
         var timeout = idleTimeout
-        var lastActivity = now
+        var idleDeadline = Timestamp.never
+        def refreshDeadline() = idleDeadline = Timestamp.now + timeout
+        refreshDeadline()
 
         val commandPipeline: CPL = {
-          case x: Tcp.Write ⇒
-            commandPL(x)
-            lastActivity = now
-
-          case SetIdleTimeout(x) ⇒ timeout = x
-
+          case x: Tcp.Write      ⇒ commandPL(x); refreshDeadline()
+          case SetIdleTimeout(x) ⇒ timeout = x; refreshDeadline()
           case cmd               ⇒ commandPL(cmd)
         }
 
         val eventPipeline: EPL = {
-          case x: Tcp.Received ⇒
-            lastActivity = now
-            eventPL(x)
-
+          case x: Tcp.Received ⇒ refreshDeadline(); eventPL(x)
           case tick @ TickGenerator.Tick ⇒
-            if (timeout.isFinite && (lastActivity + timeout.toMillis < System.currentTimeMillis)) {
+            if (idleDeadline.isPast) {
               context.log.debug("Closing connection due to idle timeout...")
               commandPL(Tcp.Close)
             }

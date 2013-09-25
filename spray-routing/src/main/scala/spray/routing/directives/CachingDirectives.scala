@@ -85,8 +85,8 @@ trait CachingDirectives {
     }
   }
 
-  def routeCache(maxCapacity: Int = 500, initialCapacity: Int = 16, timeToLive: Duration = Duration.Zero,
-                 timeToIdle: Duration = Duration.Zero): Cache[RouteResponse] =
+  def routeCache(maxCapacity: Int = 500, initialCapacity: Int = 16, timeToLive: Duration = Duration.Inf,
+                 timeToIdle: Duration = Duration.Inf): Cache[RouteResponse] =
     LruCache(maxCapacity, initialCapacity, timeToLive, timeToIdle)
 }
 
