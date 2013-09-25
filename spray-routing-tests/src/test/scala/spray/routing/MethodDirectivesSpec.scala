@@ -16,7 +16,7 @@
 
 package spray.routing
 
-import spray.http.HttpMethods
+import spray.http.{ StatusCodes, HttpMethods }
 
 class MethodDirectivesSpec extends RoutingSpec {
 
@@ -42,6 +42,27 @@ class MethodDirectivesSpec extends RoutingSpec {
       } ~> check {
         rejections === List(MethodRejection(HttpMethods.GET))
       }
+    }
+  }
+
+  "overrideMethodWithParameter" should {
+    "change the request method" in {
+      Get("/?_method=put") ~> overrideMethodWithParameter("_method") {
+        get { complete("GET") } ~
+          put { complete("PUT") }
+      } ~> check { entityAs[String] === "PUT" }
+    }
+    "not affect the request when not specified" in {
+      Get() ~> overrideMethodWithParameter("_method") {
+        get { complete("GET") } ~
+          put { complete("PUT") }
+      } ~> check { entityAs[String] === "GET" }
+    }
+    "complete with 501 Not Implemented when not a valid method" in {
+      Get("/?_method=hallo") ~> overrideMethodWithParameter("_method") {
+        get { complete("GET") } ~
+          put { complete("PUT") }
+      } ~> check { status === StatusCodes.NotImplemented }
     }
   }
 
