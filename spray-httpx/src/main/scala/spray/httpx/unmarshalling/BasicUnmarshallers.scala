@@ -53,20 +53,6 @@ trait BasicUnmarshallers {
       case HttpEntity.Empty ⇒ NodeSeq.Empty
     }
   //#
-
-  implicit val FormDataUnmarshaller =
-    Unmarshaller[FormData](`application/x-www-form-urlencoded`) {
-      case HttpEntity.Empty ⇒ FormData.Empty
-      case entity: HttpEntity.NonEmpty ⇒
-        val data = entity.asString
-        try {
-          val query = Uri.Query(data, entity.contentType.charset.nioCharset)
-          FormData(query.toMap)
-        } catch {
-          case ex: IllegalUriException ⇒
-            throw new IllegalArgumentException(ex.info.formatPretty.replace("Query,", "form content,"))
-        }
-    }
 }
 
 object BasicUnmarshallers extends BasicUnmarshallers
