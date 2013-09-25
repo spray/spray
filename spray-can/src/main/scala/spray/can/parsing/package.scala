@@ -14,30 +14,34 @@
  * limitations under the License.
  */
 
-package spray.can.parsing
+package spray.can
 
 import akka.util.CompactByteString
 import spray.util.SingletonException
 import spray.http._
 
-private[can] trait Parser[Part <: HttpMessagePart] extends (CompactByteString ⇒ Result[Part]) {
-  def parse: CompactByteString ⇒ Result[Part]
+package object parsing {
+  private[can]type Parser = CompactByteString ⇒ Result
 }
 
-private[can] sealed trait Result[+T <: HttpMessagePart]
-private[can] object Result {
-  case object NeedMoreData extends Result[Nothing]
-  case class Ok[T <: HttpMessagePart](part: T, remainingData: CompactByteString,
-                                      closeAfterResponseCompletion: Boolean) extends Result[T]
-  case class Expect100Continue(remainingData: CompactByteString) extends Result[Nothing]
-  case class ParsingError(status: StatusCode, info: ErrorInfo) extends Result[Nothing]
+package parsing {
+
+  private[can] sealed trait Result
+  private[can] object Result {
+    case class NeedMoreData(next: Parser) extends Result
+    case class Emit(part: HttpMessagePart, closeAfterResponseCompletion: Boolean, continue: () ⇒ Result) extends Result
+    case class Expect100Continue(continue: () ⇒ Result) extends Result
+    case class ParsingError(status: StatusCode, info: ErrorInfo) extends Result
+    case object IgnoreAllFurtherInput extends Result with Parser { def apply(data: CompactByteString) = this }
+  }
+
+  class ParsingException(val status: StatusCode, val info: ErrorInfo) extends RuntimeException(info.formatPretty) {
+    def this(status: StatusCode, summary: String = "") =
+      this(status, ErrorInfo(if (summary.isEmpty) status.defaultMessage else summary))
+    def this(summary: String) =
+      this(StatusCodes.BadRequest, ErrorInfo(summary))
+  }
+
+  private object NotEnoughDataException extends SingletonException
 }
 
-class ParsingException(val status: StatusCode, val info: ErrorInfo) extends RuntimeException(info.formatPretty) {
-  def this(status: StatusCode, summary: String = "") =
-    this(status, ErrorInfo(if (summary.isEmpty) status.defaultMessage else summary))
-  def this(summary: String) =
-    this(StatusCodes.BadRequest, ErrorInfo(summary))
-}
-
-private object NotEnoughDataException extends SingletonException
