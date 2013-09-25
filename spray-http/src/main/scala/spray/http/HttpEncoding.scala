@@ -25,7 +25,7 @@ case class HttpEncoding private[http] (value: String) extends HttpEncodingRange 
 }
 
 object HttpEncoding {
-  def custom(value: String) = apply(value)
+  def custom(value: String): HttpEncoding = apply(value)
 }
 
 // see http://www.iana.org/assignments/http-parameters/http-parameters.xml

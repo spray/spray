@@ -37,6 +37,7 @@ class RequestParserSpec extends Specification {
     spray.can.parsing.max-content-length = 4000000000
     spray.can.parsing.incoming-auto-chunking-threshold-size = 20""")
   val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConf)
+  val BOLT = HttpMethods.register(HttpMethod.custom("BOLT", safe = false, idempotent = true, entityAccepted = true))
 
   "The request parsing logic" should {
     "properly parse a request" in {
@@ -118,15 +119,24 @@ class RequestParserSpec extends Specification {
         parse(parser)("DEFGH") === (PUT, Uri("/resource/yes"), `HTTP/1.1`, List(Host("x"), `Content-Length`(4)),
           "ABCD", "EFGH", false)
       }
-      "reject requests with Content-Length > Int.MaxSize" in {
+
+      "with a custom HTTP method" in {
+        parse {
+          """BOLT / HTTP/1.0
+            |
+            |"""
+        } === (BOLT, Uri("/"), `HTTP/1.0`, Nil, "", "", true)
+      }
+
+      "with Content-Length > Int.MaxSize if autochunking is enabled" in {
         val request =
           """PUT /resource/yes HTTP/1.1
             |Content-length:    2147483649
             |Host: x
             |
             |"""
-        val parser = new HttpRequestPartParser(ParserSettings(system).copy(autoChunkingThreshold = Long.MaxValue))()
-        parse(parser)(request) === (400: StatusCode, "Content-Length > Int.MaxSize not supported for non-(auto)-chunked requests")
+        val parser = newParser
+        parse(parser)(request) === (PUT, Uri("/resource/yes"), `HTTP/1.1`, List(Host("x"), `Content-Length`(2147483649L)), "", false)
       }
     }
 
@@ -196,6 +206,7 @@ class RequestParserSpec extends Specification {
           (GET, Uri("/data"), `HTTP/1.1`, List(`Content-Length`(25), Host("ping"), `Content-Type`(`application/pdf`)),
             "rest", false)
       }
+
       "request start if complete message is already available" in {
         val parser = newParser
         parse(parser)(start(25) + "rest1rest2rest3rest4rest5") ===
@@ -211,6 +222,7 @@ class RequestParserSpec extends Specification {
         parse(parser)("rest") === ("rest", "", "", false)
         ()
       }
+
       "request end" in {
         val parser = newParser
         parse(parser)(start(25) + "rest")
@@ -222,27 +234,6 @@ class RequestParserSpec extends Specification {
         parse(parser)("rest5GET /data HTTP/1.1") === ("rest5", "", "\0GET /data HTTP/1.1", false) // we synthesize a \0 to keep parsing going
         parse(parser)("\0GET /data HTTP/1.1") === ("", Nil, "GET /data HTTP/1.1", false) // next parse run produced end
         parse(parser)("GET /data HTTP/1.1") === Result.NeedMoreData // start of next request
-      }
-      "don't reject requests with Content-Length > Int.MaxSize" in {
-        val request =
-          """PUT /resource/yes HTTP/1.1
-            |Content-length:    2147483649
-            |Host: x
-            |
-            |"""
-        val parser = newParser
-        parse(parser)(request) === (PUT, Uri("/resource/yes"), `HTTP/1.1`, List(Host("x"), `Content-Length`(2147483649L)), "", false)
-      }
-      "reject requests with Content-Length > Long.MaxSize" in {
-        // content-length = (Long.MaxValue + 1) * 10, which is 0 when calculated overflow
-        val request =
-          """PUT /resource/yes HTTP/1.1
-            |Content-length: 92233720368547758080
-            |Host: x
-            |
-            |"""
-        val parser = newParser
-        parse(parser)(request) === (400: StatusCode, "Illegal `Content-Length` header value")
       }
     }
 
@@ -294,8 +285,8 @@ class RequestParserSpec extends Specification {
 
     "reject a request with" in {
       "an illegal HTTP method" in {
-        parse("get") === (NotImplemented, "Unsupported HTTP method")
-        parse("GETX") === (NotImplemented, "Unsupported HTTP method")
+        parse("get ") === (NotImplemented, "Unsupported HTTP method: get")
+        parse("GETX ") === (NotImplemented, "Unsupported HTTP method: GETX")
       }
 
       "two Content-Length headers" in {
@@ -345,6 +336,29 @@ class RequestParserSpec extends Specification {
              |
              |abc"""
         } === (BadRequest, "Illegal `Content-Length` header value")
+      }
+
+      "with Content-Length > Int.MaxSize if autochunking is disabled" in {
+        val request =
+          """PUT /resource/yes HTTP/1.1
+            |Content-length:    2147483649
+            |Host: x
+            |
+            |"""
+        val parser = new HttpRequestPartParser(ParserSettings(system).copy(autoChunkingThreshold = Long.MaxValue))()
+        parse(parser)(request) === (400: StatusCode, "Content-Length > Int.MaxSize not supported for non-(auto)-chunked requests")
+      }
+
+      "with Content-Length > Long.MaxSize" in {
+        // content-length = (Long.MaxValue + 1) * 10, which is 0 when calculated overflow
+        val request =
+          """PUT /resource/yes HTTP/1.1
+            |Content-length: 92233720368547758080
+            |Host: x
+            |
+            |"""
+        val parser = newParser
+        parse(parser)(request) === (400: StatusCode, "Illegal `Content-Length` header value")
       }
     }
   }

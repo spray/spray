@@ -16,6 +16,7 @@
 
 package spray.can.parsing
 
+import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import scala.annotation.tailrec
 import akka.util.CompactByteString
 import spray.http._
@@ -44,15 +45,26 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
   }
 
   def parseMethod(input: CompactByteString): Int = {
-    def badMethod = throw new ParsingException(NotImplemented, ErrorInfo("Unsupported HTTP method"))
+    @tailrec def parseCustomMethod(ix: Int = 0, sb: JStringBuilder = new JStringBuilder(16)): Int =
+      if (ix < 16) { // hard-coded maximum custom method length
+        byteChar(input, ix) match {
+          case ' ' ⇒
+            HttpMethods.getForKey(sb.toString) match {
+              case Some(m) ⇒ method = m; ix + 1
+              case None    ⇒ parseCustomMethod(Int.MaxValue, sb)
+            }
+          case c ⇒ parseCustomMethod(ix + 1, sb.append(c))
+        }
+      } else throw new ParsingException(NotImplemented, ErrorInfo("Unsupported HTTP method", sb.toString))
+
     @tailrec def parseMethod(meth: HttpMethod, ix: Int = 1): Int =
       if (ix == meth.value.length)
         if (byteChar(input, ix) == ' ') {
           method = meth
           ix + 1
-        } else badMethod
+        } else parseCustomMethod()
       else if (byteChar(input, ix) == meth.value.charAt(ix)) parseMethod(meth, ix + 1)
-      else badMethod
+      else parseCustomMethod()
 
     byteChar(input, 0) match {
       case 'G' ⇒ parseMethod(GET)
@@ -60,13 +72,14 @@ class HttpRequestPartParser(_settings: ParserSettings)(_headerParser: HttpHeader
         case 'O' ⇒ parseMethod(POST, 2)
         case 'U' ⇒ parseMethod(PUT, 2)
         case 'A' ⇒ parseMethod(PATCH, 2)
-        case _   ⇒ badMethod
+        case _   ⇒ parseCustomMethod()
       }
       case 'D' ⇒ parseMethod(DELETE)
       case 'H' ⇒ parseMethod(HEAD)
       case 'O' ⇒ parseMethod(OPTIONS)
       case 'T' ⇒ parseMethod(TRACE)
-      case _   ⇒ badMethod
+      case 'C' ⇒ parseMethod(CONNECT)
+      case _   ⇒ parseCustomMethod()
     }
   }
 

@@ -63,7 +63,7 @@ trait RequestRenderingComponent {
     def renderRequest(request: HttpRequest): Unit = {
       renderRequestStart(request)
       val bodyLength = request.entity.data.length
-      if (bodyLength > 0 || request.method.entityAccepted) r ~~ `Content-Length` ~~ bodyLength ~~ CrLf
+      if (bodyLength > 0 || request.method.isEntityAccepted) r ~~ `Content-Length` ~~ bodyLength ~~ CrLf
       r ~~ CrLf ~~ request.entity.data
     }
 
