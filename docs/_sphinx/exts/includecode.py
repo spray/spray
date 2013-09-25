@@ -78,9 +78,10 @@ class IncludeCode(Directive):
                 array = line.split("//", 1)
                 l = array[0].rstrip() if array[1].startswith("/") > 0 else array[0].strip()
                 res.append(l + '\n')
-            elif re.search("def "+re.escape(snippet)+"(?=[:(\[])", line):
+            elif re.search("(def|val) "+re.escape(snippet)+"(?=[:(\[])", line):
                 # match signature line from `def <snippet>` but without trailing `=`
                 start = line.find("def")
+                if start == -1: start = line.find("val")
                 end = line.rfind("=")
                 res.append(line[start:end] + '\n')
 
