@@ -24,7 +24,7 @@ import spray.io._
 import spray.can.Http
 import spray.util.{ Timestamp, PaddedAtomicLong }
 
-object StatsSupport {
+private object StatsSupport {
 
   class StatsHolder {
     val startTimestamp = Timestamp.now

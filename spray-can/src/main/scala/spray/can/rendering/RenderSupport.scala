@@ -19,7 +19,7 @@ package spray.can.rendering
 import spray.util._
 import spray.http._
 
-private[rendering] object RenderSupport {
+private object RenderSupport {
   val DefaultStatusLine = "HTTP/1.1 200 OK\r\n".getAsciiBytes
   val StatusLineStart = "HTTP/1.1 ".getAsciiBytes
   val Chunked = "chunked".getAsciiBytes

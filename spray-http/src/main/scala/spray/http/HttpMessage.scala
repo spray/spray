@@ -107,6 +107,16 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
       else if (erasure.isInstance(headers.head)) Some(headers.head.asInstanceOf[T]) else next(headers.tail)
     next(headers)
   }
+
+  def connectionCloseExpected: Boolean = HttpMessage.connectionCloseExpected(protocol, header[Connection])
+}
+
+object HttpMessage {
+  private[spray] def connectionCloseExpected(protocol: HttpProtocol, connectionHeader: Option[Connection]): Boolean =
+    protocol match {
+      case HttpProtocols.`HTTP/1.1` ⇒ connectionHeader.isDefined && connectionHeader.get.hasClose
+      case HttpProtocols.`HTTP/1.0` ⇒ connectionHeader.isEmpty || !connectionHeader.get.hasKeepAlive
+    }
 }
 
 /**
@@ -265,11 +275,6 @@ case class HttpResponse(status: StatusCode = StatusCodes.OK,
   def withHeaders(headers: List[HttpHeader]) = copy(headers = headers)
   def withEntity(entity: HttpEntity) = copy(entity = entity)
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) = copy(headers = headers, entity = entity)
-
-  def connectionCloseExpected: Boolean = protocol match {
-    case HttpProtocols.`HTTP/1.0` ⇒ headers.forall { case x: Connection if x.hasKeepAlive ⇒ false; case _ ⇒ true }
-    case HttpProtocols.`HTTP/1.1` ⇒ headers.exists { case x: Connection if x.hasClose ⇒ true; case _ ⇒ false }
-  }
 }
 
 /**

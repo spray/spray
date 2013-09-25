@@ -24,7 +24,7 @@ import spray.http._
 import HttpHeaders._
 import RenderSupport._
 
-trait RequestRenderingComponent {
+private[can] trait RequestRenderingComponent {
   def userAgent: Option[`User-Agent`]
 
   def renderRequestPart(r: Rendering, part: HttpRequestPart, serverAddress: InetSocketAddress,

@@ -25,7 +25,7 @@ import HttpProtocols._
 import HttpHeaders._
 import RenderSupport._
 
-trait ResponseRenderingComponent {
+private[can] trait ResponseRenderingComponent {
   def serverHeaderValue: String
   def chunklessStreaming: Boolean
   def transparentHeadRequests: Boolean

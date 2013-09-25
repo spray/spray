@@ -26,12 +26,12 @@ import spray.can.Http
 import spray.can.parsing.SSLSessionInfoSupport
 import spray.http.{ SetTimeoutTimeout, SetRequestTimeout }
 
-private[can] class HttpServerConnection(tcpConnection: ActorRef,
-                                        userLevelListener: ActorRef,
-                                        pipelineStage: RawPipelineStage[ServerFrontend.Context with SslTlsContext],
-                                        remoteAddress: InetSocketAddress,
-                                        localAddress: InetSocketAddress,
-                                        settings: ServerSettings)(implicit val sslEngineProvider: ServerSSLEngineProvider)
+private class HttpServerConnection(tcpConnection: ActorRef,
+                                   userLevelListener: ActorRef,
+                                   pipelineStage: RawPipelineStage[ServerFrontend.Context with SslTlsContext],
+                                   remoteAddress: InetSocketAddress,
+                                   localAddress: InetSocketAddress,
+                                   settings: ServerSettings)(implicit val sslEngineProvider: ServerSSLEngineProvider)
     extends ConnectionHandler { actor ⇒
 
   userLevelListener ! Http.Connected(remoteAddress, localAddress)
@@ -82,7 +82,7 @@ private[can] class HttpServerConnection(tcpConnection: ActorRef,
     }
 }
 
-private[can] object HttpServerConnection {
+private object HttpServerConnection {
 
   /**
    * The HttpServerConnection pipeline setup:

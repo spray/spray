@@ -26,7 +26,7 @@ import spray.http._
 import spray.io._
 import spray.util.Timestamp
 
-object ClientFrontend {
+private object ClientFrontend {
 
   def apply(initialRequestTimeout: Duration): PipelineStage = {
     new PipelineStage {

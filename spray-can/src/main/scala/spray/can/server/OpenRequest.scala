@@ -28,7 +28,7 @@ import spray.can.server.ServerFrontend.Context
 import akka.io.Tcp
 import spray.util.Timestamp
 
-sealed trait OpenRequest {
+private sealed trait OpenRequest {
   def context: ServerFrontend.Context
   def isEmpty: Boolean
   def request: HttpRequest
@@ -50,7 +50,7 @@ sealed trait OpenRequest {
   def handleClosed(ev: Http.ConnectionClosed)
 }
 
-trait OpenRequestComponent { component ⇒
+private trait OpenRequestComponent { component ⇒
   def context: ServerFrontend.Context
   def settings: ServerSettings
   def downstreamCommandPL: Pipeline[Command]
@@ -237,10 +237,10 @@ trait OpenRequestComponent { component ⇒
 
 }
 
-private[server] case class AckEventWithReceiver(ack: Any, receiver: ActorRef) extends Event
-private[server] case class PartAndSender(part: HttpResponsePart, sender: ActorRef)
+private case class AckEventWithReceiver(ack: Any, receiver: ActorRef) extends Event
+private case class PartAndSender(part: HttpResponsePart, sender: ActorRef)
 
-private[server] sealed trait RequestState
-private[server] case object WaitingForChunkedEnd extends RequestState
-private[server] case class WaitingForResponse(timestamp: Timestamp = Timestamp.now) extends RequestState
-private[server] case class WaitingForTimeoutResponse(timestamp: Timestamp = Timestamp.now) extends RequestState
+private sealed trait RequestState
+private case object WaitingForChunkedEnd extends RequestState
+private case class WaitingForResponse(timestamp: Timestamp = Timestamp.now) extends RequestState
+private case class WaitingForTimeoutResponse(timestamp: Timestamp = Timestamp.now) extends RequestState

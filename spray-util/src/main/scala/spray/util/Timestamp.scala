@@ -24,7 +24,8 @@ private[spray] object Timestamp {
   def never: Timestamp = new Timestamp(Long.MaxValue)
 
   implicit val timestampOrdering: Ordering[Timestamp] = new Ordering[Timestamp] {
-    def compare(x: Timestamp, y: Timestamp): Int = java.lang.Long.compare(x.timestampNanos, y.timestampNanos)
+    def compare(x: Timestamp, y: Timestamp): Int =
+      if (x.timestampNanos < y.timestampNanos) -1 else if (x.timestampNanos == y.timestampNanos) 0 else 1
   }
 }
 
