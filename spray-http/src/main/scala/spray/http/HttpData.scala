@@ -63,8 +63,6 @@ sealed abstract class HttpData {
    * CAUTION: Since this instance might point to bytes contained in an off-memory file
    * this method might cause the loading of a large amount of data into the JVM
    * heap (up to 2 GB!).
-   * If this instance is a `FileBytes` instance containing more than 2GB of data
-   * the method will throw an `IllegalArgumentException`.
    */
   def sliceBytes(offset: Long = 0, span: Int = length.toInt): ByteString
 
@@ -212,6 +210,7 @@ object HttpData {
       copyToArray(array)
       array
     }
+    def sliceBytes(offset: Long, span: Int): ByteString = slice(offset, span).toByteString
 
     def toChunkStream(maxChunkSize: Long): Stream[HttpData] = {
       require(maxChunkSize > 0, "chunkSize must be > 0")
@@ -234,14 +233,6 @@ object HttpData {
       require(sourceOffset >= 0, "sourceOffset must be >= 0 but is " + sourceOffset)
       if (sourceOffset < length)
         bytes.iterator.drop(sourceOffset.toInt).copyToArray(xs, targetOffset, span)
-    }
-    def sliceBytes(offset: Long, span: Int): ByteString = {
-      require(offset >= 0, "offset must be >= 0")
-      require(span >= 0, "span must be >= 0")
-      if (offset < length && span > 0)
-        if (offset > 0 || span < length) bytes.slice(offset.toInt, math.min(offset + span, Int.MaxValue).toInt)
-        else bytes
-      else ByteString.empty
     }
     def toByteString = bytes
     def slice(offset: Long, span: Long): HttpData = {
@@ -274,15 +265,6 @@ object HttpData {
           load()
         } finally input.close()
       }
-    }
-    def sliceBytes(offset: Long, span: Int): ByteString = {
-      require(offset >= 0, "offset must be >= 0")
-      require(span >= 0, "span must be >= 0")
-      if (offset < length && span > 0) {
-        val buf = new Array[Byte](math.min(length - offset, span).toInt)
-        copyToArray(buf, sourceOffset = offset)
-        createByteStringUnsafe(buf)
-      } else ByteString.empty
     }
     def toByteString = createByteStringUnsafe(toByteArray)
     def slice(offset: Long, span: Long): HttpData = {
@@ -335,8 +317,6 @@ object HttpData {
         rec()
       }
     }
-    def sliceBytes(offset: Long, span: Int): ByteString = slice(offset, span).toByteString
-
     def slice(offset: Long, span: Long): HttpData = {
       require(offset >= 0, "offset must be >= 0")
       require(span >= 0, "span must be >= 0")
