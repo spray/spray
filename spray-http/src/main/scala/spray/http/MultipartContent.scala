@@ -29,4 +29,18 @@ object MultipartContent {
 /**
  * Model for one part of a multipart message.
  */
-case class BodyPart(entity: HttpEntity, headers: List[HttpHeader] = Nil)
+case class BodyPart(entity: HttpEntity, headers: Seq[HttpHeader] = Nil) {
+  val name: Option[String] = dispositionParameterValue("name")
+
+  def filename: Option[String] = dispositionParameterValue("filename")
+  def disposition: Option[String] =
+    headers.collectFirst {
+      case disposition: HttpHeaders.`Content-Disposition` ⇒ disposition.dispositionType
+    }
+
+  def dispositionParameterValue(parameter: String): Option[String] =
+    headers.collectFirst {
+      case HttpHeaders.`Content-Disposition`("form-data", parameters) if parameters.contains(parameter) ⇒
+        parameters(parameter)
+    }
+}

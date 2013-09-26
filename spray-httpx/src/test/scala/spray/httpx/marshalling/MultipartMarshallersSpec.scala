@@ -17,6 +17,7 @@
 package spray.httpx.marshalling
 
 import java.util.Random
+import scala.collection.immutable.ListMap
 import org.specs2.mutable.Specification
 import spray.util._
 import spray.http._
@@ -25,7 +26,11 @@ import HttpCharsets._
 import HttpHeaders._
 
 class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
-  override protected val multipartBoundaryRandom = new Random(0) // fix for stable value
+
+  protected class FixedRandom extends Random {
+    override def nextBytes(array: Array[Byte]): Unit = "my-stable-boundary".getBytes("UTF-8").copyToArray(array)
+  }
+  override protected val multipartBoundaryRandom = new FixedRandom // fix for stable value
 
   sequential // required for stable random sequence
 
@@ -34,9 +39,9 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
     "correctly marshal to multipart content with one empty part" in {
       marshal(MultipartContent(Seq(BodyPart("")))) === Right {
         HttpEntity(
-          contentType = ContentType(`multipart/mixed` withBoundary "YLQguzhR2dR6y5M9vnA5m-bJ"),
-          string = """|--YLQguzhR2dR6y5M9vnA5m-bJ
-                     |--YLQguzhR2dR6y5M9vnA5m-bJ--""".stripMargin.replace(EOL, "\r\n"))
+          contentType = ContentType(`multipart/mixed` withBoundary randomBoundary),
+          string = s"""|--${randomBoundary}
+                     |--${randomBoundary}--""".stripMargin.replace(EOL, "\r\n"))
       }
     }
 
@@ -49,13 +54,13 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
               headers = `Content-Disposition`("form-data", Map("name" -> "email")) :: Nil))
         }
       } === Right {
-        HttpEntity(ContentType(`multipart/mixed` withBoundary "OvAdT7dw6YwDJfQdPrr4mG2n"),
-          """|--OvAdT7dw6YwDJfQdPrr4mG2n
+        HttpEntity(ContentType(`multipart/mixed` withBoundary randomBoundary),
+          s"""|--${randomBoundary}
             |Content-Disposition: form-data; name=email
             |Content-Type: text/plain; charset=UTF-8
             |
             |test@there.com
-            |--OvAdT7dw6YwDJfQdPrr4mG2n--""".stripMargin.replace(EOL, "\r\n"))
+            |--${randomBoundary}--""".stripMargin.replace(EOL, "\r\n"))
       }
     }
 
@@ -69,18 +74,18 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
               RawHeader("Content-Transfer-Encoding", "binary") :: Nil))
         }
       } === Right {
-        HttpEntity(ContentType(`multipart/mixed` withBoundary "K81NVUvwtUAjwptiTenvnC+T"),
-          """|--K81NVUvwtUAjwptiTenvnC+T
+        HttpEntity(ContentType(`multipart/mixed` withBoundary randomBoundary),
+          s"""|--${randomBoundary}
             |Content-Type: text/plain; charset=US-ASCII
             |
             |first part, with a trailing linebreak
             |
-            |--K81NVUvwtUAjwptiTenvnC+T
+            |--${randomBoundary}
             |Content-Transfer-Encoding: binary
             |Content-Type: application/octet-stream
             |
             |filecontent
-            |--K81NVUvwtUAjwptiTenvnC+T--""".stripMargin.replace(EOL, "\r\n"))
+            |--${randomBoundary}--""".stripMargin.replace(EOL, "\r\n"))
       }
     }
   }
@@ -88,21 +93,53 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
   "The MultipartFormDataMarshaller" should {
 
     "correctly marshal 'multipart/form-data' with two fields" in {
-      marshal(MultipartFormData(Map("surname" -> BodyPart("Mike"), "age" -> BodyPart(marshal(<int>42</int>).get)))) ===
+      marshal(MultipartFormData(ListMap("surname" -> BodyPart("Mike"), "age" -> BodyPart(marshal(<int>42</int>).get)))) ===
         Right {
           HttpEntity(
-            contentType = ContentType(`multipart/form-data` withBoundary "WA+a+wgbEuEHsegF8rT18PHQ"),
-            string = """|--WA+a+wgbEuEHsegF8rT18PHQ
+            contentType = ContentType(`multipart/form-data` withBoundary randomBoundary),
+            string = s"""|--${randomBoundary}
                         |Content-Disposition: form-data; name=surname
                         |Content-Type: text/plain; charset=UTF-8
                         |
                         |Mike
-                        |--WA+a+wgbEuEHsegF8rT18PHQ
+                        |--${randomBoundary}
                         |Content-Disposition: form-data; name=age
                         |Content-Type: text/xml; charset=UTF-8
                         |
                         |<int>42</int>
-                        |--WA+a+wgbEuEHsegF8rT18PHQ--""".stripMargin.replace(EOL, "\r\n"))
+                        |--${randomBoundary}--""".stripMargin.replace(EOL, "\r\n"))
+        }
+    }
+
+    "correctly marshal 'multipart/form-data' with two fields having a custom Content-Disposition" in {
+      marshal(MultipartFormData(Seq(
+        BodyPart(
+          HttpEntity(`text/csv`, "name,age\r\n\"John Doe\",20\r\n"),
+          List(`Content-Disposition`("form-data", Map("name" -> "attachment[0]", "filename" -> "attachment.csv")))),
+        BodyPart(
+          HttpEntity("name,age\r\n\"John Doe\",20\r\n".getBytes),
+          List(
+            `Content-Disposition`("form-data", Map("name" -> "attachment[1]", "filename" -> "attachment.csv")),
+            RawHeader("Content-Transfer-Encoding", "binary")))))) ===
+        Right {
+          HttpEntity(
+            contentType = ContentType(`multipart/form-data` withBoundary randomBoundary),
+            string = s"""|--${randomBoundary}
+                       |Content-Disposition: form-data; name="attachment[0]"; filename=attachment.csv
+                       |Content-Type: text/csv
+                       |
+                       |name,age
+                       |"John Doe",20
+                       |
+                       |--${randomBoundary}
+                       |Content-Disposition: form-data; name="attachment[1]"; filename=attachment.csv
+                       |Content-Transfer-Encoding: binary
+                       |Content-Type: application/octet-stream
+                       |
+                       |name,age
+                       |"John Doe",20
+                       |
+                       |--${randomBoundary}--""".stripMargin.replace(EOL, "\r\n"))
         }
     }
 
