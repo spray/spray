@@ -103,8 +103,9 @@ class FormDataUnmarshallersSpec extends Specification {
            |
            |filecontent
            |--XYZABC--""".stripMargin).as[MultipartFormData].get.fields.map {
-          case part @ BodyPart(entity, _) ⇒ part.name.get + ": " + entity.as[String].get
-        }.mkString("|") === "email: test@there.com|userfile: filecontent"
+          case part @ BodyPart(entity, _) ⇒
+            part.name.get + ": " + entity.as[String].get + part.filename.map(",filename: " + _).getOrElse("")
+        }.mkString("|") === "email: test@there.com|userfile: filecontent,filename: test.dat"
     }
     "reject illegal multipart content" in {
       val Left(MalformedContent(msg, _)) = HttpEntity(`multipart/form-data` withBoundary "XYZABC", "--noboundary--").as[MultipartFormData]
