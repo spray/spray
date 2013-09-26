@@ -40,6 +40,13 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
   def inspect: String = s"Uri(scheme=$scheme, authority=$authority, path=$path, query=$query, fragment=$fragment)"
 
   /**
+   * The effective port of this Uri given the currently set authority and scheme values.
+   * If the authority has an explicitly set port (i.e. a non-zero port value) then this port
+   * is the effective port. Otherwise the default port for the current scheme is returned.
+   */
+  def effectivePort: Int = if (authority.port != 0) authority.port else defaultPorts(scheme)
+
+  /**
    * Returns a copy of this Uri with the given components.
    */
   def copy(scheme: String = scheme, authority: Authority = authority, path: Path = path,
@@ -66,9 +73,9 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
   def withAuthority(host: Host, port: Int, userinfo: String = ""): Uri = copy(authority = Authority(host, port, userinfo))
 
   /**
-   * Returns a copy of this Uri with a Authority created using the given host, port and userinfo.
+   * Returns a copy of this Uri with a Authority created using the given host and port.
    */
-  def withAuthority(host: String, port: Int, userinfo: String): Uri = copy(authority = Authority(Host(host), port, userinfo))
+  def withAuthority(host: String, port: Int): Uri = copy(authority = Authority(Host(host), port))
 
   /**
    * Returns a copy of this Uri with the given host.
