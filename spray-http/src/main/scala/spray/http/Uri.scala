@@ -438,7 +438,8 @@ object Uri {
           case Query.Cons(key, value, tail) ⇒
             if (q ne this) r ~~ '&'
             enc(key)
-            if (!value.isEmpty) { r ~~ '='; enc(value) }
+            if (value ne Query.EmptyValue) r ~~ '='
+            enc(value)
             append(tail)
           case Query.Raw(value) ⇒ r ~~ value
         }
@@ -447,6 +448,9 @@ object Uri {
     override def newBuilder: mutable.Builder[(String, String), Query] = Query.newBuilder
   }
   object Query {
+    /** A special empty String value which will be rendered without a '=' after the key. */
+    val EmptyValue: String = new String(Array.empty[Char])
+
     /**
      * Parses the given String into a Query instance.
      * Note that this method will never return Query.Empty, even for the empty String.

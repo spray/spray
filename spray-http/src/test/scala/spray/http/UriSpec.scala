@@ -361,8 +361,8 @@ class UriSpec extends Specification {
       // queries
       normalize("?") === "?"
       normalize("?key") === "?key"
-      normalize("?key=") === "?key" // our query model cannot discriminate between these two inputs
-      normalize("?key=&a=b") === "?key&a=b" // our query model cannot discriminate between these two inputs
+      normalize("?key=") === "?key="
+      normalize("?key=&a=b") === "?key=&a=b"
       normalize("?key={}&a=[]") === "?key=%7B%7D&a=%5B%5D"
       normalize("?key={}&a=[]", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
       normalize("?=value") === "?=value"
