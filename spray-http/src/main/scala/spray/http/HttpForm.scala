@@ -42,7 +42,7 @@ object FormData {
  */
 case class MultipartFormData(fields: Seq[BodyPart]) extends HttpForm {
   type FieldType = BodyPart
-  def get(partName: String): Option[BodyPart] = fields.find(_.getName == Some(partName))
+  def get(partName: String): Option[BodyPart] = fields.find(_.name.exists(_ == partName))
 }
 
 object MultipartFormData {

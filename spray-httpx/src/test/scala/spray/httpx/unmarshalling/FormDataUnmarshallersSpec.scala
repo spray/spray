@@ -103,7 +103,7 @@ class FormDataUnmarshallersSpec extends Specification {
            |
            |filecontent
            |--XYZABC--""".stripMargin).as[MultipartFormData].get.fields.map {
-          case part @ BodyPart(entity, _) ⇒ part.getName.get + ": " + entity.as[String].get
+          case part @ BodyPart(entity, _) ⇒ part.name.get + ": " + entity.as[String].get
         }.mkString("|") === "email: test@there.com|userfile: filecontent"
     }
     "reject illegal multipart content" in {

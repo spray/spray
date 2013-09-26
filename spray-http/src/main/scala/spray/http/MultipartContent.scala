@@ -30,9 +30,11 @@ object MultipartContent {
  * Model for one part of a multipart message.
  */
 case class BodyPart(entity: HttpEntity, headers: Seq[HttpHeader] = Nil) {
-  def getNameOrEmpty: String = getName.getOrElse("")
-  def getName: Option[String] = headers.collectFirst {
-    case HttpHeaders.`Content-Disposition`("form-data", parameters) if parameters.contains("name") ⇒
-      parameters("name")
-  }
+  val name: Option[String] = dispositionParameterValue("name")
+
+  def dispositionParameterValue(parameter: String): Option[String] =
+    headers.collectFirst {
+      case HttpHeaders.`Content-Disposition`("form-data", parameters) if parameters.contains(parameter) ⇒
+        parameters(parameter)
+    }
 }
