@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,8 +85,8 @@ trait CachingDirectives {
     }
   }
 
-  def routeCache(maxCapacity: Int = 500, initialCapacity: Int = 16, timeToLive: Duration = Duration.Zero,
-                 timeToIdle: Duration = Duration.Zero): Cache[RouteResponse] =
+  def routeCache(maxCapacity: Int = 500, initialCapacity: Int = 16, timeToLive: Duration = Duration.Inf,
+                 timeToIdle: Duration = Duration.Inf): Cache[RouteResponse] =
     LruCache(maxCapacity, initialCapacity, timeToLive, timeToIdle)
 }
 

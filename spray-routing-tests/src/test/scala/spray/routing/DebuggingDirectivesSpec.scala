@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
     "produce a proper log message for incoming requests" in {
       Get("/hello") ~> logRequest("1") { completeOk } ~> check {
         response === Ok
-        debugMsg === "1: HttpRequest(GET,http://example.com/hello,List(),EmptyEntity,HTTP/1.1)\n"
+        debugMsg === "1: HttpRequest(GET,http://example.com/hello,List(),Empty,HTTP/1.1)\n"
       }
     }
   }
@@ -53,7 +53,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
       resetDebugMsg()
       Get("/hello") ~> logResponse("2") { completeOk } ~> check {
         response === Ok
-        debugMsg === "2: HttpResponse(200 OK,EmptyEntity,List(),HTTP/1.1)\n"
+        debugMsg === "2: HttpResponse(200 OK,Empty,List(),HTTP/1.1)\n"
       }
     }
   }
@@ -64,8 +64,8 @@ class DebuggingDirectivesSpec extends RoutingSpec {
       Get("/hello") ~> logRequestResponse("3") { completeOk } ~> check {
         response === Ok
         debugMsg === """|3: Response for
-                        |  Request : HttpRequest(GET,http://example.com/hello,List(),EmptyEntity,HTTP/1.1)
-                        |  Response: HttpResponse(200 OK,EmptyEntity,List(),HTTP/1.1)
+                        |  Request : HttpRequest(GET,http://example.com/hello,List(),Empty,HTTP/1.1)
+                        |  Response: HttpResponse(200 OK,Empty,List(),HTTP/1.1)
                         |""".stripMargin.replace(EOL, "\n")
       }
     }

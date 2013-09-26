@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import spray.can.TestSupport._
 import spray.can.Http
 
 class ResponseParsingSpec extends Specification with Specs2PipelineStageTest {
-  val stage = ResponseParsing(defaultParserSettings)
+  def stage = ResponseParsing(defaultParserSettings)
 
   "The ResponseParsing PipelineStage" should {
 

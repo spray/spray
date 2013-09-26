@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ class ResponseRenderingSpec extends Specification with Specs2PipelineStageTest {
         """HTTP/1.1 200 OK
           |Server: spray/1.0
           |Date: XXXX
-          |Content-Type: text/plain
+          |Content-Type: text/plain; charset=UTF-8
           |Content-Length: 12
           |
           |Some Message"""
@@ -64,7 +64,7 @@ class ResponseRenderingSpec extends Specification with Specs2PipelineStageTest {
         """HTTP/1.1 200 OK
           |Server: spray/1.0
           |Date: XXXX
-          |Content-Type: text/plain
+          |Content-Type: text/plain; charset=UTF-8
           |Connection: close
           |Content-Length: 12
           |

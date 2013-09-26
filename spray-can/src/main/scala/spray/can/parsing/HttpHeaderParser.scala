@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -379,7 +379,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
   def formatSizes: String = s"$nodeCount nodes, ${branchDataCount / 3} nodeData rows, $valueCount values"
 }
 
-private[parsing] object HttpHeaderParser {
+private object HttpHeaderParser {
   import SpecializedHeaderValueParsers._
 
   object EmptyHeader extends HttpHeader {

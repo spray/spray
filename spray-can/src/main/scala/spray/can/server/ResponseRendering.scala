@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,12 @@
 
 package spray.can.server
 
-import akka.io.Tcp
-import spray.can.rendering.{ ByteStringRendering, ResponseRenderingComponent, ResponsePartRenderingContext }
-import spray.io._
 import spray.can.Http
+import spray.http.HttpDataRendering
+import spray.can.rendering._
+import spray.io._
 
-object ResponseRendering {
+private object ResponseRendering {
 
   def apply(settings: ServerSettings): PipelineStage =
     new PipelineStage with ResponseRenderingComponent {
@@ -33,10 +33,9 @@ object ResponseRendering {
         new Pipelines {
           val commandPipeline: CPL = {
             case ctx: ResponsePartRenderingContext ⇒
-              val rendering = new ByteStringRendering(settings.responseSizeHint)
+              val rendering = new HttpDataRendering(settings.responseHeaderSizeHint)
               val close = renderResponsePartRenderingContext(rendering, ctx, context.log)
-              val data = rendering.get
-              if (!data.isEmpty) commandPL(Tcp.Write(data, ctx.ack))
+              commandPL(toTcpWriteCommand(rendering.get, ctx.ack))
               if (close) commandPL(Http.Close)
 
             case cmd ⇒ commandPL(cmd)

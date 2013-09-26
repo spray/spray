@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
- * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +23,7 @@ sealed abstract class StatusCode extends LazyValueBytesRenderable {
   def defaultMessage: String
   def isSuccess: Boolean
   def isFailure: Boolean
+  def allowsEntity: Boolean
 }
 
 object StatusCode {
@@ -38,14 +38,18 @@ sealed abstract class HttpSuccess extends StatusCode {
 sealed abstract class HttpFailure extends StatusCode {
   def isSuccess = false
   def isFailure = true
+  def allowsEntity = true
 }
 
 object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   
   // format: OFF
-  case class Informational private[StatusCodes] (intValue: Int)(val reason: String, val defaultMessage: String) extends HttpSuccess
-  case class Success       private[StatusCodes] (intValue: Int)(val reason: String, val defaultMessage: String) extends HttpSuccess
-  case class Redirection   private[StatusCodes] (intValue: Int)(val reason: String, val defaultMessage: String, val htmlTemplate: String) extends HttpSuccess
+  case class Informational private[StatusCodes] (intValue: Int)(val reason: String,
+                                                                val defaultMessage: String) extends HttpSuccess { def allowsEntity = false }
+  case class Success       private[StatusCodes] (intValue: Int)(val reason: String, val defaultMessage: String,
+                                                                val allowsEntity: Boolean = true) extends HttpSuccess
+  case class Redirection   private[StatusCodes] (intValue: Int)(val reason: String, val defaultMessage: String,
+                                                                val htmlTemplate: String, val allowsEntity: Boolean = true) extends HttpSuccess
   case class ClientError   private[StatusCodes] (intValue: Int)(val reason: String, val defaultMessage: String) extends HttpFailure
   case class ServerError   private[StatusCodes] (intValue: Int)(val reason: String, val defaultMessage: String) extends HttpFailure
   
@@ -57,6 +61,8 @@ object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   import ClientError  .{apply => c}
   import ServerError  .{apply => e}
 
+  // main source: http://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+
   val Continue           = reg(i(100)("Continue", "The server has received the request headers, and the client should proceed to send the request body."))
   val SwitchingProtocols = reg(i(101)("Switching Protocols", "The server is switching protocols, because the client requested the switch."))
   val Processing         = reg(i(102)("Processing", "The server is processing the request, but no response is available yet."))
@@ -65,7 +71,7 @@ object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   val Created                     = reg(s(201)("Created", "The request has been fulfilled and resulted in a new resource being created."))
   val Accepted                    = reg(s(202)("Accepted", "The request has been accepted for processing, but the processing has not been completed."))
   val NonAuthoritativeInformation = reg(s(203)("Non-Authoritative Information", "The server successfully processed the request, but is returning information that may be from another source."))
-  val NoContent                   = reg(s(204)("No Content", ""))
+  val NoContent                   = reg(s(204)("No Content", "", allowsEntity = false))
   val ResetContent                = reg(s(205)("Reset Content", "The server successfully processed the request, but is not returning any content."))
   val PartialContent              = reg(s(206)("Partial Content", "The server is delivering only part of the resource due to a range header sent by the client."))
   val MultiStatus                 = reg(s(207)("Multi-Status", "The message body that follows is an XML message and can contain a number of separate response codes, depending on how many sub-requests were made."))
@@ -76,7 +82,7 @@ object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   val MovedPermanently  = reg(r(301)("Moved Permanently", "This and all future requests should be directed to the given URI.", "This and all future requests should be directed to <a href=\"%s\">this URI</a>."))
   val Found             = reg(r(302)("Found", "The resource was found, but at a different URI.", "The requested resource temporarily resides under <a href=\"%s\">this URI</a>."))
   val SeeOther          = reg(r(303)("See Other", "The response to the request can be found under another URI using a GET method.", "The response to the request can be found under <a href=\"%s\">this URI</a> using a GET method."))
-  val NotModified       = reg(r(304)("Not Modified", "The resource has not been modified since last requested.", ""))
+  val NotModified       = reg(r(304)("Not Modified", "The resource has not been modified since last requested.", "", allowsEntity = false))
   val UseProxy          = reg(r(305)("Use Proxy", "This single request is to be repeated via the proxy given by the Location field.", "This single request is to be repeated via the proxy under <a href=\"%s\">this URI</a>."))
   val TemporaryRedirect = reg(r(307)("Temporary Redirect", "The request should be repeated with another URI, but future requests can still use the original URI.", "The request should be repeated with <a href=\"%s\">this URI</a>, but future requests can still use the original URI."))
   val PermanentRedirect = reg(r(308)("Permanent Redirect", "The request, and all future requests should be repeated using another URI.", "The request, and all future requests should be repeated using <a href=\"%s\">this URI</a>."))

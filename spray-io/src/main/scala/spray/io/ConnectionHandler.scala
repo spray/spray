@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ trait ConnectionHandler extends Actor with ActorLogging {
 
   //# final-stages
   def baseCommandPipeline(tcpConnection: ActorRef): Pipeline[Command] = {
-    case x: Tcp.Write ⇒ tcpConnection ! x
+    case x: Tcp.WriteCommand ⇒ tcpConnection ! x
     case Pipeline.Tell(receiver, msg, sender) ⇒ receiver.tell(msg, sender)
     case x: Tcp.CloseCommand ⇒ tcpConnection ! x
     case x @ (Tcp.SuspendReading | Tcp.ResumeReading | Tcp.ResumeWriting) ⇒ tcpConnection ! x

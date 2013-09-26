@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -131,7 +131,7 @@ class ExpiringLruCacheSpec extends Specification with NoTimeConversions {
   step(system.shutdown())
 
   def lruCache[T](maxCapacity: Int = 500, initialCapacity: Int = 16,
-                  timeToLive: Duration = Duration.Zero, timeToIdle: Duration = Duration.Zero) =
-    new ExpiringLruCache[T](maxCapacity, initialCapacity, timeToLive.toMillis, timeToIdle.toMillis)
+                  timeToLive: Duration = Duration.Inf, timeToIdle: Duration = Duration.Inf) =
+    new ExpiringLruCache[T](maxCapacity, initialCapacity, timeToLive, timeToIdle)
 
 }

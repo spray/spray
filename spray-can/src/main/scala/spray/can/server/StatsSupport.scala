@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,12 +22,12 @@ import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.io._
 import spray.can.Http
-import spray.util.PaddedAtomicLong
+import spray.util.{ Timestamp, PaddedAtomicLong }
 
-object StatsSupport {
+private object StatsSupport {
 
   class StatsHolder {
-    val startTimestamp = System.currentTimeMillis
+    val startTimestamp = Timestamp.now
     val requestStarts = new PaddedAtomicLong
     val responseStarts = new PaddedAtomicLong
     val maxOpenRequests = new PaddedAtomicLong
@@ -57,7 +57,7 @@ object StatsSupport {
     }
 
     def toStats = Stats(
-      uptime = (System.currentTimeMillis - startTimestamp) millis span,
+      uptime = (Timestamp.now - startTimestamp).asInstanceOf[FiniteDuration],
       totalRequests = requestStarts.get,
       openRequests = requestStarts.get - responseStarts.get,
       maxOpenRequests = maxOpenRequests.get,

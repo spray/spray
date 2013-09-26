@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -99,12 +99,12 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
             contentType = ContentType(`multipart/form-data` withBoundary randomBoundary),
             string = s"""|--${randomBoundary}
                         |Content-Disposition: form-data; name=surname
-                        |Content-Type: text/plain
+                        |Content-Type: text/plain; charset=UTF-8
                         |
                         |Mike
                         |--${randomBoundary}
                         |Content-Disposition: form-data; name=age
-                        |Content-Type: text/xml
+                        |Content-Type: text/xml; charset=UTF-8
                         |
                         |<int>42</int>
                         |--${randomBoundary}--""".stripMargin.replace(EOL, "\r\n"))

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,7 +79,7 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
       serverHandler.reply(MessageChunk("234"))
       serverHandler.reply(MessageChunk("345"))
       serverHandler.reply(ChunkedMessageEnd)
-      probe.expectMsgType[ChunkedResponseStart].response.entity === EmptyEntity
+      probe.expectMsgType[ChunkedResponseStart].response.entity === HttpEntity.Empty
       probe.expectMsg(MessageChunk("yeah"))
       probe.expectMsg(MessageChunk("234"))
       probe.expectMsg(MessageChunk("345"))

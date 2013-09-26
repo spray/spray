@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import HttpProtocols._
 import HttpHeaders._
 import RenderSupport._
 
-trait ResponseRenderingComponent {
+private[can] trait ResponseRenderingComponent {
   def serverHeaderValue: String
   def chunklessStreaming: Boolean
   def transparentHeadRequests: Boolean
@@ -73,8 +73,8 @@ trait ResponseRenderingComponent {
       if (status eq StatusCodes.OK) r ~~ DefaultStatusLine else r ~~ StatusLineStart ~~ status ~~ CrLf
       r ~~ serverAndDateHeader
       entity match {
-        case HttpBody(contentType, _) ⇒ r ~~ `Content-Type` ~~ contentType ~~ CrLf
-        case EmptyEntity              ⇒
+        case HttpEntity.NonEmpty(ContentTypes.NoContentType, _) | HttpEntity.Empty ⇒ // don't render Content-Type header
+        case HttpEntity.NonEmpty(contentType, _)                                   ⇒ r ~~ `Content-Type` ~~ contentType ~~ CrLf
       }
       renderHeaders(headers)()
     }
@@ -95,9 +95,9 @@ trait ResponseRenderingComponent {
         }
 
       // don't set a Content-Length header for non-keep-alive HTTP/1.0 responses (rely on body end by connection close)
-      if (response.protocol == `HTTP/1.1` || !close) r ~~ `Content-Length` ~~ entity.buffer.length ~~ CrLf
+      if (response.protocol == `HTTP/1.1` || !close) r ~~ `Content-Length` ~~ entity.data.length ~~ CrLf
       r ~~ CrLf
-      if (entity.buffer.length > 0 && ctx.requestMethod != HttpMethods.HEAD) r ~~ entity.buffer
+      if (entity.nonEmpty && ctx.requestMethod != HttpMethods.HEAD) r ~~ entity.data
       close
     }
 
@@ -105,9 +105,11 @@ trait ResponseRenderingComponent {
       renderResponseStart(response)
       if (!chunkless) r ~~ `Transfer-Encoding` ~~ Chunked ~~ CrLf
       r ~~ CrLf
-      if (ctx.requestMethod != HttpMethods.HEAD && response.entity.buffer.length > 0) {
-        if (chunkless) r ~~ response.entity.buffer else r ~~ MessageChunk(response.entity.buffer)
-      }
+      if (ctx.requestMethod != HttpMethods.HEAD)
+        response.entity match {
+          case HttpEntity.Empty             ⇒ // nothing to do
+          case HttpEntity.NonEmpty(_, data) ⇒ if (chunkless) r ~~ data else r ~~ MessageChunk(data)
+        }
       false
     }
 
@@ -118,7 +120,7 @@ trait ResponseRenderingComponent {
       case x: ChunkedResponseStart ⇒ renderChunkedResponseStart(x.response, chunkless)
       case x: MessageChunk ⇒
         if (ctx.requestMethod != HttpMethods.HEAD)
-          if (chunkless) r ~~ x.body else r ~~ x
+          if (chunkless) r ~~ x.data else r ~~ x
         false
       case x: ChunkedMessageEnd ⇒
         if (ctx.requestMethod == HttpMethods.HEAD) ctx.closeAfterResponseCompletion

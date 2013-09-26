@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import scala.annotation.tailrec
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
 
 // TODO: replace with spray.http.parser.CharMask
-private[parsing] object CharUtils {
+private object CharUtils {
   // compile time constants
   private final val LOWER_ALPHA = 0x01
   private final val UPPER_ALPHA = 0x02

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,4 +92,7 @@ class PimpedString(underlying: String) {
    */
   def secure_==(other: String): Boolean = getAsciiBytes secure_== other.getAsciiBytes
 
+  def startsWith(c: Char) = underlying.nonEmpty && underlying.charAt(0) == c
+
+  def endsWith(c: Char) = underlying.nonEmpty && underlying.charAt(underlying.length - 1) == c
 }

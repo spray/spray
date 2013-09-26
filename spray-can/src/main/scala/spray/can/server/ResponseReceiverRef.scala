@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import spray.io.Command
 import spray.http._
 import spray.can.Http
 
-object ResponseReceiverRef {
+private object ResponseReceiverRef {
   private val responseStateOffset = Unsafe.instance.objectFieldOffset(
     classOf[ResponseReceiverRef].getDeclaredField("_responseStateDoNotCallMeDirectly"))
 
@@ -84,4 +84,4 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
   private def requestInfo = openRequest.request.method.toString + " request to '" + openRequest.request.uri + '\''
 }
 
-private[server] case class Response(openRequest: OpenRequest, cmd: Command) extends Command
+private case class Response(openRequest: OpenRequest, cmd: Command) extends Command

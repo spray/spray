@@ -23,15 +23,15 @@ import akka.actor._
  * stable and ready for production use.
  *
  * For a full description of the design and philosophy behind this IO
- * implementation please refer to {@see <a href="http://doc.akka.io/">the Akka online documentation</a>}.
+ * implementation please refer to <a href="http://doc.akka.io/">the Akka online documentation</a>.
  *
- * In order to open an outbound connection send a [[Tcp.Connect]] message
- * to the [[TcpExt#manager]].
+ * In order to open an outbound connection send a [[akka.io.Tcp.Connect]] message
+ * to the [[akka.io.TcpExt#manager]].
  *
- * In order to start listening for inbound connetions send a [[Tcp.Bind]]
- * message to the [[TcpExt#manager]].
+ * In order to start listening for inbound connetions send a [[akka.io.Tcp.Bind]]
+ * message to the [[akka.io.TcpExt#manager]].
  *
- * The Java API for generating TCP commands is available at [[TcpMessage]].
+ * The Java API for generating TCP commands is available at [[akka.io.TcpMessage]].
  */
 object Tcp extends ExtensionKey[TcpExt] {
 
@@ -43,7 +43,7 @@ object Tcp extends ExtensionKey[TcpExt] {
   /**
    * Scala API: this object contains all applicable socket options for TCP.
    *
-   * For the Java API see [[TcpSO]].
+   * For the Java API see [[akka.io.TcpSO]].
    */
   object SO extends Inet.SoForwarders {
 
@@ -86,7 +86,7 @@ object Tcp extends ExtensionKey[TcpExt] {
   }
 
   /**
-   * The common interface for [[Command]] and [[Event]].
+   * The common interface for [[akka.io.Command]] and [[akka.io.Tcp.Event]].
    */
   sealed trait Message
 
@@ -101,13 +101,13 @@ object Tcp extends ExtensionKey[TcpExt] {
 
   /**
    * The Connect message is sent to the TCP manager actor, which is obtained via
-   * [[TcpExt#manager]]. Either the manager replies with a [[CommandFailed]]
-   * or the actor handling the new connection replies with a [[Connected]]
+   * [[akka.io.Tcp.TcpExt#manager]]. Either the manager replies with a [[akka.io.Tcp.CommandFailed]]
+   * or the actor handling the new connection replies with a [[akka.io.Tcp.Connected]]
    * message.
    *
    * @param remoteAddress is the address to connect to
    * @param localAddress optionally specifies a specific address to bind to
-   * @param options Please refer to the [[SO]] object for a list of all supported options.
+   * @param options Please refer to the [[akka.io.Tcp.SO]] object for a list of all supported options.
    */
   case class Connect(remoteAddress: InetSocketAddress,
                      localAddress: Option[InetSocketAddress] = None,
@@ -116,22 +116,22 @@ object Tcp extends ExtensionKey[TcpExt] {
 
   /**
    * The Bind message is send to the TCP manager actor, which is obtained via
-   * [[TcpExt#manager]] in order to bind to a listening socket. The manager
-   * replies either with a [[CommandFailed]] or the actor handling the listen
-   * socket replies with a [[Bound]] message. If the local port is set to 0 in
-   * the Bind message, then the [[Bound]] message should be inspected to find
+   * [[akka.io.Tcp.TcpExt#manager]] in order to bind to a listening socket. The manager
+   * replies either with a [[akka.io.Tcp.CommandFailed]] or the actor handling the listen
+   * socket replies with a [[akka.io.Tcp.Bound]] message. If the local port is set to 0 in
+   * the Bind message, then the [[akka.io.Tcp.Bound]] message should be inspected to find
    * the actual port which was bound to.
    *
    * @param handler The actor which will receive all incoming connection requests
-   *                in the form of [[Connected]] messages.
+   *                in the form of [[akka.io.Tcp.Connected]] messages.
    *
    * @param localAddress The socket address to bind to; use port zero for
-   *                automatic assignment (i.e. an ephemeral port, see [[Bound]])
+   *                automatic assignment (i.e. an ephemeral port, see [[akka.io.Tcp.Bound]])
    *
    * @param backlog This specifies the number of unaccepted connections the O/S
    *                kernel will hold for this port before refusing connections.
    *
-   * @param options Please refer to the [[SO]] object for a list of all supported options.
+   * @param options Please refer to the [[akka.io.Tcp.SO]] object for a list of all supported options.
    */
   case class Bind(handler: ActorRef,
                   localAddress: InetSocketAddress,
@@ -140,7 +140,7 @@ object Tcp extends ExtensionKey[TcpExt] {
 
   /**
    * This message must be sent to a TCP connection actor after receiving the
-   * [[Connected]] message. The connection will not read any data from the
+   * [[akka.io.Tcp.Connected]] message. The connection will not read any data from the
    * socket until this message is received, because this message defines the
    * actor which will receive all inbound data.
    *
@@ -149,19 +149,19 @@ object Tcp extends ExtensionKey[TcpExt] {
    *
    * @param keepOpenOnPeerClosed If this is set to true then the connection
    *                is not automatically closed when the peer closes its half,
-   *                requiring an explicit [[Closed]] from our side when finished.
+   *                requiring an explicit [[akka.io.Tcp.Closed]] from our side when finished.
    *
    * @param useResumeWriting If this is set to true then the connection actor
-   *                will refuse all further writes after issuing a [[CommandFailed]]
-   *                notification until [[ResumeWriting]] is received. This can
+   *                will refuse all further writes after issuing a [[akka.io.Tcp.CommandFailed]]
+   *                notification until [[akka.io.Tcp.ResumeWriting]] is received. This can
    *                be used to implement NACK-based write backpressure.
    */
   case class Register(handler: ActorRef, keepOpenOnPeerClosed: Boolean = false, useResumeWriting: Boolean = true) extends Command
 
   /**
    * In order to close down a listening socket, send this message to that socket’s
-   * actor (that is the actor which previously had sent the [[Bound]] message). The
-   * listener socket actor will reply with a [[Unbound]] message.
+   * actor (that is the actor which previously had sent the [[akka.io.Tcp.Bound]] message). The
+   * listener socket actor will reply with a [[akka.io.Tcp.Unbound]] message.
    */
   case object Unbind extends Command
 
@@ -179,7 +179,7 @@ object Tcp extends ExtensionKey[TcpExt] {
   /**
    * A normal close operation will first flush pending writes and then close the
    * socket. The sender of this command and the registered handler for incoming
-   * data will both be notified once the socket is closed using a [[Closed]]
+   * data will both be notified once the socket is closed using a [[akka.io.Tcp.Closed]]
    * message.
    */
   case object Close extends CloseCommand {
@@ -194,7 +194,7 @@ object Tcp extends ExtensionKey[TcpExt] {
    * A confirmed close operation will flush pending writes and half-close the
    * connection, waiting for the peer to close the other half. The sender of this
    * command and the registered handler for incoming data will both be notified
-   * once the socket is closed using a [[ConfirmedClosed]] message.
+   * once the socket is closed using a [[akka.io.Tcp.ConfirmedClosed]] message.
    */
   case object ConfirmedClose extends CloseCommand {
     /**
@@ -209,7 +209,7 @@ object Tcp extends ExtensionKey[TcpExt] {
    * command to the O/S kernel which should result in a TCP_RST packet being sent
    * to the peer. The sender of this command and the registered handler for
    * incoming data will both be notified once the socket is closed using a
-   * [[Aborted]] message.
+   * [[akka.io.Tcp.Aborted]] message.
    */
   case object Abort extends CloseCommand {
     /**
@@ -220,23 +220,35 @@ object Tcp extends ExtensionKey[TcpExt] {
   }
 
   /**
-   * Each [[WriteCommand]] can optionally request a positive acknowledgment to be sent
-   * to the commanding actor. If such notification is not desired the [[WriteCommand#ack]]
+   * Each [[akka.io.Tcp.WriteCommand]] can optionally request a positive acknowledgment to be sent
+   * to the commanding actor. If such notification is not desired the [[akka.io.Tcp.WriteCommand#ack]]
    * must be set to an instance of this class. The token contained within can be used
-   * to recognize which write failed when receiving a [[CommandFailed]] message.
+   * to recognize which write failed when receiving a [[akka.io.Tcp.CommandFailed]] message.
    */
   case class NoAck(token: Any) extends Event
 
   /**
-   * Default [[NoAck]] instance which is used when no acknowledgment information is
+   * Default [[akka.io.Tcp.NoAck]] instance which is used when no acknowledgment information is
    * explicitly provided. Its “token” is `null`.
    */
   object NoAck extends NoAck(null)
 
   /**
-   * Common interface for all write commands, currently [[Write]] and [[WriteFile]].
+   * Common interface for all write commands, i.e. [[akka.io.Tcp.Write]], [[akka.io.Tcp.WriteFile]]
+   * and [[akka.io.Tcp.CompoundWrite]]
    */
-  sealed trait WriteCommand extends Command {
+  sealed abstract class WriteCommand extends Command {
+    /**
+     * Prepends this command with another `Write` or `WriteFile` to form
+     * a `CompoundWrite`.
+     */
+    def +:(other: SimpleWriteCommand): CompoundWrite = CompoundWrite(other, this)
+  }
+
+  /**
+   * Common supertype of [[akka.io.Tcp.Write]] and [[akka.io.Tcp.WriteFile]].
+   */
+  sealed abstract class SimpleWriteCommand extends WriteCommand {
     require(ack != null, "ack must be non-null. Use NoAck if you don't want acks.")
 
     /**
@@ -246,22 +258,22 @@ object Tcp extends ExtensionKey[TcpExt] {
 
     /**
      * An acknowledgment is only sent if this write command “wants an ack”, which is
-     * equivalent to the [[#ack]] token not being a of type [[NoAck]].
+     * equivalent to the [[akka.io.Tcp.#ack]] token not being a of type [[akka.io.Tcp.NoAck]].
      */
     def wantsAck: Boolean = !ack.isInstanceOf[NoAck]
   }
 
   /**
    * Write data to the TCP connection. If no ack is needed use the special
-   * `NoAck` object. The connection actor will reply with a [[CommandFailed]]
-   * message if the write could not be enqueued. If [[WriteCommand#wantsAck]]
-   * returns true, the connection actor will reply with the supplied [[WriteCommand#ack]]
+   * `NoAck` object. The connection actor will reply with a [[akka.io.Tcp.CommandFailed]]
+   * message if the write could not be enqueued. If [[akka.io.Tcp.WriteCommand#wantsAck]]
+   * returns true, the connection actor will reply with the supplied [[akka.io.Tcp.WriteCommand#ack]]
    * token once the write has been successfully enqueued to the O/S kernel.
    * <b>Note that this does not in any way guarantee that the data will be
    * or have been sent!</b> Unfortunately there is no way to determine whether
    * a particular write has been sent by the O/S.
    */
-  case class Write(data: ByteString, ack: Event) extends WriteCommand
+  case class Write(data: ByteString, ack: Event) extends SimpleWriteCommand
   object Write {
     /**
      * The empty Write doesn't write anything and isn't acknowledged.
@@ -280,37 +292,47 @@ object Tcp extends ExtensionKey[TcpExt] {
 
   /**
    * Write `count` bytes starting at `position` from file at `filePath` to the connection.
-   * The count must be > 0. The connection actor will reply with a [[CommandFailed]]
-   * message if the write could not be enqueued. If [[WriteCommand#wantsAck]]
-   * returns true, the connection actor will reply with the supplied [[WriteCommand#ack]]
+   * The count must be > 0. The connection actor will reply with a [[akka.io.Tcp.CommandFailed]]
+   * message if the write could not be enqueued. If [[akka.io.Tcp.WriteCommand#wantsAck]]
+   * returns true, the connection actor will reply with the supplied [[akka.io.Tcp.WriteCommand#ack]]
    * token once the write has been successfully enqueued to the O/S kernel.
    * <b>Note that this does not in any way guarantee that the data will be
    * or have been sent!</b> Unfortunately there is no way to determine whether
    * a particular write has been sent by the O/S.
    */
-  case class WriteFile(filePath: String, position: Long, count: Long, ack: Event) extends WriteCommand {
+  case class WriteFile(filePath: String, position: Long, count: Long, ack: Event) extends SimpleWriteCommand {
     require(position >= 0, "WriteFile.position must be >= 0")
     require(count > 0, "WriteFile.count must be > 0")
   }
 
   /**
-   * When `useResumeWriting` is in effect as was indicated in the [[Register]] message
+   * A write command which aggregates two other write commands. Using this construct
+   * you can chain a number of [[akka.io.Tcp.Write]] and/or [[akka.io.Tcp.WriteFile]] commands together in a way
+   * that allows them to be handled as a single write which gets written out to the
+   * network as quickly as possible.
+   * If the sub commands contain `ack` requests they will be honored as soon as the
+   * respective write has been written completely.
+   */
+  case class CompoundWrite(head: SimpleWriteCommand, tail: WriteCommand) extends WriteCommand
+
+  /**
+   * When `useResumeWriting` is in effect as was indicated in the [[akka.io.Tcp.Register]] message
    * then this command needs to be sent to the connection actor in order to re-enable
-   * writing after a [[CommandFailed]] event. All [[WriteCommand]] processed by the
-   * connection actor between the first [[CommandFailed]] and subsequent reception of
-   * this message will also be rejected with [[CommandFailed]].
+   * writing after a [[akka.io.Tcp.CommandFailed]] event. All [[akka.io.Tcp.WriteCommand]] processed by the
+   * connection actor between the first [[akka.io.Tcp.CommandFailed]] and subsequent reception of
+   * this message will also be rejected with [[akka.io.Tcp.CommandFailed]].
    */
   case object ResumeWriting extends Command
 
   /**
    * Sending this command to the connection actor will disable reading from the TCP
    * socket. TCP flow-control will then propagate backpressure to the sender side
-   * as buffers fill up on either end. To re-enable reading send [[ResumeReading]].
+   * as buffers fill up on either end. To re-enable reading send [[akka.io.Tcp.ResumeReading]].
    */
   case object SuspendReading extends Command
 
   /**
-   * This command needs to be sent to the connection actor after a [[SuspendReading]]
+   * This command needs to be sent to the connection actor after a [[akka.io.Tcp.SuspendReading]]
    * command in order to resume reading from the socket.
    */
   case object ResumeReading extends Command
@@ -323,14 +345,14 @@ object Tcp extends ExtensionKey[TcpExt] {
 
   /**
    * Whenever data are read from a socket they will be transferred within this
-   * class to the handler actor which was designated in the [[Register]] message.
+   * class to the handler actor which was designated in the [[akka.io.Tcp.Register]] message.
    */
   case class Received(data: ByteString) extends Event
 
   /**
-   * The connection actor sends this message either to the sender of a [[Connect]]
+   * The connection actor sends this message either to the sender of a [[akka.io.Tcp.Connect]]
    * command (for outbound) or to the handler for incoming connections designated
-   * in the [[Bind]] message. The connection is characterized by the `remoteAddress`
+   * in the [[akka.io.Tcp.Bind]] message. The connection is characterized by the `remoteAddress`
    * and `localAddress` TCP endpoints.
    */
   case class Connected(remoteAddress: InetSocketAddress, localAddress: InetSocketAddress) extends Event
@@ -342,24 +364,24 @@ object Tcp extends ExtensionKey[TcpExt] {
   case class CommandFailed(cmd: Command) extends Event
 
   /**
-   * When `useResumeWriting` is in effect as indicated in the [[Register]] message,
-   * the [[ResumeWriting]] command will be acknowledged by this message type, upon
+   * When `useResumeWriting` is in effect as indicated in the [[akka.io.Tcp.Register]] message,
+   * the [[akka.io.Tcp.ResumeWriting]] command will be acknowledged by this message type, upon
    * which it is safe to send at least one write. This means that all writes preceding
-   * the first [[CommandFailed]] message have been enqueued to the O/S kernel at this
+   * the first [[akka.io.Tcp.CommandFailed]] message have been enqueued to the O/S kernel at this
    * point.
    */
   sealed trait WritingResumed extends Event
   case object WritingResumed extends WritingResumed
 
   /**
-   * The sender of a [[Bind]] command will—in case of success—receive confirmation
+   * The sender of a [[akka.io.Tcp.Bind]] command will—in case of success—receive confirmation
    * in this form. If the bind address indicated a 0 port number, then the contained
    * `localAddress` can be used to find out which port was automatically assigned.
    */
   case class Bound(localAddress: InetSocketAddress) extends Event
 
   /**
-   * The sender of an [[Unbind]] command will receive confirmation through this
+   * The sender of an [[akka.io.Tcp.Unbind]] command will receive confirmation through this
    * message once the listening socket has been closed.
    */
   sealed trait Unbound extends Event
@@ -371,17 +393,17 @@ object Tcp extends ExtensionKey[TcpExt] {
    */
   sealed trait ConnectionClosed extends Event {
     /**
-     * `true` iff the connection has been closed in response to an [[Abort]] command.
+     * `true` iff the connection has been closed in response to an [[akka.io.Tcp.Abort]] command.
      */
     def isAborted: Boolean = false
     /**
      * `true` iff the connection has been fully closed in response to a
-     * [[ConfirmedClose]] command.
+     * [[akka.io.Tcp.ConfirmedClose]] command.
      */
     def isConfirmed: Boolean = false
     /**
      * `true` iff the connection has been closed by the peer; in case
-     * `keepOpenOnPeerClosed` is in effect as per the [[Register]] command,
+     * `keepOpenOnPeerClosed` is in effect as per the [[akka.io.Tcp.Register]] command,
      * this connection’s reading half is now closed.
      */
     def isPeerClosed: Boolean = false
@@ -396,18 +418,18 @@ object Tcp extends ExtensionKey[TcpExt] {
     def getErrorCause: String = null
   }
   /**
-   * The connection has been closed normally in response to a [[Close]] command.
+   * The connection has been closed normally in response to a [[akka.io.Tcp.Close]] command.
    */
   case object Closed extends ConnectionClosed
   /**
-   * The connection has been aborted in response to an [[Abort]] command.
+   * The connection has been aborted in response to an [[akka.io.Tcp.Abort]] command.
    */
   case object Aborted extends ConnectionClosed {
     override def isAborted = true
   }
   /**
    * The connection has been half-closed by us and then half-close by the peer
-   * in response to a [[ConfirmedClose]] command.
+   * in response to a [[akka.io.Tcp.ConfirmedClose]] command.
    */
   case object ConfirmedClosed extends ConnectionClosed {
     override def isConfirmed = true

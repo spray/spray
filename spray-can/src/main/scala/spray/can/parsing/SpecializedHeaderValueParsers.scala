@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import HttpHeaders._
 import CharUtils._
 import ProtectedHeaderCreation.enable
 
-private[parsing] object SpecializedHeaderValueParsers {
+private object SpecializedHeaderValueParsers {
   import HttpHeaderParser._
 
   def specializedHeaderValueParsers = Seq(ContentLengthParser)

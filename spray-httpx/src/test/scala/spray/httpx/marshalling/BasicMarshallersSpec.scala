@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package spray.httpx.marshalling
 import org.specs2.mutable.Specification
 import spray.http._
 import MediaTypes._
+import HttpCharsets._
 
 class BasicMarshallersSpec extends Specification {
 
@@ -36,14 +37,15 @@ class BasicMarshallersSpec extends Specification {
 
   "The NodeSeqMarshaller" should {
     "encode xml snippets to `text/xml` content in UTF-8 if the client accepts it" in {
-      marshal(<employee><nr>Ha“llo</nr></employee>) === Right(HttpEntity(`text/xml`, "<employee><nr>Ha“llo</nr></employee>"))
+      marshal(<employee><nr>Ha“llo</nr></employee>) === Right(HttpEntity(ContentType(`text/xml`, `UTF-8`),
+        "<employee><nr>Ha“llo</nr></employee>"))
     }
   }
 
   "The FormDataMarshaller" should {
     "properly marshal FormData instances to application/x-www-form-urlencoded entity bodies" in {
-      marshal(FormData(Map("name" -> "Bob", "pass" -> "x?!54", "admin" -> ""))) ===
-        Right(HttpEntity(`application/x-www-form-urlencoded`, "name=Bob&pass=x%3F%2154&admin="))
+      marshal(FormData(Map("name" -> "Bob", "pass" -> "hällo", "admin" -> ""))) ===
+        Right(HttpEntity(ContentType(`application/x-www-form-urlencoded`, `UTF-8`), "name=Bob&pass=h%E4llo&admin"))
     }
   }
 

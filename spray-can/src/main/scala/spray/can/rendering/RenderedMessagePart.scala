@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,11 @@ import akka.io.Tcp
 import spray.io.Command
 import spray.http._
 
-case class RequestPartRenderingContext(
+private[can] case class RequestPartRenderingContext(
   requestPart: HttpRequestPart,
   ack: Tcp.Event = Tcp.NoAck) extends Command
 
-case class ResponsePartRenderingContext(
+private[can] case class ResponsePartRenderingContext(
   responsePart: HttpResponsePart,
   requestMethod: HttpMethod = HttpMethods.GET,
   requestProtocol: HttpProtocol = HttpProtocols.`HTTP/1.1`,

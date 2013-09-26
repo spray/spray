@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,46 +25,27 @@ import HttpCharsets._
 class BasicUnmarshallersSpec extends Specification {
 
   "The StringUnmarshaller" should {
-    "decode `text/plain` content in ISO-8859-1 to Strings" in {
+    "decode `text/plain` content in UTF-8 to Strings" in {
       HttpEntity("Hällö").as[String] === Right("Hällö")
     }
   }
 
   "The CharArrayUnmarshaller" should {
-    "decode `text/plain` content in ISO-8859-1 to char arrays" in {
+    "decode `text/plain` content in UTF-8 to char arrays" in {
       HttpEntity("Hällö").as[Array[Char]].right.get.mkString === "Hällö"
     }
   }
 
   "The NodeSeqUnmarshaller" should {
-    "decode `text/xml` content in ISO-8859-1 to NodeSeqs" in {
+    "decode `text/xml` content in UTF-8 to NodeSeqs" in {
       HttpEntity(`text/xml`, "<int>Hällö</int>").as[NodeSeq].right.get.text === "Hällö"
-    }
-  }
-
-  "The FormDataUnmarshaller" should {
-    "correctly unmarshal HTML form content with one element" in (
-      HttpEntity(ContentType(`application/x-www-form-urlencoded`, `UTF-8`), "secret=h%C3%A4ll%C3%B6").as[FormData] ===
-      Right(FormData(Map("secret" -> "hällö"))))
-    "correctly unmarshal HTML form content with three fields" in {
-      HttpEntity(`application/x-www-form-urlencoded`, "email=test%40there.com&password=&username=dirk").as[FormData] ===
-        Right(FormData(Map("email" -> "test@there.com", "password" -> "", "username" -> "dirk")))
-    }
-    "be lenient on empty key/value pairs" in {
-      HttpEntity(`application/x-www-form-urlencoded`, "&key=value&&key2=&").as[FormData] ===
-        Right(FormData(Map("key" -> "value", "key2" -> "")))
-    }
-    "reject illegal form content" in {
-      val Left(MalformedContent(msg, _)) = HttpEntity(`application/x-www-form-urlencoded`, "key=really=not_good").as[FormData]
-      msg === "'key=really=not_good' is not a valid form content: " +
-        "'key=really=not_good' does not constitute a valid key=value pair"
     }
   }
 
   "Unmarshaller.forNonEmpty" should {
     "prevent the underlying unmarshaller from unmarshalling empty entities" in {
       implicit val um = Unmarshaller.forNonEmpty[String]
-      EmptyEntity.as[String] === Left(ContentExpected)
+      HttpEntity.Empty.as[String] === Left(ContentExpected)
     }
   }
 

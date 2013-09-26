@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package spray.can.rendering
 import spray.util._
 import spray.http._
 
-private[rendering] object RenderSupport {
+private object RenderSupport {
   val DefaultStatusLine = "HTTP/1.1 200 OK\r\n".getAsciiBytes
   val StatusLineStart = "HTTP/1.1 ".getAsciiBytes
   val Chunked = "chunked".getAsciiBytes
@@ -31,9 +31,9 @@ private[rendering] object RenderSupport {
   implicit object MessageChunkRenderer extends Renderer[MessageChunk] {
     def render[R <: Rendering](r: R, chunk: MessageChunk): r.type = {
       import chunk._
-      r ~~ Integer.toHexString(body.length)
+      r ~~% data.length
       if (!extension.isEmpty) r ~~ ';' ~~ extension
-      r ~~ CrLf ~~ body ~~ CrLf
+      r ~~ CrLf ~~ data ~~ CrLf
     }
   }
 

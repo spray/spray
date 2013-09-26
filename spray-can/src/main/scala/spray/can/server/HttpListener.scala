@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,10 +28,10 @@ private[can] class HttpListener(bindCommander: ActorRef,
   import context.system
   import bind._
 
-  val connectionCounter = Iterator from 0
-  val settings = bind.settings getOrElse ServerSettings(system)
-  val statsHolder = if (settings.statsSupport) Some(new StatsHolder) else None
-  val pipelineStage = HttpServerConnection.pipelineStage(settings, statsHolder)
+  private val connectionCounter = Iterator from 0
+  private val settings = bind.settings getOrElse ServerSettings(system)
+  private val statsHolder = if (settings.statsSupport) Some(new StatsHolder) else None
+  private val pipelineStage = HttpServerConnection.pipelineStage(settings, statsHolder)
 
   context.watch(listener)
 

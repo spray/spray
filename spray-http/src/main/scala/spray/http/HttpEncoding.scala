@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
- * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +25,7 @@ case class HttpEncoding private[http] (value: String) extends HttpEncodingRange 
 }
 
 object HttpEncoding {
-  def custom(value: String) = apply(value)
+  def custom(value: String): HttpEncoding = apply(value)
 }
 
 // see http://www.iana.org/assignments/http-parameters/http-parameters.xml

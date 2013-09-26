@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import HttpCharsets._
 import HttpHeaders._
 import ProtectedHeaderCreation.enable
 
-class MultipartUnmarshallersSpec extends Specification {
+class FormDataUnmarshallersSpec extends Specification {
 
   "The MultipartContentUnmarshaller" should {
     "correctly unmarshal 'multipart/mixed' content with one empty part" in {
@@ -64,7 +64,7 @@ class MultipartUnmarshallersSpec extends Specification {
            |--12345--""".stripMargin).as[MultipartContent] === Right {
           MultipartContent(
             Seq(
-              BodyPart(HttpEntity(ContentType(`text/plain`, Some(`US-ASCII`)), "first part, with a trailing EOL" + EOL)),
+              BodyPart(HttpEntity(ContentTypes.`text/plain(UTF-8)`, "first part, with a trailing EOL" + EOL)),
               BodyPart(
                 HttpEntity(`application/octet-stream`, "filecontent"),
                 List(
@@ -88,7 +88,7 @@ class MultipartUnmarshallersSpec extends Specification {
            |--XYZABC--""".stripMargin).as[MultipartFormData] === Right {
           MultipartFormData(
             Map("email" -> BodyPart(
-              HttpEntity(ContentType(`text/plain`, `US-ASCII`), "test@there.com"))))
+              HttpEntity(ContentTypes.`text/plain(UTF-8)`, "test@there.com"))))
         })
     "correctly unmarshal 'multipart/form-data' content mixed with a file" in {
       HttpEntity(`multipart/form-data` withBoundary "XYZABC",
@@ -121,4 +121,24 @@ class MultipartUnmarshallersSpec extends Specification {
     }
   }
 
+  "The UrlEncodedFormDataUnmarshaller" should {
+    "correctly unmarshal HTML form content with one element" in (
+      HttpEntity(ContentType(`application/x-www-form-urlencoded`, `UTF-8`), "secret=h%C3%A4ll%C3%B6").as[FormData] ===
+      Right(FormData(Map("secret" -> "hällö"))))
+    "correctly unmarshal HTML form content with one element with default encoding utf-8" in (
+      HttpEntity(ContentType(`application/x-www-form-urlencoded`), "secret=h%C3%A4ll%C3%B6").as[FormData] ===
+      Right(FormData(Map("secret" -> "hällö"))))
+    "correctly unmarshal HTML form content with three fields" in {
+      HttpEntity(`application/x-www-form-urlencoded`, "email=test%40there.com&password=&username=dirk").as[FormData] ===
+        Right(FormData(Map("email" -> "test@there.com", "password" -> "", "username" -> "dirk")))
+    }
+    "be lenient on empty key/value pairs" in {
+      HttpEntity(`application/x-www-form-urlencoded`, "&key=value&&key2=&").as[FormData] ===
+        Right(FormData(Map("" -> "", "key" -> "value", "key2" -> "")))
+    }
+    "reject illegal form content" in {
+      val Left(MalformedContent(msg, _)) = HttpEntity(`application/x-www-form-urlencoded`, "key=really=not_good").as[FormData]
+      msg === "Illegal form content, unexpected character '=' at position 10: \nkey=really=not_good\n          ^\n"
+    }
+  }
 }

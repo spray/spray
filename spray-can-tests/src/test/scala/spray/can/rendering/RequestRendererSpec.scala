@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,7 +67,23 @@ class RequestRendererSpec extends Specification {
              |Cache-Control: public
              |Host: spray.io
              |User-Agent: spray-can/1.0.0
-             |Content-Type: text/plain
+             |Content-Type: text/plain; charset=UTF-8
+             |Content-Length: 19
+             |
+             |The content please!"""
+        }
+      }
+
+      "PUT request, a few headers and a body with suppressed content type" in new TestSetup() {
+        HttpRequest(PUT, "/abc/xyz", List(
+          RawHeader("X-Fancy", "naa"),
+          RawHeader("Cache-Control", "public"),
+          RawHeader("Host", "spray.io"))).withEntity(HttpEntity(ContentTypes.NoContentType, "The content please!")) must beRenderedTo {
+          """|PUT /abc/xyz HTTP/1.1
+             |X-Fancy: naa
+             |Cache-Control: public
+             |Host: spray.io
+             |User-Agent: spray-can/1.0.0
              |Content-Length: 19
              |
              |The content please!"""
@@ -91,7 +107,7 @@ class RequestRendererSpec extends Specification {
           """|POST /abc/xyz HTTP/1.1
              |Host: test.com:8080
              |User-Agent: spray-can/1.0.0
-             |Content-Type: text/plain
+             |Content-Type: text/plain; charset=UTF-8
              |Transfer-Encoding: chunked
              |
              |1a
@@ -126,8 +142,8 @@ class RequestRendererSpec extends Specification {
       "GET request with overridden User-Agent and without body" in new TestSetup(Some(`User-Agent`("settings-ua/1.0"))) {
         HttpRequest(GET, "/abc", List(RawHeader("User-Agent", "user-ua/1.0"))) must beRenderedTo {
           """GET /abc HTTP/1.1
+            |User-Agent: user-ua/1.0
             |Host: test.com:8080
-            |User-Agent: settings-ua/1.0
             |
             |"""
         }

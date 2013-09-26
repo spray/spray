@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package spray.can.client
 
 import scala.collection.immutable.Queue
 import akka.actor._
-import spray.http.{ HttpHeaders, HttpRequest }
+import spray.http.{ Uri, HttpHeaders, HttpRequest }
 import spray.can.Http
 
 private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, clientConnectionSettingsGroup: ActorRef)
@@ -31,15 +31,13 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
   private[this] val counter = Iterator from 0
   private[this] val dispatchStrategy = if (settings.pipelining) new PipelinedStrategy else new NonPipelinedStrategy
   private[this] var openRequestCounts = Map.empty[ActorRef, Int] // open requests per child, holds -1 if unconnected
-  private[this] val hostHeader = {
-    val encrypted = normalizedSetup.sslEncryption
-    val port = normalizedSetup.port match {
-      case 443 if encrypted ⇒ 0
-      case 80 if !encrypted ⇒ 0
-      case x                ⇒ x
+  private[this] val headers =
+    if (defaultHeaders.exists(_.isInstanceOf[HttpHeaders.Host])) defaultHeaders
+    else {
+      import Uri._
+      val Authority(_, normalizedPort, _) = Authority(Host(host), port).normalizedForHttp(sslEncryption)
+      HttpHeaders.Host(host, normalizedPort) :: defaultHeaders
     }
-    HttpHeaders.Host(normalizedSetup.host, port)
-  }
 
   context.setReceiveTimeout(settings.idleTimeout)
 
@@ -48,10 +46,8 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
 
   def receive: Receive = {
     case request: HttpRequest ⇒
-      val requestWithHostHeader =
-        if (request.headers.exists(_.isInstanceOf[HttpHeaders.Host])) request
-        else request.withHeaders(hostHeader :: request.headers)
-      dispatchStrategy(RequestContext(requestWithHostHeader, settings.maxRetries, sender))
+      val requestWithDefaultHeaders = request.withDefaultHeaders(headers)
+      dispatchStrategy(RequestContext(requestWithDefaultHeaders, settings.maxRetries, sender))
 
     case ctx: RequestContext ⇒ dispatchStrategy(ctx) // retry
 

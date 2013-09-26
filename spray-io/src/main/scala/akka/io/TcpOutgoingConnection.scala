@@ -34,51 +34,59 @@ private[io] class TcpOutgoingConnection(_tcp: TcpExt,
 
   localAddress.foreach(channel.socket.bind)
   options.foreach(_.beforeConnect(channel.socket))
-  channelRegistry.register(channel, SelectionKey.OP_CONNECT)
+  channelRegistry.register(channel, 0)
   timeout foreach context.setReceiveTimeout //Initiate connection timeout if supplied
+
+  private def stop(): Unit = stopWith(CloseInformation(Set(commander), connect.failureMessage))
+
+  private def reportConnectFailure(thunk: ⇒ Unit): Unit = {
+    try {
+      thunk
+    } catch {
+      case e: IOException ⇒
+        log.debug("Could not establish connection to [{}] due to {}", remoteAddress, e)
+        stop()
+    }
+  }
 
   def receive: Receive = {
     case registration: ChannelRegistration ⇒
       log.debug("Attempting connection to [{}]", remoteAddress)
-      if (channel.connect(remoteAddress))
-        completeConnect(registration, commander, options)
-      else
-        context.become(connecting(registration, commander, options, tcp.Settings.FinishConnectRetries))
+      reportConnectFailure {
+        if (channel.connect(remoteAddress))
+          completeConnect(registration, commander, options)
+        else {
+          registration.enableInterest(SelectionKey.OP_CONNECT)
+          context.become(connecting(registration, commander, options, tcp.Settings.FinishConnectRetries))
+        }
+      }
   }
 
   def connecting(registration: ChannelRegistration, commander: ActorRef,
                  options: immutable.Traversable[SocketOption], remainingFinishConnectRetries: Int): Receive = {
-    def stop(): Unit = stopWith(CloseInformation(Set(commander), connect.failureMessage))
-
-    {
-      case ChannelConnectable ⇒
-        try {
-          if (channel.finishConnect()) {
-            if (timeout.isDefined) context.setReceiveTimeout(Duration.Undefined) // Clear the timeout
-            log.debug("Connection established to [{}]", remoteAddress)
-            completeConnect(registration, commander, options)
+    case ChannelConnectable ⇒
+      reportConnectFailure {
+        if (channel.finishConnect()) {
+          if (timeout.isDefined) context.setReceiveTimeout(Duration.Undefined) // Clear the timeout
+          log.debug("Connection established to [{}]", remoteAddress)
+          completeConnect(registration, commander, options)
+        } else {
+          if (remainingFinishConnectRetries > 0) {
+            context.system.scheduler.scheduleOnce(1.millisecond) {
+              channelRegistry.register(channel, SelectionKey.OP_CONNECT)
+            }(context.dispatcher)
+            context.become(connecting(registration, commander, options, remainingFinishConnectRetries - 1))
           } else {
-            if (remainingFinishConnectRetries > 0) {
-              context.system.scheduler.scheduleOnce(1.millisecond) {
-                channelRegistry.register(channel, SelectionKey.OP_CONNECT)
-              }(context.dispatcher)
-              context.become(connecting(registration, commander, options, remainingFinishConnectRetries - 1))
-            } else {
-              log.debug("Could not establish connection because finishConnect " +
-                "never returned true (consider increasing akka.io.tcp.finish-connect-retries)")
-              stop()
-            }
-          }
-        } catch {
-          case e: IOException ⇒
-            log.debug("Could not establish connection due to {}", e)
+            log.debug("Could not establish connection because finishConnect " +
+              "never returned true (consider increasing akka.io.tcp.finish-connect-retries)")
             stop()
+          }
         }
+      }
 
-      case ReceiveTimeout ⇒
-        if (timeout.isDefined) context.setReceiveTimeout(Duration.Undefined) // Clear the timeout
-        log.debug("Connect timeout expired, could not establish connection to {}", remoteAddress)
-        stop()
-    }
+    case ReceiveTimeout ⇒
+      if (timeout.isDefined) context.setReceiveTimeout(Duration.Undefined) // Clear the timeout
+      log.debug("Connect timeout expired, could not establish connection to {}", remoteAddress)
+      stop()
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright © 2011-2013 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,26 +24,22 @@ import HttpHeaders._
 import HttpProtocols._
 import CharUtils._
 
-private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](val settings: ParserSettings,
-                                                                               val headerParser: HttpHeaderParser) extends Parser[Part] {
-  var parse: CompactByteString ⇒ Result[Part] = this
-  var protocol: HttpProtocol = `HTTP/1.1`
+private[parsing] abstract class HttpMessagePartParser(val settings: ParserSettings,
+                                                      val headerParser: HttpHeaderParser) extends Parser {
+  protected var protocol: HttpProtocol = `HTTP/1.1`
 
-  def apply(input: CompactByteString): Result[Part] = parseMessageSafe(input)
+  def apply(input: CompactByteString): Result = parseMessageSafe(input)
 
-  def parseMessageSafe(input: CompactByteString): Result[Part] =
-    try parseMessage(input)
+  def parseMessageSafe(input: CompactByteString, offset: Int = 0): Result =
+    try parseMessage(input, offset)
     catch {
-      case NotEnoughDataException ⇒
-        parse = { more ⇒ parseMessageSafe((input ++ more).compact) }
-        Result.NeedMoreData
-
-      case e: ParsingException ⇒ fail(e.status, e.info)
+      case NotEnoughDataException ⇒ needMoreData(input, offset)(parseMessageSafe)
+      case e: ParsingException    ⇒ fail(e.status, e.info)
     }
 
-  def parseMessage(input: CompactByteString): Result[Part]
+  def parseMessage(input: CompactByteString, offset: Int): Result
 
-  def parseProtocol(input: CompactByteString, cursor: Int = 0): Int = {
+  def parseProtocol(input: CompactByteString, cursor: Int): Int = {
     def c(ix: Int) = byteChar(input, cursor + ix)
     if (c(0) == 'H' && c(1) == 'T' && c(2) == 'T' && c(3) == 'P' && c(4) == '/' && c(5) == '1' && c(6) == '.') {
       protocol = c(7) match {
@@ -61,27 +57,23 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
                                       headerCount: Int = 0, ch: Option[Connection] = None,
                                       clh: Option[`Content-Length`] = None, cth: Option[`Content-Type`] = None,
                                       teh: Option[`Transfer-Encoding`] = None, e100: Boolean = false,
-                                      hh: Boolean = false): Result[Part] = {
+                                      hh: Boolean = false): Result = {
     var lineEnd = 0
-    val result =
+    val result: Result =
       try {
         lineEnd = headerParser.parseHeaderLine(input, lineStart)()
         null
       } catch {
         case NotEnoughDataException ⇒
-          parse = { more ⇒ parseHeaderLinesAux((input ++ more).compact, lineStart, headers, headerCount, ch, clh, cth, teh, e100, hh) }
-          Result.NeedMoreData
-
+          needMoreData(input, lineStart)(parseHeaderLinesAux(_, _, headers, headerCount, ch, clh, cth, teh, e100, hh))
         case e: ParsingException ⇒ fail(e.status, e.info)
       }
     if (result != null) result
     else headerParser.resultHeader match {
       case HttpHeaderParser.EmptyHeader ⇒
-        val close = closeAfterResponseCompletion(ch)
-        if (e100) {
-          parse = parseEntity(headers, _, 0, clh, cth, teh, hh, close)
-          Result.Expect100Continue(drop(input, lineEnd))
-        } else parseEntity(headers, input, lineEnd, clh, cth, teh, hh, close)
+        val close = HttpMessage.connectionCloseExpected(protocol, ch)
+        val next = parseEntity(headers, input, lineEnd, clh, cth, teh, hh, close)
+        if (e100) Result.Expect100Continue(() ⇒ next) else next
 
       case h: Connection ⇒
         parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, Some(h), clh, cth, teh, e100, hh)
@@ -108,54 +100,54 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
     }
   }
 
+  // work-around for compiler bug complaining about non-tail-recursion if we inline this method
   def parseHeaderLinesAux(input: CompactByteString, lineStart: Int, headers: List[HttpHeader], headerCount: Int,
                           ch: Option[Connection], clh: Option[`Content-Length`], cth: Option[`Content-Type`],
-                          teh: Option[`Transfer-Encoding`], e100: Boolean, hh: Boolean): Result[Part] =
+                          teh: Option[`Transfer-Encoding`], e100: Boolean, hh: Boolean): Result =
     parseHeaderLines(input, lineStart, headers, headerCount, ch, clh, cth, teh, e100, hh)
 
   def parseEntity(headers: List[HttpHeader], input: CompactByteString, bodyStart: Int, clh: Option[`Content-Length`],
                   cth: Option[`Content-Type`], teh: Option[`Transfer-Encoding`], hostHeaderPresent: Boolean,
-                  closeAfterResponseCompletion: Boolean): Result[Part]
+                  closeAfterResponseCompletion: Boolean): Result
 
   def parseFixedLengthBody(headers: List[HttpHeader], input: ByteString, bodyStart: Int, length: Long,
-                           cth: Option[`Content-Type`], closeAfterResponseCompletion: Boolean): Result[Part] =
+                           cth: Option[`Content-Type`], closeAfterResponseCompletion: Boolean): Result =
     if (length >= settings.autoChunkingThreshold) {
-      parse = parseAutoChunk(length, closeAfterResponseCompletion)
-      val part = chunkStartMessage(headers)
-      Result.Ok(part, drop(input, bodyStart), closeAfterResponseCompletion)
-    } else if (length > Int.MaxValue) fail(s"Content-Length > Int.MaxSize not supported for non-(auto)-chunked requests")
-    else if (bodyStart.toLong + length <= input.length) {
-      val intLength = length.toInt
-      parse = this
-      val part = message(headers, entity(cth, input.iterator.slice(bodyStart, bodyStart + intLength).toArray[Byte]))
-      Result.Ok(part, drop(input, bodyStart + intLength), closeAfterResponseCompletion)
-    } else {
-      parse = more ⇒ parseFixedLengthBody(headers, input ++ more, bodyStart, length, cth, closeAfterResponseCompletion)
-      Result.NeedMoreData
-    }
+      emit(chunkStartMessage(headers), closeAfterResponseCompletion) {
+        parseBodyWithAutoChunking(input, bodyStart, length, closeAfterResponseCompletion)
+      }
+    } else if (length > Int.MaxValue) {
+      fail("Content-Length > Int.MaxSize not supported for non-(auto)-chunked requests")
+    } else if (bodyStart.toLong + length <= input.length) {
+      val offset = bodyStart + length.toInt
+      val msg = message(headers, entity(cth, input.slice(bodyStart, offset)))
+      emit(msg, closeAfterResponseCompletion) {
+        if (input.isCompact) parseMessageSafe(input.compact, offset)
+        else parseMessageSafe(input.drop(offset).compact)
+      }
+    } else needMoreData(input, bodyStart)(parseFixedLengthBody(headers, _, _, length, cth, closeAfterResponseCompletion))
 
-  def parseChunk(closeAfterResponseCompletion: Boolean)(input: CompactByteString): Result[Part] = {
+  def parseChunk(input: CompactByteString, offset: Int, closeAfterResponseCompletion: Boolean): Result = {
     @tailrec def parseTrailer(extension: String, lineStart: Int, headers: List[HttpHeader] = Nil,
-                              headerCount: Int = 0): Result[Part] = {
+                              headerCount: Int = 0): Result = {
       val lineEnd = headerParser.parseHeaderLine(input, lineStart)()
       headerParser.resultHeader match {
         case HttpHeaderParser.EmptyHeader ⇒
-          parse = this
-          Result.Ok(ChunkedMessageEnd(extension, headers).asInstanceOf[Part],
-            drop(input, lineEnd), closeAfterResponseCompletion)
+          emit(ChunkedMessageEnd(extension, headers), closeAfterResponseCompletion) { parseMessageSafe(input, lineEnd) }
         case header if headerCount < settings.maxHeaderCount ⇒
           parseTrailer(extension, lineEnd, header :: headers, headerCount + 1)
         case _ ⇒ fail(s"Chunk trailer contains more than the configured limit of ${settings.maxHeaderCount} headers")
       }
     }
 
-    def parseChunkBody(chunkSize: Int, extension: String, cursor: Int): Result[Part] =
+    def parseChunkBody(chunkSize: Int, extension: String, cursor: Int): Result =
       if (chunkSize > 0) {
         val chunkBodyEnd = cursor + chunkSize
         def result(terminatorLen: Int) = {
-          parse = parseChunk(closeAfterResponseCompletion)
-          val chunk = MessageChunk(input.iterator.slice(cursor, chunkBodyEnd).toArray[Byte], extension)
-          Result.Ok(chunk.asInstanceOf[Part], drop(input, chunkBodyEnd + terminatorLen), closeAfterResponseCompletion)
+          val chunk = MessageChunk(HttpData(input.slice(cursor, chunkBodyEnd)), extension)
+          emit(chunk, closeAfterResponseCompletion) {
+            parseChunk(input, chunkBodyEnd + terminatorLen, closeAfterResponseCompletion)
+          }
         }
         byteChar(input, chunkBodyEnd) match {
           case '\r' if byteChar(input, chunkBodyEnd + 1) == '\n' ⇒ result(2)
@@ -164,7 +156,7 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
         }
       } else parseTrailer(extension, cursor)
 
-    @tailrec def parseChunkExtensions(chunkSize: Int, cursor: Int)(startIx: Int = cursor): Result[Part] =
+    @tailrec def parseChunkExtensions(chunkSize: Int, cursor: Int)(startIx: Int = cursor): Result =
       if (cursor - startIx <= settings.maxChunkExtLength) {
         def extension = asciiString(input, startIx, cursor)
         byteChar(input, cursor) match {
@@ -174,82 +166,69 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
         }
       } else fail(s"HTTP chunk extension length exceeds configured limit of ${settings.maxChunkExtLength} characters")
 
-    @tailrec def parseSize(cursor: Int = 0, size: Long = 0): Result[Part] =
+    @tailrec def parseSize(cursor: Int = offset, size: Long = 0): Result =
       if (size <= settings.maxChunkSize) {
         byteChar(input, cursor) match {
           case c if isHexDigit(c) ⇒ parseSize(cursor + 1, size * 16 + hexValue(c))
-          case ';' if cursor > 0 ⇒ parseChunkExtensions(size.toInt, cursor + 1)()
-          case '\r' if cursor > 0 && byteChar(input, cursor + 1) == '\n' ⇒ parseChunkBody(size.toInt, "", cursor + 2)
+          case ';' if cursor > offset ⇒ parseChunkExtensions(size.toInt, cursor + 1)()
+          case '\r' if cursor > offset && byteChar(input, cursor + 1) == '\n' ⇒ parseChunkBody(size.toInt, "", cursor + 2)
           case c ⇒ fail(s"Illegal character '${escape(c)}' in chunk start")
         }
       } else fail(s"HTTP chunk size exceeds the configured limit of ${settings.maxChunkSize} bytes")
 
     try parseSize()
     catch {
-      case NotEnoughDataException ⇒
-        parse = { more ⇒ parseChunk(closeAfterResponseCompletion)((input ++ more).compact) }
-        Result.NeedMoreData
-
-      case e: ParsingException ⇒ fail(e.status, e.info)
+      case NotEnoughDataException ⇒ needMoreData(input, offset)(parseChunk(_, _, closeAfterResponseCompletion))
+      case e: ParsingException    ⇒ fail(e.status, e.info)
     }
   }
 
-  def parseAutoChunk(remainingBytes: Long, closeAfterResponseCompletion: Boolean)(input: CompactByteString): Result[Part] = {
-
-    def finishAutoChunking(input: CompactByteString): Result[Part] = {
-      parse = this
-      Result.Ok(ChunkedMessageEnd.asInstanceOf[Part], input.drop(1).compact, closeAfterResponseCompletion)
-    }
-
-    val consumed = math.min(remainingBytes, input.size).toInt // safe conversion because input.size returns an Int
-    val chunk = MessageChunk(input.take(consumed).toArray[Byte])
-
-    val remaining =
-      consumed match {
-        case `remainingBytes` ⇒ // last chunk
-          parse = finishAutoChunking
-
-          // we synthesize a single byte to keep parsing going after having delivered the last chunk
-          // this is necessary because for the last byte of an entity both the last chunk and the
-          // ChunkedMessageEnd must be delivered
-          // The pseudo-input will be stripped off in `finishAutoChunking` above
-          (ByteString(0) ++ input.drop(consumed)).compact
-        case x ⇒
-          parse = parseAutoChunk(remainingBytes - x, closeAfterResponseCompletion)
-
-          drop(input, consumed)
+  def parseBodyWithAutoChunking(input: ByteString, offset: Int, remainingBytes: Long,
+                                closeAfterResponseCompletion: Boolean): Result = {
+    require(remainingBytes > 0)
+    val chunkSize = math.min(remainingBytes, input.size - offset).toInt // safe conversion because input.size returns an Int
+    if (chunkSize > 0) {
+      val chunkEnd = offset + chunkSize
+      val chunk = MessageChunk(HttpData(input.slice(offset, chunkEnd)))
+      emit(chunk, closeAfterResponseCompletion) {
+        if (chunkSize == remainingBytes) // last chunk
+          emit(ChunkedMessageEnd, closeAfterResponseCompletion) {
+            if (input.isCompact) parseMessageSafe(input.compact, chunkEnd)
+            else parseMessageSafe(input.drop(chunkEnd).compact)
+          }
+        else parseBodyWithAutoChunking(input, chunkEnd, remainingBytes - chunkSize, closeAfterResponseCompletion)
       }
-
-    Result.Ok(chunk.asInstanceOf[Part], remaining, closeAfterResponseCompletion)
+    } else needMoreData(input, offset)(parseBodyWithAutoChunking(_, _, remainingBytes, closeAfterResponseCompletion))
   }
 
-  def entity(cth: Option[`Content-Type`], body: Array[Byte]): HttpEntity = {
+  def entity(cth: Option[`Content-Type`], body: ByteString): HttpEntity = {
     val contentType = cth match {
       case Some(x) ⇒ x.contentType
       case None    ⇒ ContentTypes.`application/octet-stream`
     }
-    HttpEntity(contentType, body)
+    HttpEntity(contentType, HttpData(body))
   }
-
-  def closeAfterResponseCompletion(connectionHeader: Option[Connection]) =
-    protocol match {
-      case `HTTP/1.1` ⇒ connectionHeader.isDefined && connectionHeader.get.hasClose
-      case `HTTP/1.0` ⇒ connectionHeader.isEmpty || !connectionHeader.get.hasKeepAlive
-    }
-
-  def message(headers: List[HttpHeader], entity: HttpEntity): Part
-  def chunkStartMessage(headers: List[HttpHeader]): Part with HttpMessageStart
 
   def drop(input: ByteString, n: Int): CompactByteString =
     if (input.length == n) CompactByteString.empty else input.drop(n).compact
 
-  def fail(summary: String): Result[Nothing] = fail(summary, "")
-  def fail(summary: String, detail: String): Result[Nothing] = fail(StatusCodes.BadRequest, summary, detail)
-  def fail(status: StatusCode): Result[Nothing] = fail(status, status.defaultMessage)
-  def fail(status: StatusCode, summary: String, detail: String = ""): Result[Nothing] = fail(status, ErrorInfo(summary, detail))
-  def fail(status: StatusCode, info: ErrorInfo): Result[Nothing] = {
-    val error = Result.ParsingError(status, info)
-    parse = { _ ⇒ error }
-    error
-  }
+  def needMoreData(input: CompactByteString, offset: Int)(next: (CompactByteString, Int) ⇒ Result): Result =
+    if (offset == input.length) Result.NeedMoreData(next(_, 0))
+    else Result.NeedMoreData(more ⇒ next((input ++ more).compact, offset))
+
+  def needMoreData(input: ByteString, offset: Int)(next: (ByteString, Int) ⇒ Result): Result =
+    if (offset == input.length) Result.NeedMoreData(next(_, 0))
+    else Result.NeedMoreData(more ⇒ next(input ++ more, offset))
+
+  def emit(part: HttpMessagePart, closeAfterResponseCompletion: Boolean)(continue: ⇒ Result) =
+    Result.Emit(part, closeAfterResponseCompletion, () ⇒ continue)
+
+  def fail(summary: String): Result = fail(summary, "")
+  def fail(summary: String, detail: String): Result = fail(StatusCodes.BadRequest, summary, detail)
+  def fail(status: StatusCode): Result = fail(status, status.defaultMessage)
+  def fail(status: StatusCode, summary: String, detail: String = ""): Result = fail(status, ErrorInfo(summary, detail))
+  def fail(status: StatusCode, info: ErrorInfo) = Result.ParsingError(status, info)
+
+  def message(headers: List[HttpHeader], entity: HttpEntity): HttpMessagePart
+  def chunkStartMessage(headers: List[HttpHeader]): HttpMessageStart
 }
