@@ -68,13 +68,16 @@ trait FormDataUnmarshallers {
       case HttpEntity.Empty ⇒ MultipartContent.Empty
     }
 
-  implicit val MultipartFormDataUnmarshaller = new SimpleUnmarshaller[MultipartFormData] {
+  implicit val MultipartFormDataUnmarshaller: Unmarshaller[MultipartFormData] =
+    multipartFormDataUnmarshaller(strict = true)
+
+  def multipartFormDataUnmarshaller(strict: Boolean = true) = new SimpleUnmarshaller[MultipartFormData] {
     val canUnmarshalFrom = ContentTypeRange(`multipart/form-data`) :: Nil
 
     def unmarshal(entity: HttpEntity) =
       MultipartContentUnmarshaller(entity).right.flatMap { mpContent ⇒
         try {
-          checkValid(mpContent.parts)
+          if (strict) checkValid(mpContent.parts)
           Right(MultipartFormData(mpContent.parts))
         } catch {
           case NonFatal(ex) ⇒
