@@ -127,7 +127,7 @@ case class UnacceptedResponseEncodingRejection(supported: HttpEncoding) extends 
  * specified in the cause.
  */
 case class AuthenticationFailedRejection(cause: AuthenticationFailedRejection.Cause,
-                                         authenticator: HttpAuthenticator[_]) extends Rejection
+                                         challengeHeaders: List[HttpHeader]) extends Rejection
 
 object AuthenticationFailedRejection {
   /**
