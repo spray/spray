@@ -26,6 +26,7 @@ import spray.can.client.{ HostConnectorSettings, ClientConnectionSettings }
 import spray.io.{ ConnectionTimeouts, ClientSSLEngineProvider, ServerSSLEngineProvider }
 import spray.http._
 import spray.util.actorSystem
+import scala.concurrent.duration.Duration
 
 object Http extends ExtensionKey[HttpExt] {
 
@@ -88,7 +89,8 @@ object Http extends ExtensionKey[HttpExt] {
                       keepOpenOnPeerClosed: Boolean = false,
                       fastPath: FastPath = EmptyFastPath) extends Command
 
-  val Unbind = Tcp.Unbind
+  case class Unbind(timeout: Duration) extends Command
+  object Unbind extends Unbind(Duration.Zero)
 
   type CloseCommand = Tcp.CloseCommand
   val Close = Tcp.Close

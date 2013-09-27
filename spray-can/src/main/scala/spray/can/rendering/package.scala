@@ -20,7 +20,7 @@ import spray.http.HttpData
 import akka.io.Tcp
 
 package object rendering {
-  def toTcpWriteCommand(data: HttpData, ack: Tcp.Event): Tcp.WriteCommand =
+  private[can] def toTcpWriteCommand(data: HttpData, ack: Tcp.Event): Tcp.WriteCommand =
     data match {
       case HttpData.Empty ⇒ Tcp.Write.empty
       case _: HttpData.Compound ⇒
@@ -30,7 +30,7 @@ package object rendering {
       case x: HttpData.SimpleNonEmpty ⇒ toTcpWriteCommand(x, ack)
     }
 
-  def toTcpWriteCommand(data: HttpData.SimpleNonEmpty, ack: Tcp.Event): Tcp.WriteCommand =
+  private[can] def toTcpWriteCommand(data: HttpData.SimpleNonEmpty, ack: Tcp.Event): Tcp.WriteCommand =
     data match {
       case HttpData.Bytes(byteString)                ⇒ Tcp.Write(byteString, ack)
       case HttpData.FileBytes(fileName, offset, len) ⇒ Tcp.WriteFile(fileName, offset, len, ack)

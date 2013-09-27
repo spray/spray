@@ -24,10 +24,10 @@ import spray.can.parsing.SSLSessionInfoSupport
 import spray.http.{ SetRequestTimeout, Confirmed, HttpRequestPart }
 import spray.io._
 
-private[can] class HttpClientConnection(connectCommander: ActorRef,
-                                        connect: Http.Connect,
-                                        pipelineStage: RawPipelineStage[SslTlsContext],
-                                        settings: ClientConnectionSettings) extends ConnectionHandler { actor ⇒
+private class HttpClientConnection(connectCommander: ActorRef,
+                                   connect: Http.Connect,
+                                   pipelineStage: RawPipelineStage[SslTlsContext],
+                                   settings: ClientConnectionSettings) extends ConnectionHandler { actor ⇒
   import context.system
   import connect._
 
@@ -76,7 +76,7 @@ private[can] class HttpClientConnection(connectCommander: ActorRef,
   }
 }
 
-private[can] object HttpClientConnection {
+private object HttpClientConnection {
 
   def pipelineStage(settings: ClientConnectionSettings) = {
     import settings._

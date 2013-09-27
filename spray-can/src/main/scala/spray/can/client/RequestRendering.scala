@@ -22,7 +22,7 @@ import spray.can.rendering._
 import spray.io._
 import spray.util._
 
-object RequestRendering {
+private[can] object RequestRendering {
 
   def apply(settings: ClientConnectionSettings): PipelineStage =
     new PipelineStage with RequestRenderingComponent {

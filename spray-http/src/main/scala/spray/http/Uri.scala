@@ -22,7 +22,7 @@ import scala.annotation.tailrec
 import scala.collection.{ mutable, LinearSeqOptimized }
 import scala.collection.immutable.LinearSeq
 import spray.http.parser.{ ParserInput, UriParser }
-import spray.util.UTF8
+import spray.util._
 import UriParser._
 import Uri._
 
@@ -40,11 +40,92 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
   def inspect: String = s"Uri(scheme=$scheme, authority=$authority, path=$path, query=$query, fragment=$fragment)"
 
   /**
+   * The effective port of this Uri given the currently set authority and scheme values.
+   * If the authority has an explicitly set port (i.e. a non-zero port value) then this port
+   * is the effective port. Otherwise the default port for the current scheme is returned.
+   */
+  def effectivePort: Int = if (authority.port != 0) authority.port else defaultPorts(scheme)
+
+  /**
    * Returns a copy of this Uri with the given components.
    */
   def copy(scheme: String = scheme, authority: Authority = authority, path: Path = path,
            query: Query = query, fragment: Option[String] = fragment): Uri =
     Uri(scheme, authority, path, query, fragment)
+
+  /**
+   * Returns a copy of this Uri with the given scheme. The `scheme` change of the Uri has the following
+   * effect on the port value:
+   * - If the Uri has a non-default port for the scheme before the change this port will remain unchanged.
+   * - If the Uri has the default port for the scheme before the change it will have the default port for
+   *   the '''new''' scheme after the change.
+   */
+  def withScheme(scheme: String): Uri = copy(scheme = scheme)
+
+  /**
+   * Returns a copy of this Uri with the given authority.
+   */
+  def withAuthority(authority: Authority): Uri = copy(authority = authority)
+
+  /**
+   * Returns a copy of this Uri with a Authority created using the given host, port and userinfo.
+   */
+  def withAuthority(host: Host, port: Int, userinfo: String = ""): Uri = copy(authority = Authority(host, port, userinfo))
+
+  /**
+   * Returns a copy of this Uri with a Authority created using the given host and port.
+   */
+  def withAuthority(host: String, port: Int): Uri = copy(authority = Authority(Host(host), port))
+
+  /**
+   * Returns a copy of this Uri with the given host.
+   */
+  def withHost(host: Host): Uri = copy(authority = authority.copy(host = host))
+
+  /**
+   * Returns a copy of this Uri with the given host.
+   */
+  def withHost(host: String): Uri = copy(authority = authority.copy(host = Host(host)))
+
+  /**
+   * Returns a copy of this Uri with the given port.
+   */
+  def withPort(port: Int): Uri = copy(authority = authority.copy(port = port))
+
+  /**
+   * Returns a copy of this Uri with the given path.
+   */
+  def withPath(path: Path): Uri = copy(path = path)
+
+  /**
+   * Returns a copy of this Uri with the given userinfo.
+   */
+  def withUserInfo(userinfo: String): Uri = copy(authority = authority.copy(userinfo = userinfo))
+
+  /**
+   * Returns a copy of this Uri with the given query.
+   */
+  def withQuery(query: Query): Uri = copy(query = query)
+
+  /**
+   * Returns a copy of this Uri with a Query created using the given query string.
+   */
+  def withQuery(query: String): Uri = copy(query = Query(query))
+
+  /**
+   * Returns a copy of this Uri with a Query created using the given (key, value) tuples.
+   */
+  def withQuery(kvp: (String, String)*): Uri = copy(query = Query(kvp: _*))
+
+  /**
+   * Returns a copy of this Uri with a Query created using the given map.
+   */
+  def withQuery(map: Map[String, String]): Uri = copy(query = Query(map))
+
+  /**
+   * Returns a copy of this Uri with the given fragment.
+   */
+  def withFragment(fragment: String): Uri = copy(fragment = fragment.toOption)
 
   /**
    * Returns a new absolute Uri that is the result of the resolution process defined by
@@ -438,7 +519,8 @@ object Uri {
           case Query.Cons(key, value, tail) ⇒
             if (q ne this) r ~~ '&'
             enc(key)
-            if (!value.isEmpty) { r ~~ '='; enc(value) }
+            if (value ne Query.EmptyValue) r ~~ '='
+            enc(value)
             append(tail)
           case Query.Raw(value) ⇒ r ~~ value
         }
@@ -447,6 +529,9 @@ object Uri {
     override def newBuilder: mutable.Builder[(String, String), Query] = Query.newBuilder
   }
   object Query {
+    /** A special empty String value which will be rendered without a '=' after the key. */
+    val EmptyValue: String = new String(Array.empty[Char])
+
     /**
      * Parses the given String into a Query instance.
      * Note that this method will never return Query.Empty, even for the empty String.

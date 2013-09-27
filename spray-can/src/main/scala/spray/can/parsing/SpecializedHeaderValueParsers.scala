@@ -23,7 +23,7 @@ import HttpHeaders._
 import CharUtils._
 import ProtectedHeaderCreation.enable
 
-private[parsing] object SpecializedHeaderValueParsers {
+private object SpecializedHeaderValueParsers {
   import HttpHeaderParser._
 
   def specializedHeaderValueParsers = Seq(ContentLengthParser)
