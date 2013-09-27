@@ -26,7 +26,7 @@ import AuthenticationFailedRejection._
 class SecurityDirectivesSpec extends RoutingSpec {
 
   val dontAuth = BasicAuth(UserPassAuthenticator[BasicUserContext](_ ⇒ Future.successful(None)), "Realm")
-  val challenge = `WWW-Authenticate`(HttpChallenge("basic", "Realm"))
+  val challenge = `WWW-Authenticate`(HttpChallenge("Basic", "Realm"))
 
   val doAuth = BasicAuth(UserPassAuthenticator[BasicUserContext] { userPassOption ⇒
     Future.successful(Some(BasicUserContext(userPassOption.get.user)))
