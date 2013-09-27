@@ -24,9 +24,9 @@ import spray.can.rendering.RequestPartRenderingContext
 import spray.can.Http
 import spray.http._
 import spray.io._
-import System.{ currentTimeMillis ⇒ now }
+import spray.util.Timestamp
 
-object ClientFrontend {
+private object ClientFrontend {
 
   def apply(initialRequestTimeout: Duration): PipelineStage = {
     new PipelineStage {
@@ -37,30 +37,32 @@ object ClientFrontend {
           var requestTimeout = initialRequestTimeout
           var closeCommanders = Set.empty[ActorRef]
 
+          def lastRequestComplete = openRequests.isEmpty || openRequests.last.state.isComplete
+
           val commandPipeline: CPL = {
             case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequest, ack)) if closeCommanders.isEmpty ⇒
-              if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
+              if (lastRequestComplete) {
                 render(x, ack)
-                openRequests = openRequests enqueue new RequestRecord(x, context.sender, timestamp = now)
+                openRequests = openRequests enqueue new RequestRecord(x, context.sender, state = Complete(Timestamp.now))
               } else log.warning("Received new HttpRequest before previous chunking request was " +
                 "finished, ignoring...")
 
             case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedRequestStart, ack)) if closeCommanders.isEmpty ⇒
-              if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
+              if (lastRequestComplete) {
                 render(x, ack)
-                openRequests = openRequests enqueue new RequestRecord(x, context.sender, timestamp = 0)
+                openRequests = openRequests enqueue new RequestRecord(x, context.sender, state = WaitingForChunkedEnd)
               } else log.warning("Received new ChunkedRequestStart before previous chunking " +
                 "request was finished, ignoring...")
 
             case Http.MessageCommand(HttpMessagePartWrapper(x: MessageChunk, ack)) if closeCommanders.isEmpty ⇒
-              if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
+              if (!lastRequestComplete) {
                 render(x, ack)
               } else log.warning("Received MessageChunk outside of chunking request context, ignoring...")
 
             case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedMessageEnd, ack)) if closeCommanders.isEmpty ⇒
-              if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
+              if (!lastRequestComplete) {
                 render(x, ack)
-                openRequests.last.timestamp = now // only start timer once the request is completed
+                openRequests.last.state = Complete(Timestamp.now) // only start timer once the request is completed
               } else log.warning("Received ChunkedMessageEnd outside of chunking request " +
                 "context, ignoring...")
 
@@ -127,7 +129,7 @@ object ClientFrontend {
           def checkForTimeout(): Unit =
             if (!openRequests.isEmpty && requestTimeout.isFinite) {
               val rec = openRequests.head
-              if (rec.timestamp > 0 && rec.timestamp + requestTimeout.toMillis < now) {
+              if (rec.state.isOverdue(requestTimeout)) {
                 log.warning("Request timed out after {}, closing connection", requestTimeout)
                 dispatch(rec.sender, Timedout(rec.request))
                 commandPL(Http.Close)
@@ -140,7 +142,19 @@ object ClientFrontend {
     }
   }
 
-  private class RequestRecord(val request: HttpRequestPart with HttpMessageStart, val sender: ActorRef, var timestamp: Long)
+  sealed trait RequestState {
+    def isComplete: Boolean
+    def isOverdue(timeout: Duration): Boolean
+  }
+  case object WaitingForChunkedEnd extends RequestState {
+    def isComplete: Boolean = false
+    def isOverdue(timeout: Duration): Boolean = false
+  }
+  case class Complete(timestamp: Timestamp) extends RequestState {
+    def isComplete: Boolean = true
+    def isOverdue(timeout: Duration): Boolean = (timestamp + timeout).isPast
+  }
+  private class RequestRecord(val request: HttpRequestPart with HttpMessageStart, val sender: ActorRef, var state: RequestState)
 
   private case class PartAndSender(part: HttpRequestPart, sender: ActorRef)
 }

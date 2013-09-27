@@ -95,8 +95,8 @@ headers.
 Additionally *spray-can* will render a
 
 - ``Host`` request header if none is explicitly added.
-- ``User-Agent`` header if one is configured. If none is configured an explicitly added added ``User-Agent`` header is
-  also rendered.
+- ``User-Agent`` default request header if none is explicitly defined. The default value can be configured with the
+  ``spray.can.client.user-agent-header`` configuration setting.
 
 .. note:: The ``Content-Type`` header has special status in *spray* since its value is part of the ``HttpEntity`` model
    class. Even though the header also remains in the ``headers`` list of the ``HttpResponse`` *sprays* higher layers

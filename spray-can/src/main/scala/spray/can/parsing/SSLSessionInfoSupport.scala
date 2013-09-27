@@ -21,10 +21,9 @@ import spray.can.server.RequestParsing
 import spray.io._
 import spray.http.HttpMessageStart
 import spray.http.HttpHeaders.`SSL-Session-Info`
-import spray.util.SSLSessionInfo
 
 /** Pipeline stage that adds the `SSL-Session-Info` header to incoming HTTP messages. */
-object SSLSessionInfoSupport extends PipelineStage {
+private[can] object SSLSessionInfoSupport extends PipelineStage {
 
   def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
     new Pipelines {

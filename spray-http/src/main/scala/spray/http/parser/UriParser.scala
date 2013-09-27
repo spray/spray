@@ -302,7 +302,7 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
     // putting some pressure onto the JVM stack
     def readKVP(): Query = {
       val key = part
-      val value = if (ch('=')) part else ""
+      val value = if (ch('=')) part else Query.EmptyValue
       val tail = if (ch('&')) readKVP() else Query.Empty
       Query.Cons(key, value, tail)
     }

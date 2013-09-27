@@ -20,11 +20,11 @@ import akka.io.Tcp
 import spray.io.Command
 import spray.http._
 
-case class RequestPartRenderingContext(
+private[can] case class RequestPartRenderingContext(
   requestPart: HttpRequestPart,
   ack: Tcp.Event = Tcp.NoAck) extends Command
 
-case class ResponsePartRenderingContext(
+private[can] case class ResponsePartRenderingContext(
   responsePart: HttpResponsePart,
   requestMethod: HttpMethod = HttpMethods.GET,
   requestProtocol: HttpProtocol = HttpProtocols.`HTTP/1.1`,

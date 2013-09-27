@@ -34,7 +34,7 @@ trait ChunkingDirectives {
     import csm._
     ctx.withRouteResponseHandling {
       case HttpResponse(_, HttpEntity.NonEmpty(contentType, data), _, _) if csm selects data ⇒
-        implicit val marshaller = BasicMarshallers.byteStringMarshaller(contentType)
+        implicit val marshaller = BasicMarshallers.httpDataMarshaller(contentType)
         ctx.complete(chunkStream(data))
     }
   }
@@ -50,7 +50,7 @@ trait ChunkingDirectives {
       new ChunkSizeMagnet {
         implicit def refFactory: ActorRefFactory = csm.refFactory
         def selects(data: HttpData): Boolean = data.hasFileBytes && csm.selects(data)
-        def chunkStream(data: HttpData): Stream[ByteString] = csm.chunkStream(data)
+        def chunkStream(data: HttpData): Stream[HttpData] = csm.chunkStream(data)
       }
     }
 }
@@ -60,18 +60,18 @@ object ChunkingDirectives extends ChunkingDirectives
 abstract class ChunkSizeMagnet {
   implicit def refFactory: ActorRefFactory
   def selects(data: HttpData): Boolean
-  def chunkStream(data: HttpData): Stream[ByteString]
+  def chunkStream(data: HttpData): Stream[HttpData]
 }
 
 object ChunkSizeMagnet {
-  class Default(thresholdSize: Long, maxChunkSize: Int)(implicit val refFactory: ActorRefFactory) extends ChunkSizeMagnet {
+  class Default(thresholdSize: Long, maxChunkSize: Long)(implicit val refFactory: ActorRefFactory) extends ChunkSizeMagnet {
     def selects(data: HttpData): Boolean = thresholdSize > 0 && data.length > thresholdSize
-    def chunkStream(data: HttpData): Stream[ByteString] = data.toChunkStream(maxChunkSize)
+    def chunkStream(data: HttpData): Stream[HttpData] = data.toChunkStream(maxChunkSize)
   }
-  implicit def fromInt(maxChunkSize: Int)(implicit factory: ActorRefFactory): ChunkSizeMagnet =
-    new Default(maxChunkSize, maxChunkSize)
-  implicit def fromLongAndInt(pair: (Long, Int))(implicit factory: ActorRefFactory): ChunkSizeMagnet =
-    new Default(pair._1, pair._2)
-  implicit def fromIntAndInt(pair: (Int, Int))(implicit factory: ActorRefFactory): ChunkSizeMagnet =
-    new Default(pair._1, pair._2)
+  implicit def fromChunkSize[A](maxChunkSize: A)(implicit factory: ActorRefFactory, aView: A ⇒ Long): ChunkSizeMagnet = {
+    val size = aView(maxChunkSize)
+    new Default(size, size)
+  }
+  implicit def fromPair[A, B](pair: (A, B))(implicit factory: ActorRefFactory, aView: A ⇒ Long, bView: B ⇒ Long): ChunkSizeMagnet =
+    new Default(aView(pair._1), bView(pair._2))
 }

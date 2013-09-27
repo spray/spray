@@ -102,6 +102,8 @@ Directive                              Description
                                        function
 :ref:`-mapRouteResponsePF-`            Same as :ref:`-mapRouteResponse-`, but with a ``PartialFunction``
 :ref:`-method-`                        Rejects if the request method does not match a given one
+:ref:`-overrideMethodWithParameter-`   Changes the HTTP method of the request to the value of the specified query string
+                                       parameter
 :ref:`-noop-`                          Does nothing, i.e. passes the ``RequestContext`` unchanged to its inner Route
 :ref:`-onComplete-`                    "Unwraps" a ``Future[T]`` and runs its inner route after future completion with
                                        the future's value as an extraction of type ``Try[T]``

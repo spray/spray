@@ -24,36 +24,36 @@ import spray.http._
 import HttpHeaders._
 import RenderSupport._
 
-trait RequestRenderingComponent {
+private[can] trait RequestRenderingComponent {
   def userAgent: Option[`User-Agent`]
 
   def renderRequestPart(r: Rendering, part: HttpRequestPart, serverAddress: InetSocketAddress,
                         log: LoggingAdapter): Unit = {
     def renderRequestStart(request: HttpRequest): Unit = {
       import request._
-      @tailrec def renderHeaders(remaining: List[HttpHeader], hostHeaderSeen: Boolean = false): Unit =
+      @tailrec def renderHeaders(remaining: List[HttpHeader], hostHeaderSeen: Boolean = false, userAgentSeen: Boolean = false): Unit =
         remaining match {
-          case Nil ⇒ if (!hostHeaderSeen) r ~~ Host(serverAddress) ~~ CrLf
+          case Nil ⇒
+            if (!hostHeaderSeen) r ~~ Host(serverAddress) ~~ CrLf
+            if (!userAgentSeen && userAgent.isDefined) r ~~ userAgent.get ~~ CrLf
           case head :: tail ⇒
-            def logHeaderSuppressionWarning(msg: String): Boolean = {
+            def logHeaderSuppressionWarning(msg: String): Unit =
               log.warning("Explicitly set request header '{}' is ignored, {}", head, msg)
-              false
-            }
-            val found = head.lowercaseName match {
+
+            head.lowercaseName match {
               case "content-type" if entity.nonEmpty ⇒
                 logHeaderSuppressionWarning("the request Content-Type is set via the request's HttpEntity!")
+                renderHeaders(tail, hostHeaderSeen, userAgentSeen)
               case "content-length" | "transfer-encoding" ⇒
                 logHeaderSuppressionWarning("the spray-can HTTP layer sets this header automatically!")
-              case "user-agent" if userAgent.isDefined ⇒
-                logHeaderSuppressionWarning("the configured User-Agent header overrides the given one!")
-              case "host" ⇒ r ~~ head ~~ CrLf; true
-              case _      ⇒ r ~~ head ~~ CrLf; false
+                renderHeaders(tail, hostHeaderSeen, userAgentSeen)
+              case "user-agent" ⇒ r ~~ head ~~ CrLf; renderHeaders(tail, hostHeaderSeen, userAgentSeen = true)
+              case "host"       ⇒ r ~~ head ~~ CrLf; renderHeaders(tail, hostHeaderSeen = true, userAgentSeen)
+              case _            ⇒ r ~~ head ~~ CrLf; renderHeaders(tail, hostHeaderSeen, userAgentSeen)
             }
-            renderHeaders(tail, found || hostHeaderSeen)
         }
       uri.renderWithoutFragment(r ~~ request.method ~~ ' ', UTF8) ~~ ' ' ~~ protocol ~~ CrLf
       renderHeaders(headers)
-      if (userAgent.isDefined) r ~~ userAgent.get ~~ CrLf
       entity match {
         case HttpEntity.NonEmpty(ContentTypes.NoContentType, _) | HttpEntity.Empty ⇒ // don't render Content-Type header
         case HttpEntity.NonEmpty(contentType, _)                                   ⇒ r ~~ `Content-Type` ~~ contentType ~~ CrLf
@@ -63,7 +63,7 @@ trait RequestRenderingComponent {
     def renderRequest(request: HttpRequest): Unit = {
       renderRequestStart(request)
       val bodyLength = request.entity.data.length
-      if (bodyLength > 0 || request.method.entityAccepted) r ~~ `Content-Length` ~~ bodyLength ~~ CrLf
+      if (bodyLength > 0 || request.method.isEntityAccepted) r ~~ `Content-Length` ~~ bodyLength ~~ CrLf
       r ~~ CrLf ~~ request.entity.data
     }
 

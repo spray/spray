@@ -79,6 +79,8 @@ class HttpHeaderSpec extends Specification {
       example(`Accept-Encoding`(compress, gzip, HttpEncoding.custom("fancy")))_ ^
       "Accept-Encoding: gzip;q=1.0, identity; q=0.5, *;q=0" !
       example(`Accept-Encoding`(gzip, identity, HttpEncodings.`*`), fixQ)_ ^
+      "Accept-Encoding: " !
+      example(`Accept-Encoding`(identity), _ ⇒ "Accept-Encoding: identity")_ ^
       p ^
       "Accept-Language: da, en-gb ;q=0.8, en;q=0.7" !
       example(`Accept-Language`(Language("da"), Language("en", "gb"), Language("en")), fixQ)_ ^

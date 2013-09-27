@@ -25,8 +25,9 @@ import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.Http
 import spray.http._
 import spray.io._
+import spray.util.Timestamp
 
-object ServerFrontend {
+private object ServerFrontend {
 
   trait Context extends PipelineContext {
     // the application-level request handler
@@ -109,10 +110,10 @@ object ServerFrontend {
                 }
                 else throw new NotImplementedError("fastPath is not yet supported with pipelining enabled")
 
-              } else openNewRequest(request, closeAfterResponseCompletion, System.currentTimeMillis)
+              } else openNewRequest(request, closeAfterResponseCompletion, WaitingForResponse())
 
             case HttpMessageStartEvent(ChunkedRequestStart(request), closeAfterResponseCompletion) ⇒
-              openNewRequest(request, closeAfterResponseCompletion, 0L)
+              openNewRequest(request, closeAfterResponseCompletion, WaitingForChunkedEnd)
 
             case Http.MessageEvent(x: MessageChunk) ⇒
               firstOpenRequest handleMessageChunk x
@@ -137,7 +138,7 @@ object ServerFrontend {
 
             case TickGenerator.Tick ⇒
               if (requestTimeout.isFinite())
-                firstOpenRequest checkForTimeout System.currentTimeMillis
+                firstOpenRequest checkForTimeout Timestamp.now
               eventPL(TickGenerator.Tick)
 
             case Pipeline.ActorDeath(actor) if actor == context.handler ⇒
@@ -147,8 +148,8 @@ object ServerFrontend {
             case ev ⇒ eventPL(ev)
           }
 
-          def openNewRequest(request: HttpRequest, closeAfterResponseCompletion: Boolean, timestamp: Long): Unit = {
-            val nextOpenRequest = new DefaultOpenRequest(request, closeAfterResponseCompletion, timestamp)
+          def openNewRequest(request: HttpRequest, closeAfterResponseCompletion: Boolean, state: RequestState): Unit = {
+            val nextOpenRequest = new DefaultOpenRequest(request, closeAfterResponseCompletion, state)
             firstOpenRequest = firstOpenRequest appendToEndOfChain nextOpenRequest
             nextOpenRequest.dispatchInitialRequestPartToHandler()
             if (firstUnconfirmed.isEmpty) firstUnconfirmed = firstOpenRequest

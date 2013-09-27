@@ -22,7 +22,7 @@ import spray.io._
 import spray.http._
 import spray.can.Http
 
-object RequestChunkAggregation {
+private object RequestChunkAggregation {
 
   def apply(limit: Int): PipelineStage =
     new PipelineStage {

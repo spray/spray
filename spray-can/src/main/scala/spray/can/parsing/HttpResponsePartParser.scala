@@ -20,36 +20,30 @@ import scala.annotation.tailrec
 import akka.util.{ ByteString, CompactByteString }
 import spray.http._
 import HttpHeaders._
-import StatusCodes._
 import CharUtils._
 
-class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeaderParser = HttpHeaderParser(_settings))
-    extends HttpMessagePartParser[HttpResponsePart](_settings, _headerParser) {
+private[can] class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeaderParser = HttpHeaderParser(_settings))
+    extends HttpMessagePartParser(_settings, _headerParser) {
+  import HttpResponsePartParser.NoMethod
 
-  private[this] var isResponseToHeadRequest: Boolean = false
+  private[this] var requestMethodForCurrentResponse: HttpMethod = NoMethod
   private[this] var statusCode: StatusCode = StatusCodes.OK
 
-  def copyWith(warnOnIllegalHeader: ErrorInfo ⇒ Unit): HttpResponsePartParser =
+  def copyWith(warnOnIllegalHeader: ErrorInfo ⇒ Unit) =
     new HttpResponsePartParser(settings)(headerParser.copyWith(warnOnIllegalHeader))
 
-  def startResponse(requestMethod: HttpMethod): Unit = {
-    isResponseToHeadRequest = requestMethod == HttpMethods.HEAD
-    parse = super.apply
-  }
+  def setRequestMethodForNextResponse(method: HttpMethod): Unit =
+    requestMethodForCurrentResponse = method
 
-  override def apply(input: CompactByteString): Result[HttpResponsePart] = fail("Unexpected server response")
-
-  def parseMessage(input: CompactByteString): Result[HttpResponsePart] = {
-    var cursor = parseProtocol(input)
-    if (byteChar(input, cursor) == ' ') {
-      cursor = parseStatusCode(input, cursor + 1)
-      cursor = parseReason(input, cursor)()
-      parseHeaderLines(input, cursor) match {
-        case _: Result.Expect100Continue ⇒ fail("'Expect: 100-continue' is not allowed in HTTP responses")
-        case result                      ⇒ result
-      }
-    } else badProtocol
-  }
+  def parseMessage(input: CompactByteString, offset: Int): Result =
+    if (input.isEmpty || offset == input.size || (requestMethodForCurrentResponse ne NoMethod)) {
+      var cursor = parseProtocol(input, offset)
+      if (byteChar(input, cursor) == ' ') {
+        cursor = parseStatusCode(input, cursor + 1)
+        cursor = parseReason(input, cursor)()
+        parseHeaderLines(input, cursor)
+      } else badProtocol
+    } else fail("Unexpected server response", input.drop(offset).utf8String)
 
   def badProtocol = throw new ParsingException("The server-side HTTP version is not supported")
 
@@ -81,21 +75,14 @@ class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeade
   // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-3.3
   def parseEntity(headers: List[HttpHeader], input: CompactByteString, bodyStart: Int, clh: Option[`Content-Length`],
                   cth: Option[`Content-Type`], teh: Option[`Transfer-Encoding`], hostHeaderPresent: Boolean,
-                  closeAfterResponseCompletion: Boolean): Result[HttpResponsePart] = {
-    def entityExpected: Boolean =
-      !isResponseToHeadRequest && {
-        statusCode match {
-          case _: Informational | NoContent | NotModified ⇒ false
-          case _ ⇒ true
-        }
-      }
-
-    if (entityExpected) {
+                  closeAfterResponseCompletion: Boolean): Result =
+    if (statusCode.allowsEntity && (requestMethodForCurrentResponse ne HttpMethods.HEAD)) {
       teh match {
         case Some(te) if te.encodings.size == 1 && te.hasChunked ⇒
           if (clh.isEmpty) {
-            parse = parseChunk(closeAfterResponseCompletion)
-            Result.Ok(ChunkedResponseStart(message(headers, HttpEntity.Empty)), drop(input, bodyStart), closeAfterResponseCompletion)
+            emit(ChunkedResponseStart(message(headers, HttpEntity.Empty)), closeAfterResponseCompletion) {
+              parseChunk(input, bodyStart, closeAfterResponseCompletion)
+            }
           } else fail("A chunked request must not contain a Content-Length header.")
 
         case Some(te) ⇒ fail(te.toString + " is not supported by this client")
@@ -103,8 +90,9 @@ class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeade
         case None ⇒ clh match {
           case Some(`Content-Length`(contentLength)) ⇒
             if (contentLength == 0) {
-              parse = this
-              Result.Ok(message(headers, HttpEntity.Empty), drop(input, bodyStart), closeAfterResponseCompletion)
+              emit(message(headers, HttpEntity.Empty), closeAfterResponseCompletion) {
+                parseMessageSafe(input, bodyStart)
+              }
             } else if (contentLength <= settings.maxContentLength)
               parseFixedLengthBody(headers, input, bodyStart, contentLength, cth, closeAfterResponseCompletion)
             else fail(s"Response Content-Length $contentLength exceeds the configured limit of " +
@@ -113,44 +101,42 @@ class HttpResponsePartParser(_settings: ParserSettings)(_headerParser: HttpHeade
           case None ⇒ parseToCloseBody(headers, input, bodyStart, cth)
         }
       }
-    } else {
-      parse = this
-      Result.Ok(message(headers, HttpEntity.Empty), drop(input, bodyStart), closeAfterResponseCompletion)
+    } else emit(message(headers, HttpEntity.Empty), closeAfterResponseCompletion) {
+      parseMessageSafe(input, bodyStart)
     }
-  }
 
   def parseToCloseBody(headers: List[HttpHeader], input: ByteString, bodyStart: Int,
-                       cth: Option[`Content-Type`]): Result[HttpResponsePart] = {
+                       cth: Option[`Content-Type`]): Result = {
     val currentBodySize = input.length - bodyStart
-
-    if (currentBodySize <= settings.maxContentLength) {
-      if (currentBodySize >= settings.autoChunkingThreshold) {
-        parse = autoChunkToCloseBody
-        Result.Ok(chunkStartMessage(headers), input.drop(bodyStart).compact, closeAfterResponseCompletion = true)
-      } else {
-        parse = { more ⇒
-          if (more.isEmpty) {
-            parse = this
-            val part = message(headers, entity(cth, input drop bodyStart))
-            Result.Ok(part, CompactByteString.empty, closeAfterResponseCompletion = true)
-          } else parseToCloseBody(headers, input ++ more, bodyStart, cth)
+    if (currentBodySize <= settings.maxContentLength)
+      if (currentBodySize < settings.autoChunkingThreshold)
+        Result.NeedMoreData {
+          case CompactByteString.empty ⇒
+            emit(message(headers, entity(cth, input drop bodyStart)), closeAfterResponseCompletion = true) {
+              Result.IgnoreAllFurtherInput
+            }
+          case more ⇒ parseToCloseBody(headers, input ++ more, bodyStart, cth)
         }
-        Result.NeedMoreData
+      else emit(chunkStartMessage(headers), closeAfterResponseCompletion = true) {
+        if (currentBodySize > 0)
+          emit(MessageChunk(HttpData(input drop bodyStart)), closeAfterResponseCompletion = true)(autoChunkToCloseBody)
+        else autoChunkToCloseBody
       }
-    } else fail(s"Response entity exceeds the configured limit of ${settings.maxContentLength} bytes")
-  }
-  def autoChunkToCloseBody: CompactByteString ⇒ Result[HttpResponsePart] = { more ⇒
-    val part =
-      if (more.isEmpty) {
-        parse = this
-        ChunkedMessageEnd
-      } else MessageChunk(HttpData(more))
-    Result.Ok(part, CompactByteString.empty, closeAfterResponseCompletion = true)
+    else fail(s"Response entity exceeds the configured limit of ${settings.maxContentLength} bytes")
   }
 
-  def message(headers: List[HttpHeader], entity: HttpEntity): HttpResponse =
-    HttpResponse(statusCode, entity, headers, protocol)
+  // could be a val but we save the allocation in the most common case of not having an auto-chunked to-close body
+  def autoChunkToCloseBody: Result = Result.NeedMoreData {
+    case CompactByteString.empty ⇒
+      emit(ChunkedMessageEnd, closeAfterResponseCompletion = true) { Result.IgnoreAllFurtherInput }
+    case more ⇒
+      emit(MessageChunk(HttpData(more)), closeAfterResponseCompletion = true)(autoChunkToCloseBody)
+  }
 
-  def chunkStartMessage(headers: List[HttpHeader]): ChunkedResponseStart =
-    ChunkedResponseStart(message(headers, HttpEntity.Empty))
+  def message(headers: List[HttpHeader], entity: HttpEntity) = HttpResponse(statusCode, entity, headers, protocol)
+  def chunkStartMessage(headers: List[HttpHeader]) = ChunkedResponseStart(message(headers, HttpEntity.Empty))
+}
+
+private[can] object HttpResponsePartParser {
+  val NoMethod = HttpMethod.custom("NONE", safe = false, idempotent = false, entityAccepted = false)
 }

@@ -142,8 +142,8 @@ class RequestRendererSpec extends Specification {
       "GET request with overridden User-Agent and without body" in new TestSetup(Some(`User-Agent`("settings-ua/1.0"))) {
         HttpRequest(GET, "/abc", List(RawHeader("User-Agent", "user-ua/1.0"))) must beRenderedTo {
           """GET /abc HTTP/1.1
+            |User-Agent: user-ua/1.0
             |Host: test.com:8080
-            |User-Agent: settings-ua/1.0
             |
             |"""
         }
