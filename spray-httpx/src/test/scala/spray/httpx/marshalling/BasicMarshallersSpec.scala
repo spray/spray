@@ -45,7 +45,7 @@ class BasicMarshallersSpec extends Specification {
   "The FormDataMarshaller" should {
     "properly marshal FormData instances to application/x-www-form-urlencoded entity bodies" in {
       marshal(FormData(Map("name" -> "Bob", "pass" -> "hällo", "admin" -> ""))) ===
-        Right(HttpEntity(ContentType(`application/x-www-form-urlencoded`, `UTF-8`), "name=Bob&pass=h%E4llo&admin"))
+        Right(HttpEntity(ContentType(`application/x-www-form-urlencoded`, `UTF-8`), "name=Bob&pass=h%E4llo&admin="))
     }
   }
 
