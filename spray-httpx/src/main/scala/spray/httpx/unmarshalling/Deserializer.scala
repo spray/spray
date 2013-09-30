@@ -31,7 +31,6 @@ trait Deserializer[A, B] extends (A ⇒ Deserialized[B]) { self ⇒
 
 object Deserializer extends DeserializerLowerPriorityImplicits
     with BasicUnmarshallers
-    with MetaUnmarshallers
     with FromStringDeserializers
     with FormDataUnmarshallers {
 
