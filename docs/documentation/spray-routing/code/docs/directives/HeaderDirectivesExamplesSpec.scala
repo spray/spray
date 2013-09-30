@@ -11,12 +11,12 @@ class HeaderDirectivesExamplesSpec extends DirectivesSpec {
       }
 
     Get("/") ~> RawHeader("X-User-Id", "Joe42") ~> route ~> check {
-      entityAs[String] === "The user is Joe42"
+      responseAs[String] === "The user is Joe42"
     }
 
     Get("/") ~> sealRoute(route) ~> check {
       status === BadRequest
-      entityAs[String] === "Request is missing required HTTP header 'X-User-Id'"
+      responseAs[String] === "Request is missing required HTTP header 'X-User-Id'"
     }
   }
 }

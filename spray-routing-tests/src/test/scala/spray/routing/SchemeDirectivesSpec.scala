@@ -19,7 +19,7 @@ package spray.routing
 class SchemeDirectivesSpec extends RoutingSpec {
   "the schemeName directive" should {
     "extract the Uri scheme" in {
-      Put("http://localhost/", "Hello") ~> schemeName { echoComplete } ~> check { entityAs[String] === "http" }
+      Put("http://localhost/", "Hello") ~> schemeName { echoComplete } ~> check { responseAs[String] === "http" }
     }
   }
 

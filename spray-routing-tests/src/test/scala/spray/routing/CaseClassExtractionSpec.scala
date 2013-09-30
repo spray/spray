@@ -29,26 +29,26 @@ class CaseClassExtractionSpec extends RoutingSpec {
         Get("/?age=42") ~> {
           parameter("age").as(Age) { echoComplete }
         } ~> check {
-          entityAs[String] === "Age(42)"
+          responseAs[String] === "Age(42)"
         }
       }
 
       "1 parameter case classes from non-string extractions" in {
         Get("/?age=42") ~> {
           parameter("age".as[Int]).as(Age) { echoComplete }
-        } ~> check { entityAs[String] === "Age(42)" }
+        } ~> check { responseAs[String] === "Age(42)" }
       }
 
       "5 parameter case classes from string extractions" in {
         Get("/?name=McCormick&firstname=Pete&board=yes&id=1234567&age=57") ~> {
           parameters('firstname, 'name, 'age, 'id, 'board).as(Employee) { echoComplete }
-        } ~> check { entityAs[String] === "Employee(Pete,McCormick,57,1234567,true)" }
+        } ~> check { responseAs[String] === "Employee(Pete,McCormick,57,1234567,true)" }
       }
 
       "5 parameter case classes from mixed extractions" in {
         Get("/?name=McCormick&firstname=Pete&board=yes&id=1234567&age=57") ~> {
           parameters('firstname, 'name, 'age.as[Int], 'id ? 0, 'board).as(Employee) { echoComplete }
-        } ~> check { entityAs[String] === "Employee(Pete,McCormick,57,1234567,true)" }
+        } ~> check { responseAs[String] === "Employee(Pete,McCormick,57,1234567,true)" }
       }
     }
 
