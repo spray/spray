@@ -27,11 +27,11 @@ object FormFieldExtractor {
   def apply(form: HttpForm): FormFieldExtractor = form match {
     case FormData(fields) ⇒ new FormFieldExtractor {
       type Field = UrlEncodedFormField
-      def field(name: String) = new UrlEncodedFormField(name, fields.get(name))
+      def field(name: String) = new UrlEncodedFormField(name, fields.find(_._1 == name).map(_._2))
     }
-    case MultipartFormData(fields) ⇒ new FormFieldExtractor {
+    case multiPartData: MultipartFormData ⇒ new FormFieldExtractor {
       type Field = MultipartFormField
-      def field(name: String) = new MultipartFormField(name, fields.get(name))
+      def field(name: String) = new MultipartFormField(name, multiPartData.get(name))
     }
   }
 }

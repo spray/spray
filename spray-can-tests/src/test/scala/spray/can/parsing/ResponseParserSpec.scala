@@ -18,6 +18,7 @@ package spray.can.parsing
 
 import com.typesafe.config.{ ConfigFactory, Config }
 import org.specs2.mutable.Specification
+import scala.annotation.tailrec
 import akka.actor.ActorSystem
 import akka.util.ByteString
 import spray.util._
@@ -40,11 +41,11 @@ class ResponseParserSpec extends Specification {
 
       // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-3.3.3 (1)
       "a 200 response to a HEAD request" in {
-        parse(
+        parse(HEAD) {
           """HTTP/1.1 200 OK
             |
-            |rest""",
-          requestMethod = HEAD) === (OK, "", Nil, `HTTP/1.1`, "rest", false)
+            |HTT"""
+        } === Seq(OK, "", Nil, `HTTP/1.1`, 'dontClose)
       }
 
       // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-3.3.3 (1)
@@ -52,29 +53,22 @@ class ResponseParserSpec extends Specification {
         parse {
           """HTTP/1.1 204 OK
             |
-            |rest"""
-        } === (NoContent, "", Nil, `HTTP/1.1`, "rest", false)
+            |"""
+        } === Seq(NoContent, "", Nil, `HTTP/1.1`, 'dontClose)
       }
 
       "a response with one header, a body, but no Content-Length header" in {
-        val parser = newParser()
-        parse(parser) {
-          """HTTP/1.0 404 Not Found
-            |Host: api.example.com
-            |
-            |Foobs"""
-        } === Result.NeedMoreData
-        parse(parser)("") === (NotFound, "Foobs", List(Host("api.example.com")), `HTTP/1.0`, "", true)
+        parse("""HTTP/1.0 404 Not Found
+          |Host: api.example.com
+          |
+          |Foobs""", "") === Seq(NotFound, "Foobs", List(Host("api.example.com")), `HTTP/1.0`, 'close, Result.IgnoreAllFurtherInput)
       }
+
       "a response with one header, no body, and no Content-Length header" in {
-        val parser = newParser()
-        parse(parser) {
-          """HTTP/1.0 404 Not Found
-            |Host: api.example.com
-            |
-            |"""
-        } === Result.NeedMoreData
-        parse(parser)("") === (NotFound, "", List(Host("api.example.com")), `HTTP/1.0`, "", true)
+        parse("""HTTP/1.0 404 Not Found
+          |Host: api.example.com
+          |
+          |""", "") === Seq(NotFound, "", List(Host("api.example.com")), `HTTP/1.0`, 'close, Result.IgnoreAllFurtherInput)
       }
 
       "a response with 3 headers, a body and remaining content" in {
@@ -84,9 +78,9 @@ class ResponseParserSpec extends Specification {
             |Connection:close
             |Content-Length: 17
             |
-            |Shake your BOODY!XXX"""
-        } === (InternalServerError, "Shake your BOODY!", List(`Content-Length`(17), Connection("close"),
-          `User-Agent`("curl/7.19.7 xyz")), `HTTP/1.1`, "XXX", true)
+            |Shake your BOODY!HTTP/1."""
+        } === Seq(InternalServerError, "Shake your BOODY!", List(`Content-Length`(17), Connection("close"),
+          `User-Agent`("curl/7.19.7 xyz")), `HTTP/1.1`, 'close)
       }
 
       "a split response (parsed byte-by-byte)" in {
@@ -94,11 +88,10 @@ class ResponseParserSpec extends Specification {
           """HTTP/1.1 200 Ok
             |Content-Length: 4
             |
-            |ABC"""
+            |ABCD"""
         }
-        val parser = newParser()
-        response.toCharArray foreach { c ⇒ rawParse(parser)(c.toString) === Result.NeedMoreData }
-        parse(parser)("DEFGH") === (OK, "ABCD", List(`Content-Length`(4)), `HTTP/1.1`, "EFGH", false)
+        rawParse(newParser())(response.toCharArray.map(_.toString)(collection.breakOut): _*) ===
+          Seq(OK, "ABCD", List(`Content-Length`(4)), `HTTP/1.1`, 'dontClose)
       }
     }
 
@@ -109,36 +102,32 @@ class ResponseParserSpec extends Specification {
           |Server: spray-can
           |
           |"""
+      val startMatch = Seq(OK, List(Server("spray-can"), `Transfer-Encoding`("chunked")), `HTTP/1.1`, 'dontClose)
 
       "response start" in {
-        parse(start + "rest") ===
-          (OK, List(Server("spray-can"), `Transfer-Encoding`("chunked")), `HTTP/1.1`, "rest", false)
+        parse(start + "rest") === startMatch :+ "Illegal character 'r' in chunk start"
       }
 
       "message chunk with and without extension" in {
-        val parser = newParser()
-        parse(parser)(start)
-        parse(parser)("3\nabc\n") === ("abc", "", "", false)
-        parse(parser)("10;some=stuff;bla\n0123456789ABCDEF\n") === ("0123456789ABCDEF", "some=stuff;bla", "", false)
+        parse(start,
+          "3\nabc\n",
+          "10;some=stuff;bla\n0123456789ABCDEF\n") === startMatch ++ Seq(
+            "abc", "", 'dontClose,
+            "0123456789ABCDEF", "some=stuff;bla", 'dontClose)
       }
 
       "message end" in {
-        val parser = newParser()
-        parse(parser)(start)
-        parse(parser)("0\n\n") === ("", Nil, "", false)
+        parse(start, "0\n\n") === startMatch ++ Seq("", Nil, 'dontClose)
       }
 
       "message end with extension, trailer and remaining content" in {
-        val parser = newParser()
-        parse(parser)(start)
-        parse(parser) {
+        parse(start,
           """000;nice=true
             |Foo: pip
             | apo
             |Bar: xyz
             |
-            |rest"""
-        } === ("nice=true", List(RawHeader("Bar", "xyz"), RawHeader("Foo", "pip apo")), "rest", false)
+            |HTTP/""") === startMatch ++ Seq("nice=true", List(RawHeader("Bar", "xyz"), RawHeader("Foo", "pip apo")), 'dontClose)
       }
     }
 
@@ -149,79 +138,76 @@ class ResponseParserSpec extends Specification {
            |Server: spray-can
            |
            |""" format contentSize
+      def startMatch(content: String = null)(len: Int = content.length) =
+        (if (content == null) List(OK) else List(OK, content)) :::
+          List(List(Server("spray-can"), `Content-Length`(len)), `HTTP/1.1`, 'dontClose)
 
       "full response if size < incoming-auto-chunking-threshold-size" in {
-        parse(start(1) + "re") ===
-          (OK, "r", List(Server("spray-can"), `Content-Length`(1)), `HTTP/1.1`, "e", false)
+        parse(start(1) + "rH") === startMatch("r")()
       }
 
       "response start" in {
-        parse(start(25) + "rest") ===
-          (OK, List(Server("spray-can"), `Content-Length`(25)), `HTTP/1.1`, "rest", false)
+        parse(start(25) + "yeah") === startMatch()(25) ++ Seq("yeah", "", 'dontClose)
       }
 
       "response chunk" in {
-        val parser = newParser()
-        parse(parser)(start(25) + "rest")
-        parse(parser)("rest") === ("rest", "", "", false)
+        parse(start(25), "yeah1", "yeah2") === startMatch()(25) ++ Seq(
+          "yeah1", "", 'dontClose,
+          "yeah2", "", 'dontClose)
       }
       "response end" in {
-        val parser = newParser()
-        parse(parser)(start(25) + "rest")
-        parse(parser)("rest1") === ("rest1", "", "", false)
-        parse(parser)("rest2") === ("rest2", "", "", false)
-        parse(parser)("rest3") === ("rest3", "", "", false)
-        parse(parser)("rest4") === ("rest4", "", "", false)
-        parse(parser)("rest5") === ("rest5", "", "\0", false)
-        parse(parser)("\0") === ("", Nil, "", false)
+        parse(start(25), "yeah1", "yeah2", "yeah3", "yeah4", "yeah5HTTP") === startMatch()(25) ++ Seq(
+          "yeah1", "", 'dontClose,
+          "yeah2", "", 'dontClose,
+          "yeah3", "", 'dontClose,
+          "yeah4", "", 'dontClose,
+          "yeah5", "", 'dontClose,
+          "", Nil, 'dontClose)
       }
     }
 
     "properly auto-chunk without content-length" in {
       val start =
-        """|HTTP/1.1 200 OK
+        """HTTP/1.1 200 OK
            |Server: spray-can
            |
            |"""
 
       "full response if size < incoming-auto-chunking-threshold-size" in {
-        val parser = newParser()
-        parse(parser)(start + "re") === Result.NeedMoreData
-        // connection closed
-        parse(parser)("") === (OK, "re", List(Server("spray-can")), `HTTP/1.1`, "", true)
+        parse(start + "yeah", "") === Seq(OK, "yeah", List(Server("spray-can")), `HTTP/1.1`, 'close, Result.IgnoreAllFurtherInput)
       }
 
       "response start" in {
-        val parser = newParser()
-        parse(parser)(start + "rest1rest2rest3rest41") === // 21 bytes means should now be in chunking mode
-          (OK, List(Server("spray-can")), `HTTP/1.1`, "rest1rest2rest3rest41", true)
-        parse(parser)("rest1rest2rest3rest41") ===
-          ("rest1rest2rest3rest41", "", "", true)
+        // 21 bytes means should now be in chunking mode
+        parse(start + "rest1rest2rest3rest41", "more") === Seq(
+          OK, List(Server("spray-can")), `HTTP/1.1`, 'close,
+          "rest1rest2rest3rest41", "", 'close,
+          "more", "", 'close)
       }
 
       "response end" in {
-        val parser = newParser()
-        parse(parser)(start + "rest1rest2rest3rest41") ===
-          (OK, List(Server("spray-can")), `HTTP/1.1`, "rest1rest2rest3rest41", true)
-        parse(parser)("rest1rest2rest3rest41") === ("rest1rest2rest3rest41", "", "", true)
-        parse(parser)("more") === ("more", "", "", true)
-        parse(parser)("") === ("", Nil, "", true)
+        parse(start + "rest1rest2rest3rest41", "more1", "more2", "") === Seq(
+          OK, List(Server("spray-can")), `HTTP/1.1`, 'close,
+          "rest1rest2rest3rest41", "", 'close,
+          "more1", "", 'close,
+          "more2", "", 'close,
+          "", Nil, 'close, Result.IgnoreAllFurtherInput)
       }
     }
 
     "reject a response with" in {
       "HTTP version 1.2" in {
-        parse("HTTP/1.2 200 OK\r\n") === "The server-side HTTP version is not supported"
+        parse("HTTP/1.2 200 OK\r\n") === Seq("The server-side HTTP version is not supported")
       }
 
       "an illegal status code" in {
-        parse("HTTP/1.1 700 Something") === "Illegal response status code"
-        parse("HTTP/1.1 2000 Something") === "Illegal response status code"
+        parse("HTTP/1.1 700 Something") === Seq("Illegal response status code")
+        parse("HTTP/1.1 2000 Something") === Seq("Illegal response status code")
       }
 
       "a too-long response status reason" in {
         parse("HTTP/1.1 204 1234567890123456789012\r\n") ===
-          "Response reason phrase exceeds the configured limit of 21 characters"
+          Seq("Response reason phrase exceeds the configured limit of 21 characters")
       }
     }
   }
@@ -230,25 +216,34 @@ class ResponseParserSpec extends Specification {
 
   def newParser(requestMethod: HttpMethod = GET) = {
     val parser = new HttpResponsePartParser(ParserSettings(system))()
-    parser.startResponse(requestMethod)
+    parser.setRequestMethodForNextResponse(requestMethod)
     parser
   }
 
-  def parse(rawResponse: String, requestMethod: HttpMethod = GET): AnyRef =
-    parse(newParser(requestMethod))(rawResponse)
+  def parse(rawResponse: String*): AnyRef = parse(GET)(rawResponse: _*)
+  def parse(requestMethod: HttpMethod)(rawResponse: String*): AnyRef = parse(newParser(requestMethod))(rawResponse: _*)
+  def parse(parser: Parser)(rawResponse: String*): Seq[Any] = rawParse(parser)(rawResponse map prep: _*)
 
-  def parse(parser: HttpResponsePartParser)(rawResponse: String): AnyRef = rawParse(parser)(prep(rawResponse))
+  def rawParse(parser: Parser)(rawResponse: String*): Seq[Any] = {
+    def closeSymbol(close: Boolean) = if (close) 'close else 'dontClose
+    @tailrec def rec(current: Result, remainingData: List[ByteString], result: Seq[Any] = Seq.empty): Seq[Any] =
+      current match {
+        case Result.Emit(HttpResponse(s, e, h, p), c, continue) ⇒
+          rec(continue(), remainingData, result ++ Seq(s, e.asString, h, p, closeSymbol(c)))
+        case Result.Emit(ChunkedResponseStart(HttpResponse(s, HttpEntity.Empty, h, p)), c, continue) ⇒
+          rec(continue(), remainingData, result ++ Seq(s, h, p, closeSymbol(c)))
+        case Result.Emit(MessageChunk(d, ext), c, continue) ⇒
+          rec(continue(), remainingData, result ++ Seq(d.asString, ext, closeSymbol(c)))
+        case Result.Emit(ChunkedMessageEnd(ext, trailer), c, continue) ⇒
+          rec(continue(), remainingData, result ++ Seq(ext, trailer, closeSymbol(c)))
+        case Result.NeedMoreData(p) ⇒
+          if (remainingData.nonEmpty) rec(p(remainingData.head), remainingData.tail, result) else result
+        case Result.ParsingError(BadRequest, info) ⇒ result :+ info.formatPretty
+        case x                                     ⇒ result :+ x
+      }
 
-  def rawParse(parser: HttpResponsePartParser)(rawResponse: String): AnyRef = {
-    val data = ByteString(rawResponse)
-    parser.parse(data) match {
-      case Result.Ok(HttpResponse(s, e, h, p), rd, close) ⇒ (s, e.asString, h, p, rd.utf8String, close)
-      case Result.Ok(ChunkedResponseStart(HttpResponse(s, HttpEntity.Empty, h, p)), rd, close) ⇒ (s, h, p, rd.utf8String, close)
-      case Result.Ok(MessageChunk(d, ext), rd, close) ⇒ (d.asString, ext, rd.utf8String, close)
-      case Result.Ok(ChunkedMessageEnd(ext, trailer), rd, close) ⇒ (ext, trailer, rd.utf8String, close)
-      case Result.ParsingError(BadRequest, info) ⇒ info.formatPretty
-      case x ⇒ x
-    }
+    val data: List[ByteString] = rawResponse.map(ByteString.apply)(collection.breakOut)
+    rec(parser(data.head), data.tail)
   }
 
   def prep(response: String) = response.stripMargin.replace(EOL, "\n").replace("\n", "\r\n")

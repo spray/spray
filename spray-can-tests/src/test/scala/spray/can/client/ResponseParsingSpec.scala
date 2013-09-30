@@ -26,7 +26,7 @@ import spray.can.TestSupport._
 import spray.can.Http
 
 class ResponseParsingSpec extends Specification with Specs2PipelineStageTest {
-  val stage = ResponseParsing(defaultParserSettings)
+  def stage = ResponseParsing(defaultParserSettings)
 
   "The ResponseParsing PipelineStage" should {
 

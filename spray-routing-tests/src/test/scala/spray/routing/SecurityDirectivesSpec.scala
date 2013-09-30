@@ -25,6 +25,7 @@ import AuthenticationFailedRejection._
 class SecurityDirectivesSpec extends RoutingSpec {
 
   val dontAuth = BasicAuth(UserPassAuthenticator[BasicUserContext](_ ⇒ Promise.successful(None)), "Realm")
+  val challenge = `WWW-Authenticate`(HttpChallenge("Basic", "Realm"))
 
   val doAuth = BasicAuth(UserPassAuthenticator[BasicUserContext] { userPassOption ⇒
     Promise.successful(Some(BasicUserContext(userPassOption.get.user)))
@@ -34,12 +35,12 @@ class SecurityDirectivesSpec extends RoutingSpec {
     "reject requests without Authorization header with an AuthenticationFailedRejection" in {
       Get() ~> {
         authenticate(dontAuth) { echoComplete }
-      } ~> check { rejection === AuthenticationFailedRejection(CredentialsMissing, dontAuth) }
+      } ~> check { rejection === AuthenticationFailedRejection(CredentialsMissing, List(challenge)) }
     }
     "reject unauthenticated requests with Authorization header with an AuthenticationFailedRejection" in {
       Get() ~> Authorization(BasicHttpCredentials("Bob", "")) ~> {
         authenticate(dontAuth) { echoComplete }
-      } ~> check { rejection === AuthenticationFailedRejection(CredentialsRejected, dontAuth) }
+      } ~> check { rejection === AuthenticationFailedRejection(CredentialsRejected, List(challenge)) }
     }
     "reject requests with illegal Authorization header with 401" in {
       Get() ~> RawHeader("Authorization", "bob alice") ~> handleRejections(RejectionHandler.Default) {

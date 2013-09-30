@@ -38,7 +38,7 @@ import RequestParsing._
  *     i.e. during the `eventPL` call in handleEvent the complete request is handled and already sent
  *     out so that the openRequests counter is never increased.
  */
-object PipeliningLimiter {
+private object PipeliningLimiter {
 
   def apply(pipeliningLimit: Int): PipelineStage =
     new PipelineStage {

@@ -87,6 +87,9 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   def withEntity(entity: HttpEntity): Self
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity): Self
 
+  /** Returns the start part for this message */
+  def chunkedMessageStart: HttpMessageStart
+
   def mapHeaders(f: List[HttpHeader] ⇒ List[HttpHeader]): Self = withHeaders(f(headers))
   def mapEntity(f: HttpEntity ⇒ HttpEntity): Self = withEntity(f(entity))
 
@@ -106,6 +109,24 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
       else if (erasure.isInstance(headers.head)) Some(headers.head.asInstanceOf[T]) else next(headers.tail)
     next(headers)
   }
+
+  def connectionCloseExpected: Boolean = HttpMessage.connectionCloseExpected(protocol, header[Connection])
+
+  /** Returns the message as if it was sent in chunks */
+  def asPartStream(maxChunkSize: Long = Long.MaxValue): Stream[HttpMessagePart] =
+    if (entity.isEmpty) Stream(chunkedMessageStart, ChunkedMessageEnd)
+    else
+      (chunkedMessageStart #::
+        entity.data.toChunkStream(maxChunkSize).map(MessageChunk(_): HttpMessagePart))
+        .append(Stream(ChunkedMessageEnd))
+}
+
+object HttpMessage {
+  private[spray] def connectionCloseExpected(protocol: HttpProtocol, connectionHeader: Option[Connection]): Boolean =
+    protocol match {
+      case HttpProtocols.`HTTP/1.1` ⇒ connectionHeader.isDefined && connectionHeader.get.hasClose
+      case HttpProtocols.`HTTP/1.0` ⇒ connectionHeader.isEmpty || !connectionHeader.get.hasKeepAlive
+    }
 }
 
 /**
@@ -246,6 +267,8 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   def withEntity(entity: HttpEntity) = if (entity eq this.entity) this else copy(entity = entity)
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) =
     if ((headers eq this.headers) && (entity eq this.entity)) this else copy(headers = headers, entity = entity)
+
+  def chunkedMessageStart: HttpMessageStart = ChunkedRequestStart(withEntity(HttpEntity.Empty))
 }
 
 /**
@@ -265,10 +288,7 @@ case class HttpResponse(status: StatusCode = StatusCodes.OK,
   def withEntity(entity: HttpEntity) = copy(entity = entity)
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) = copy(headers = headers, entity = entity)
 
-  def connectionCloseExpected: Boolean = protocol match {
-    case HttpProtocols.`HTTP/1.0` ⇒ headers.forall { case x: Connection if x.hasKeepAlive ⇒ false; case _ ⇒ true }
-    case HttpProtocols.`HTTP/1.1` ⇒ headers.exists { case x: Connection if x.hasClose ⇒ true; case _ ⇒ false }
-  }
+  def chunkedMessageStart: HttpMessageStart = ChunkedResponseStart(withEntity(HttpEntity.Empty))
 }
 
 /**

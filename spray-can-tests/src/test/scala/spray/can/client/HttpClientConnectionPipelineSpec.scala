@@ -36,7 +36,7 @@ import spray.http._
 class HttpClientConnectionPipelineSpec extends Specification with RawSpecs2PipelineStageTest with NoTimeConversions {
   type Context = SslTlsContext
 
-  val stage = HttpClientConnection.pipelineStage(ClientConnectionSettings(system))
+  def stage = HttpClientConnection.pipelineStage(ClientConnectionSettings(system))
 
   "The HttpClient pipeline" should {
 

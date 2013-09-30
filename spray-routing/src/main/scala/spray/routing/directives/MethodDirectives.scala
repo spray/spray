@@ -17,7 +17,7 @@
 package spray.routing
 package directives
 
-import spray.http.HttpMethod
+import spray.http.{ StatusCodes, HttpMethod }
 import spray.http.HttpMethods._
 import shapeless.HNil
 
@@ -29,48 +29,70 @@ trait MethodDirectives {
   /**
    * A route filter that rejects all non-DELETE requests.
    */
-  val delete = method(DELETE) // source-quote
+  val delete: Directive0 = method(DELETE) // source-quote
 
   /**
    * A route filter that rejects all non-GET requests.
    */
-  val get = method(GET) // source-quote
+  val get: Directive0 = method(GET) // source-quote
 
   /**
    * A route filter that rejects all non-HEAD requests.
    */
-  val head = method(HEAD) // source-quote
+  val head: Directive0 = method(HEAD) // source-quote
 
   /**
    * A route filter that rejects all non-OPTIONS requests.
    */
-  val options = method(OPTIONS) // source-quote
+  val options: Directive0 = method(OPTIONS) // source-quote
 
   /**
    * A route filter that rejects all non-PATCH requests.
    */
-  val patch = method(PATCH) // source-quote
+  val patch: Directive0 = method(PATCH) // source-quote
 
   /**
    * A route filter that rejects all non-POST requests.
    */
-  val post = method(POST) // source-quote
+  val post: Directive0 = method(POST) // source-quote
 
   /**
    * A route filter that rejects all non-PUT requests.
    */
-  val put = method(PUT) // source-quote
+  val put: Directive0 = method(PUT) // source-quote
 
   //# method-directive
   /**
    * Rejects all requests whose HTTP method does not match the given one.
    */
-  def method(mth: HttpMethod): Directive0 =
+  def method(method: HttpMethod): Directive0 =
     extract(_.request.method).flatMap[HNil] {
-      case `mth` ⇒ pass
-      case _     ⇒ reject(MethodRejection(mth))
+      case `method` ⇒ pass
+      case _        ⇒ reject(MethodRejection(method))
     } & cancelAllRejections(ofType[MethodRejection])
   //#
+
+  /**
+   * Changes the HTTP method of the request to the value of the specified query string parameter. If the query string
+   * parameter is not specified this directive has no effect. If the query string is specified as something that is not
+   * a HTTP method, then this directive completes the request with a 501 Not Implemented response.
+   *
+   * This directive is useful for:
+   *  - Use in combination with JSONP (JSONP only supports GET)
+   *  - Supporting older browsers that lack support for certain HTTP methods. E.g. IE8 does not support PATCH
+   */
+  def overrideMethodWithParameter(paramName: String): Directive0 = {
+    import ParameterDirectives._
+    parameter(paramName?).flatMap {
+      case Some(method) ⇒ {
+        getForKey(method.toUpperCase) match {
+          case Some(m) ⇒ mapRequest(_.copy(method = m))
+          case _       ⇒ complete(StatusCodes.NotImplemented)
+        }
+      }
+      case _ ⇒ noop
+    }
+  }
 }
 
 object MethodDirectives extends MethodDirectives

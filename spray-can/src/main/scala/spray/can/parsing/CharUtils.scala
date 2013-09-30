@@ -22,7 +22,7 @@ import scala.annotation.tailrec
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
 
 // TODO: replace with spray.http.parser.CharMask
-private[parsing] object CharUtils {
+private object CharUtils {
   // compile time constants
   private final val LOWER_ALPHA = 0x01
   private final val UPPER_ALPHA = 0x02

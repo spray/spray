@@ -379,7 +379,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
   def formatSizes: String = nodeCount + " nodes, " + { branchDataCount / 3 } + " nodeData rows, " + valueCount + " values"
 }
 
-private[parsing] object HttpHeaderParser {
+private object HttpHeaderParser {
   import SpecializedHeaderValueParsers._
 
   object EmptyHeader extends HttpHeader {

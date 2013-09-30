@@ -23,7 +23,7 @@ import scala.annotation.tailrec
 import akka.util.duration._
 import org.specs2.mutable.Specification
 import org.specs2.time.NoTimeConversions
-import akka.actor.{ ActorRef, ActorSystem }
+import akka.actor.{ Terminated, ActorRef, ActorSystem }
 import akka.io.IO
 import akka.testkit.TestProbe
 import spray.can.Http
@@ -32,6 +32,7 @@ import spray.httpx.RequestBuilding._
 import spray.http._
 import spray.testkit._
 import HttpProtocols._
+import spray.can.client.ClientConnectionSettings
 
 class SprayCanServerSpec extends Specification with NoTimeConversions {
   val testConf: Config = ConfigFactory.parseString("""
@@ -50,6 +51,31 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
       val commander = TestProbe()
       commander.send(listener, Http.Unbind)
       commander expectMsg Http.Unbound
+    }
+    "properly bind and unbind an HttpListener with graceperiod" in new TestSetup {
+      val commander = TestProbe()
+      val clientTerminationWatcher = TestProbe()
+      val serverTerminationWatcher = TestProbe()
+
+      val clientSettings = ClientConnectionSettings {
+        """spray.can.client.idleTimeout = infinite
+          |spray.can.client.requestTimeout = infinite
+        """.stripMargin
+      }
+
+      val connection = openNewClientConnection(Some(clientSettings))
+      val serverSide = acceptConnection()
+      clientTerminationWatcher.watch(connection)
+      serverTerminationWatcher.watch(listener)
+      commander.send(listener, Http.Unbind(10.minutes))
+      commander expectMsg Http.Unbound
+      commander.expectNoMsg()
+      clientTerminationWatcher.expectNoMsg()
+      serverTerminationWatcher.expectNoMsg()
+
+      connection ! Http.Close
+      clientTerminationWatcher.expectMsgType[Terminated].actor === connection
+      serverTerminationWatcher.expectMsgType[Terminated].actor === listener
     }
 
     "properly complete a simple request/response cycle" in new TestSetup {
@@ -225,9 +251,9 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
       commander.sender
     }
 
-    def openNewClientConnection(): ActorRef = {
+    def openNewClientConnection(settings: Option[ClientConnectionSettings] = None): ActorRef = {
       val probe = TestProbe()
-      probe.send(IO(Http), Http.Connect(hostname, port))
+      probe.send(IO(Http), Http.Connect(hostname, port, settings = settings))
       probe.expectMsgType[Http.Connected]
       probe.sender
     }

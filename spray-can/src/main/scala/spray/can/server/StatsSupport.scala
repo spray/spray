@@ -16,19 +16,18 @@
 package spray.can.server
 
 import scala.annotation.tailrec
-import akka.util.duration._
 import akka.util.FiniteDuration
-import spray.util.PaddedAtomicLong
+import spray.util.{ Timestamp, PaddedAtomicLong }
 import spray.http.{ Timedout, HttpMessageStart }
 import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.io._
 import spray.can.Http
 
-object StatsSupport {
+private object StatsSupport {
 
   class StatsHolder {
-    val startTimestamp = System.currentTimeMillis
+    val startTimestamp = Timestamp.now
     val requestStarts = new PaddedAtomicLong
     val responseStarts = new PaddedAtomicLong
     val maxOpenRequests = new PaddedAtomicLong
@@ -58,7 +57,7 @@ object StatsSupport {
     }
 
     def toStats = Stats(
-      uptime = (System.currentTimeMillis - startTimestamp) millis,
+      uptime = (Timestamp.now - startTimestamp).asInstanceOf[FiniteDuration],
       totalRequests = requestStarts.get,
       openRequests = requestStarts.get - responseStarts.get,
       maxOpenRequests = maxOpenRequests.get,

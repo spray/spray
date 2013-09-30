@@ -37,7 +37,7 @@ trait HttpAuthenticator[U] extends ContextAuthenticator[U] {
       case Some(userContext) ⇒ Right(userContext)
       case None ⇒
         val cause = if (authHeader.isEmpty) CredentialsMissing else CredentialsRejected
-        Left(AuthenticationFailedRejection(cause, this))
+        Left(AuthenticationFailedRejection(cause, getChallengeHeaders(ctx.request)))
     }
   }
 

@@ -20,6 +20,7 @@ import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import scala.annotation.tailrec
 import akka.util.Duration
 import akka.dispatch.{ Promise, ExecutionContext, Future }
+import spray.util.Timestamp
 
 object LruCache {
 
@@ -31,14 +32,19 @@ object LruCache {
    */
   def apply[V](maxCapacity: Int = 500,
                initialCapacity: Int = 16,
-               timeToLive: Duration = Duration.Zero,
-               timeToIdle: Duration = Duration.Zero): Cache[V] = {
+               timeToLive: Duration = Duration.Inf,
+               timeToIdle: Duration = Duration.Inf): Cache[V] = {
     //#
-    import Duration._
-    def isNonZeroFinite(d: Duration) = d != Zero && d.isFinite
-    def millis(d: Duration) = if (isNonZeroFinite(d)) d.toMillis else 0L
-    if (isNonZeroFinite(timeToLive) || isNonZeroFinite(timeToIdle))
-      new ExpiringLruCache[V](maxCapacity, initialCapacity, millis(timeToLive), millis(timeToIdle))
+    def check(dur: Duration, name: String) =
+      require(dur != Duration.Zero,
+        "Behavior of LruCache.apply changed: Duration.Zero not allowed any more for " + name +
+          " parameter. To disable expiration use Duration.Inf instead of Duration.Zero")
+    // migration help
+    check(timeToLive, "timeToLive")
+    check(timeToIdle, "timeToIdle")
+
+    if (timeToLive.isFinite() || timeToIdle.isFinite())
+      new ExpiringLruCache[V](maxCapacity, initialCapacity, timeToLive, timeToIdle)
     else
       new SimpleLruCache[V](maxCapacity, initialCapacity)
   }
@@ -99,11 +105,9 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
  * @param timeToIdle the time-to-idle in millis, zero for disabling tti-expiration
  */
 final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
-                                timeToLive: Long, timeToIdle: Long) extends Cache[V] {
-  require(timeToLive >= 0, "timeToLive must not be negative")
-  require(timeToIdle >= 0, "timeToIdle must not be negative")
-  require(timeToLive == 0 || timeToIdle == 0 || timeToLive > timeToIdle,
-    "timeToLive must be greater than timeToIdle, if both are non-zero")
+                                timeToLive: Duration, timeToIdle: Duration) extends Cache[V] {
+  require(!timeToLive.isFinite || !timeToIdle.isFinite || timeToLive > timeToIdle,
+    "timeToLive(" + timeToLive + ") must be greater than timeToIdle(" + timeToIdle + ")")
 
   private[caching] val store = new ConcurrentLinkedHashMap.Builder[Any, Entry[V]]
     .initialCapacity(initialCapacity)
@@ -163,20 +167,18 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
 
   def size = store.size
 
-  private def isAlive(entry: Entry[V]) = {
-    val now = System.currentTimeMillis
-    (timeToLive == 0 || (now - entry.created) < timeToLive) &&
-      (timeToIdle == 0 || (now - entry.lastAccessed) < timeToIdle)
-  }
+  private def isAlive(entry: Entry[V]) =
+    (entry.created + timeToLive).isFuture &&
+      (entry.lastAccessed + timeToIdle).isFuture
 }
 
 private[caching] class Entry[T](val promise: Promise[T]) {
-  @volatile var created = System.currentTimeMillis
-  @volatile var lastAccessed = System.currentTimeMillis
+  @volatile var created = Timestamp.now
+  @volatile var lastAccessed = Timestamp.now
   def future = promise.future
   def refresh(): Unit = {
     // we dont care whether we overwrite a potentially newer value
-    lastAccessed = System.currentTimeMillis
+    lastAccessed = Timestamp.now
   }
   override def toString = future.value match {
     case Some(Right(value))    ⇒ value.toString

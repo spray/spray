@@ -21,7 +21,7 @@ import spray.http.HttpDataRendering
 import spray.can.rendering._
 import spray.io._
 
-object ResponseRendering {
+private object ResponseRendering {
 
   def apply(settings: ServerSettings): PipelineStage =
     new PipelineStage with ResponseRenderingComponent {

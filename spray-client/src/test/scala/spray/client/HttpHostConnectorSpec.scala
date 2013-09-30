@@ -39,8 +39,8 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
     akka.event-handlers = ["akka.testkit.TestEventListener"]
     akka.loglevel = WARNING
     akka.io.tcp.trace-logging = off
-    spray.can.host-connector.max-retries = 2
-    spray.can.host-connector.client.request-timeout = 400ms
+    spray.can.host-connector.max-retries = 4
+    spray.can.client.request-timeout = 400ms
     spray.can.client.user-agent-header = "RequestMachine"""")
   implicit val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConf)
   import system.dispatcher
@@ -57,9 +57,11 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
           case _: Http.Connected ⇒ sender ! Http.Register(self)
           case HttpRequest(_, Uri.Path("/compressedResponse"), _, _, _) ⇒
             sender ! Gzip.encode(HttpResponse(entity = "content"))
-          case x: HttpRequest if x.uri.toString.startsWith("/drop1of2") && dropNext ⇒
-            log.debug("Dropping " + x)
+          case x: HttpRequest if x.uri.path.toString.startsWith("/drop1of2") && dropNext ⇒
+            log.info("Dropping " + x)
             dropNext = random.nextBoolean()
+          case x: HttpRequest if x.uri.path.toString.startsWith("/closeConnection") ⇒
+            sender ! HttpResponse(entity = "now closing", headers = List(HttpHeaders.Connection("close")))
           case x @ HttpRequest(method, uri, _, entity, _) ⇒
             log.debug("Responding to " + x)
             dropNext = random.nextBoolean()
@@ -92,8 +94,8 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
   "An HttpHostConnector" should {
     "retry GET requests whose sending has failed" in {
       val pipeline = newPipeline(pipelined = false)
-      def send = pipeline(HttpRequest(uri = "/drop1of2"))
-      val fut = send.flatMap(r1 ⇒ send.map(r2 ⇒ r1 -> r2))
+      def send() = pipeline(HttpRequest(uri = "/drop1of2"))
+      val fut = send().flatMap(r1 ⇒ send().map(r2 ⇒ r1 -> r2))
       val (r1, r2) = fut.await
       r1.entity === r2.entity
     }
@@ -112,6 +114,13 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
       val Http.HostConnectorInfo(connector, _) = IO(Http).ask(Http.HostConnectorSetup(interface, port)).await
       val pipeline = sendReceive(connector)
       pipeline(HttpRequest()).await.header[HttpHeaders.`User-Agent`].get.value === "RequestMachine"
+    }
+    "should handle `Connection: close` properly" in {
+      val pipeline = newPipeline(pipelined = false, maxConnections = 1)
+      val requests = List.fill(2)(HttpRequest(method = HttpMethods.POST, uri = "/closeConnection"))
+
+      val future = Future.traverse(requests)(pipeline)
+      future.await.forall(_.status.isSuccess) === true
     }
   }
 

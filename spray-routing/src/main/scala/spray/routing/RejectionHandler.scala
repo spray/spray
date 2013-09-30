@@ -36,12 +36,12 @@ object RejectionHandler {
   implicit val Default = apply {
     case Nil ⇒ complete(NotFound, "The requested resource could not be found.")
 
-    case AuthenticationFailedRejection(cause, authenticator) :: _ ⇒
+    case AuthenticationFailedRejection(cause, challengeHeaders) :: _ ⇒
       val rejectionMessage = cause match {
         case CredentialsMissing  ⇒ "The resource requires authentication, which was not supplied with the request"
         case CredentialsRejected ⇒ "The supplied authentication is invalid"
       }
-      ctx ⇒ ctx.complete(Unauthorized, authenticator.getChallengeHeaders(ctx.request), rejectionMessage)
+      ctx ⇒ ctx.complete(Unauthorized, challengeHeaders, rejectionMessage)
 
     case AuthorizationFailedRejection :: _ ⇒
       complete(Forbidden, "The supplied authentication is not authorized to access this resource")

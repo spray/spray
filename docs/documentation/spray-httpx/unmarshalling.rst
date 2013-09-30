@@ -41,12 +41,12 @@ The relevant sources are:
 - Deserializer_
 - BasicUnmarshallers_
 - MetaUnmarshallers_
-- MultipartUnmarshallers_
+- FormDataUnmarshallers_
 
 .. _Deserializer: https://github.com/spray/spray/blob/release/1.0/spray-httpx/src/main/scala/spray/httpx/unmarshalling/Deserializer.scala
 .. _BasicUnmarshallers: https://github.com/spray/spray/blob/release/1.0/spray-httpx/src/main/scala/spray/httpx/unmarshalling/BasicUnmarshallers.scala
 .. _MetaUnmarshallers: https://github.com/spray/spray/blob/release/1.0/spray-httpx/src/main/scala/spray/httpx/unmarshalling/MetaUnmarshallers.scala
-.. _MultipartUnmarshallers: https://github.com/spray/spray/blob/release/1.0/spray-httpx/src/main/scala/spray/httpx/unmarshalling/MultipartUnmarshallers.scala
+.. _FormDataUnmarshallers: https://github.com/spray/spray/blob/release/1.0/spray-httpx/src/main/scala/spray/httpx/unmarshalling/FormDataUnmarshallers.scala
 
 
 Implicit Resolution

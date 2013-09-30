@@ -20,6 +20,7 @@ import java.net.InetSocketAddress
 import com.typesafe.config.Config
 import scala.collection.immutable
 import akka.io.{ Inet, Tcp }
+import akka.util.Duration
 import akka.actor._
 import spray.can.server.ServerSettings
 import spray.can.client.{ HostConnectorSettings, ClientConnectionSettings }
@@ -88,7 +89,8 @@ object Http extends ExtensionKey[HttpExt] {
                       keepOpenOnPeerClosed: Boolean = false,
                       fastPath: FastPath = EmptyFastPath) extends Command
 
-  val Unbind = Tcp.Unbind
+  case class Unbind(timeout: Duration) extends Command
+  object Unbind extends Unbind(Duration.Zero)
 
   type CloseCommand = Tcp.CloseCommand
   val Close = Tcp.Close

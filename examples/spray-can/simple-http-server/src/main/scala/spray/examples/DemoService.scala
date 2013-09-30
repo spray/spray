@@ -51,7 +51,9 @@ class DemoService extends Actor with ActorLogging {
       sender ! HttpResponse(entity = "Shutting down in 1 second ...")
       context.system.scheduler.scheduleOnce(1.second) { context.system.shutdown() }
 
-    case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
+    case r@HttpRequest(POST, Uri.Path("/file-upload"), headers, entity: HttpEntity.NonEmpty, protocol) =>
+      // emulate chunked behavior for POST requests to this path
+      r.asPartStream().foreach(self.tell(_, sender))
 
     case s@ChunkedRequestStart(HttpRequest(POST, Uri.Path("/file-upload"), _, _, _)) =>
       require(!chunkHandlers.contains(sender))
@@ -63,6 +65,8 @@ class DemoService extends Actor with ActorLogging {
     case e: ChunkedMessageEnd =>
       chunkHandlers(sender).tell(e, sender)
       chunkHandlers -= sender
+
+    case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
 
     case Timedout(HttpRequest(_, Uri.Path("/timeout/timeout"), _, _, _)) =>
       log.info("Dropping Timeout message")
