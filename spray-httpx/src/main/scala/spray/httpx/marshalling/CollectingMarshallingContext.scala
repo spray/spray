@@ -30,13 +30,15 @@ import spray.http._
  * for subsequent postprocessing.
  */
 class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = null) extends MarshallingContext {
-  private val _entity = new AtomicReference[Option[HttpEntity]](None)
+  private val _entityAndHeaders = new AtomicReference[Option[(HttpEntity, Seq[HttpHeader])]](None)
   private val _error = new AtomicReference[Option[Throwable]](None)
   private val _chunkedMessageEnd = new AtomicReference[Option[ChunkedMessageEnd]](None)
   private val _chunks = new AtomicReference[Seq[MessageChunk]](Vector.empty)
   private val latch = new CountDownLatch(1)
 
-  def entity: Option[HttpEntity] = _entity.get
+  def entityAndHeaders: Option[(HttpEntity, Seq[HttpHeader])] = _entityAndHeaders.get
+  def entity: Option[HttpEntity] = entityAndHeaders.map(_._1)
+  def headers: Seq[HttpHeader] = entityAndHeaders.toSeq.flatMap(_._2)
   def error: Option[Throwable] = _error.get
   def chunks: Seq[MessageChunk] = _chunks.get
   def chunkedMessageEnd: Option[ChunkedMessageEnd] = _chunkedMessageEnd.get
@@ -44,12 +46,11 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
   // we always convert to the first content-type the marshaller can marshal to
   def tryAccept(contentTypes: Seq[ContentType]) = contentTypes.headOption
 
-  def rejectMarshalling(supported: Seq[ContentType]): Unit = {
+  def rejectMarshalling(supported: Seq[ContentType]): Unit =
     handleError(new RuntimeException("Marshaller rejected marshalling, only supports " + supported))
-  }
 
-  def marshalTo(entity: HttpEntity): Unit = {
-    if (!_entity.compareAndSet(None, Some(entity))) sys.error("`marshalTo` called more than once")
+  def marshalTo(entity: HttpEntity, headers: HttpHeader*): Unit = {
+    if (!_entityAndHeaders.compareAndSet(None, Some(entity -> headers))) sys.error("`marshalTo` called more than once")
     latch.countDown()
   }
 
@@ -58,20 +59,20 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
     latch.countDown()
   }
 
-  def startChunkedMessage(entity: HttpEntity, ack: Option[Any] = None)(implicit sender: ActorRef) = {
+  def startChunkedMessage(entity: HttpEntity, ack: Option[Any] = None,
+                          headers: Seq[HttpHeader] = Nil)(implicit sender: ActorRef): ActorRef = {
     require(actorRefFactory != null, "Chunked responses can only be collected if an ActorRefFactory is provided")
-    if (!_entity.compareAndSet(None, Some(entity)))
+    if (!_entityAndHeaders.compareAndSet(None, Some(entity -> headers)))
       sys.error("`marshalTo` or `startChunkedMessage` was already called")
 
     val ref = new UnregisteredActorRef(actorRefFactory) {
-      def handle(message: Any)(implicit sender: ActorRef) {
+      def handle(message: Any)(implicit sender: ActorRef): Unit =
         message match {
           case HttpMessagePartWrapper(part, ack) ⇒
             part match {
               case x: MessageChunk ⇒
-                @tailrec def updateChunks(current: Seq[MessageChunk]): Unit = {
+                @tailrec def updateChunks(current: Seq[MessageChunk]): Unit =
                   if (!_chunks.compareAndSet(current, _chunks.get :+ x)) updateChunks(_chunks.get)
-                }
                 updateChunks(_chunks.get)
 
               case x: ChunkedMessageEnd ⇒
@@ -83,13 +84,11 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
             }
             ack.foreach(sender.tell(_, this))
         }
-      }
     }
     ack.foreach(sender.tell(_, ref))
     ref
   }
 
-  def awaitResults(implicit timeout: Timeout): Unit = {
+  def awaitResults(implicit timeout: Timeout): Unit =
     latch.await(timeout.duration.toMillis, MILLISECONDS)
-  }
 }

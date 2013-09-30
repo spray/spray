@@ -277,16 +277,16 @@ case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPa
   def marshallingContext(status: StatusCode, headers: List[HttpHeader]): MarshallingContext =
     new MarshallingContext {
       def tryAccept(contentTypes: Seq[ContentType]) = request.acceptableContentType(contentTypes)
-      def rejectMarshalling(onlyTo: Seq[ContentType]): Unit = { reject(UnacceptedResponseContentTypeRejection(onlyTo)) }
-      def marshalTo(entity: HttpEntity): Unit = { complete(response(entity)) }
-      def handleError(error: Throwable): Unit = { failWith(error) }
-      def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) = {
-        val chunkStart = ChunkedResponseStart(response(entity))
+      def rejectMarshalling(onlyTo: Seq[ContentType]): Unit = reject(UnacceptedResponseContentTypeRejection(onlyTo))
+      def marshalTo(entity: HttpEntity, headers: HttpHeader*): Unit = complete(response(entity, headers))
+      def handleError(error: Throwable): Unit = failWith(error)
+      def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any], headers: Seq[HttpHeader])(implicit sender: ActorRef) = {
+        val chunkStart = ChunkedResponseStart(response(entity, headers))
         val wrapper = if (sentAck.isEmpty) chunkStart else Confirmed(chunkStart, sentAck.get)
         responder.tell(wrapper, sender)
         responder
       }
-      def response(entity: HttpEntity) = HttpResponse(status, entity, headers)
+      def response(entity: HttpEntity, h: Seq[HttpHeader]) = HttpResponse(status, entity, headers ++ h)
     }
 }
 

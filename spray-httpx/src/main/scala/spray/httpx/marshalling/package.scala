@@ -21,31 +21,32 @@ import scala.util.control.NonFatal
 import akka.util.Timeout
 import akka.actor.ActorRefFactory
 import spray.util.identityFunc
-import spray.http.HttpEntity
+import spray.http.{ HttpHeader, HttpEntity }
 
 package object marshalling {
 
-  def marshal[T](value: T)(implicit marshaller: Marshaller[T], actorRefFactory: ActorRefFactory = null,
-                           timeout: Timeout = 1 second span): Either[Throwable, HttpEntity] = {
-    val ctx = marshalCollecting(value)
-    ctx.entity match {
-      case Some(entity) ⇒ Right(entity)
+  def marshal[T](value: T, ctx: CollectingMarshallingContext = new CollectingMarshallingContext)(implicit marshaller: Marshaller[T], actorRefFactory: ActorRefFactory = null,
+                                                                                                 timeout: Timeout = 1.second): Either[Throwable, HttpEntity] =
+    marshalToEntityAndHeaders(value, ctx).right.map(_._1)
+
+  def marshalToEntityAndHeaders[T](value: T, ctx: CollectingMarshallingContext = new CollectingMarshallingContext)(implicit marshaller: Marshaller[T], actorRefFactory: ActorRefFactory = null,
+                                                                                                                   timeout: Timeout = 1.second): Either[Throwable, (HttpEntity, Seq[HttpHeader])] = {
+    marshalCollecting(value, ctx)
+    ctx.entityAndHeaders match {
+      case Some(value) ⇒ Right(value)
       case None ⇒
         Left(ctx.error.getOrElse(new RuntimeException("Marshaller for %s did not produce result" format value)))
     }
   }
 
-  def marshalCollecting[T](value: T)(implicit marshaller: Marshaller[T], actorRefFactory: ActorRefFactory = null,
-                                     timeout: Timeout = 1 second span): CollectingMarshallingContext = {
-    val ctx = new CollectingMarshallingContext
+  def marshalCollecting[T](value: T, ctx: CollectingMarshallingContext)(implicit marshaller: Marshaller[T], actorRefFactory: ActorRefFactory = null,
+                                                                        timeout: Timeout = 1.second): Unit =
     try {
       marshaller(value, ctx)
       ctx.awaitResults
     } catch {
       case NonFatal(e) ⇒ ctx.handleError(e)
     }
-    ctx
-  }
 
   def marshalUnsafe[T: Marshaller](value: T): HttpEntity = marshal(value).fold(throw _, identityFunc)
 }
