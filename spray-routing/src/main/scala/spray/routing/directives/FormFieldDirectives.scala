@@ -63,7 +63,7 @@ object FieldDefMagnet2 {
 trait FieldDefMagnetAux[A, B] extends (A ⇒ B)
 
 object FieldDefMagnetAux extends ToNameReceptaclePimps {
-  import spray.httpx.unmarshalling.{ Unmarshaller ⇒ UM, FormFieldConverter ⇒ FFC, FromEntityOptionUnmarshaller ⇒ FEOU, _ }
+  import spray.httpx.unmarshalling.{ FromRequestUnmarshaller ⇒ UM, FormFieldConverter ⇒ FFC, FromEntityOptionUnmarshaller ⇒ FEOU, _ }
   import BasicDirectives._
   import RouteDirectives._
 
@@ -74,7 +74,7 @@ object FieldDefMagnetAux extends ToNameReceptaclePimps {
   def extractField[A, B](f: A ⇒ Directive1[B]) = FieldDefMagnetAux[A, Directive1[B]](f)
 
   private def filter[A, B](nr: NameReceptacle[A])(implicit ev1: UM[HttpForm], ev2: FFC[B]): Directive1[B] =
-    extract(_.request.entity.as[HttpForm].right.flatMap(_.field(nr.name).as[B])).flatMap {
+    extract(_.request.as[HttpForm].right.flatMap(_.field(nr.name).as[B])).flatMap {
       case Right(value)                       ⇒ provide(value)
       case Left(ContentExpected)              ⇒ reject(MissingFormFieldRejection(nr.name))
       case Left(MalformedContent(msg, cause)) ⇒ reject(MalformedFormFieldRejection(nr.name, msg, cause))

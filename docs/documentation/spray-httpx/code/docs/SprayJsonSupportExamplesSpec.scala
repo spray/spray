@@ -6,8 +6,8 @@ import org.specs2.mutable.Specification
 class SprayJsonSupportExamplesSpec extends Specification {
 
   //# example-1
-  import spray.httpx.unmarshalling.pimpHttpEntity
   import spray.json.DefaultJsonProtocol
+  import spray.httpx.unmarshalling._
   import spray.httpx.marshalling._
   import spray.http._
   import HttpCharsets._
