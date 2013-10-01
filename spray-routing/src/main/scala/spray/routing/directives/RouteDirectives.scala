@@ -18,7 +18,7 @@ package spray.routing
 package directives
 
 import scala.concurrent.{ ExecutionContext, Future }
-import spray.httpx.marshalling.Marshaller
+import spray.httpx.marshalling.{ Marshaller, ToResponseMarshaller }
 import spray.http._
 import StatusCodes._
 
@@ -66,14 +66,14 @@ object RouteDirectives extends RouteDirectives
 sealed abstract class CompletionMagnet extends Route
 
 object CompletionMagnet {
-  implicit def fromObject[T: Marshaller](obj: T): CompletionMagnet =
-    new CompletionRoute(OK, Nil, obj)
+  implicit def fromObject[T: ToResponseMarshaller](obj: T): CompletionMagnet =
+    new CompletionRoute(obj)
 
   implicit def fromStatusObject[T: Marshaller](tuple: (StatusCode, T)): CompletionMagnet =
-    new CompletionRoute(tuple._1, Nil, tuple._2)
+    fromStatusHeadersObject((tuple._1, Nil, tuple._2))
 
   implicit def fromStatusHeadersObject[T: Marshaller](tuple: (StatusCode, List[HttpHeader], T)): CompletionMagnet =
-    new CompletionRoute(tuple._1, tuple._2, tuple._3)
+    new CompletionRoute(tuple._3)(ToResponseMarshaller.fromMarshaller(tuple._1, tuple._2))
 
   implicit def fromHttpResponse(response: HttpResponse): CompletionMagnet =
     new CompletionMagnet {
@@ -90,7 +90,7 @@ object CompletionMagnet {
   implicit def fromStatusCodeFuture(future: Future[StatusCode])(implicit ec: ExecutionContext): CompletionMagnet =
     future.map(status ⇒ HttpResponse(status, entity = status.defaultMessage))
 
-  private class CompletionRoute[T: Marshaller](status: StatusCode, headers: List[HttpHeader], obj: T) extends CompletionMagnet {
-    def apply(ctx: RequestContext): Unit = ctx.complete(status, headers, obj)
+  private class CompletionRoute[T: ToResponseMarshaller](obj: T) extends CompletionMagnet {
+    def apply(ctx: RequestContext): Unit = ctx.complete(obj)
   }
 }

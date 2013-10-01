@@ -20,7 +20,6 @@ package directives
 import akka.actor.ActorRefFactory
 import spray.http.{ HttpData, HttpEntity, HttpResponse }
 import spray.httpx.marshalling.BasicMarshallers
-import akka.util.ByteString
 
 trait ChunkingDirectives {
   import BasicDirectives._

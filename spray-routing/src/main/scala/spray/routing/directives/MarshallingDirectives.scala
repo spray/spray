@@ -20,7 +20,6 @@ package directives
 import shapeless._
 import spray.httpx.marshalling._
 import spray.httpx.unmarshalling._
-import spray.http._
 
 trait MarshallingDirectives {
   import BasicDirectives._
@@ -49,25 +48,20 @@ trait MarshallingDirectives {
    * Uses the marshaller for the given type to produce a completion function that is passed to its inner route.
    * You can use it do decouple marshaller resolution from request completion.
    */
-  def produce[T](marshaller: Marshaller[T], status: StatusCode = StatusCodes.OK,
-                 headers: List[HttpHeader] = Nil): Directive[(T ⇒ Unit) :: HNil] =
-    extract { ctx ⇒
-      (value: T) ⇒
-        marshaller(value, ctx.marshallingContext(status, headers))
-    } & cancelAllRejections(ofType[UnacceptedResponseContentTypeRejection])
+  def produce[T](marshaller: ToResponseMarshaller[T]): Directive[(T ⇒ Unit) :: HNil] =
+    extract { ctx ⇒ (value: T) ⇒ ctx.complete(value)(marshaller) } & cancelAllRejections(ofType[UnacceptedResponseContentTypeRejection])
 
   /**
    * Returns the in-scope Marshaller for the given type.
    */
-  def instanceOf[T](implicit m: Marshaller[T]) = m
+  def instanceOf[T](implicit m: ToResponseMarshaller[T]) = m
 
   /**
    * Completes the request using the given function. The input to the function is produced with the in-scope
    * entity unmarshaller and the result value of the function is marshalled with the in-scope marshaller.
    */
-  def handleWith[A, B](f: A ⇒ B)(implicit um: FromRequestUnmarshaller[A], m: Marshaller[B]): Route =
+  def handleWith[A, B](f: A ⇒ B)(implicit um: FromRequestUnmarshaller[A], m: ToResponseMarshaller[B]): Route =
     entity(um) { a ⇒ RouteDirectives.complete(f(a)) }
-
 }
 
 object MarshallingDirectives extends MarshallingDirectives
