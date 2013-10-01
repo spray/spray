@@ -118,6 +118,16 @@ trait MiscDirectives {
    * not be matched.
    */
   def rejectEmptyResponse: Directive0 = MiscDirectives._rejectEmptyResponse
+
+  /**
+   * Extracts the complete request.
+   */
+  def requestInstance: Directive1[HttpRequest] = MiscDirectives._requestInstance
+
+  /**
+   * Extracts the complete request URI.
+   */
+  def requestUri: Directive1[Uri] = MiscDirectives._requestUri
 }
 
 object MiscDirectives extends MiscDirectives {
@@ -147,4 +157,10 @@ object MiscDirectives extends MiscDirectives {
       case HttpMessagePartWrapper(HttpResponse(_, HttpEntity.Empty, _, _), _) ⇒ Rejected(Nil)
       case x ⇒ x
     }
+
+  private val _requestInstance: Directive1[HttpRequest] =
+    extract(_.request)
+
+  private val _requestUri: Directive1[Uri] =
+    extract(_.request.uri)
 }
