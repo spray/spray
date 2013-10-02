@@ -67,7 +67,7 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   def definedCharset: Option[HttpCharset] = contentType.definedCharset
   def headers: List[HttpHeader] = response.headers
   def header[T <: HttpHeader: ClassTag]: Option[T] = response.header[T]
-  def header(name: String): Option[HttpHeader] = response.headers.mapFind(h ⇒ if (h.name == name) Some(h) else None)
+  def header(name: String): Option[HttpHeader] = response.headers.find(_.is(name.toLowerCase))
   def status: StatusCode = response.status
   def chunks: List[MessageChunk] = result.chunks
   def closingExtension: String = result.closingExtension

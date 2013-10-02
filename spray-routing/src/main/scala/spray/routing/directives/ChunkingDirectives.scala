@@ -19,7 +19,7 @@ package directives
 
 import akka.actor.ActorRefFactory
 import spray.http.{ HttpData, HttpEntity, HttpResponse }
-import spray.httpx.marshalling.BasicMarshallers
+import spray.httpx.marshalling.{ ToResponseMarshaller, BasicMarshallers }
 
 trait ChunkingDirectives {
   import BasicDirectives._
@@ -32,9 +32,9 @@ trait ChunkingDirectives {
   def autoChunk(csm: ChunkSizeMagnet): Directive0 = mapRequestContext { ctx ⇒
     import csm._
     ctx.withRouteResponseHandling {
-      case HttpResponse(_, HttpEntity.NonEmpty(contentType, data), _, _) if csm selects data ⇒
+      case HttpResponse(status, HttpEntity.NonEmpty(contentType, data), headers, _) if csm selects data ⇒
         implicit val marshaller = BasicMarshallers.httpDataMarshaller(contentType)
-        ctx.complete(chunkStream(data))
+        ctx.complete(chunkStream(data))(ToResponseMarshaller.fromMarshaller(status, headers))
     }
   }
 
