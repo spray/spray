@@ -24,19 +24,19 @@ class AnyParamDirectivesSpec extends RoutingSpec {
 
     "extract the parameter from query parameters" in {
       Get("/test?x=1") ~> route ~> check {
-        entityAs[String] === "1"
+        responseAs[String] === "1"
       }
     }
 
     "extract the parameter from form" in {
       Post("/test", FormData(Map("x" -> "1"))) ~> route ~> check {
-        entityAs[String] === "1"
+        responseAs[String] === "1"
       }
     }
 
     "prefer form over query pamaeters" in {
       Post("/test?x=2", FormData(Map("x" -> "1"))) ~> route ~> check {
-        entityAs[String] === "1"
+        responseAs[String] === "1"
       }
     }
   }
@@ -46,25 +46,25 @@ class AnyParamDirectivesSpec extends RoutingSpec {
 
     "extract the parameter from query parameters" in {
       Get("/test?x=1") ~> route ~> check {
-        entityAs[String] === "Some(1)"
+        responseAs[String] === "Some(1)"
       }
     }
 
     "extract the parameter from form" in {
       Post("/test", FormData(Map("x" -> "1"))) ~> route ~> check {
-        entityAs[String] === "Some(1)"
+        responseAs[String] === "Some(1)"
       }
     }
 
     "extract None if no query parameters" in {
       Get("/test") ~> route ~> check {
-        entityAs[String] === "None"
+        responseAs[String] === "None"
       }
     }
 
     "extract None if no form" in {
       Post("/test", FormData(Seq())) ~> route ~> check {
-        entityAs[String] === "None"
+        responseAs[String] === "None"
       }
     }
   }
@@ -74,19 +74,19 @@ class AnyParamDirectivesSpec extends RoutingSpec {
 
     "extract the parameters from query parameters" in {
       Get("/test?x=1&y=2") ~> route ~> check {
-        entityAs[String] === "1 2"
+        responseAs[String] === "1 2"
       }
     }
 
     "extract the parameters from form" in {
       Post("/test", FormData(Map("x" -> "1", "y" -> "2"))) ~> route ~> check {
-        entityAs[String] === "1 2"
+        responseAs[String] === "1 2"
       }
     }
 
     "extract the parameters both from form and query parameters" in {
       Post("/test?x=1", FormData(Map("y" -> "2"))) ~> route ~> check {
-        entityAs[String] === "1 2"
+        responseAs[String] === "1 2"
       }
     }
   }
@@ -96,25 +96,25 @@ class AnyParamDirectivesSpec extends RoutingSpec {
 
     "extract the parameters from query parameters" in {
       Get("/test?x=1&y=2") ~> route ~> check {
-        entityAs[String] === "Some(1) Some(2)"
+        responseAs[String] === "Some(1) Some(2)"
       }
     }
 
     "extract the parameters from form" in {
       Post("/test", FormData(Map("x" -> "1", "y" -> "2"))) ~> route ~> check {
-        entityAs[String] === "Some(1) Some(2)"
+        responseAs[String] === "Some(1) Some(2)"
       }
     }
 
     "extract only the parameters that are present, from query parameters" in {
       Get("/test?x=1") ~> route ~> check {
-        entityAs[String] === "Some(1) None"
+        responseAs[String] === "Some(1) None"
       }
     }
 
     "extract only the parameters that are present, from form" in {
       Post("/test", FormData(Map("y" -> "2"))) ~> route ~> check {
-        entityAs[String] === "None Some(2)"
+        responseAs[String] === "None Some(2)"
       }
     }
   }
@@ -124,13 +124,13 @@ class AnyParamDirectivesSpec extends RoutingSpec {
 
     "extract the parameters with correct types, from query parameters" in {
       Get("/test?x=1&y=false") ~> route ~> check {
-        entityAs[String] === "1 false"
+        responseAs[String] === "1 false"
       }
     }
 
     "extract the parameters with correct types, from the form" in {
       Post("/test", FormData(Map("x" -> "10", "y" -> "true"))) ~> route ~> check {
-        entityAs[String] === "10 true"
+        responseAs[String] === "10 true"
       }
     }
   }
@@ -140,7 +140,7 @@ class AnyParamDirectivesSpec extends RoutingSpec {
 
     "extract the parameter from query parameters" in {
       Get("/test?x=1") ~> route ~> check {
-        entityAs[String] === "1"
+        responseAs[String] === "1"
       }
     }
   }

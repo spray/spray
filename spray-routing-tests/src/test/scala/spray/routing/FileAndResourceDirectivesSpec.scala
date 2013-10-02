@@ -134,7 +134,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
 
     "properly render a simple directory" in {
       Get() ~> listDirectoryContents(base + "/someDir") ~> check {
-        eraseDateTime(entityAs[String]) ===
+        eraseDateTime(responseAs[String]) ===
           """<html>
             |<head><title>Index of /</title></head>
             |<body>
@@ -153,7 +153,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     }
     "properly render a sub directory" in {
       Get("/sub/") ~> listDirectoryContents(base + "/someDir") ~> check {
-        eraseDateTime(entityAs[String]) ===
+        eraseDateTime(responseAs[String]) ===
           """<html>
             |<head><title>Index of /sub/</title></head>
             |<body>
@@ -171,7 +171,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     }
     "properly render the union of several directories" in {
       Get() ~> listDirectoryContents(base + "/someDir", base + "/subDirectory") ~> check {
-        eraseDateTime(entityAs[String]) ===
+        eraseDateTime(responseAs[String]) ===
           """<html>
             |<head><title>Index of /</title></head>
             |<body>
@@ -193,7 +193,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     "properly render an empty sub directory with vanity footer" in {
       val settings = 0 // shadow implicit
       Get("/emptySub/") ~> listDirectoryContents(base + "/subDirectory") ~> check {
-        eraseDateTime(entityAs[String]) ===
+        eraseDateTime(responseAs[String]) ===
           """<html>
             |<head><title>Index of /emptySub/</title></head>
             |<body>
@@ -213,7 +213,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     }
     "properly render an empty top-level directory" in {
       Get() ~> listDirectoryContents(base + "/subDirectory/emptySub") ~> check {
-        eraseDateTime(entityAs[String]) ===
+        eraseDateTime(responseAs[String]) ===
           """<html>
             |<head><title>Index of /</title></head>
             |<body>

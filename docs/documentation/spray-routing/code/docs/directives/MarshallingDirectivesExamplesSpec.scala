@@ -29,7 +29,7 @@ class MarshallingDirectivesExamplesSpec extends DirectivesSpec {
 
     Post("/", HttpEntity(`application/json`, """{ "name": "Jane", "favoriteNumber" : 42 }""" )) ~>
       route ~> check {
-        entityAs[String] === "Person: Jane - favorite number: 42"
+        responseAs[String] === "Person: Jane - favorite number: 42"
       }
   }
 
@@ -50,8 +50,8 @@ class MarshallingDirectivesExamplesSpec extends DirectivesSpec {
 
     Get("/") ~> route ~> check {
       mediaType === `application/json`
-      entityAs[String] must contain(""""name": "Jane"""")
-      entityAs[String] must contain(""""favoriteNumber": 42""")
+      responseAs[String] must contain(""""name": "Jane"""")
+      responseAs[String] must contain(""""favoriteNumber": 42""")
     }
   }
 
@@ -73,8 +73,8 @@ class MarshallingDirectivesExamplesSpec extends DirectivesSpec {
      Post("/", HttpEntity(`application/json`, """{ "name": "Jane", "favoriteNumber" : 42 }""" )) ~>
       route ~> check {
         mediaType === `application/json`
-        entityAs[String] must contain(""""name": "Jane"""")
-        entityAs[String] must contain(""""favoriteNumber": 42""")
+        responseAs[String] must contain(""""name": "Jane"""")
+        responseAs[String] must contain(""""favoriteNumber": 42""")
       }
   }
 }

@@ -39,7 +39,7 @@ class EncodingDirectivesSpec extends RoutingSpec {
     "decode the request content if it has encoding 'identity'" in {
       Get("/", "yes") ~> `Content-Encoding`(identity) ~> {
         decodeRequest(NoEncoding) { echoRequestContent }
-      } ~> check { entityAs[String] === "yes" }
+      } ~> check { responseAs[String] === "yes" }
     }
     "reject requests with content encoded with 'deflate'" in {
       Get("/", "yes") ~> `Content-Encoding`(deflate) ~> {
@@ -47,7 +47,7 @@ class EncodingDirectivesSpec extends RoutingSpec {
       } ~> check { rejection === UnsupportedRequestEncodingRejection(identity) }
     }
     "decode the request content if no Content-Encoding header is present" in {
-      Get("/", "yes") ~> decodeRequest(NoEncoding) { echoRequestContent } ~> check { entityAs[String] === "yes" }
+      Get("/", "yes") ~> decodeRequest(NoEncoding) { echoRequestContent } ~> check { responseAs[String] === "yes" }
     }
     "leave request without content unchanged" in {
       Get() ~> decodeRequest(Gzip) { completeOk } ~> check { response === Ok }
@@ -58,7 +58,7 @@ class EncodingDirectivesSpec extends RoutingSpec {
     "decode the request content if it has encoding 'gzip'" in {
       Get("/", helloGzipped) ~> `Content-Encoding`(gzip) ~> {
         decodeRequest(Gzip) { echoRequestContent }
-      } ~> check { entityAs[String] === "Hello" }
+      } ~> check { responseAs[String] === "Hello" }
     }
     "reject the request content if it has encoding 'gzip' but is corrupt" in {
       Get("/", fromHexDump("000102")) ~> `Content-Encoding`(gzip) ~> {
@@ -87,15 +87,15 @@ class EncodingDirectivesSpec extends RoutingSpec {
     "decode the request content if it has encoding 'gzip'" in {
       Get("/", helloGzipped) ~> `Content-Encoding`(gzip) ~> {
         decodeWithGzipOrNoEncoding { echoRequestContent }
-      } ~> check { entityAs[String] === "Hello" }
+      } ~> check { responseAs[String] === "Hello" }
     }
     "decode the request content if it has encoding 'identity'" in {
       Get("/", "yes") ~> `Content-Encoding`(identity) ~> {
         decodeWithGzipOrNoEncoding { echoRequestContent }
-      } ~> check { entityAs[String] === "yes" }
+      } ~> check { responseAs[String] === "yes" }
     }
     "decode the request content if no Content-Encoding header is present" in {
-      Get("/", "yes") ~> decodeWithGzipOrNoEncoding { echoRequestContent } ~> check { entityAs[String] === "yes" }
+      Get("/", "yes") ~> decodeWithGzipOrNoEncoding { echoRequestContent } ~> check { responseAs[String] === "yes" }
     }
     "reject requests with content encoded with 'deflate'" in {
       Get("/", "yes") ~> `Content-Encoding`(deflate) ~> {
@@ -140,7 +140,7 @@ class EncodingDirectivesSpec extends RoutingSpec {
         encodeResponse(Gzip) {
           respondWithHeader(`Content-Encoding`(identity)) { yeah }
         }
-      } ~> check { entityAs[String] === "Yeah!" }
+      } ~> check { responseAs[String] === "Yeah!" }
     }
     "correctly encode the chunk stream produced by a chunked response" in {
       val text = "This is a somewhat lengthy text that is being chunked by the autochunk directive!"
@@ -373,20 +373,20 @@ class EncodingDirectivesSpec extends RoutingSpec {
     "decompress the request content if it has a `Content-Encoding: gzip` header and the content is gzip encoded" in {
       Get("/", helloGzipped) ~> `Content-Encoding`(gzip) ~> {
         decompressRequest() { echoRequestContent }
-      } ~> check { entityAs[String] === "Hello" }
+      } ~> check { responseAs[String] === "Hello" }
     }
     "decompress the request content if it has a `Content-Encoding: deflate` header and the content is deflate encoded" in {
       Get("/", helloDeflated) ~> `Content-Encoding`(deflate) ~> {
         decompressRequest() { echoRequestContent }
-      } ~> check { entityAs[String] === "Hello" }
+      } ~> check { responseAs[String] === "Hello" }
     }
     "decompress the request content if it has a `Content-Encoding: identity` header and the content is not encoded" in {
       Get("/", "yes") ~> `Content-Encoding`(identity) ~> {
         decompressRequest() { echoRequestContent }
-      } ~> check { entityAs[String] === "yes" }
+      } ~> check { responseAs[String] === "yes" }
     }
     "decompress the request content using NoEncoding if no Content-Encoding header is present" in {
-      Get("/", "yes") ~> decompressRequest() { echoRequestContent } ~> check { entityAs[String] === "yes" }
+      Get("/", "yes") ~> decompressRequest() { echoRequestContent } ~> check { responseAs[String] === "yes" }
     }
     "reject the request if it has a `Content-Encoding: deflate` header but the request is compressed with Gzip" in {
       Get("/", helloGzipped) ~> `Content-Encoding`(deflate) ~> {
@@ -405,7 +405,7 @@ class EncodingDirectivesSpec extends RoutingSpec {
     "decompress the request content if its `Content-Encoding` header matches the specified encoder" in {
       Get("/", helloGzipped) ~> `Content-Encoding`(gzip) ~> {
         decompressRequest(Gzip) { echoRequestContent }
-      } ~> check { entityAs[String] === "Hello" }
+      } ~> check { responseAs[String] === "Hello" }
     }
     "reject the request if its `Content-Encoding` header doesn't match the specified encoder" in {
       Get("/", helloGzipped) ~> `Content-Encoding`(deflate) ~> {
@@ -458,7 +458,7 @@ class EncodingDirectivesSpec extends RoutingSpec {
       Get("/", helloGzipped) ~> `Content-Encoding`(gzip) ~> {
         decompressCompressIfRequested { echoRequestContent }
       } ~> check {
-        entityAs[String] === "Hello"
+        responseAs[String] === "Hello"
       }
     }
     "decode a GZIP encoded request and produce a Deflate encoded response if the request has an `Accept-Encoding: deflate` header" in {

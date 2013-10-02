@@ -25,7 +25,7 @@ class BasicDirectivesSpec extends RoutingSpec {
       val addYeah = routeRouteResponse {
         case HttpResponse(_, entity, _, _) ⇒ complete(entity.asString + "Yeah")
       }
-      Get() ~> addYeah(complete("abc")) ~> check { entityAs[String] === "abcYeah" }
+      Get() ~> addYeah(complete("abc")) ~> check { responseAs[String] === "abcYeah" }
     }
   }
 

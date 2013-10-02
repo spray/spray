@@ -26,10 +26,10 @@ class RouteDirectivesSpec extends RoutingSpec {
 
   "The `complete` directive" should {
     "by chainable with the `&` operator" in {
-      Get() ~> (get & complete("yeah")) ~> check { entityAs[String] === "yeah" }
+      Get() ~> (get & complete("yeah")) ~> check { responseAs[String] === "yeah" }
     }
     "allow for factoring out a StandardRoute" in {
-      Get() ~> (get & complete)("yeah") ~> check { entityAs[String] === "yeah" }
+      Get() ~> (get & complete)("yeah") ~> check { responseAs[String] === "yeah" }
     }
     "be lazy in its argument evaluation, independently of application style" in {
       var i = 0
@@ -39,14 +39,14 @@ class RouteDirectivesSpec extends RoutingSpec {
           (post & complete { i += 1; "post" }) ~
           (delete & complete) { i += 1; "delete" }
       } ~> check {
-        entityAs[String] === "put"
+        responseAs[String] === "put"
         i === 1
       }
     }
     "support completion from response futures" in {
       Get() ~> {
         get & complete(Promise.successful(HttpResponse(entity = "yup")).future)
-      } ~> check { entityAs[String] === "yup" }
+      } ~> check { responseAs[String] === "yup" }
     }
   }
 

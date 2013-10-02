@@ -21,7 +21,7 @@ import shapeless.HList
 /**
  * A Route that can be implicitly converted into a Directive (fitting any signature).
  */
-trait StandardRoute extends Route {
+abstract class StandardRoute extends Route {
   def toDirective[L <: HList]: Directive[L] = StandardRoute.toDirective(this)
 }
 

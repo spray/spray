@@ -32,7 +32,7 @@ class RejectionHandlerExamplesSpec extends Specification with Specs2RouteTest {
 
   "example" in {
     Get() ~> sealRoute(reject(MissingCookieRejection("abc"))) ~> check {
-      entityAs[String] === "No cookies, no service!!!"
+      responseAs[String] === "No cookies, no service!!!"
     }
   }
 
