@@ -29,37 +29,37 @@ trait MethodDirectives {
   /**
    * A route filter that rejects all non-DELETE requests.
    */
-  val delete: Directive0 = method(DELETE) // source-quote
+  def delete: Directive0 = MethodDirectives._delete
 
   /**
    * A route filter that rejects all non-GET requests.
    */
-  val get: Directive0 = method(GET) // source-quote
+  def get: Directive0 = MethodDirectives._get
 
   /**
    * A route filter that rejects all non-HEAD requests.
    */
-  val head: Directive0 = method(HEAD) // source-quote
+  def head: Directive0 = MethodDirectives._head
 
   /**
    * A route filter that rejects all non-OPTIONS requests.
    */
-  val options: Directive0 = method(OPTIONS) // source-quote
+  def options: Directive0 = MethodDirectives._options
 
   /**
    * A route filter that rejects all non-PATCH requests.
    */
-  val patch: Directive0 = method(PATCH) // source-quote
+  def patch: Directive0 = MethodDirectives._patch
 
   /**
    * A route filter that rejects all non-POST requests.
    */
-  val post: Directive0 = method(POST) // source-quote
+  def post: Directive0 = MethodDirectives._post
 
   /**
    * A route filter that rejects all non-PUT requests.
    */
-  val put: Directive0 = method(PUT) // source-quote
+  def put: Directive0 = MethodDirectives._put
 
   //# method-directive
   /**
@@ -75,7 +75,7 @@ trait MethodDirectives {
   /**
    * Changes the HTTP method of the request to the value of the specified query string parameter. If the query string
    * parameter is not specified this directive has no effect. If the query string is specified as something that is not
-   * a HTTP method, then this directive completes the request with a 501 Not Implemented response.
+   * a HTTP method, then this directive completes the request with a `501 Not Implemented` response.
    *
    * This directive is useful for:
    *  - Use in combination with JSONP (JSONP only supports GET)
@@ -95,4 +95,14 @@ trait MethodDirectives {
   }
 }
 
-object MethodDirectives extends MethodDirectives
+object MethodDirectives extends MethodDirectives {
+  // format: OFF
+  private val _delete : Directive0 = method(DELETE)
+  private val _get    : Directive0 = method(GET)
+  private val _head   : Directive0 = method(HEAD)
+  private val _options: Directive0 = method(OPTIONS)
+  private val _patch  : Directive0 = method(PATCH)
+  private val _post   : Directive0 = method(POST)
+  private val _put    : Directive0 = method(PUT)
+  // format: ON
+}

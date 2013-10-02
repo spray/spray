@@ -27,9 +27,7 @@ trait RouteDirectives {
   /**
    * Rejects the request with an empty set of rejections.
    */
-  val reject: StandardRoute = new StandardRoute {
-    def apply(ctx: RequestContext): Unit = ctx.reject()
-  }
+  def reject: StandardRoute = RouteDirectives._reject
 
   /**
    * Rejects the request with the given rejections.
@@ -61,7 +59,11 @@ trait RouteDirectives {
   }
 }
 
-object RouteDirectives extends RouteDirectives
+object RouteDirectives extends RouteDirectives {
+  private val _reject: StandardRoute = new StandardRoute {
+    def apply(ctx: RequestContext): Unit = ctx.reject()
+  }
+}
 
 trait CompletionMagnet {
   def route: StandardRoute
