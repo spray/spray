@@ -48,6 +48,8 @@ class HttpHeaderSpec extends Specification {
         Accept(`*/*`,
           MediaRange.custom("text", Map("foo" -> "bar")),
           MediaType.custom("custom", "custom", parameters = Map("bar" -> "b>az")))
+      "Accept: application/*+xml; version=2" =!=
+        Accept(MediaType.custom("application", "*+xml", parameters = Map("version" -> "2")))
     }
 
     "Accept-Charset" in {

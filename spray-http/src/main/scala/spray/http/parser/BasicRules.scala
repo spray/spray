@@ -50,7 +50,7 @@ private[parser] object BasicRules extends Parser {
 
   def Separator = rule { anyOf("()<>@,;:\\\"/[]?={} \t") }
 
-  def Token: Rule1[String] = rule { oneOrMore(!CTL ~ !Separator ~ ANY) ~> identityFunc }
+  def Token: Rule1[String] = rule { oneOrMore(TokenChar) ~> identityFunc }
 
   // contrary to the spec we do not allow nested comments
   def Comment = rule {
@@ -65,6 +65,8 @@ private[parser] object BasicRules extends Parser {
     ("\\" ~ Char | !excluded ~ Text) ~ toRunAction(c ⇒ c.getValueStack.peek.asInstanceOf[JStringBuilder].append(c.getFirstMatchChar))
 
   // helpers
+
+  def TokenChar = rule { !CTL ~ !Separator ~ ANY }
 
   def OptWS = rule { zeroOrMore(LWS) }
 
