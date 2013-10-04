@@ -12,7 +12,7 @@ class SchemeDirectivesExamplesSpec extends DirectivesSpec {
       }
 
     Get("https://www.example.com/") ~> route ~> check {
-      entityAs[String] === "The scheme is 'https'"
+      responseAs[String] === "The scheme is 'https'"
     }
   }
 
@@ -33,7 +33,7 @@ class SchemeDirectivesExamplesSpec extends DirectivesSpec {
     }
 
     Get("https://www.example.com/hello") ~> route ~> check {
-      entityAs[String] === "Safe and secure!"
+      responseAs[String] === "Safe and secure!"
     }
   }
 }

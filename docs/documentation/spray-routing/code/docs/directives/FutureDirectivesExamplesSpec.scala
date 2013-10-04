@@ -38,7 +38,7 @@ class FutureDirectivesExamplesSpec extends DirectivesSpec {
 
     Get("/") ~> route ~> check {
       status === OK
-      entityAs[String] === "resource"
+      responseAs[String] === "resource"
     }
   }
 
@@ -53,7 +53,7 @@ class FutureDirectivesExamplesSpec extends DirectivesSpec {
 
     Get("/") ~> route ~> check {
       status === OK
-      entityAs[String] === "resource"
+      responseAs[String] === "resource"
     }
   }
 
@@ -71,12 +71,12 @@ class FutureDirectivesExamplesSpec extends DirectivesSpec {
       }
 
     Get("/success") ~> route ~> check {
-      entityAs[String] === "Ok"
+      responseAs[String] === "Ok"
     }
 
     Get("/failure") ~> sealRoute(route) ~> check {
       status === InternalServerError
-      entityAs[String] === "Unsuccessful future!"
+      responseAs[String] === "Unsuccessful future!"
     }
   }
 
@@ -95,12 +95,12 @@ class FutureDirectivesExamplesSpec extends DirectivesSpec {
 
 
     Get("/success") ~> route ~> check {
-      entityAs[String] === "Ok"
+      responseAs[String] === "Ok"
     }
 
     Get("/failure") ~> sealRoute(route) ~> check {
       status === InternalServerError
-      entityAs[String] === "Unsuccessful future!"
+      responseAs[String] === "Unsuccessful future!"
     }
   }
 
@@ -119,12 +119,12 @@ class FutureDirectivesExamplesSpec extends DirectivesSpec {
 
 
     Get("/success") ~> route ~> check {
-      entityAs[String] === "Ok"
+      responseAs[String] === "Ok"
     }
 
     Get("/failure") ~> sealRoute(route) ~> check {
       status === InternalServerError
-      entityAs[String] === "Unsuccessful future!"
+      responseAs[String] === "Unsuccessful future!"
     }
   }
 }

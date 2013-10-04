@@ -10,12 +10,12 @@ class ParameterDirectivesExamplesSpec extends DirectivesSpec {
       }
 
     Get("/?color=blue") ~> route ~> check {
-      entityAs[String] === "The color is 'blue'"
+      responseAs[String] === "The color is 'blue'"
     }
 
     Get("/") ~> sealRoute(route) ~> check {
       status === StatusCodes.NotFound
-      entityAs[String] === "Request is missing required query parameter 'color'"
+      responseAs[String] === "Request is missing required query parameter 'color'"
     }
   }
   "required-1" in {
@@ -25,11 +25,11 @@ class ParameterDirectivesExamplesSpec extends DirectivesSpec {
       }
 
     Get("/?color=blue&backgroundColor=red") ~> route ~> check {
-      entityAs[String] === "The color is 'blue' and the background is 'red'"
+      responseAs[String] === "The color is 'blue' and the background is 'red'"
     }
     Get("/?color=blue") ~> sealRoute(route) ~> check {
       status === StatusCodes.NotFound
-      entityAs[String] === "Request is missing required query parameter 'backgroundColor'"
+      responseAs[String] === "Request is missing required query parameter 'backgroundColor'"
     }
   }
   "optional" in {
@@ -40,10 +40,10 @@ class ParameterDirectivesExamplesSpec extends DirectivesSpec {
       }
 
     Get("/?color=blue&backgroundColor=red") ~> route ~> check {
-      entityAs[String] === "The color is 'blue' and the background is 'red'"
+      responseAs[String] === "The color is 'blue' and the background is 'red'"
     }
     Get("/?color=blue") ~> route ~> check {
-      entityAs[String] === "The color is 'blue' and the background is '<undefined>'"
+      responseAs[String] === "The color is 'blue' and the background is '<undefined>'"
     }
   }
   "optional-with-default" in {
@@ -53,10 +53,10 @@ class ParameterDirectivesExamplesSpec extends DirectivesSpec {
       }
 
     Get("/?color=blue&backgroundColor=red") ~> route ~> check {
-      entityAs[String] === "The color is 'blue' and the background is 'red'"
+      responseAs[String] === "The color is 'blue' and the background is 'red'"
     }
     Get("/?color=blue") ~> route ~> check {
-      entityAs[String] === "The color is 'blue' and the background is 'white'"
+      responseAs[String] === "The color is 'blue' and the background is 'white'"
     }
   }
   "required-value" in {
@@ -66,12 +66,12 @@ class ParameterDirectivesExamplesSpec extends DirectivesSpec {
       }
 
     Get("/?color=blue&action=true") ~> route ~> check {
-      entityAs[String] === "The color is 'blue'."
+      responseAs[String] === "The color is 'blue'."
     }
 
     Get("/?color=blue&action=false") ~> sealRoute(route) ~> check {
       status === StatusCodes.NotFound
-      entityAs[String] === "The requested resource could not be found."
+      responseAs[String] === "The requested resource could not be found."
     }
   }
   "mapped-value" in {
@@ -81,12 +81,12 @@ class ParameterDirectivesExamplesSpec extends DirectivesSpec {
       }
 
     Get("/?color=blue&count=42") ~> route ~> check {
-      entityAs[String] === "The color is 'blue' and you have 42 of it."
+      responseAs[String] === "The color is 'blue' and you have 42 of it."
     }
 
     Get("/?color=blue&count=blub") ~> sealRoute(route) ~> check {
       status === StatusCodes.BadRequest
-      entityAs[String] === "The query parameter 'count' was malformed:\n'blub' is not a valid 32-bit integer value"
+      responseAs[String] === "The query parameter 'count' was malformed:\n'blub' is not a valid 32-bit integer value"
     }
   }
   "parameterMap" in {
@@ -97,10 +97,10 @@ class ParameterDirectivesExamplesSpec extends DirectivesSpec {
       }
 
     Get("/?color=blue&count=42") ~> route ~> check {
-      entityAs[String] === "The parameters are color = 'blue', count = '42'"
+      responseAs[String] === "The parameters are color = 'blue', count = '42'"
     }
     Get("/?x=1&x=2") ~> route ~> check {
-      entityAs[String] === "The parameters are x = '2'"
+      responseAs[String] === "The parameters are x = '2'"
     }
   }
   "parameterMultiMap" in {
@@ -110,10 +110,10 @@ class ParameterDirectivesExamplesSpec extends DirectivesSpec {
       }
 
     Get("/?color=blue&count=42") ~> route ~> check {
-      entityAs[String] === "There are parameters color -> 1, count -> 1"
+      responseAs[String] === "There are parameters color -> 1, count -> 1"
     }
     Get("/?x=23&x=42") ~> route ~> check {
-      entityAs[String] === "There are parameters x -> 2"
+      responseAs[String] === "There are parameters x -> 2"
     }
   }
   "parameterSeq" in {
@@ -124,10 +124,10 @@ class ParameterDirectivesExamplesSpec extends DirectivesSpec {
       }
 
     Get("/?color=blue&count=42") ~> route ~> check {
-      entityAs[String] === "The parameters are color = 'blue', count = '42'"
+      responseAs[String] === "The parameters are color = 'blue', count = '42'"
     }
     Get("/?x=1&x=2") ~> route ~> check {
-      entityAs[String] === "The parameters are x = '1', x = '2'"
+      responseAs[String] === "The parameters are x = '1', x = '2'"
     }
   }
 }

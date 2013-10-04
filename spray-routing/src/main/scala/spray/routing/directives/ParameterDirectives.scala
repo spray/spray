@@ -25,20 +25,17 @@ trait ParameterDirectives extends ToNameReceptaclePimps {
   /**
    * Extracts the requests query parameters as a Map[String, String].
    */
-  def parameterMap: Directive[Map[String, String] :: HNil] =
-    BasicDirectives.extract(_.request.uri.query.toMap)
+  def parameterMap: Directive[Map[String, String] :: HNil] = ParameterDirectives._parameterMap
 
   /**
    * Extracts the requests query parameters as a Map[String, List[String]].
    */
-  def parameterMultiMap: Directive[Map[String, List[String]] :: HNil] =
-    BasicDirectives.extract(_.request.uri.query.toMultiMap)
+  def parameterMultiMap: Directive[Map[String, List[String]] :: HNil] = ParameterDirectives._parameterMultiMap
 
   /**
    * Extracts the requests query parameters as a Seq[(String, String)].
    */
-  def parameterSeq: Directive[Seq[(String, String)] :: HNil] =
-    BasicDirectives.extract(_.request.uri.query.toSeq)
+  def parameterSeq: Directive[Seq[(String, String)] :: HNil] = ParameterDirectives._parameterSeq
 
   /**
    * Rejects the request if the query parameter matcher(s) defined by the definition(s) don't match.
@@ -54,7 +51,18 @@ trait ParameterDirectives extends ToNameReceptaclePimps {
 
 }
 
-object ParameterDirectives extends ParameterDirectives
+object ParameterDirectives extends ParameterDirectives {
+  import BasicDirectives._
+
+  private val _parameterMap: Directive[Map[String, String] :: HNil] =
+    extract(_.request.uri.query.toMap)
+
+  private val _parameterMultiMap: Directive[Map[String, List[String]] :: HNil] =
+    extract(_.request.uri.query.toMultiMap)
+
+  private val _parameterSeq: Directive[Seq[(String, String)] :: HNil] =
+    extract(_.request.uri.query.toSeq)
+}
 
 trait ParamDefMagnet {
   type Out

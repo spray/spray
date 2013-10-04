@@ -35,7 +35,7 @@ class ChunkingDirectivesSpec extends RoutingSpec {
       val responseHeader = RawHeader("X-Custom", "Test")
       val route = autoChunk(8) {
         respondWithHeader(responseHeader) {
-          complete((StatusCodes.PartialContent, text))
+          complete(StatusCodes.PartialContent, text)
         }
       }
 
@@ -45,7 +45,7 @@ class ChunkingDirectivesSpec extends RoutingSpec {
         new String(bytes) === text
         status === StatusCodes.PartialContent
         header("x-custom") === Some(responseHeader)
-      } pendingUntilFixed
+      }
     }
   }
 }

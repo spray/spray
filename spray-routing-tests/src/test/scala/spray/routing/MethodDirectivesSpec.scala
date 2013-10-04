@@ -50,13 +50,13 @@ class MethodDirectivesSpec extends RoutingSpec {
       Get("/?_method=put") ~> overrideMethodWithParameter("_method") {
         get { complete("GET") } ~
           put { complete("PUT") }
-      } ~> check { entityAs[String] === "PUT" }
+      } ~> check { responseAs[String] === "PUT" }
     }
     "not affect the request when not specified" in {
       Get() ~> overrideMethodWithParameter("_method") {
         get { complete("GET") } ~
           put { complete("PUT") }
-      } ~> check { entityAs[String] === "GET" }
+      } ~> check { responseAs[String] === "GET" }
     }
     "complete with 501 Not Implemented when not a valid method" in {
       Get("/?_method=hallo") ~> overrideMethodWithParameter("_method") {

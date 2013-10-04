@@ -25,12 +25,28 @@ package object unmarshalling {
   type FromStringOptionDeserializer[T] = Deserializer[Option[String], T]
   type Unmarshaller[T] = Deserializer[HttpEntity, T]
   type FromEntityOptionUnmarshaller[T] = Deserializer[Option[HttpEntity], T]
+  type FromMessageUnmarshaller[T] = Deserializer[HttpMessage, T]
+  type FromRequestUnmarshaller[T] = Deserializer[HttpRequest, T]
+  type FromResponseUnmarshaller[T] = Deserializer[HttpResponse, T]
 
   implicit def formFieldExtractor(form: HttpForm) = FormFieldExtractor(form)
-  implicit def pimpHttpEntity(entity: HttpEntity) = new PimpedHttpEntity(entity)
   implicit def pimpBodyPart(bodyPart: BodyPart) = new PimpedHttpEntity(bodyPart.entity)
 
-  class PimpedHttpEntity(entity: HttpEntity) {
+  // TODO: remove the following pimps after merging spray-http and spray-httpx
+
+  implicit class PimpedHttpEntity(entity: HttpEntity) {
     def as[T](implicit unmarshaller: Unmarshaller[T]): Deserialized[T] = unmarshaller(entity)
+  }
+
+  implicit class PimpedHttpMessage(msg: HttpMessage) {
+    def as[T](implicit unmarshaller: FromMessageUnmarshaller[T]): Deserialized[T] = unmarshaller(msg)
+  }
+
+  implicit class PimpedHttpRequest(request: HttpRequest) {
+    def as[T](implicit unmarshaller: FromRequestUnmarshaller[T]): Deserialized[T] = unmarshaller(request)
+  }
+
+  implicit class PimpedHttpResponse(response: HttpResponse) {
+    def as[T](implicit unmarshaller: FromResponseUnmarshaller[T]): Deserialized[T] = unmarshaller(response)
   }
 }

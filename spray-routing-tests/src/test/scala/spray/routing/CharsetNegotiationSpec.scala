@@ -34,13 +34,13 @@ class CharsetNegotiationSpec extends RoutingSpec {
     "encode text content using UTF-8 if the Accept-Charset header contains '*'" in {
       Get() ~> `Accept-Charset`(`ISO-8859-1`, `*`) ~> Hällo ~> check {
         contentType === ContentType(`text/plain`, `UTF-8`)
-        entityAs[String] === "Hällö"
+        responseAs[String] === "Hällö"
       }
     }
     "encode text content using the first charset in the Accept-Charset header if '*' is not present" in {
       Get() ~> `Accept-Charset`(`ISO-8859-1`) ~> Hällo ~> check {
         contentType === ContentType(`text/plain`, `ISO-8859-1`)
-        entityAs[String] === "Hällö"
+        responseAs[String] === "Hällö"
       }
     }
   }
