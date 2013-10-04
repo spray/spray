@@ -27,12 +27,12 @@ class FutureDirectivesSpec extends RoutingSpec {
   "The `onComplete` directive" should {
     "properly unwrap a Future in the success case" in {
       Get() ~> onComplete(Promise.successful("yes")) { echoComplete } ~> check {
-        entityAs[String] === "Right(yes)"
+        responseAs[String] === "Right(yes)"
       }
     }
     "properly unwrap a Future in the failure case" in {
       Get() ~> onComplete(Promise.failed[String](new RuntimeException("no"))) { echoComplete } ~> check {
-        entityAs[String] === "Left(java.lang.RuntimeException: no)"
+        responseAs[String] === "Left(java.lang.RuntimeException: no)"
       }
     }
   }
@@ -40,7 +40,7 @@ class FutureDirectivesSpec extends RoutingSpec {
   "The `onSuccess` directive" should {
     "properly unwrap a Future in the success case" in {
       Get() ~> onSuccess(Promise.successful("yes")) { echoComplete } ~> check {
-        entityAs[String] === "yes"
+        responseAs[String] === "yes"
       }
     }
     "throw an exception in the failure case" in {
@@ -53,12 +53,12 @@ class FutureDirectivesSpec extends RoutingSpec {
   "The `onFailure` directive" should {
     "properly unwrap a Future in the success case" in {
       Get() ~> onFailure(Promise.successful("yes")) { echoComplete } ~> check {
-        entityAs[String] === "yes"
+        responseAs[String] === "yes"
       }
     }
     "throw an exception in the failure case" in {
       Get() ~> onFailure(Promise.failed[String](TestException)) { echoComplete } ~> check {
-        entityAs[String] === "spray.routing.FutureDirectivesSpec$TestException$"
+        responseAs[String] === "spray.routing.FutureDirectivesSpec$TestException$"
       }
     }
   }

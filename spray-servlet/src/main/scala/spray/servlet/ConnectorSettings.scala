@@ -30,7 +30,8 @@ case class ConnectorSettings(
     remoteAddressHeader: Boolean,
     verboseErrorMessages: Boolean,
     maxContentLength: Long,
-    servletRequestAccess: Boolean) {
+    servletRequestAccess: Boolean,
+    illegalHeaderWarnings: Boolean) {
 
   require(!bootClass.isEmpty,
     "No boot class configured. Please specify a boot class FQN in the spray.servlet.boot-class config setting.")
@@ -51,5 +52,6 @@ object ConnectorSettings extends SettingsCompanion[ConnectorSettings]("spray.ser
     c getBoolean "remote-address-header",
     c getBoolean "verbose-error-messages",
     c getBytes "max-content-length",
-    c getBoolean "servlet-request-access")
+    c getBoolean "servlet-request-access",
+    c getBoolean "illegal-header-warnings")
 }

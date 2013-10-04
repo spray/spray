@@ -66,7 +66,7 @@ trait ExecutionDirectives {
    * Also Note that this directive differs from most other directives in that it cannot be combined with other routes
    * via the usual `&` and `|` operators.
    */
-  def dynamic = dynamicIf(enabled = true)
+  def dynamic = ExecutionDirectives._dynamic
 
   /**
    * A directive that evaluates its inner Route for every request anew, if the given enabled flag is true.
@@ -94,7 +94,9 @@ trait ExecutionDirectives {
   }
 }
 
-object ExecutionDirectives extends ExecutionDirectives
+object ExecutionDirectives extends ExecutionDirectives {
+  private val _dynamic = dynamicIf(enabled = true)
+}
 
 class DetachMagnet()(implicit val ec: ExecutionContext)
 

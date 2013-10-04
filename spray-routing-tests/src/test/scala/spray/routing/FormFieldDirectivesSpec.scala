@@ -37,35 +37,35 @@ class FormFieldDirectivesSpec extends RoutingSpec {
         formFields('firstName :: ("age".as[Int]) :: ('sex?) :: ("VIP" ? false) :: HNil) { (firstName, age, sex, vip) ⇒
           complete(firstName + age + sex + vip)
         }
-      } ~> check { entityAs[String] === "Mike42Nonefalse" }
+      } ~> check { responseAs[String] === "Mike42Nonefalse" }
     }
     "properly extract the value of www-urlencoded form fields (using the simple non-HList-based variant)" in {
       Get("/", urlEncodedForm) ~> {
         formFields('firstName, "age".as[Int], 'sex?, "VIP" ? false) { (firstName, age, sex, vip) ⇒
           complete(firstName + age + sex + vip)
         }
-      } ~> check { entityAs[String] === "Mike42Nonefalse" }
+      } ~> check { responseAs[String] === "Mike42Nonefalse" }
     }
     "properly extract the value of www-urlencoded form fields when an explicit deserializer is given" in {
       Get("/", urlEncodedForm) ~> {
         formFields('firstName, "age".as(HexInt), 'sex?, "VIP" ? false) { (firstName, age, sex, vip) ⇒
           complete(firstName + age + sex + vip)
         }
-      } ~> check { entityAs[String] === "Mike66Nonefalse" }
+      } ~> check { responseAs[String] === "Mike66Nonefalse" }
     }
     "properly extract the value of multipart form fields (using the general HList-based variant)" in {
       Get("/", multipartForm) ~> {
         formFields('firstName :: "age" :: ('sex?) :: ("VIP" ? nodeSeq) :: HNil) { (firstName, age, sex, vip) ⇒
           complete(firstName + age + sex + vip)
         }
-      } ~> check { entityAs[String] === "Mike<int>42</int>None<b>yes</b>" }
+      } ~> check { responseAs[String] === "Mike<int>42</int>None<b>yes</b>" }
     }
     "properly extract the value of multipart form fields (using the simple non-HList-based variant)" in {
       Get("/", multipartForm) ~> {
         formFields('firstName, "age", 'sex?, "VIP" ? nodeSeq) { (firstName, age, sex, vip) ⇒
           complete(firstName + age + sex + vip)
         }
-      } ~> check { entityAs[String] === "Mike<int>42</int>None<b>yes</b>" }
+      } ~> check { responseAs[String] === "Mike<int>42</int>None<b>yes</b>" }
     }
     "reject the request with a MissingFormFieldRejection if a required form field is missing" in {
       Get("/", urlEncodedForm) ~> {

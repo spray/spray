@@ -25,7 +25,7 @@ class CookieDirectivesSpec extends RoutingSpec {
     "extract the respectively named cookie" in {
       Get() ~> addHeader(Cookie(HttpCookie("fancy", "pants"))) ~> {
         cookie("fancy") { echoComplete }
-      } ~> check { entityAs[String] === "fancy=pants" }
+      } ~> check { responseAs[String] === "fancy=pants" }
     }
     "reject the request if the cookie is not present" in {
       Get() ~> {
@@ -65,10 +65,10 @@ class CookieDirectivesSpec extends RoutingSpec {
     "produce a `Some(cookie)` extraction if the cookie is present" in {
       Get() ~> Cookie(HttpCookie("abc", "123")) ~> {
         optionalCookie("abc") { echoComplete }
-      } ~> check { entityAs[String] === "Some(abc=123)" }
+      } ~> check { responseAs[String] === "Some(abc=123)" }
     }
     "produce a `None` extraction if the cookie is not present" in {
-      Get() ~> optionalCookie("abc") { echoComplete } ~> check { entityAs[String] === "None" }
+      Get() ~> optionalCookie("abc") { echoComplete } ~> check { responseAs[String] === "None" }
     }
     "let rejections from its inner route pass through" in {
       Get() ~> {

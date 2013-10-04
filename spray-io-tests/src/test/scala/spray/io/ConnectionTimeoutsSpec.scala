@@ -22,6 +22,7 @@ import org.specs2.time.NoTimeConversions
 import akka.io.Tcp
 import akka.util.ByteString
 import spray.testkit.Specs2PipelineStageTest
+import akka.io.Tcp.CommandFailed
 
 class ConnectionTimeoutsSpec extends Specification with Specs2PipelineStageTest with NoTimeConversions {
   val stage = ConnectionTimeouts(200.millis)
@@ -46,7 +47,7 @@ class ConnectionTimeoutsSpec extends Specification with Specs2PipelineStageTest 
       connectionActor ! Tcp.Received(testData)
       Thread.sleep(210)
       connectionActor ! TickGenerator.Tick
-      commands.expectMsg(Tcp.Close)
+      commands.expectMsg(Tcp.Abort)
     }
 
     "reset the idle timer on Received events" in new Fixture(stage) {
@@ -56,12 +57,28 @@ class ConnectionTimeoutsSpec extends Specification with Specs2PipelineStageTest 
       commands.expectNoMsg(100.millis)
     }
 
-    "reset the idle timer on Send commands" in new Fixture(stage) {
+    "start the idle timer when no writes are pending any more" in new Fixture(stage) {
       Thread.sleep(210)
-      connectionActor ! Tcp.Write(testData)
+      object customAck extends Tcp.Event
+      val write = Tcp.Write(testData)
+      connectionActor ! write
       connectionActor ! TickGenerator.Tick
-      commands.expectMsg(Tcp.Write(testData))
+      commands.expectMsg(write)
+      commands.expectNoMsg(210.millis)
+      connectionActor ! TickGenerator.Tick
+      commands.expectMsg(ConnectionTimeouts.TestWrite)
       commands.expectNoMsg(100.millis)
+
+      // former write is still pending
+      connectionActor ! CommandFailed(ConnectionTimeouts.TestWrite)
+      commands.expectNoMsg(210.millis)
+      connectionActor ! TickGenerator.Tick
+      commands.expectMsg(ConnectionTimeouts.TestWrite)
+      commands.expectNoMsg(100.millis)
+      connectionActor ! ConnectionTimeouts.NoWritePending
+      commands.expectNoMsg(210.millis)
+      connectionActor ! TickGenerator.Tick
+      commands.expectMsg(Tcp.Abort)
     }
   }
 }

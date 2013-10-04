@@ -20,7 +20,7 @@ class CaseClassExtractionExamplesSpec extends Specification with Specs2RouteTest
           doSomethingWith(color) // route working with the Color instance
         }
       }
-    Get("/color?red=1&green=2&blue=3") ~> route ~> check { entityAs[String] === "Color(1,2,3)" } // hide
+    Get("/color?red=1&green=2&blue=3") ~> route ~> check { responseAs[String] === "Color(1,2,3)" } // hide
   }
 
   "example-2" in {
@@ -32,7 +32,7 @@ class CaseClassExtractionExamplesSpec extends Specification with Specs2RouteTest
           doSomethingWith(color) // route working with the Color instance
         }
       }
-    Get("/color?red=1&green=2&blue=3") ~> route ~> check { entityAs[String] === "Color(1,2,3)" } // hide
+    Get("/color?red=1&green=2&blue=3") ~> route ~> check { responseAs[String] === "Color(1,2,3)" } // hide
   }
 
   "example-3" in {
@@ -43,7 +43,7 @@ class CaseClassExtractionExamplesSpec extends Specification with Specs2RouteTest
         parameters('r.as[Int], 'g.as[Int], 'b.as[Int])).as(Color) { color =>
           doSomethingWith(color) // route working with the Color instance
         }
-    Get("/color/abc?r=1&g=2&b=3") ~> route ~> check { entityAs[String] === "Color(abc,1,2,3)" } // hide
+    Get("/color/abc?r=1&g=2&b=3") ~> route ~> check { responseAs[String] === "Color(abc,1,2,3)" } // hide
   }
 
   //# example-4
@@ -62,7 +62,7 @@ class CaseClassExtractionExamplesSpec extends Specification with Specs2RouteTest
           doSomethingWith(color) // route working with the Color instance
         }
     Get("/color/abc?r=1&g=2&b=3") ~> route ~> check {
-      entityAs[String] === "Color(abc,1,2,3)"
+      responseAs[String] === "Color(abc,1,2,3)"
     }
     Get("/color/abc?r=1&g=2&b=345") ~> route ~> check {
       rejection must beLike {

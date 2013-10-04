@@ -48,7 +48,7 @@ class HostDirectivesSpec extends RoutingSpec {
       "let requests to matching hosts pass and extract the full host" in {
         Get() ~> Host("spray.io") ~> {
           host("spra.*".r) { echoComplete }
-        } ~> check { entityAs[String] === "spray.io" }
+        } ~> check { responseAs[String] === "spray.io" }
       }
     }
 
@@ -63,7 +63,7 @@ class HostDirectivesSpec extends RoutingSpec {
       "let requests to matching hosts pass and extract the full host" in {
         Get() ~> Host("spray.io") ~> {
           host("spra(.*)".r) { echoComplete }
-        } ~> check { entityAs[String] === "y.io" }
+        } ~> check { responseAs[String] === "y.io" }
       }
     }
   }

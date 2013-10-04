@@ -28,7 +28,6 @@ import RenderSupport._
 private[can] trait ResponseRenderingComponent {
   def serverHeaderValue: String
   def chunklessStreaming: Boolean
-  def transparentHeadRequests: Boolean
 
   private[this] val serverHeaderPlusDateColonSP =
     serverHeaderValue match {
@@ -36,52 +35,83 @@ private[can] trait ResponseRenderingComponent {
       case x  ⇒ ("Server: " + x + "\r\nDate: ").getAsciiBytes
     }
 
+  // returns a boolean indicating whether the connection is to be closed after this response was sent
   def renderResponsePartRenderingContext(r: Rendering, ctx: ResponsePartRenderingContext,
                                          log: LoggingAdapter): Boolean = {
-    def renderResponseStart(response: HttpResponse): Connection = {
-      val manualContentHeadersAllowed =
-        transparentHeadRequests && ctx.requestMethod == HttpMethods.HEAD && response.entity.isEmpty
+    def renderResponseStart(response: HttpResponse, allowUserContentType: Boolean,
+                            allowUserContentLength: Boolean): Connection = {
+      def render(h: HttpHeader) = r ~~ h ~~ CrLf
+      def suppressionWarning(h: HttpHeader, msg: String = "the spray-can HTTP layer sets this header automatically!"): Unit =
+        log.warning("Explicitly set response header '{}' is ignored, {}", h, msg)
 
-      @tailrec def renderHeaders(remaining: List[HttpHeader])(connectionHeader: Connection = null): Connection =
+      @tailrec def renderHeaders(remaining: List[HttpHeader], userContentType: Boolean = false,
+                                 userContentLength: Boolean = false, connHeader: Connection = null): Connection =
         remaining match {
-          case Nil ⇒ connectionHeader
-          case head :: tail ⇒ renderHeaders(tail) {
-            def logHeaderSuppressionWarning(msg: String = "the spray-can HTTP layer sets this header automatically!"): Connection = {
-              log.warning("Explicitly set response header '{}' is ignored, {}", head, msg)
-              connectionHeader
-            }
-            head match {
-              case _: `Content-Type` if !manualContentHeadersAllowed ⇒ logHeaderSuppressionWarning("the response Content-Type is set via the response's HttpEntity!")
-              case _: `Content-Length` if !manualContentHeadersAllowed ⇒ logHeaderSuppressionWarning()
-              case _: `Transfer-Encoding` ⇒ logHeaderSuppressionWarning()
-              case _: `Date` ⇒ logHeaderSuppressionWarning()
-              case _: `Server` ⇒ logHeaderSuppressionWarning()
-              case x: `Connection` ⇒
-                r ~~ x ~~ CrLf
-                if (connectionHeader eq null) x else Connection(x.tokens ++ connectionHeader.tokens)
-              case x: RawHeader if x.lowercaseName == "content-type" ||
-                x.lowercaseName == "content-length" ||
-                x.lowercaseName == "transfer-encoding" ||
-                x.lowercaseName == "date" ||
-                x.lowercaseName == "server" ||
-                x.lowercaseName == "connection" ⇒ logHeaderSuppressionWarning()
-              case _ ⇒ r ~~ head ~~ CrLf; connectionHeader
-            }
+          case head :: tail ⇒ head match {
+            case x: `Content-Type` ⇒
+              val userCT =
+                if (userContentType) { suppressionWarning(x, "another `Content-Type` header was already rendered"); true }
+                else if (!allowUserContentType) { suppressionWarning(x, "the response Content-Type is set via the response's HttpEntity!"); false }
+                else { render(x); true }
+              renderHeaders(tail, userContentType = userCT, userContentLength, connHeader)
+
+            case x: `Content-Length` ⇒
+              val userCL =
+                if (userContentLength) { suppressionWarning(x, "another `Content-Length` header was already rendered"); true }
+                else if (!allowUserContentLength) { suppressionWarning(x); false }
+                else { render(x); true }
+              renderHeaders(tail, userContentType, userContentLength = userCL, connHeader)
+
+            case `Transfer-Encoding`(_) | Date(_) | Server(_) ⇒
+              suppressionWarning(head)
+              renderHeaders(tail, userContentType, userContentLength, connHeader)
+
+            case x: `Connection` ⇒
+              val connectionHeader = if (connHeader eq null) x else Connection(x.tokens ++ connHeader.tokens)
+              renderHeaders(tail, userContentType, userContentLength, connectionHeader)
+
+            case x: RawHeader if x.lowercaseName == "content-type" ||
+              x.lowercaseName == "content-length" ||
+              x.lowercaseName == "transfer-encoding" ||
+              x.lowercaseName == "date" ||
+              x.lowercaseName == "server" ||
+              x.lowercaseName == "connection" ⇒
+              suppressionWarning(x, "illegal RawHeader")
+              renderHeaders(tail, userContentType, userContentLength, connHeader)
+
+            case x ⇒
+              render(x)
+              renderHeaders(tail, userContentType, userContentLength, connHeader)
           }
+
+          case Nil ⇒
+            response.entity match {
+              case HttpEntity.NonEmpty(ContentTypes.NoContentType, _) ⇒
+              case HttpEntity.NonEmpty(contentType, _) if !userContentType ⇒ r ~~ `Content-Type` ~~ contentType ~~ CrLf
+              case _ ⇒
+            }
+            val result =
+              if (userContentLength) {
+                // if we have a user-specified Content-Length we are in chunkless response streaming mode and the client
+                // will assume that we keep the connection open after the response is finished
+                // however, we currently do not support keeping the response open after a chunkless streaming response
+                if (response.protocol == `HTTP/1.1`) Connection("close")
+                else null // in the `HTTP/1.0` response case we simply don't render any Connection header
+              } else connHeader
+            if (result != null) render(result)
+            result
         }
       import response._
       if (status eq StatusCodes.OK) r ~~ DefaultStatusLine else r ~~ StatusLineStart ~~ status ~~ CrLf
       r ~~ serverAndDateHeader
-      entity match {
-        case HttpEntity.NonEmpty(ContentTypes.NoContentType, _) | HttpEntity.Empty ⇒ // don't render Content-Type header
-        case HttpEntity.NonEmpty(contentType, _)                                   ⇒ r ~~ `Content-Type` ~~ contentType ~~ CrLf
-      }
-      renderHeaders(headers)()
+      renderHeaders(headers)
     }
 
     def renderResponse(response: HttpResponse): Boolean = {
       import response._
-      val connectionHeader = renderResponseStart(response)
+      val connectionHeader = renderResponseStart(response,
+        allowUserContentType = entity.isEmpty && ctx.requestMethod == HttpMethods.HEAD,
+        allowUserContentLength = false)
       val close =
         ctx.requestProtocol match {
           case `HTTP/1.0` ⇒ if (connectionHeader eq null) {
@@ -95,14 +125,17 @@ private[can] trait ResponseRenderingComponent {
         }
 
       // don't set a Content-Length header for non-keep-alive HTTP/1.0 responses (rely on body end by connection close)
-      if (response.protocol == `HTTP/1.1` || !close) r ~~ `Content-Length` ~~ entity.data.length ~~ CrLf
+      if (response.protocol == `HTTP/1.1` || !close || ctx.requestMethod == HttpMethods.HEAD)
+        r ~~ `Content-Length` ~~ entity.data.length ~~ CrLf
       r ~~ CrLf
       if (entity.nonEmpty && ctx.requestMethod != HttpMethods.HEAD) r ~~ entity.data
       close
     }
 
     def renderChunkedResponseStart(response: HttpResponse, chunkless: Boolean): Boolean = {
-      renderResponseStart(response)
+      renderResponseStart(response,
+        allowUserContentType = response.entity.isEmpty,
+        allowUserContentLength = chunkless)
       if (!chunkless) r ~~ `Transfer-Encoding` ~~ Chunked ~~ CrLf
       r ~~ CrLf
       if (ctx.requestMethod != HttpMethods.HEAD)

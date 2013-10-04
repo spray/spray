@@ -20,7 +20,7 @@ package directives
 import shapeless._
 import akka.dispatch.{ ExecutionContext, Future }
 import akka.util.NonFatal
-import spray.httpx.marshalling.Marshaller
+import spray.httpx.marshalling.ToResponseMarshaller
 
 trait FutureDirectives {
 
@@ -85,7 +85,7 @@ object OnSuccessFutureMagnet {
 trait OnFailureFutureMagnet extends Directive1[Throwable]
 
 object OnFailureFutureMagnet {
-  implicit def apply[T](future: Future[T])(implicit m: Marshaller[T], ec: ExecutionContext) =
+  implicit def apply[T](future: Future[T])(implicit m: ToResponseMarshaller[T], ec: ExecutionContext) =
     new OnFailureFutureMagnet {
       def happly(f: (Throwable :: HNil) ⇒ Route) = ctx ⇒ future.onComplete {
         case Right(t) ⇒ ctx.complete(t)

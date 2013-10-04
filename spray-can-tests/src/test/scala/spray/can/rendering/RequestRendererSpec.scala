@@ -19,12 +19,13 @@ package rendering
 
 import java.net.InetSocketAddress
 import org.specs2.mutable.Specification
+import org.specs2.specification.Scope
 import akka.spray.NoLogging
 import spray.util.EOL
 import spray.http._
 import HttpHeaders._
 import HttpMethods._
-import org.specs2.specification.Scope
+import MediaTypes._
 
 class RequestRendererSpec extends Specification {
 
@@ -45,7 +46,7 @@ class RequestRendererSpec extends Specification {
         HttpRequest(POST, "/abc/xyz", List(
           RawHeader("X-Fancy", "naa"),
           RawHeader("Age", "0"),
-          RawHeader("Host", "spray.io:9999"))) must beRenderedTo {
+          Host("spray.io", 9999))) must beRenderedTo {
           """|POST /abc/xyz HTTP/1.1
              |X-Fancy: naa
              |Age: 0
@@ -61,7 +62,7 @@ class RequestRendererSpec extends Specification {
         HttpRequest(PUT, "/abc/xyz", List(
           RawHeader("X-Fancy", "naa"),
           RawHeader("Cache-Control", "public"),
-          RawHeader("Host", "spray.io"))).withEntity("The content please!") must beRenderedTo {
+          Host("spray.io"))).withEntity("The content please!") must beRenderedTo {
           """|PUT /abc/xyz HTTP/1.1
              |X-Fancy: naa
              |Cache-Control: public
@@ -78,7 +79,7 @@ class RequestRendererSpec extends Specification {
         HttpRequest(PUT, "/abc/xyz", List(
           RawHeader("X-Fancy", "naa"),
           RawHeader("Cache-Control", "public"),
-          RawHeader("Host", "spray.io"))).withEntity(HttpEntity(ContentTypes.NoContentType, "The content please!")) must beRenderedTo {
+          Host("spray.io"))).withEntity(HttpEntity(ContentTypes.NoContentType, "The content please!")) must beRenderedTo {
           """|PUT /abc/xyz HTTP/1.1
              |X-Fancy: naa
              |Cache-Control: public
@@ -90,14 +91,15 @@ class RequestRendererSpec extends Specification {
         }
       }
 
-      "PUT request start (chunked) without body" in new TestSetup() {
-        ChunkedRequestStart(HttpRequest(PUT, "/abc/xyz")) must beRenderedTo {
-          """|PUT /abc/xyz HTTP/1.1
-             |Host: test.com:8080
-             |User-Agent: spray-can/1.0.0
-             |Transfer-Encoding: chunked
-             |
-             |"""
+      "PUT request start (chunked) without body but custom Content-Type" in new TestSetup() {
+        ChunkedRequestStart(HttpRequest(PUT, "/abc/xyz", List(`Content-Type`(`text/plain`)))) must beRenderedTo {
+          """PUT /abc/xyz HTTP/1.1
+            |Content-Type: text/plain
+            |Host: test.com:8080
+            |User-Agent: spray-can/1.0.0
+            |Transfer-Encoding: chunked
+            |
+            |"""
         }
       }
 
@@ -130,7 +132,7 @@ class RequestRendererSpec extends Specification {
       }
 
       "GET request with overridden User-Agent and without body" in new TestSetup(None) {
-        HttpRequest(GET, "/abc", List(RawHeader("User-Agent", "blah-blah/1.0"))) must beRenderedTo {
+        HttpRequest(GET, "/abc", List(`User-Agent`("blah-blah/1.0"))) must beRenderedTo {
           """GET /abc HTTP/1.1
             |User-Agent: blah-blah/1.0
             |Host: test.com:8080
@@ -140,7 +142,7 @@ class RequestRendererSpec extends Specification {
       }
 
       "GET request with overridden User-Agent and without body" in new TestSetup(Some(`User-Agent`("settings-ua/1.0"))) {
-        HttpRequest(GET, "/abc", List(RawHeader("User-Agent", "user-ua/1.0"))) must beRenderedTo {
+        HttpRequest(GET, "/abc", List(`User-Agent`("user-ua/1.0"))) must beRenderedTo {
           """GET /abc HTTP/1.1
             |User-Agent: user-ua/1.0
             |Host: test.com:8080

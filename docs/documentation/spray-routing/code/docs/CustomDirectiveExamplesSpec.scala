@@ -21,7 +21,7 @@ class CustomDirectiveExamplesSpec extends Specification with Specs2RouteTest {
 
     // test `myDirective` using the testkit DSL
     Get("/?a=2&b=5") ~> myDirective(complete(_)) ~> check {
-      entityAs[String] === "7"
+      responseAs[String] === "7"
     }
   }
 
@@ -40,7 +40,7 @@ class CustomDirectiveExamplesSpec extends Specification with Specs2RouteTest {
 
     // test `myDirective` using the testkit DSL
     Get("/?a=21") ~> myDirective(i => complete(i.toString)) ~> check {
-      entityAs[String] === "42"
+      responseAs[String] === "42"
     }
     Get("/?a=-18") ~> myDirective(i => complete(i.toString)) ~> check {
       handled must beFalse

@@ -47,13 +47,13 @@ class SecurityDirectivesSpec extends RoutingSpec {
         authenticate(dontAuth) { echoComplete }
       } ~> check {
         status === StatusCodes.Unauthorized and
-          entityAs[String] === "The resource requires authentication, which was not supplied with the request"
+          responseAs[String] === "The resource requires authentication, which was not supplied with the request"
       }
     }
     "extract the object representing the user identity created by successful authentication" in {
       Get() ~> Authorization(BasicHttpCredentials("Alice", "")) ~> {
         authenticate(doAuth) { echoComplete }
-      } ~> check { entityAs[String] === "BasicUserContext(Alice)" }
+      } ~> check { responseAs[String] === "BasicUserContext(Alice)" }
     }
     "properly handle exceptions thrown in its inner route" in {
       object TestException extends spray.util.SingletonException
@@ -77,7 +77,7 @@ class SecurityDirectivesSpec extends RoutingSpec {
     }
     "pass on the authenticator extraction if the filter conditions is met" in {
       Get() ~> Host("spray.io") ~> authenticate(myAuthenticator) { echoComplete } ~>
-        check { entityAs[String] === "42" }
+        check { responseAs[String] === "42" }
     }
   }
 }

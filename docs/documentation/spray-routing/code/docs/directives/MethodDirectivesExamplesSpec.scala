@@ -8,7 +8,7 @@ class MethodDirectivesExamplesSpec extends DirectivesSpec {
     val route = Directives.delete { complete("This is a DELETE request.") }
 
     Delete("/") ~> route ~> check { 
-      entityAs[String] === "This is a DELETE request." 
+      responseAs[String] === "This is a DELETE request."
     }
   }
 
@@ -16,7 +16,7 @@ class MethodDirectivesExamplesSpec extends DirectivesSpec {
     val route = get { complete("This is a GET request.") }
 
     Get("/") ~> route ~> check { 
-      entityAs[String] === "This is a GET request." 
+      responseAs[String] === "This is a GET request."
     }
   }
     
@@ -24,7 +24,7 @@ class MethodDirectivesExamplesSpec extends DirectivesSpec {
     val route = head { complete("This is a HEAD request.") }
 
     Head("/") ~> route ~> check { 
-      entityAs[String] === "This is a HEAD request." 
+      responseAs[String] === "This is a HEAD request."
     }
   }
    
@@ -32,7 +32,7 @@ class MethodDirectivesExamplesSpec extends DirectivesSpec {
     val route = options { complete("This is an OPTIONS request.") }
 
     Options("/") ~> route ~> check { 
-      entityAs[String] === "This is an OPTIONS request."
+      responseAs[String] === "This is an OPTIONS request."
     }
   }
 
@@ -40,7 +40,7 @@ class MethodDirectivesExamplesSpec extends DirectivesSpec {
     val route = patch { complete("This is a PATCH request.") }
     
     Patch("/", "patch content") ~> route ~> check { 
-      entityAs[String] === "This is a PATCH request." 
+      responseAs[String] === "This is a PATCH request."
     }
   }
     
@@ -48,7 +48,7 @@ class MethodDirectivesExamplesSpec extends DirectivesSpec {
     val route = post { complete("This is a POST request.") }
 
     Post("/", "post content") ~> route ~> check { 
-      entityAs[String] === "This is a POST request."
+      responseAs[String] === "This is a POST request."
     }
   }
 
@@ -56,7 +56,7 @@ class MethodDirectivesExamplesSpec extends DirectivesSpec {
     val route = put { complete("This is a PUT request.") }
     
     Put("/", "put content") ~> route ~> check { 
-      entityAs[String] === "This is a PUT request." 
+      responseAs[String] === "This is a PUT request."
     }
   }
 
@@ -64,12 +64,12 @@ class MethodDirectivesExamplesSpec extends DirectivesSpec {
     val route = method(HttpMethods.PUT) { complete("This is a PUT request.") }
 
     Put("/", "put content") ~> route ~> check {
-      entityAs[String] === "This is a PUT request."
+      responseAs[String] === "This is a PUT request."
     }
 
     Get("/") ~> sealRoute(route) ~> check {
       status === StatusCodes.MethodNotAllowed
-      entityAs[String] === "HTTP method not allowed, supported methods: PUT"
+      responseAs[String] === "HTTP method not allowed, supported methods: PUT"
     }
   }
 }

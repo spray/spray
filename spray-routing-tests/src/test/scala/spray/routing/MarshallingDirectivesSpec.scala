@@ -40,7 +40,7 @@ class MarshallingDirectivesSpec extends RoutingSpec {
     "extract an object from the requests entity using the in-scope Unmarshaller" in {
       Put("/", <p>cool</p>) ~> {
         entity(as[NodeSeq]) { echoComplete }
-      } ~> check { entityAs[String] === "<p>cool</p>" }
+      } ~> check { responseAs[String] === "<p>cool</p>" }
     }
     "return a RequestEntityExpectedRejection rejection if the request has no entity" in {
       Put() ~> {
@@ -64,12 +64,12 @@ class MarshallingDirectivesSpec extends RoutingSpec {
     "extract an Option[T] from the requests HttpContent using the in-scope Unmarshaller" in {
       Put("/", <p>cool</p>) ~> {
         entity(as[Option[NodeSeq]]) { echoComplete }
-      } ~> check { entityAs[String] === "Some(<p>cool</p>)" }
+      } ~> check { responseAs[String] === "Some(<p>cool</p>)" }
     }
     "extract an Option[T] as None if the request has no entity" in {
       Put() ~> {
         entity(as[Option[Int]]) { echoComplete }
-      } ~> check { entityAs[String] === "None" }
+      } ~> check { responseAs[String] === "None" }
     }
     "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope (for Option[T]s)" in {
       Put("/", HttpEntity(`text/css`, "<p>cool</p>")) ~> {
@@ -140,14 +140,14 @@ class MarshallingDirectivesSpec extends RoutingSpec {
 
   "Completion with a Future" should {
     "work for successful futures" in {
-      Get() ~> complete(Promise.successful("yes").future) ~> check { entityAs[String] === "yes" }
+      Get() ~> complete(Promise.successful("yes").future) ~> check { responseAs[String] === "yes" }
     }
     "work for failed futures" in {
       object TestException extends spray.util.SingletonException
       Get() ~> complete(Promise.failed[String](TestException).future) ~>
         check {
           status === StatusCodes.InternalServerError
-          entityAs[String] === "There was an internal server error."
+          responseAs[String] === "There was an internal server error."
         }
     }
     "work for futures failed with a RejectionError" in {

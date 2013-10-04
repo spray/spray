@@ -8,7 +8,7 @@ import spray.httpx.unmarshalling.ContentExpected
 class UnmarshallingExamplesSpec extends Specification {
 
   //# example-1
-  import spray.httpx.unmarshalling.{Unmarshaller, pimpHttpEntity}
+  import spray.httpx.unmarshalling._
   import spray.util._
   import spray.http._
 
@@ -20,10 +20,10 @@ class UnmarshallingExamplesSpec extends Specification {
   object Person {
     implicit val PersonUnmarshaller =
       Unmarshaller[Person](`application/vnd.acme.person`) {
-        case HttpEntity.NonEmpty(contentType, buffer) =>
+        case HttpEntity.NonEmpty(contentType, data) =>
           // unmarshal from the string format used in the marshaller example
           val Array(_, name, first, age) =
-            buffer.asString.split(":,".toCharArray).map(_.trim)
+            data.asString.split(":,".toCharArray).map(_.trim)
           Person(name, first, age.toInt)
 
         // if we had meaningful semantics for the HttpEntity.Empty

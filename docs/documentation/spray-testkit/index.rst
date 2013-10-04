@@ -88,8 +88,6 @@ Inspector                                        Description
 ``contentType: ContentType``                     Identical to ``body.contentType``
 ``definedCharset: Option[HttpCharset]``          Identical to ``contentType.definedCharset``
 ``entity: HttpEntity``                           Identical to ``response.entity``
-``entityAs[T: Unmarshaller: ClassTag]: T``       Unmarshals the response entity using the in-scope ``Unmarshaller`` for
-                                                 the given type. Any errors in the process trigger a test failure.
 ``handled: Boolean``                             Indicates whether the route produced an ``HttpResponse`` for the
                                                  request. If the route rejected the request ``handled`` evaluates to
                                                  ``false``.
@@ -105,6 +103,9 @@ Inspector                                        Description
 ``response: HttpResponse``                       The ``HttpResponse`` returned by the route. If the route did not return
                                                  an ``HttpResponse`` instance (e.g. because it rejected the request) a
                                                  test failure is triggered.
+``responseAs[T: Unmarshaller: ClassTag]: T``     Unmarshals the response entity using the in-scope
+                                                 ``FromResponseUnmarshaller`` for the given type. Any errors in the
+                                                 process trigger a test failure.
 ``status: StatusCode``                           Identical to ``response.status``
 ``trailer: List[HttpHeader]``                    Returns the list of trailer headers the route produced with a
                                                  ``ChunkedMessageEnd`` response part.

@@ -24,12 +24,12 @@ class ParameterDirectivesSpec extends RoutingSpec {
     "extract a parameter value as Int (using the general `parameters` directive)" in {
       Get("/?amount=123") ~> {
         parameters('amount.as[Int] :: HNil) { echoComplete }
-      } ~> check { entityAs[String] === "123" }
+      } ~> check { responseAs[String] === "123" }
     }
     "extract a parameter values as Int (using the `parameter` directive)" in {
       Get("/?amount=123") ~> {
         parameter('amount.as[Int]) { echoComplete }
-      } ~> check { entityAs[String] === "123" }
+      } ~> check { responseAs[String] === "123" }
     }
     "cause a MalformedQueryParamRejection on illegal Int values" in {
       Get("/?amount=1x3") ~> {
@@ -43,18 +43,18 @@ class ParameterDirectivesSpec extends RoutingSpec {
     "supply typed default values" in {
       Get() ~> {
         parameter('amount ? 45) { echoComplete }
-      } ~> check { entityAs[String] === "45" }
+      } ~> check { responseAs[String] === "45" }
     }
     "create typed optional parameters that" in {
       "extract Some(value) when present" in {
         Get("/?amount=12") ~> {
           parameter("amount".as[Int]?) { echoComplete }
-        } ~> check { entityAs[String] === "Some(12)" }
+        } ~> check { responseAs[String] === "Some(12)" }
       }
       "extract None when not present" in {
         Get() ~> {
           parameter("amount".as[Int]?) { echoComplete }
-        } ~> check { entityAs[String] === "None" }
+        } ~> check { responseAs[String] === "None" }
       }
       "cause a MalformedQueryParamRejection on illegal Int values" in {
         Get("/?amount=x") ~> {
@@ -73,7 +73,7 @@ class ParameterDirectivesSpec extends RoutingSpec {
     "extract parameter values as Int" in {
       Get("/?amount=1f") ~> {
         parameter('amount.as(HexInt)) { echoComplete }
-      } ~> check { entityAs[String] === "31" }
+      } ~> check { responseAs[String] === "31" }
     }
     "cause a MalformedQueryParamRejection on illegal Int values" in {
       Get("/?amount=1x3") ~> {
@@ -88,18 +88,18 @@ class ParameterDirectivesSpec extends RoutingSpec {
     "supply typed default values" in {
       Get() ~> {
         parameter('amount.as(HexInt) ? 45) { echoComplete }
-      } ~> check { entityAs[String] === "45" }
+      } ~> check { responseAs[String] === "45" }
     }
     "create typed optional parameters that" in {
       "extract Some(value) when present" in {
         Get("/?amount=A") ~> {
           parameter("amount".as(HexInt)?) { echoComplete }
-        } ~> check { entityAs[String] === "Some(10)" }
+        } ~> check { responseAs[String] === "Some(10)" }
       }
       "extract None when not present" in {
         Get() ~> {
           parameter("amount".as(HexInt)?) { echoComplete }
-        } ~> check { entityAs[String] === "None" }
+        } ~> check { responseAs[String] === "None" }
       }
       "cause a MalformedQueryParamRejection on illegal Int values" in {
         Get("/?amount=x") ~> {
@@ -120,18 +120,18 @@ class ParameterDirectivesSpec extends RoutingSpec {
         parameters("name", 'FirstName) { (name, firstName) ⇒
           complete(firstName + name)
         }
-      } ~> check { entityAs[String] === "EllenParsons" }
+      } ~> check { responseAs[String] === "EllenParsons" }
     }
     "correctly extract an optional parameter" in {
-      Get("/?foo=bar") ~> parameters('foo ?) { echoComplete } ~> check { entityAs[String] === "Some(bar)" }
-      Get("/?foo=bar") ~> parameters('baz ?) { echoComplete } ~> check { entityAs[String] === "None" }
+      Get("/?foo=bar") ~> parameters('foo ?) { echoComplete } ~> check { responseAs[String] === "Some(bar)" }
+      Get("/?foo=bar") ~> parameters('baz ?) { echoComplete } ~> check { responseAs[String] === "None" }
     }
     "ignore additional parameters" in {
       Get("/?name=Parsons&FirstName=Ellen&age=29") ~> {
         parameters("name", 'FirstName) { (name, firstName) ⇒
           complete(firstName + name)
         }
-      } ~> check { entityAs[String] === "EllenParsons" }
+      } ~> check { responseAs[String] === "EllenParsons" }
     }
     "reject the request with a MissingQueryParamRejection if a required parameters is missing" in {
       Get("/?name=Parsons&sex=female") ~> {
@@ -145,14 +145,14 @@ class ParameterDirectivesSpec extends RoutingSpec {
         parameters("name"?, 'FirstName, 'age ? "29", 'eyes?) { (name, firstName, age, eyes) ⇒
           complete(firstName + name + age + eyes)
         }
-      } ~> check { entityAs[String] === "EllenSome(Parsons)29None" }
+      } ~> check { responseAs[String] === "EllenSome(Parsons)29None" }
     }
     "supply the default value if an optional parameter is missing (with the general `parameters` directive)" in {
       Get("/?name=Parsons&FirstName=Ellen") ~> {
         parameters(("name"?) :: 'FirstName :: ('age ? "29") :: ('eyes?) :: HNil) { (name, firstName, age, eyes) ⇒
           complete(firstName + name + age + eyes)
         }
-      } ~> check { entityAs[String] === "EllenSome(Parsons)29None" }
+      } ~> check { responseAs[String] === "EllenSome(Parsons)29None" }
     }
   }
 
@@ -177,9 +177,9 @@ class ParameterDirectivesSpec extends RoutingSpec {
         (post | parameter('method ! "post")) { complete("POST") } ~
           get { complete("GET") }
       }
-      Get("/?method=post") ~> route ~> check { entityAs[String] === "POST" }
-      Post() ~> route ~> check { entityAs[String] === "POST" }
-      Get() ~> route ~> check { entityAs[String] === "GET" }
+      Get("/?method=post") ~> route ~> check { responseAs[String] === "POST" }
+      Post() ~> route ~> check { responseAs[String] === "POST" }
+      Get() ~> route ~> check { responseAs[String] === "GET" }
     }
   }
 

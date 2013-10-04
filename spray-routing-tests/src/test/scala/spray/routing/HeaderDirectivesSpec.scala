@@ -26,7 +26,7 @@ class HeaderDirectivesSpec extends RoutingSpec {
 
     "extract the respective header value if a matching request header is present" in {
       Get("/abc") ~> addHeader(Connection("close")) ~> myHeaderValue { echoComplete } ~> check {
-        entityAs[String] === "close"
+        responseAs[String] === "close"
       }
     }
 
@@ -51,12 +51,12 @@ class HeaderDirectivesSpec extends RoutingSpec {
 
     "extract the respective header value if a matching request header is present" in {
       Get("/abc") ~> addHeader(Connection("close")) ~> myHeaderValue { echoComplete } ~> check {
-        entityAs[String] === "Some(close)"
+        responseAs[String] === "Some(close)"
       }
     }
 
     "extract None if no matching request header is present" in {
-      Get("/abc") ~> myHeaderValue { echoComplete } ~> check { entityAs[String] === "None" }
+      Get("/abc") ~> myHeaderValue { echoComplete } ~> check { responseAs[String] === "None" }
     }
 
     "reject with a MalformedHeaderRejection if the extract function throws an exception" in {
