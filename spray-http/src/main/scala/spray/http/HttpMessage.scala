@@ -124,11 +124,13 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
 
   /** Returns the message as if it was sent in chunks */
   def asPartStream(maxChunkSize: Long = Long.MaxValue): Stream[HttpMessagePart] =
-    if (entity.isEmpty) Stream(chunkedMessageStart, ChunkedMessageEnd)
-    else
-      (chunkedMessageStart #::
-        entity.data.toChunkStream(maxChunkSize).map(MessageChunk(_): HttpMessagePart))
-        .append(Stream(ChunkedMessageEnd))
+    entity match {
+      case HttpEntity.Empty ⇒ Stream(chunkedMessageStart, ChunkedMessageEnd)
+      case HttpEntity.NonEmpty(ct, data) ⇒
+        val start = withHeadersAndEntity(`Content-Type`(ct) :: headers, HttpEntity.Empty).chunkedMessageStart
+        val chunks: Stream[HttpMessagePart] = data.toChunkStream(maxChunkSize).map(MessageChunk(_))
+        start #:: chunks append Stream(ChunkedMessageEnd)
+    }
 }
 
 object HttpMessage {
@@ -268,7 +270,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) =
     if ((headers eq this.headers) && (entity eq this.entity)) this else copy(headers = headers, entity = entity)
 
-  def chunkedMessageStart: HttpMessageStart = ChunkedRequestStart(withEntity(HttpEntity.Empty))
+  def chunkedMessageStart: ChunkedRequestStart = ChunkedRequestStart(this)
 }
 
 /**
@@ -289,7 +291,7 @@ case class HttpResponse(status: StatusCode = StatusCodes.OK,
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) =
     if ((headers eq this.headers) && (entity eq this.entity)) this else copy(headers = headers, entity = entity)
 
-  def chunkedMessageStart: HttpMessageStart = ChunkedResponseStart(withEntity(HttpEntity.Empty))
+  def chunkedMessageStart: ChunkedResponseStart = ChunkedResponseStart(this)
 }
 
 /**
