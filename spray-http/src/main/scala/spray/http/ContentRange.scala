@@ -19,12 +19,13 @@ package spray.http
 
 case class ContentRange(firstByte: Option[Long], lastByte: Option[Long], instanceLength: Option[Long]) extends ValueRenderable {
 
-  require(firstByte.getOrElse(0L) >= 0L, s"firstByte must be non negative")
+  /*require(firstByte.getOrElse(0L) >= 0L, s"firstByte must be non negative")
   require(lastByte.getOrElse(0L) >= 0L, s"lastByte must be non negative")
   require((firstByte.isDefined && lastByte.isDefined) || (firstByte.isEmpty && lastByte.isEmpty), s"firstByte and lastByte must both be given or not given")
   require(firstByte.getOrElse(0L) <= lastByte.getOrElse(Long.MaxValue), s"firstByte must be less than lastByte")
   require(instanceLength.getOrElse(0L) >= 0, s"instanceLength must be non negative")
   require(instanceLength.getOrElse(Long.MaxValue) > lastByte.getOrElse(0L), s"instanceLength must be greater than lastByte")
+  */
 
   def render[R <: Rendering](r: R): r.type = {
     r ~~ "bytes "
@@ -42,6 +43,8 @@ case class ContentRange(firstByte: Option[Long], lastByte: Option[Long], instanc
 }
 
 object ContentRange {
+
+  def unsatisfiable(instanceLength: Long): ContentRange = ContentRange(None, None, Some(instanceLength))
   def apply(firstByte: Long, lastByte: Long, instanceLength: Long): ContentRange = ContentRange(Some(firstByte), Some(lastByte), Some(instanceLength))
   def apply(firstByte: Long, lastByte: Long): ContentRange = ContentRange(Some(firstByte), Some(lastByte), None)
 

@@ -32,3 +32,21 @@ case class SuffixByteRange(suffixLength: Long) extends ByteRangeSetEntry {
   def render[R <: Rendering](r: R): r.type = r ~~ '-' ~~ suffixLength.toString
 }
 
+case class MultipartByteRanges(parts: Seq[ByteRangePart])
+
+object MultipartByteRanges {
+  val Empty = MultipartByteRanges(Nil)
+}
+
+/**
+ * Model for one part of a multipart/byteranges message.
+ */
+case class ByteRangePart(entity: HttpEntity, headers: Seq[HttpHeader] = Nil) {
+
+  def contentRange: Option[ContentRange] =
+    headers.collectFirst {
+      case contentRangeHeader: HttpHeaders.`Content-Range` ⇒ contentRangeHeader.contentRange
+    }
+
+}
+

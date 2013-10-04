@@ -98,8 +98,8 @@ class HttpHeaderSpec extends Specification {
 
     "Accept-Ranges" in {
       "Accept-Ranges: bytes" =!= `Accept-Ranges`(BytesUnit)
-      "Accept-Ranges: bytes,   sausages" =!= `Accept-Ranges`(BytesUnit, OtherRangeUnit("sausages"))
-      "Accept-Ranges: none" =!= `Accept-Ranges`(Nil))
+      "Accept-Ranges: bytes, sausages" =!= `Accept-Ranges`(BytesUnit, OtherRangeUnit("sausages"))
+      "Accept-Ranges: none" =!= `Accept-Ranges`(Nil)
     }
 
     "Accept-Encoding" in {

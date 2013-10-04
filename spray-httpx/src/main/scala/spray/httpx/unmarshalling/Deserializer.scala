@@ -33,7 +33,8 @@ object Deserializer extends DeserializerLowerPriorityImplicits
     with BasicUnmarshallers
     with UnmarshallerLifting
     with FromStringDeserializers
-    with FormDataUnmarshallers {
+    with FormDataUnmarshallers
+    with ByteRangesUnmarshallers {
 
   implicit def fromFunction2Converter[A, B](implicit f: A ⇒ B) =
     new Deserializer[A, B] {

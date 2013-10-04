@@ -84,6 +84,12 @@ object RejectionHandler {
     case RequestEntityExpectedRejection :: _ ⇒
       complete(BadRequest, "Request entity expected but not supplied")
 
+    case TooManyRangesRejection(_) :: _ ⇒
+      complete(RequestedRangeNotSatisfiable, "Request contains too many ranges.")
+
+    case UnsatisfiableRangeRejection(unsatisfiableRanges, actualEntityLength) :: _ ⇒
+      complete(RequestedRangeNotSatisfiable, List(`Content-Range`(ContentRange.unsatisfiable(actualEntityLength))), "None of the following requested Ranges were satisfiable:\n" + unsatisfiableRanges.mkString("\n"))
+
     case rejections @ (UnacceptedResponseContentTypeRejection(_) :: _) ⇒
       val supported = rejections.flatMap {
         case UnacceptedResponseContentTypeRejection(supported) ⇒ supported

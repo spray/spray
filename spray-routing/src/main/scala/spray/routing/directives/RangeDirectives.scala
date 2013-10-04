@@ -1,0 +1,141 @@
+/*
+ * Copyright © 2011-2013 the spray project <http://spray.io>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package spray.routing
+package directives
+
+import spray.http.HttpHeaders.{ Range, `Accept-Ranges`, `Content-Range` }
+import spray.http._
+import shapeless.HNil
+import scala.annotation.tailrec
+import scala.Some
+import spray.http.HttpResponse
+import spray.routing.UnsatisfiableRangeRejection
+import spray.http.SuffixByteRange
+
+trait RangeDirectives {
+  import BasicDirectives._
+  import MethodDirectives.get
+  import RespondWithDirectives.respondWithHeader
+  import StatusCodes.PartialContent
+
+  def supportRangedRequests()(implicit settings: RoutingSettings): Directive0 = supportRangedRequests(settings.rangeCountLimit, settings.rangeCoalesceThreshold)
+
+  def supportRangedRequests(rangeCountLimit:Int, rangeCoalesceThreshold:Long): Directive0 = (get & respondWithAcceptByteRangesHeader & applyRanges(rangeCountLimit, rangeCoalesceThreshold)) | pass
+
+  private val respondWithAcceptByteRangesHeader: Directive0 = respondWithHeader(`Accept-Ranges`(BytesUnit))
+
+  private def applyRanges(rangeCountLimit:Int, rangeCoalesceThreshold:Long): Directive0 = {
+    extract(_.request.header[Range]).flatMap[HNil] {
+      case None                ⇒ pass
+      case Some(Range(ranges)) ⇒ applyMultipleRanges(rangeCountLimit, rangeCoalesceThreshold)(ranges)
+    }
+  }
+
+  private def applyMultipleRanges(rangeCountLimit:Int, rangeCoalesceThreshold:Long)(requestedRanges: Seq[ByteRangeSetEntry]): Directive0 = {
+    mapRequestContext { ctx ⇒
+      ctx.withRouteResponseHandling {
+        case HttpResponse(status, HttpEntity.NonEmpty(contentType, data), headers, _) ⇒ {
+          val entityLength = data.length
+          val satisfiableRanges = requestedRanges.filter(satisfiableRange(entityLength))
+          if (requestedRanges.length > rangeCountLimit) {
+            ctx.reject(TooManyRangesRejection(rangeCountLimit))
+          }
+          else if (satisfiableRanges.isEmpty) {
+            ctx.reject(UnsatisfiableRangeRejection(requestedRanges, entityLength))
+          } else {
+            val appliedRanges = satisfiableRanges.map(applyRange(entityLength))
+
+            if (requestedRanges.size == 1) {
+              val appliedRange = appliedRanges(0)
+              val contentRangeHeader: HttpHeader = `Content-Range`(ContentRange(appliedRange.firstBytePosition, appliedRange.lastBytePosition, entityLength))
+              val partialData = data.slice(appliedRange.firstBytePosition, appliedRange.length)
+              val partialEntity = HttpEntity(contentType, partialData)
+              val partialResponse = HttpResponse(status = PartialContent, headers = contentRangeHeader :: headers, entity = partialEntity)
+              ctx.complete(partialResponse)
+            } else {
+              val coalescedRanges = coalesceRanges(rangeCoalesceThreshold)(appliedRanges)
+              val bodyParts = coalescedRanges.map(r ⇒
+                ByteRangePart(HttpEntity(contentType, data.slice(r.firstBytePosition, r.length)),
+                  Seq(`Content-Range`(ContentRange(r.firstBytePosition, r.lastBytePosition, entityLength)))))
+              ctx.complete(PartialContent, headers, MultipartByteRanges(bodyParts))
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private case class AppliedByteRange(firstBytePosition: Long, lastBytePosition: Long) {
+    lazy val length: Long = lastBytePosition - firstBytePosition + 1
+    def shortestDistanceTo(other: AppliedByteRange): Long = {
+      if (firstBytePosition <= other.firstBytePosition) {
+        math.max(0, other.firstBytePosition - lastBytePosition)
+      } else {
+        math.max(0, firstBytePosition - other.lastBytePosition)
+      }
+    }
+    def spanOverTo(other: AppliedByteRange): AppliedByteRange =
+      AppliedByteRange(math.min(firstBytePosition, other.firstBytePosition), math.max(lastBytePosition, other.lastBytePosition))
+  }
+
+  private def applyRange(entityLength: Long)(range: ByteRangeSetEntry): AppliedByteRange = {
+    range match {
+      case ByteRange(from, None)         ⇒ AppliedByteRange(from, entityLength - 1L)
+      case ByteRange(from, Some(to))     ⇒ AppliedByteRange(from, math.min(to, entityLength - 1L))
+      case SuffixByteRange(suffixLength) ⇒ AppliedByteRange(math.max(0, entityLength - suffixLength), entityLength - 1L)
+    }
+  }
+
+  /**
+   * When multiple ranges are requested, a server may coalesce any of the ranges that overlap or that are separated
+   * by a gap that is smaller than the overhead of sending multiple parts, regardless of the order in which the
+   * corresponding byte-range-spec appeared in the received Range header field. Since the typical overhead between
+   * parts of a multipart/byteranges payload is around 80 bytes, depending on the selected representation's
+   * media type and the chosen boundary parameter length, it can be less efficient to transfer many small
+   * disjoint parts than it is to transfer the entire selected representation.
+   */
+  private def coalesceRanges(threshold: Long)(ranges: Seq[AppliedByteRange]): Seq[AppliedByteRange] = {
+
+    @tailrec def rec(processed: Seq[AppliedByteRange], work: Seq[AppliedByteRange]): Seq[AppliedByteRange] = {
+      (processed, work) match {
+        case (done, Nil) ⇒ done
+        case (candidates, Seq(pick, moreWork @ _*)) ⇒ {
+          val (mergeCandidates, otherCandidates) = candidates.partition(_.shortestDistanceTo(pick) <= threshold)
+          val merged = mergeCandidates.foldLeft(pick)((a, b) ⇒ a.spanOverTo(b))
+          rec(otherCandidates :+ merged, moreWork)
+        }
+      }
+    }
+    rec(Nil, ranges)
+  }
+
+  /**
+   * If a valid byte-range-set includes at least one byte-range-spec with a first-byte-pos that is
+   * less than the current length of the representation, or at least one suffix-byte-range-spec
+   * with a non-zero suffix-length, then the byte-range-set is satisfiable.
+   */
+  private def satisfiableRange(entityLength: Long)(range: ByteRangeSetEntry) = range match {
+    case ByteRange(firstBytePosition, _) if firstBytePosition >= entityLength ⇒ false
+    case SuffixByteRange(0) ⇒ false
+    case _ ⇒ true
+  }
+
+}
+
+object RangeDirectives extends RangeDirectives
+
+
