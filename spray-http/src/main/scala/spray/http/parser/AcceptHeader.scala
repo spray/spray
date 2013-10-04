@@ -37,6 +37,6 @@ private[parser] trait AcceptHeader {
   }
 
   def MediaRangeDef = rule {
-    "*/*" ~ push("*", "*") | Type ~ "/" ~ ("*" ~ push("*") | Subtype) | "*" ~ push("*", "*")
+    "*/*" ~ push("*", "*") | Type ~ "/" ~ ("*" ~ !TokenChar ~ push("*") | Subtype) | "*" ~ push("*", "*")
   }
 }
