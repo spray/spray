@@ -40,7 +40,8 @@ class ModelConverterSpec extends Specification with NoTimeConversions {
     remoteAddressHeader = false,
     verboseErrorMessages = true,
     maxContentLength = 16,
-    servletRequestAccess = false)
+    servletRequestAccess = false,
+    illegalHeaderWarnings = false)
 
   val remoteAddress = `Remote-Address`("127.0.0.7")
   val textPlain = `Content-Type`(ContentTypes.`text/plain`)
@@ -70,8 +71,9 @@ class ModelConverterSpec extends Specification with NoTimeConversions {
         ModelConverter.toHttpRequest {
           RequestMock(
             content = c,
-            headers = "Content-Type" -> "text/plain" :: Nil)
-        } === HttpRequest(entity = HttpEntity(ContentTypes.`text/plain`, c), headers = textPlain :: Nil)
+            headers = "Content-Type" -> "text/plain" :: "Content-Length" -> "illegal" :: Nil)
+        } === HttpRequest(entity = HttpEntity(ContentTypes.`text/plain`, c),
+          headers = textPlain :: RawHeader("Content-Length", "illegal") :: Nil)
       }
       "example 6" in {
         implicit def s = settings

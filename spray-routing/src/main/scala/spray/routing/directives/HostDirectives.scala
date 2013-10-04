@@ -28,7 +28,7 @@ trait HostDirectives {
   /**
    * Extracts the hostname part of the Host header value in the request.
    */
-  def hostName: Directive1[String] = extract(_.request.uri.authority.host.address)
+  def hostName: Directive1[String] = HostDirectives._hostName
 
   /**
    * Rejects all requests with a host name different from the given ones.
@@ -63,4 +63,9 @@ trait HostDirectives {
 
 }
 
-object HostDirectives extends HostDirectives
+object HostDirectives extends HostDirectives {
+  import BasicDirectives._
+
+  private val _hostName: Directive1[String] =
+    extract(_.request.uri.authority.host.address)
+}

@@ -17,6 +17,7 @@
 package spray.can.server
 
 import com.typesafe.config.Config
+import scala.concurrent.duration._
 import scala.concurrent.duration.Duration
 import spray.can.parsing.ParserSettings
 import spray.http.parser.HttpParser
@@ -67,6 +68,8 @@ object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.serve
     requirePositive(registrationTimeout)
     require(!requestTimeout.isFinite || idleTimeout > requestTimeout,
       "idle-timeout must be > request-timeout (if the latter is not 'infinite')")
+    require(!idleTimeout.isFinite || idleTimeout > 1.second, // the current implementation is not fit for
+      "an idle-timeout < 1 second is not supported") // very short idle-timeout settings
   }
   implicit def timeoutsShortcut(s: ServerSettings): Timeouts = s.timeouts
 

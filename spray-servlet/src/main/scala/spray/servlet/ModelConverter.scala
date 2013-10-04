@@ -31,7 +31,7 @@ object ModelConverter {
 
   def toHttpRequest(hsRequest: HttpServletRequest)(implicit settings: ConnectorSettings, log: LoggingAdapter): HttpRequest = {
     val (errors, parsedHeaders) = HttpParser.parseHeaders(rawHeaders(hsRequest))
-    if (!errors.isEmpty) errors.foreach(e ⇒ log.warning(e.formatPretty))
+    if (errors.nonEmpty && settings.illegalHeaderWarnings) errors.foreach(e ⇒ log.warning(e.formatPretty))
     val contentType = parsedHeaders.collectFirst { case `Content-Type`(ct) ⇒ ct }
     HttpRequest(
       method = toHttpMethod(hsRequest.getMethod),

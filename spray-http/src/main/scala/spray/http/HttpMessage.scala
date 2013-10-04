@@ -84,6 +84,15 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   def protocol: HttpProtocol
 
   def withHeaders(headers: HttpHeader*): Self = withHeaders(headers.toList)
+  def withDefaultHeaders(defaultHeaders: List[HttpHeader]) = {
+    @tailrec def patch(remaining: List[HttpHeader], result: List[HttpHeader] = headers): List[HttpHeader] =
+      remaining match {
+        case h :: rest if result.exists(_.is(h.lowercaseName)) ⇒ patch(rest, result)
+        case h :: rest ⇒ patch(rest, h :: result)
+        case Nil ⇒ result
+      }
+    withHeaders(patch(defaultHeaders))
+  }
   def withHeaders(headers: List[HttpHeader]): Self
   def withEntity(entity: HttpEntity): Self
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity): Self
@@ -115,11 +124,13 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
 
   /** Returns the message as if it was sent in chunks */
   def asPartStream(maxChunkSize: Long = Long.MaxValue): Stream[HttpMessagePart] =
-    if (entity.isEmpty) Stream(chunkedMessageStart, ChunkedMessageEnd)
-    else
-      (chunkedMessageStart #::
-        entity.data.toChunkStream(maxChunkSize).map(MessageChunk(_): HttpMessagePart))
-        .append(Stream(ChunkedMessageEnd))
+    entity match {
+      case HttpEntity.Empty ⇒ Stream(chunkedMessageStart, ChunkedMessageEnd)
+      case HttpEntity.NonEmpty(ct, data) ⇒
+        val start = withHeadersAndEntity(`Content-Type`(ct) :: headers, HttpEntity.Empty).chunkedMessageStart
+        val chunks: Stream[HttpMessagePart] = data.toChunkStream(maxChunkSize).map(MessageChunk(_))
+        start #:: chunks append Stream(ChunkedMessageEnd)
+    }
 }
 
 object HttpMessage {
@@ -255,21 +266,11 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
 
   def canBeRetried = method.isIdempotent
   def withHeaders(headers: List[HttpHeader]) = if (headers eq this.headers) this else copy(headers = headers)
-  def withDefaultHeaders(defaultHeaders: List[HttpHeader]) = {
-    @annotation.tailrec
-    def patch(headers: List[HttpHeader], remaining: List[HttpHeader]): List[HttpHeader] = remaining match {
-      case h :: hs ⇒
-        if (headers.exists(_.is(h.lowercaseName))) patch(headers, hs)
-        else patch(h :: headers, hs)
-      case Nil ⇒ headers
-    }
-    withHeaders(patch(headers, defaultHeaders))
-  }
   def withEntity(entity: HttpEntity) = if (entity eq this.entity) this else copy(entity = entity)
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) =
     if ((headers eq this.headers) && (entity eq this.entity)) this else copy(headers = headers, entity = entity)
 
-  def chunkedMessageStart: HttpMessageStart = ChunkedRequestStart(withEntity(HttpEntity.Empty))
+  def chunkedMessageStart: ChunkedRequestStart = ChunkedRequestStart(this)
 }
 
 /**
@@ -285,11 +286,12 @@ case class HttpResponse(status: StatusCode = StatusCodes.OK,
   def isRequest = false
   def isResponse = true
 
-  def withHeaders(headers: List[HttpHeader]) = copy(headers = headers)
-  def withEntity(entity: HttpEntity) = copy(entity = entity)
-  def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) = copy(headers = headers, entity = entity)
+  def withHeaders(headers: List[HttpHeader]) = if (headers eq this.headers) this else copy(headers = headers)
+  def withEntity(entity: HttpEntity) = if (entity eq this.entity) this else copy(entity = entity)
+  def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) =
+    if ((headers eq this.headers) && (entity eq this.entity)) this else copy(headers = headers, entity = entity)
 
-  def chunkedMessageStart: HttpMessageStart = ChunkedResponseStart(withEntity(HttpEntity.Empty))
+  def chunkedMessageStart: ChunkedResponseStart = ChunkedResponseStart(this)
 }
 
 /**

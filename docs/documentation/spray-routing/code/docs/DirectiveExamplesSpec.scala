@@ -117,8 +117,8 @@ class DirectiveExamplesSpec extends Specification with Specs2RouteTest {
   }
 
   def verify(route: Route) = {
-    Get("/order/42") ~> route ~> check { entityAs[String] === "Received GET request for order 42" }
-    Put("/order/42") ~> route ~> check { entityAs[String] === "Received PUT request for order 42" }
+    Get("/order/42") ~> route ~> check { responseAs[String] === "Received GET request for order 42" }
+    Put("/order/42") ~> route ~> check { responseAs[String] === "Received PUT request for order 42" }
     Get("/") ~> route ~> check { handled must beFalse }
   }
 }

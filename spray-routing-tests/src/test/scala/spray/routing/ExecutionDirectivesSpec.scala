@@ -25,7 +25,7 @@ class ExecutionDirectivesSpec extends RoutingSpec {
       var a = ""
       val staticRoute = get { dynamicIf(enabled = false) { a += "x"; complete(a) } }
       val dynamicRoute = get { dynamic { a += "x"; complete(a) } }
-      def expect(route: Route, s: String) = Get() ~> route ~> check { entityAs[String] === s }
+      def expect(route: Route, s: String) = Get() ~> route ~> check { responseAs[String] === s }
       expect(staticRoute, "x")
       expect(staticRoute, "x")
       expect(staticRoute, "x")
@@ -51,7 +51,7 @@ class ExecutionDirectivesSpec extends RoutingSpec {
 
       Get() ~> route ~> check {
         status === InternalServerError
-        entityAs[String] === "Oops."
+        responseAs[String] === "Oops."
       }
     }
   }

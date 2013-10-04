@@ -27,10 +27,10 @@ trait ResponseTransformation extends TransformerPipelineSupport {
   def decode(decoder: Decoder): ResponseTransformer =
     response ⇒ if (response.encoding == decoder.encoding) decoder.decode(response) else response
 
-  def unmarshal[T: Unmarshaller]: HttpResponse ⇒ T =
+  def unmarshal[T: FromResponseUnmarshaller]: HttpResponse ⇒ T =
     response ⇒
       if (response.status.isSuccess)
-        response.entity.as[T] match {
+        response.as[T] match {
           case Right(value) ⇒ value
           case Left(error)  ⇒ throw new PipelineException(error.toString)
         }

@@ -29,13 +29,13 @@ class FullTestKitExampleSpec extends Specification with Specs2RouteTest with Htt
 
     "return a greeting for GET requests to the root path" in {
       Get() ~> smallRoute ~> check {
-        entityAs[String] must contain("Say hello")
+        responseAs[String] must contain("Say hello")
       }
     }
 
     "return a 'PONG!' response for GET requests to /ping" in {
       Get("/ping") ~> smallRoute ~> check {
-        entityAs[String] === "PONG!"
+        responseAs[String] === "PONG!"
       }
     }
 
@@ -48,7 +48,7 @@ class FullTestKitExampleSpec extends Specification with Specs2RouteTest with Htt
     "return a MethodNotAllowed error for PUT requests to the root path" in {
       Put() ~> sealRoute(smallRoute) ~> check {
         status === MethodNotAllowed
-        entityAs[String] === "HTTP method not allowed, supported methods: GET"
+        responseAs[String] === "HTTP method not allowed, supported methods: GET"
       }
     }
   }
