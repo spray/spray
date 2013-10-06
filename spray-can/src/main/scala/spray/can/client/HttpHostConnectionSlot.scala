@@ -25,7 +25,10 @@ import spray.can.client.HttpHostConnector._
 import spray.can.Http
 import spray.io.ClientSSLEngineProvider
 import spray.http._
+import HttpMethods._
 import spray.util.SimpleStash
+import HttpHeaders.Location
+import akka.io.IO
 
 private class HttpHostConnectionSlot(host: String, port: Int,
                                      sslEncryption: Boolean,
@@ -90,8 +93,20 @@ private class HttpHostConnectionSlot(host: String, port: Int,
   def connected(httpConnection: ActorRef, openRequests: Queue[RequestContext],
                 closeAfterResponseEnd: Boolean = false): Receive = {
     case part: HttpResponsePart if openRequests.nonEmpty ⇒
-      dispatchToCommander(openRequests.head, part)
-
+      val ctx = openRequests.head
+      part match {
+        case res: HttpResponse ⇒
+          val redirectWithMethod = redirectMethod(ctx.request, res)
+          if (ctx.redirectsLeft > 0 && redirectWithMethod.nonEmpty) {
+            res.header[Location] match {
+              case Some(location) ⇒ redirect(location, redirectWithMethod.head, ctx)
+              case _              ⇒ dispatchToCommander(ctx, part)
+            }
+          } else {
+            dispatchToCommander(ctx, part)
+          }
+        case _ ⇒ dispatchToCommander(ctx, part)
+      }
       def handleResponseCompletion(closeAfterResponseEnd: Boolean): Unit = {
         context.parent ! RequestCompleted
         context.become {
@@ -149,6 +164,22 @@ private class HttpHostConnectionSlot(host: String, port: Int,
       context.become(unconnected)
   }
 
+  def redirectMethod(req: HttpRequest, res: HttpResponse) = (req.method, res.status.intValue) match {
+    case (GET | HEAD, 301 | 302 | 303 | 307) ⇒ Some(req.method)
+    case (_, 302 | 303)                      ⇒ Some(GET)
+    case (_, 308)                            ⇒ Some(req.method)
+    case _                                   ⇒ None //request should not be followed
+  }
+
+  def redirect(location: Location, method: HttpMethod, ctx: RequestContext) {
+    val baseUri = ctx.request.uri.toEffectiveHttpRequestUri(Uri.Host(host), port, sslEncryption)
+    val redirectUri = location.uri.resolvedAgainst(baseUri)
+    val request = HttpRequest(method, redirectUri)
+
+    if (log.isDebugEnabled) log.debug("Redirecting to {}", redirectUri.toString)
+    IO(Http)(context.system) ! ctx.copy(request = request, redirectsLeft = ctx.redirectsLeft - 1)
+  }
+
   def closing(httpConnection: ActorRef, openRequests: Queue[RequestContext], error: String, retry: RetryMode): Receive =
     closing(httpConnection, openRequests, new Http.ConnectionException(error), retry)
 
@@ -185,7 +216,7 @@ private class HttpHostConnectionSlot(host: String, port: Int,
 
   def clear(error: String, retry: RetryMode): RequestContext ⇒ Unit = clear(new Http.ConnectionException(error), retry)
   def clear(error: Http.ConnectionException, retry: RetryMode): RequestContext ⇒ Unit = {
-    case ctx @ RequestContext(request, retriesLeft, _) if retry.shouldRetry(request) && retriesLeft > 0 ⇒
+    case ctx @ RequestContext(request, retriesLeft, _, _) if retry.shouldRetry(request) && retriesLeft > 0 ⇒
       log.warning("{} in response to {} with {} retries left, retrying...", error.getMessage, format(request), retriesLeft)
       context.parent ! ctx.copy(retriesLeft = retriesLeft - 1)
 
@@ -201,7 +232,7 @@ private class HttpHostConnectionSlot(host: String, port: Int,
   }
 
   def dispatchToCommander(requestContext: RequestContext, message: Any): Unit = {
-    val RequestContext(request, _, commander) = requestContext
+    val RequestContext(request, _, _, commander) = requestContext
     if (log.isDebugEnabled) log.debug("Delivering {} for {}", formatResponse(message), format(request))
     commander ! message
   }

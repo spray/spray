@@ -47,9 +47,13 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
   def receive: Receive = {
     case request: HttpRequest ⇒
       val requestWithDefaultHeaders = request.withDefaultHeaders(headers)
-      dispatchStrategy(RequestContext(requestWithDefaultHeaders, settings.maxRetries, sender))
+      dispatchStrategy(RequestContext(requestWithDefaultHeaders, settings.maxRetries, settings.maxRedirects, sender))
 
-    case ctx: RequestContext ⇒ dispatchStrategy(ctx) // retry
+    case ctx: RequestContext ⇒
+      // either a retry or redirect
+      // ensure the default headers are set in case this is a redirect from another host
+      val requestWithDefaultHeaders = ctx.request.withDefaultHeaders(headers)
+      dispatchStrategy(ctx.copy(request = requestWithDefaultHeaders))
 
     case RequestCompleted ⇒
       openRequestCounts = openRequestCounts.updated(sender, openRequestCounts(sender) - 1)
@@ -183,7 +187,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
 }
 
 private[can] object HttpHostConnector {
-  case class RequestContext(request: HttpRequest, retriesLeft: Int, commander: ActorRef)
+  case class RequestContext(request: HttpRequest, retriesLeft: Int, redirectsLeft: Int, commander: ActorRef)
   case class Disconnected(rescheduledRequestCount: Int)
   case object RequestCompleted
   case object DemandIdleShutdown
