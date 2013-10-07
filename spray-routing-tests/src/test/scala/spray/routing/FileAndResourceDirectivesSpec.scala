@@ -24,6 +24,7 @@ import spray.util._
 import MediaTypes._
 import HttpHeaders._
 import HttpCharsets._
+import scala.Some
 
 class FileAndResourceDirectivesSpec extends RoutingSpec {
 
@@ -50,7 +51,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
         mediaType === `application/pdf`
         definedCharset === None
         body.asString === "This is PDF"
-        headers === List(`Last-Modified`(DateTime(file.lastModified)))
+        headers must contain(`Last-Modified`(DateTime(file.lastModified)))
       }
       file.delete
     }
@@ -63,6 +64,28 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
       }
       file.delete
     }
+
+    "return a partial file with a single requested range" in {
+      val file = File.createTempFile("partialTest", null)
+      FileUtils.writeAllText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", file)
+      Get() ~> addHeader(Range(ByteRange(0, 10))) ~> getFromFile(file) ~> check {
+        body.asString === "ABCDEFGHIJK"
+        status === StatusCodes.PartialContent
+        headers must contain(`Content-Range`(ContentRange(0, 10, 26)))
+      }
+    }
+
+    "return a partial file with multiple requested ranges" in {
+      val file = File.createTempFile("partialTest", null)
+      FileUtils.writeAllText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", file)
+      Get() ~> addHeader(Range(ByteRange(0, 10), SuffixByteRange(10))) ~> getFromFile(file) ~> check {
+        //responseAs[MultipartByteRanges].parts
+        status === StatusCodes.PartialContent
+        headers must not(haveOneElementLike { case `Content-Range`(_) ⇒ ok })
+        mediaType.withParameters(Map.empty) === `multipart/byteranges`
+      }
+    }
+
     "return a chunked response for files larger than the configured file-chunking-threshold-size" in {
       val file = File.createTempFile("sprayTest2", ".xml")
       try {
@@ -71,7 +94,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
           mediaType === `text/xml`
           definedCharset === Some(`UTF-8`)
           body.asString === "<this co"
-          headers === List(`Last-Modified`(DateTime(file.lastModified)))
+          headers must contain(`Last-Modified`(DateTime(file.lastModified)))
           chunks.map(_.data.asString).mkString("|") === "uld be X|ML if it| were fo|rmatted |correctl|y>"
         }
       } finally file.delete

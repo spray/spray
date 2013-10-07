@@ -27,20 +27,18 @@ import MediaTypes.`multipart/byteranges`
 
 class RangeDirectivesSpec extends RoutingSpec {
 
-  def response(string:String): Route = {
+  def response(string: String): Route = {
     ctx ⇒ ctx.complete(string)
   }
 
-  def bytes(length:Byte): Route = {
-    ctx => ctx.complete(0 to length-1 map (_.toByte) toArray)
+  def bytes(length: Byte): Route = {
+    ctx ⇒ ctx.complete(0 to length - 1 map (_.toByte) toArray)
   }
-
 
   "The `supportRangedRequests` directive" should {
 
     val rangeCountLimit = 10
     val rangeCoalesceThreshold = 1L
-
 
     "return an Accept-Ranges(bytes) header" in {
       Get() ~> { supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { response("any") } } ~> check {
@@ -49,73 +47,83 @@ class RangeDirectivesSpec extends RoutingSpec {
     }
 
     "return a Content-Range header for a ranged request with a single range" in {
-      Get() ~> addHeader(Range(ByteRange(0,1))) ~> { supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(10) }
-      } ~> check { headers must contain(`Content-Range`(ContentRange(0,1,10))) }
-    }
-
-    "return a Partial Content status for a ranged request with a single range" in {
-      Get() ~> addHeader(Range(ByteRange(0,10))) ~> { supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(10) }
-      } ~> check { status === PartialContent }
-    }
-
-    "return a partial response for a ranged request with a single range" in {
-      Get() ~> addHeader(Range(ByteRange(0,1))) ~> { supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(10) }
-      } ~> check { responseAs[Array[Byte]] === Array[Byte](0,1) }
+      Get() ~> addHeader(Range(ByteRange(0, 1))) ~> {
+        supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(10) }
+      } ~> check {
+        headers must contain(`Content-Range`(ContentRange(0, 1, 10)))
+        status === PartialContent
+        responseAs[Array[Byte]] === Array[Byte](0, 1)
+      }
     }
 
     "return a partial response for a ranged request with a single range with undefined lastBytePosition" in {
-      Get() ~> addHeader(Range(ByteRange(5))) ~> { supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(10) }
-      } ~> check { responseAs[Array[Byte]] === Array[Byte](5,6,7,8,9) }
+      Get() ~> addHeader(Range(ByteRange(5))) ~> {
+        supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(10) }
+      } ~> check { responseAs[Array[Byte]] === Array[Byte](5, 6, 7, 8, 9) }
     }
 
     "return a partial response for a ranged request with a single suffix range" in {
-      Get() ~> addHeader(Range(SuffixByteRange(1))) ~> { supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(10) }
+      Get() ~> addHeader(Range(SuffixByteRange(1))) ~> {
+        supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(10) }
       } ~> check { responseAs[Array[Byte]] === Array[Byte](9) }
     }
 
     "return a partial response for a ranged request with a overlapping suffix range" in {
-      Get() ~> addHeader(Range(SuffixByteRange(100))) ~> { supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(10) }
-      } ~> check { responseAs[Array[Byte]] === Array[Byte](0,1,2,3,4,5,6,7,8,9) }
+      Get() ~> addHeader(Range(SuffixByteRange(100))) ~> {
+        supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(10) }
+      } ~> check { responseAs[Array[Byte]] === Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9) }
     }
 
     "do nothing for non-GET requests" in {
-      Post() ~> addHeader(Range(ByteRange(1,2))) ~> { supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(5) }
-      } ~> check { responseAs[Array[Byte]] === Array[Byte](0,1,2,3,4) }
+      Post() ~> addHeader(Range(ByteRange(1, 2))) ~> {
+        supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(5) }
+      } ~> check { responseAs[Array[Byte]] === Array[Byte](0, 1, 2, 3, 4) }
     }
 
     "reject an unsatisfiable single range" in {
-      Get() ~> addHeader(Range(ByteRange(100,200))) ~> { supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) {
-        bytes(10)
-      }} ~> check {
-        rejection === UnsatisfiableRangeRejection(Seq(ByteRange(100,200)),10)
+      Get() ~> addHeader(Range(ByteRange(100, 200))) ~> {
+        supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) {
+          bytes(10)
+        }
+      } ~> check {
+        rejection === UnsatisfiableRangeRejection(Seq(ByteRange(100, 200)), 10)
       }
     }
 
     "reject an unsatisfiable single suffixrange with suffix length 0" in {
-      Get() ~> addHeader(Range(SuffixByteRange(0))) ~> { supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) {
-        bytes(42)
-      }} ~> check {
-        rejection === UnsatisfiableRangeRejection(Seq(SuffixByteRange(0)),42)
+      Get() ~> addHeader(Range(SuffixByteRange(0))) ~> {
+        supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) {
+          bytes(42)
+        }
+      } ~> check {
+        rejection === UnsatisfiableRangeRejection(Seq(SuffixByteRange(0)), 42)
       }
     }
 
     "return a mediaType of 'multipart/byteranges' for a ranged request with multiple ranges" in {
-      Get() ~> addHeader(Range(ByteRange(0,10), ByteRange(0,10))) ~> { supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(10) }
+      Get() ~> addHeader(Range(ByteRange(0, 10), ByteRange(0, 10))) ~> {
+        supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(10) }
       } ~> check { mediaType.withParameters(Map.empty) === `multipart/byteranges` }
     }
 
     "return a 'multipart/byteranges' for a ranged request with multiple coalesced ranges with preserved order" in {
-      Get() ~> addHeader(Range(ByteRange(5,10), ByteRange(0,1), ByteRange(1,2))) ~> { supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { response("Hello stinky") }
-      } ~> check { responseAs[MultipartByteRanges] must beLike {
-        case MultipartByteRanges(
-          ByteRangePart(HttpEntity.NonEmpty(_,_), _ +: `Content-Range`(ContentRange(Some(5),Some(10),Some(12))) +: Seq()) +:
-          ByteRangePart(HttpEntity.NonEmpty(_,_), _ +: `Content-Range`(ContentRange(Some(0),Some(2),Some(12))) +: Seq()) +:
-            Seq()
-        )  => ok } }
+      Get() ~> addHeader(Range(ByteRange(5, 10), ByteRange(0, 1), ByteRange(1, 2))) ~> {
+        supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { response("Hello stinky") }
+      } ~> check {
+        headers must not(haveOneElementLike { case `Content-Range`(_) ⇒ ok })
+        responseAs[MultipartByteRanges] must beLike {
+          case MultipartByteRanges(
+            ByteRangePart(HttpEntity.NonEmpty(_, _), _ +: `Content-Range`(ContentRange(Some(5), Some(10), Some(12))) +: _) +:
+              ByteRangePart(HttpEntity.NonEmpty(_, _), _ +: `Content-Range`(ContentRange(Some(0), Some(2), Some(12))) +: _) +:
+              Seq()
+            ) ⇒ ok
+        }
+
+      }
     }
 
     "reject a request with too many requested ranges" in {
-      val ranges = (1 to 20).map(a => ByteRange(a))
+      val ranges = (1 to 20).map(a ⇒ ByteRange(a))
       Get() ~> addHeader(Range(ranges)) ~> {
         supportRangedRequests(rangeCountLimit, rangeCoalesceThreshold) { bytes(100) }
       } ~> check {

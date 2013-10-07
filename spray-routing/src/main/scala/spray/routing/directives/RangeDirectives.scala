@@ -34,18 +34,18 @@ trait RangeDirectives {
 
   def supportRangedRequests()(implicit settings: RoutingSettings): Directive0 = supportRangedRequests(settings.rangeCountLimit, settings.rangeCoalesceThreshold)
 
-  def supportRangedRequests(rangeCountLimit:Int, rangeCoalesceThreshold:Long): Directive0 = (get & respondWithAcceptByteRangesHeader & applyRanges(rangeCountLimit, rangeCoalesceThreshold)) | pass
+  def supportRangedRequests(rangeCountLimit: Int, rangeCoalesceThreshold: Long): Directive0 = (get & respondWithAcceptByteRangesHeader & applyRanges(rangeCountLimit, rangeCoalesceThreshold)) | pass
 
   private val respondWithAcceptByteRangesHeader: Directive0 = respondWithHeader(`Accept-Ranges`(BytesUnit))
 
-  private def applyRanges(rangeCountLimit:Int, rangeCoalesceThreshold:Long): Directive0 = {
+  private def applyRanges(rangeCountLimit: Int, rangeCoalesceThreshold: Long): Directive0 = {
     extract(_.request.header[Range]).flatMap[HNil] {
       case None                ⇒ pass
       case Some(Range(ranges)) ⇒ applyMultipleRanges(rangeCountLimit, rangeCoalesceThreshold)(ranges)
     }
   }
 
-  private def applyMultipleRanges(rangeCountLimit:Int, rangeCoalesceThreshold:Long)(requestedRanges: Seq[ByteRangeSetEntry]): Directive0 = {
+  private def applyMultipleRanges(rangeCountLimit: Int, rangeCoalesceThreshold: Long)(requestedRanges: Seq[ByteRangeSetEntry]): Directive0 = {
     mapRequestContext { ctx ⇒
       ctx.withRouteResponseHandling {
         case HttpResponse(status, HttpEntity.NonEmpty(contentType, data), headers, _) ⇒ {
@@ -53,8 +53,7 @@ trait RangeDirectives {
           val satisfiableRanges = requestedRanges.filter(satisfiableRange(entityLength))
           if (requestedRanges.length > rangeCountLimit) {
             ctx.reject(TooManyRangesRejection(rangeCountLimit))
-          }
-          else if (satisfiableRanges.isEmpty) {
+          } else if (satisfiableRanges.isEmpty) {
             ctx.reject(UnsatisfiableRangeRejection(requestedRanges, entityLength))
           } else {
             val appliedRanges = satisfiableRanges.map(applyRange(entityLength))
@@ -137,5 +136,4 @@ trait RangeDirectives {
 }
 
 object RangeDirectives extends RangeDirectives
-
 

@@ -43,7 +43,7 @@ object RoutingSettings extends SettingsCompanion[RoutingSettings]("spray.routing
     c getConfig "users",
     c getBoolean "render-vanity-footer",
     c getInt "range-count-limit",
-  c getBytes "range-coalesce-threshold")
+    c getBytes "range-coalesce-threshold")
 
   implicit def default(implicit refFactory: ActorRefFactory) =
     apply(actorSystem)

@@ -171,6 +171,7 @@ object HttpHeaders {
     import Allow.methodsRenderer
     def renderValue[R <: Rendering](r: R): r.type = r ~~ methods
     protected def companion = Allow
+  }
 
   object `Accept-Ranges` extends ModeledCompanion {
     def apply(first: RangeUnit, more: RangeUnit*): `Accept-Ranges` = apply(first +: more)

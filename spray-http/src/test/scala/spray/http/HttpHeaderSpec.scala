@@ -194,9 +194,9 @@ class HttpHeaderSpec extends Specification {
     }
 
     "Content-Range" in {
-      "Content-Range: bytes 0-9/10" =!= `Content-Range`(ContentRange(0,9,10))
-      "Content-Range: bytes 1-42/*" =!= `Content-Range`(ContentRange(1,42))
-      "Content-Range: bytes */*" =!= `Content-Range`(ContentRange(None,None,None))
+      "Content-Range: bytes 0-9/10" =!= `Content-Range`(ContentRange(0, 9, 10))
+      "Content-Range: bytes 1-42/*" =!= `Content-Range`(ContentRange(1, 42))
+      "Content-Range: bytes */*" =!= `Content-Range`(ContentRange(None, None, None))
     }
 
     "Cookie" in {
@@ -272,10 +272,10 @@ class HttpHeaderSpec extends Specification {
     }
 
     "Range" in {
-      "Range: bytes=0-1" =!= Range(ByteRange(0,1))
-        "Range: bytes=0-" =!= Range(ByteRange(0,None))
-        "Range: bytes=-1" =!= Range(SuffixByteRange(1L))
-        "Range: bytes=0-1, 2-3, -99" =!= Range(ByteRange(0,1), ByteRange(2,3), SuffixByteRange(99))
+      "Range: bytes=0-1" =!= Range(ByteRange(0, 1))
+      "Range: bytes=0-" =!= Range(ByteRange(0, None))
+      "Range: bytes=-1" =!= Range(SuffixByteRange(1L))
+      "Range: bytes=0-1, 2-3, -99" =!= Range(ByteRange(0, 1), ByteRange(2, 3), SuffixByteRange(99))
     }
 
     "Set-Cookie" in {

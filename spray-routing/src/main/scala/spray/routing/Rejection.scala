@@ -101,7 +101,7 @@ case class UnsatisfiableRangeRejection(unsatisfiableRanges: Seq[ByteRangeSetEntr
  * Signals that the request contains too many ranges. An irregular high number of ranges
  * indicates a broken client or a denial of service attack.
  */
-case class TooManyRangesRejection(maxRanges:Int) extends Rejection
+case class TooManyRangesRejection(maxRanges: Int) extends Rejection
 
 /**
  * Rejection created by decoding filters.
