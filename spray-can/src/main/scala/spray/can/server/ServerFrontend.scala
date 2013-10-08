@@ -16,6 +16,7 @@
 
 package spray.can.server
 
+import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import scala.concurrent.duration.Duration
 import akka.actor.ActorRef
@@ -124,7 +125,7 @@ private object ServerFrontend {
             case x: AckEventWithReceiver ⇒
               firstUnconfirmed = firstUnconfirmed handleSentAckAndReturnNextUnconfirmed x
 
-            case Tcp.CommandFailed(Tcp.Write(_, Tcp.NoAck(PartAndSender(part, responseSender)))) ⇒
+            case Tcp.CommandFailed(WriteCommandWithLastAck(Tcp.NoAck(PartAndSender(part, responseSender)))) ⇒
               // TODO: implement automatic checkpoint buffering and write resuming
               context.log.error("Could not write response part {}, closing connection", part)
               commandPL(Pipeline.Tell(responseSender, Http.SendFailed(part), context.self))
@@ -157,6 +158,18 @@ private object ServerFrontend {
 
           def autoBackPressure = serverSettings.backpressureSettings.isDefined
         }
+    }
+  }
+
+  private object WriteCommandWithLastAck {
+    def unapply(cmd: Tcp.Command): Option[Event] = {
+      @tailrec def lastAck(c: Tcp.Command): Option[Event] =
+        c match {
+          case x: Tcp.SimpleWriteCommand  ⇒ Some(x.ack)
+          case Tcp.CompoundWrite(_, tail) ⇒ lastAck(tail)
+          case _                          ⇒ None
+        }
+      lastAck(cmd)
     }
   }
 }
