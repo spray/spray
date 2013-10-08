@@ -9,7 +9,7 @@ import java.io.{ FileOutputStream, File }
 class HttpDataRenderingSpec extends Specification {
   val bytes = ByteString(Array.fill(10)('a'.toByte))
   val file = {
-    val res = File.createTempFile("test", "dat")
+    val res = File.createTempFile("test", "dat").getCanonicalFile
     val os = new FileOutputStream(res)
     os.write(Array.fill(2000)('b'.toByte))
     os.close()
