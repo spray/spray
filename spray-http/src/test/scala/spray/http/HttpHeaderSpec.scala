@@ -176,6 +176,8 @@ class HttpHeaderSpec extends Specification {
         `Content-Type`(ContentType(`multipart/mixed` withBoundary "ABC123"))
       "Content-Type: multipart/mixed; boundary=\"ABC/123\"" =!=
         `Content-Type`(ContentType(`multipart/mixed` withBoundary "ABC/123"))
+      "Content-Type: application/*" =!=
+        `Content-Type`(ContentType(MediaType.custom("application", "*", allowArbitrarySubtypes = true)))
     }
 
     "Cookie" in {
