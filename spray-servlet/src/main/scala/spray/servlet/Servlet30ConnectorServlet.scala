@@ -87,10 +87,14 @@ class Servlet30ConnectorServlet extends HttpServlet {
     asyncContext.setTimeout(settings.requestTimeout.toMillis)
     asyncContext.addListener {
       new AsyncListener {
-        def onTimeout(event: AsyncEvent): Unit = {
-          handleTimeout(hsResponse, req)
-          asyncContext.complete()
-        }
+        def onTimeout(event: AsyncEvent): Unit =
+          if (state.compareAndSet(OPEN, COMPLETED)) {
+            handleTimeout(hsResponse, req)
+            asyncContext.complete()
+          }
+        // Ignore other possible cases:
+        // STARTED: chunked response was already started => we ignore the timeout
+        // COMPLETED: the response was completed directly before or in parallel with the timeout
         def onError(event: AsyncEvent): Unit = {
           event.getThrowable match {
             case null ⇒ log.error("Unspecified Error during async processing of {}", req)
