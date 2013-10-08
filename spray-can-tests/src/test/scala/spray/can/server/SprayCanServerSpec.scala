@@ -41,7 +41,8 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
       io.tcp.trace-logging = off
     }
     spray.can.server.request-chunk-aggregation-limit = 0
-    spray.can.client.response-chunk-aggregation-limit = 0""")
+    spray.can.client.response-chunk-aggregation-limit = 0
+    spray.can.server.verbose-error-messages = on""")
   implicit val system = ActorSystem(getClass.getSimpleName, testConf)
 
   "The server-side spray-can HTTP infrastructure" should {
@@ -137,7 +138,7 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
           serverHandler.expectMsg(Http.Closed)
           val (text, reader) = readAll(socket)()
           text must startWith("HTTP/1.1 400 Bad Request")
-          text must endWith(errorMsg)
+          text.takeRight(errorMsg.length) === errorMsg
           socket.close()
         }
       "when an HTTP/1.1 request has no Host header" in errorTest(
@@ -154,10 +155,18 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
         errorMsg = "Cannot establish effective request URI, request has a relative URI and an empty `Host` header")
       "when the request has an ill-formed URI" in errorTest(
         request = "GET http://host:naaa HTTP/1.1",
-        errorMsg = "Illegal request-target, unexpected end-of-input at position 16")
+        errorMsg =
+          """Illegal request-target, unexpected end-of-input at position 16:\u0020
+            |http://host:naaa
+            |                ^
+            |""".stripMargin)
       "when the request has an URI with a fragment" in errorTest(
         request = "GET /path?query#fragment HTTP/1.1",
-        errorMsg = "Illegal request-target, unexpected character '#' at position 11")
+        errorMsg =
+          """Illegal request-target, unexpected character '#' at position 11:\u0020
+            |/path?query#fragment
+            |           ^
+            |""".stripMargin)
       "when the request has an absolute URI without authority part and a non-empty host header" in errorTest(
         request = "GET http:/foo HTTP/1.1\r\nHost: spray.io",
         errorMsg = "'Host' header value doesn't match request target authority")
