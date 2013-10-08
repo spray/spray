@@ -82,7 +82,10 @@ private[can] object RequestParsing {
             case Tcp.Received(data: CompactByteString) ⇒
               try handleParsingResult(parser(data))
               catch {
-                case NonFatal(e) ⇒ handleError(StatusCodes.BadRequest, ErrorInfo(e.getMessage.nullAsEmpty))
+                case NonFatal(e) ⇒
+                  handleError(StatusCodes.BadRequest,
+                    ErrorInfo("Illegal request",
+                      e.getMessage.nullAsEmpty))
               }
 
             case ev ⇒ eventPL(ev)
