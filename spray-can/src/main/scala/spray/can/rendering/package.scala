@@ -23,7 +23,7 @@ package object rendering {
   private[can] def toTcpWriteCommand(data: HttpData, ack: Tcp.Event): Tcp.WriteCommand =
     data match {
       case HttpData.Empty                ⇒ Tcp.Write.empty
-      case HttpData.Compound(head, tail) ⇒ toTcpWriteCommand(head, ack) +: toTcpWriteCommand(tail, ack)
+      case HttpData.Compound(head, tail) ⇒ toTcpWriteCommand(head, Tcp.NoAck) +: toTcpWriteCommand(tail, ack)
       case x: HttpData.SimpleNonEmpty    ⇒ toTcpWriteCommand(x, ack)
     }
 
