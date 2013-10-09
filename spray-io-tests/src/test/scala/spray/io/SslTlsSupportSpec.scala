@@ -17,27 +17,24 @@ package spray.io
 
 import java.io.{ BufferedWriter, OutputStreamWriter, InputStreamReader, BufferedReader }
 import javax.net.ssl._
-import java.net.{ InetSocketAddress, SocketException }
+import java.net.InetSocketAddress
 import java.security.{ KeyStore, SecureRandom }
 import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.duration._
 import com.typesafe.config.{ ConfigFactory, Config }
+import scala.concurrent.duration._
+import scala.concurrent.Future
 import org.specs2.mutable.Specification
 import org.specs2.time.NoTimeConversions
 import akka.actor._
-import akka.event.{ Logging, LoggingAdapter }
 import akka.testkit.TestProbe
 import akka.util.{ ByteString, Timeout }
 import akka.io.{ IO, Tcp }
 import spray.testkit.TestUtils
-import spray.util.{ Utils, LoggingContext }
-import annotation.tailrec
+import spray.util._
 
 class SslTlsSupportSpec extends Specification with NoTimeConversions {
-  sequential
 
   implicit val timeOut: Timeout = 1.second
-  implicit val sslContext = createSslContext("/ssl-test-keystore.jks", "")
   val testConf: Config = ConfigFactory.parseString("""
     akka {
       event-handlers = ["akka.testkit.TestEventListener"]
@@ -45,92 +42,135 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       io.tcp.trace-logging = off
     }""")
   implicit val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConf)
+  import system.dispatcher
 
   "The SslTlsSupport" should {
 
-    "work between a Java client and a Java server" in {
-      invalidateSessions()
+    "support a simple encrypted dialog between a Java client and a Java server (test infrastructure)" in new TestSetup {
       val server = new JavaSslServer
-      val client = new JavaSslClient(server.address)
-      client.run()
+      val clientConn = newJavaSslClientConnection(server.address)
+      val serverConn = server.acceptOne()
+
+      inParallel(clientConn.writeLn("Foo"), serverConn.readLn()) === "Foo"
+      inParallel(serverConn.writeLn("bar"), clientConn.readLn()) === "bar"
+      inParallel(serverConn.writeLn("baz"), clientConn.readLn()) === "baz"
+      inParallel(clientConn.writeLn("yeah"), serverConn.readLn()) === "yeah"
 
       val baselineSessionCounts = sessionCounts()
-      client.close()
-      // make sure not to lose sessions by invalid session closure
+      clientConn.close()
+      sessionCounts() === baselineSessionCounts
+      serverConn.close()
       sessionCounts() === baselineSessionCounts
       server.close()
-      sessionCounts() === baselineSessionCounts // see above
+      sessionCounts() === baselineSessionCounts
     }
 
-    "work between a spray client and a Java server" in {
-      invalidateSessions()
+    "support a simple encrypted dialog between a spray client and a Java server" in new TestSetup {
       val server = new JavaSslServer
-      val client = new SpraySslClient(server.address)
-      client.run()
+      val connAttempt = attemptSpraySslClientConnection(server.address)
+      val serverConn = server.acceptOne()
+      val clientConn = connAttempt.finishConnect()
+
+      clientConn.writeLn("Foo")
+      serverConn.readLn() === "Foo"
+      serverConn.writeLn("bar")
+      clientConn.events.expectMsg(Tcp.Received(ByteString("bar\n")))
+      serverConn.writeLn("baz")
+      clientConn.events.expectMsg(Tcp.Received(ByteString("baz\n")))
+      clientConn.writeLn("yeah")
+      serverConn.readLn() === "yeah"
 
       val baselineSessionCounts = sessionCounts()
-      client.close()
-      sessionCounts() === baselineSessionCounts // see above
+      serverConn.close()
+      sessionCounts() === baselineSessionCounts
+      clientConn.events.expectMsg(Tcp.PeerClosed)
       server.close()
-      sessionCounts() === baselineSessionCounts // see above
+      sessionCounts() === baselineSessionCounts
+      TestUtils.verifyActorTermination(clientConn.handler)
     }
 
-    "work between a Java client and a spray server" in {
-      invalidateSessions()
-      val serverAddress = Utils.temporaryServerAddress()
-      val bindHandler = system.actorOf(Props(new SpraySslServer))
-      val probe = TestProbe()
-      probe.send(IO(Tcp), Tcp.Bind(bindHandler, serverAddress))
-      probe.expectMsgType[Tcp.Bound]
+    "support a simple encrypted dialog between a Java client and a spray server" in new TestSetup {
+      val server = new SpraySslServer
+      val clientConn = newJavaSslClientConnection(server.address)
+      val serverConn = server.acceptOne()
 
-      val client = new JavaSslClient(serverAddress)
-      client.run()
-      val baselineSessionCounts = sessionCounts()
-      client.close()
-      sessionCounts() === baselineSessionCounts // see above
-    }
-
-    "work between a spray client and a spray server" in {
-      invalidateSessions()
-      val serverAddress = Utils.temporaryServerAddress()
-      val bindHandler = system.actorOf(Props(new SpraySslServer))
-      val probe = TestProbe()
-      probe.send(IO(Tcp), Tcp.Bind(bindHandler, serverAddress))
-      probe.expectMsgType[Tcp.Bound]
-
-      val client = new SpraySslClient(serverAddress)
-      client.run()
+      clientConn.writeLn("Foo")
+      serverConn.events.expectMsg(Tcp.Received(ByteString("Foo\n")))
+      serverConn.writeLn("bar")
+      clientConn.readLn() === "bar"
+      serverConn.writeLn("baz")
+      clientConn.readLn() === "baz"
+      clientConn.writeLn("yeah")
+      serverConn.events.expectMsg(Tcp.Received(ByteString("yeah\n")))
 
       val baselineSessionCounts = sessionCounts()
-      client.close()
-      sessionCounts() === baselineSessionCounts // see above
+      clientConn.close()
+      sessionCounts() === baselineSessionCounts
+      serverConn.events.expectMsg(Tcp.PeerClosed)
+      TestUtils.verifyActorTermination(serverConn.handler)
+      server.close()
+      sessionCounts() === baselineSessionCounts
     }
 
-    "work between a spray client and a Java server with confirmedClose" in {
-      invalidateSessions()
+    "support a simple encrypted dialog between a spray client and a spray server" in new TestSetup {
+      val server = new SpraySslServer
+      val connAttempt = attemptSpraySslClientConnection(server.address)
+      val serverConn = server.acceptOne()
+      val clientConn = connAttempt.finishConnect()
+
+      clientConn.writeLn("Foo")
+      serverConn.events.expectMsg(Tcp.Received(ByteString("Foo\n")))
+      serverConn.writeLn("bar")
+      clientConn.events.expectMsg(Tcp.Received(ByteString("bar\n")))
+      serverConn.writeLn("baz")
+      clientConn.events.expectMsg(Tcp.Received(ByteString("baz\n")))
+      clientConn.writeLn("yeah")
+      serverConn.events.expectMsg(Tcp.Received(ByteString("yeah\n")))
+
+      val baselineSessionCounts = sessionCounts()
+      clientConn.command(Tcp.Close)
+      serverConn.events.expectMsg(Tcp.PeerClosed)
+      TestUtils.verifyActorTermination(serverConn.handler)
+      sessionCounts() === baselineSessionCounts
+      clientConn.events.expectMsg(Tcp.Closed)
+      TestUtils.verifyActorTermination(clientConn.handler)
+      server.close()
+      sessionCounts() === baselineSessionCounts
+    }
+
+    "correctly handle a ConfirmedClose command" in new TestSetup {
       val server = new JavaSslServer
-      val client = new SpraySslClient(server.address)
-      client.run()
-      val baselineSessionCounts = sessionCounts()
-      client.closeConfirmed()
-      sessionCounts() === baselineSessionCounts // see above
+      val connAttempt = attemptSpraySslClientConnection(server.address)
+      val serverConn = server.acceptOne()
+      val clientConn = connAttempt.finishConnect()
+
+      clientConn.writeLn("Foo")
+      serverConn.readLn() === "Foo"
+      serverConn.writeLn("bar")
+      clientConn.events.expectMsg(Tcp.Received(ByteString("bar\n")))
+
+      clientConn.command(Tcp.ConfirmedClosed)
+      clientConn.events.expectMsg(Tcp.ConfirmedClosed)
+      TestUtils.verifyActorTermination(clientConn.handler)
+      serverConn.close()
       server.close()
-      sessionCounts() === baselineSessionCounts // see above
     }
 
-    "spray client runs the full shutdown sequence if peer closes" in {
-      invalidateSessions()
+    "produce a PeerClosed event upon receiving an SSL-level termination sequence" in new TestSetup(blockClosedEvent = true) {
       val server = new JavaSslServer
-      val client = new SpraySslClient(server.address)
-      client.run()
-      val baselineSessionCounts = serverSessions().length
-      val hook = TestProbe()
-      client.addNetworkEventHook(hook.ref)
+      val connAttempt = attemptSpraySslClientConnection(server.address)
+      val serverConn = server.acceptOne()
+      val clientConn = connAttempt.finishConnect()
+
+      clientConn.writeLn("Foo")
+      serverConn.readLn() === "Foo"
+      serverConn.writeLn("bar")
+      clientConn.events.expectMsg(Tcp.Received(ByteString("bar\n")))
+
+      serverConn.close()
+      clientConn.events.expectMsg(Tcp.PeerClosed)
+      TestUtils.verifyActorTermination(clientConn.handler)
       server.close()
-      client.runPeerClosed(hook)
-      // we only check the spray side server sessions here
-      // the java client seems to lose the session for some reason
-      serverSessions().length === baselineSessionCounts
     }
   }
 
@@ -138,246 +178,131 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
 
   val counter = new AtomicInteger
 
-  def createSslContext(keyStoreResource: String, password: String): SSLContext = {
-    val keyStore = KeyStore.getInstance("jks")
-    keyStore.load(getClass.getResourceAsStream(keyStoreResource), password.toCharArray)
-    val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
-    keyManagerFactory.init(keyStore, password.toCharArray)
-    val trustManagerFactory = TrustManagerFactory.getInstance("SunX509")
-    trustManagerFactory.init(keyStore)
-    val context = SSLContext.getInstance("SSL")
-    context.init(keyManagerFactory.getKeyManagers, trustManagerFactory.getTrustManagers, new SecureRandom)
-    context
-  }
+  class TestSetup(publishSslSessionInfo: Boolean = false, blockClosedEvent: Boolean = false) extends org.specs2.specification.Scope {
+    implicit val sslContext = createSSLContext("/ssl-test-keystore.jks", "")
 
-  class SpraySslClient(address: InetSocketAddress) {
-    val probe = TestProbe()
-    probe.send(IO(Tcp), Tcp.Connect(address))
-    val connected = probe.expectMsgType[Tcp.Connected]
-    val connection = probe.sender
-    val handler = system.actorOf(
-      props = Props {
-        new ConnectionHandler {
-          val receiver = running(connection, frontend >> SslTlsSupport(true), sslTlsContext[ClientSSLEngineProvider](connected))
-
-          def receive: Receive = receiver orElse {
-            case HookNetwork(hook) ⇒ context.become(hooked(hook))
-          }
-
-          def hooked(hook: ActorRef): Receive = {
-            case Continue(msg) ⇒ receiver(msg)
-            case x ⇒
-              val mySelf = self
-              val origSender = sender
-              hook ! HookedMessage(x, origSender, () ⇒ mySelf.tell(Continue(x), origSender))
-          }
-        }
-      },
-      name = "client" + counter.incrementAndGet())
-    probe.send(connection, Tcp.Register(handler, keepOpenOnPeerClosed = true))
-
-    case class HookNetwork(hook: ActorRef)
-    case class HookedMessage(msg: Any, sender: ActorRef, complete: () ⇒ Unit)
-    case class Continue(msg: Any)
-    def addNetworkEventHook(hook: ActorRef) =
-      handler ! HookNetwork(hook)
-
-    def run(): Unit = {
-      probe.send(handler, Tcp.Write(ByteString("3+4\n")))
-      probe.expectMsgType[SslTlsSupport.SSLSessionEstablished]
-      expectReceived(probe, ByteString("7\n"))
-      probe.send(handler, Tcp.Write(ByteString("20+22\n")))
-      expectReceived(probe, ByteString("42\n"))
+    def sessionCounts() = (clientSessions().length, serverSessions().length)
+    def clientSessions() = sessions(_.getServerSessionContext)
+    def serverSessions() = sessions(_.getClientSessionContext)
+    def invalidateSessions() = {
+      clientSessions().foreach(_.invalidate())
+      serverSessions().foreach(_.invalidate())
     }
-    def runPeerClosed(hook: TestProbe): Unit = {
-      val closeNotify = hook.expectMsgType[HookedMessage]
-      closeNotify.msg must beLike {
-        case _: Tcp.Received ⇒ ok
+
+    def inParallel(body1: ⇒ Unit, expr2: ⇒ String): String =
+      Future.sequence(List(Future(body1), Future(expr2))).await.apply(1).asInstanceOf[String]
+
+    def newJavaSslClientConnection(address: InetSocketAddress) =
+      new JavaServerConnection(sslContext.getSocketFactory.createSocket(address.getHostName, address.getPort).asInstanceOf[SSLSocket])
+
+    class JavaSslServer {
+      val address = Utils.temporaryServerAddress()
+      private val serverSocket = sslContext.getServerSocketFactory.createServerSocket(address.getPort).asInstanceOf[SSLServerSocket]
+      def acceptOne() = new JavaServerConnection(serverSocket.accept().asInstanceOf[SSLSocket])
+      def close(): Unit = serverSocket.close()
+    }
+
+    class JavaServerConnection(socket: SSLSocket) {
+      private val reader = new BufferedReader(new InputStreamReader(socket.getInputStream))
+      private val writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream))
+      def readLn() = reader.readLine()
+      def writeLn(msg: String) = {
+        writer.write(msg + '\n')
+        writer.flush()
       }
-      closeNotify.complete()
-
-      probe.expectMsg(Tcp.PeerClosed)
-      TestUtils.verifyActorTermination(handler)
+      def close(): Unit = socket.close()
     }
 
-    def close(): Unit = {
-      probe.send(handler, Tcp.Close)
-
-      probe.expectMsg(Tcp.Closed)
-      TestUtils.verifyActorTermination(handler)
-    }
-    def closeConfirmed(): Unit = {
-      probe.send(handler, Tcp.ConfirmedClose)
-      probe.expectMsg(Tcp.ConfirmedClosed)
-      TestUtils.verifyActorTermination(handler)
+    def attemptSpraySslClientConnection(address: InetSocketAddress) = {
+      val probe = TestProbe()
+      probe.send(IO(Tcp), Tcp.Connect(address))
+      new SpraySslClientConnectionAttempt(probe)
     }
 
-    // simple command/event frontend that dispatches incoming events to the sender of the last command
-    def frontend: PipelineStage = new PipelineStage {
-      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
-        new Pipelines {
-          var commander: ActorRef = _
+    class SpraySslClientConnectionAttempt(connectedProbe: TestProbe) {
+      def finishConnect() = new SpraySslClientConnection(connectedProbe.expectMsgType[Tcp.Connected], connectedProbe.sender)
+    }
 
-          val commandPipeline: CPL = {
-            case cmd ⇒
-              commander = context.sender
-              commandPL(cmd)
+    class SpraySslClientConnection(connected: Tcp.Connected, connection: ActorRef) {
+      val events = TestProbe()
+      val handler = system.actorOf(Props(new ConnectionActor[ClientSSLEngineProvider](events.ref, connection, connected)),
+        "client" + counter.incrementAndGet())
+      connection ! Tcp.Register(handler, keepOpenOnPeerClosed = true)
+      def command(msg: Any): Unit = handler ! msg
+      def writeLn(msg: String) = command(Tcp.Write(ByteString(msg + '\n')))
+    }
+
+    class SpraySslServer {
+      val address = Utils.temporaryServerAddress()
+      private val bindProbe = TestProbe()
+      private val acceptProbe = TestProbe()
+      bindProbe.send(IO(Tcp), Tcp.Bind(acceptProbe.ref, address))
+      bindProbe.expectMsgType[Tcp.Bound]
+      def acceptOne() = new SpraySslServerConnection(acceptProbe.expectMsgType[Tcp.Connected], acceptProbe.sender)
+      def close(): Unit = {
+        bindProbe.reply(Tcp.Unbind)
+        bindProbe.expectMsg(Tcp.Unbound)
+      }
+    }
+
+    class SpraySslServerConnection(connected: Tcp.Connected, connection: ActorRef) {
+      val events = TestProbe()
+      val handler = system.actorOf(Props(new ConnectionActor[ServerSSLEngineProvider](events.ref, connection, connected)),
+        "server" + counter.incrementAndGet())
+      connection ! Tcp.Register(handler, keepOpenOnPeerClosed = true)
+      def command(msg: Any): Unit = handler ! msg
+      def writeLn(msg: String) = command(Tcp.Write(ByteString(msg + '\n')))
+    }
+
+    class ConnectionActor[T <: (PipelineContext ⇒ Option[SSLEngine])](events: ActorRef, connection: ActorRef,
+                                                                      connected: Tcp.Connected)(implicit engineProvider: T) extends ConnectionHandler {
+      val pipeline = frontend >> SslTlsSupport(publishSslSessionInfo) >> (filterPeerClosed ? blockClosedEvent)
+      def receive = running(connection, pipeline, createSslTlsContext[T](connected))
+      def frontend: PipelineStage = new PipelineStage {
+        def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+          new Pipelines {
+            val commandPipeline = commandPL
+            val eventPipeline: EPL = {
+              case ev ⇒
+                events.tell(ev, context.sender)
+                if (ev.isInstanceOf[Tcp.ConnectionClosed]) eventPL(ev)
+            }
           }
-
-          val eventPipeline: EPL = {
-            case ev @ (Tcp.Received(_) | SslTlsSupport.SSLSessionEstablished(_)) if commander != null ⇒ commander ! ev
-            case ev ⇒
-              if (commander != null) commander ! ev
-              eventPL(ev)
-          }
-        }
-    }
-  }
-
-  class SpraySslServer extends Actor {
-    def frontend: PipelineStage = new PipelineStage {
-      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
-        new Pipelines {
-          var buffer = ByteString.empty
-
+      }
+      def filterPeerClosed: PipelineStage = new PipelineStage {
+        def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
           val commandPipeline = commandPL
           val eventPipeline: EPL = {
-            case Tcp.Received(data) ⇒
-              @tailrec def consume(buffer: ByteString): ByteString = {
-                val (next, rest) = buffer.span(_ != '\n'.toByte)
-                if (rest.nonEmpty) {
-                  val input = next.utf8String
-                  context.log.debug("spray-io Server received {} from {}", input, sender)
-                  val response = serverResponse(input)
-                  commandPL(Tcp.Write(ByteString(response)))
-                  context.log.debug("spray-io Server sent: {}", response.dropRight(1))
-
-                  consume(rest.drop(1) /* \n */ )
-                } else {
-                  if (next.nonEmpty) context.log.debug(s"Buffering prefix of next message '$next'")
-                  next
-                }
-              }
-
-              buffer = consume(buffer ++ data)
-            case _: SslTlsSupport.SSLSessionEstablished ⇒
-            case ev                                     ⇒ eventPL(ev)
+            case x: Tcp.ConnectionClosed ⇒ log.debug("Blocking ConnectionClosed event: " + x)
+            case ev                      ⇒ eventPL(ev)
           }
         }
-    }
-    def receive: Receive = {
-      case x: Tcp.Connected ⇒
-        val connection = sender
-        val handler = system.actorOf(
-          props = Props {
-            new ConnectionHandler {
-              def receive = running(connection, frontend >> SslTlsSupport(true), sslTlsContext[ServerSSLEngineProvider](x))
-            }
-          },
-          name = "server" + counter.incrementAndGet())
-        connection ! Tcp.Register(handler, keepOpenOnPeerClosed = true)
-    }
-  }
-
-  class JavaSslServer extends Thread {
-    val log: LoggingAdapter = Logging(system, getClass)
-    val address = Utils.temporaryServerAddress()
-    private val serverSocket =
-      sslContext.getServerSocketFactory.createServerSocket(address.getPort).asInstanceOf[SSLServerSocket]
-    @volatile private var socket: SSLSocket = _
-    start()
-
-    def close(): Unit = {
-      serverSocket.close()
-      if (socket != null) socket.close()
+      }
     }
 
-    override def run(): Unit = {
-      try {
-        socket = serverSocket.accept().asInstanceOf[SSLSocket]
-        val (reader, writer) = readerAndWriter(socket)
-        while (true) {
-          val line = reader.readLine()
-          log.debug("SSLServerSocket Server received: {}", line)
-          if (line == null) throw new SocketException("closed")
-          val result = serverResponse(line)
-          writer.write(result)
-          writer.flush()
-          log.debug("SSLServerSocket Server sent: {}", result.dropRight(1))
-        }
-      } catch {
-        case _: SocketException ⇒ // expected during shutdown
-      } finally close()
+    private def sessions(f: SSLContext ⇒ SSLSessionContext): Seq[SSLSession] = {
+      import collection.JavaConverters._
+      val ctx = f(sslContext)
+      ctx.getIds.asScala.toSeq.map(ctx.getSession)
     }
-  }
-
-  class JavaSslClient(address: InetSocketAddress) {
-    val socket = sslContext.getSocketFactory.createSocket(address.getHostName, address.getPort).asInstanceOf[SSLSocket]
-    val (reader, writer) = readerAndWriter(socket)
-    val log: LoggingAdapter = Logging(system, getClass)
-
-    def run(): Unit = {
-      write("1+2")
-      readLine() === "3"
-      write("12+24")
-      readLine() === "36"
+    private def createSSLContext(keyStoreResource: String, password: String): SSLContext = {
+      val keyStore = KeyStore.getInstance("jks")
+      keyStore.load(getClass.getResourceAsStream(keyStoreResource), password.toCharArray)
+      val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
+      keyManagerFactory.init(keyStore, password.toCharArray)
+      val trustManagerFactory = TrustManagerFactory.getInstance("SunX509")
+      trustManagerFactory.init(keyStore)
+      val context = SSLContext.getInstance("SSL")
+      context.init(keyManagerFactory.getKeyManagers, trustManagerFactory.getTrustManagers, new SecureRandom)
+      context
     }
-
-    def write(string: String): Unit = {
-      writer.write(string + "\n")
-      writer.flush()
-      log.debug("SSLSocket Client sent: {}", string)
-    }
-
-    def readLine() = {
-      val string = reader.readLine()
-      log.debug("SSLSocket Client received: {}", string)
-      string
-    }
-
-    def close(): Unit = { socket.close() }
-  }
-
-  def readerAndWriter(socket: SSLSocket) = {
-    val reader = new BufferedReader(new InputStreamReader(socket.getInputStream))
-    val writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream))
-    reader -> writer
-  }
-
-  def serverResponse(input: String): String =
-    try input.split('+').map(_.toInt).reduceLeft(_ + _).toString + '\n'
-    catch {
-      case e: Exception ⇒ e.printStackTrace(); "999\n"
-    }
-
-  def sslTlsContext[T <: (PipelineContext ⇒ Option[SSLEngine])](connected: Tcp.Connected)(implicit engineProvider: T, context: ActorContext): SslTlsContext =
-    new SslTlsContext {
-      def actorContext = context
-      def remoteAddress = connected.remoteAddress
-      def localAddress = connected.localAddress
-      def log = LoggingContext.fromActorRefFactory(context)
-      def sslEngine = engineProvider(this)
-    }
-
-  @tailrec final def expectReceived(probe: TestProbe, expectedMessage: ByteString): Unit =
-    if (expectedMessage.nonEmpty) {
-      val data = probe.expectMsgType[Tcp.Received].data
-      data must be_==(expectedMessage.take(data.length))
-      expectReceived(probe, expectedMessage.drop(data.length))
-    }
-
-  import collection.JavaConverters._
-  def clientSessions() = sessions(_.getServerSessionContext)
-  def serverSessions() = sessions(_.getClientSessionContext)
-  def sessionCounts() = (clientSessions().length, serverSessions().length)
-
-  def sessions(f: SSLContext ⇒ SSLSessionContext): Seq[SSLSession] = {
-    val ctx = f(sslContext)
-    val ids = ctx.getIds.asScala.toIndexedSeq
-    ids.map(ctx.getSession)
-  }
-  def invalidateSessions() = {
-    clientSessions().foreach(_.invalidate())
-    serverSessions().foreach(_.invalidate())
+    private def createSslTlsContext[T <: (PipelineContext ⇒ Option[SSLEngine])](connected: Tcp.Connected)(implicit engineProvider: T, context: ActorContext): SslTlsContext =
+      new SslTlsContext {
+        def actorContext = context
+        def remoteAddress = connected.remoteAddress
+        def localAddress = connected.localAddress
+        def log = LoggingContext.fromActorRefFactory(context)
+        def sslEngine = engineProvider(this)
+      }
   }
 }
