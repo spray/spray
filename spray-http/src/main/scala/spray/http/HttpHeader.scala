@@ -101,10 +101,50 @@ object HttpHeaders {
     protected def companion = `Accept-Language`
   }
 
+  object `Access-Control-Allow-Credentials` extends ModeledCompanion
+  case class `Access-Control-Allow-Credentials`(allow: Boolean) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ allow.toString
+    protected def companion = `Access-Control-Allow-Credentials`
+  }
+  object `Access-Control-Allow-Headers` extends ModeledCompanion {
+    def apply(first: String, more: String*): `Access-Control-Allow-Headers` = apply(first +: more)
+    implicit val headersRenderer = Renderer.defaultSeqRenderer[String]
+  }
+  case class `Access-Control-Allow-Headers`(headers: Seq[String]) extends ModeledHeader {
+    import `Access-Control-Allow-Headers`.headersRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ headers
+    protected def companion = `Access-Control-Allow-Headers`
+  }
+
+  object `Access-Control-Allow-Methods` extends ModeledCompanion {
+    def apply(first: HttpMethod, more: HttpMethod*): `Access-Control-Allow-Methods` = apply(first +: more)
+    implicit val methodsRenderer = Renderer.defaultSeqRenderer[HttpMethod]
+  }
+  case class `Access-Control-Allow-Methods`(methods: Seq[HttpMethod]) extends ModeledHeader {
+    import `Access-Control-Allow-Methods`.methodsRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ methods
+    protected def companion = `Access-Control-Allow-Methods`
+  }
   object `Access-Control-Allow-Origin` extends ModeledCompanion
   case class `Access-Control-Allow-Origin`(allowedOrigins: AllowedOrigins) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ allowedOrigins
     protected def companion = `Access-Control-Allow-Origin`
+  }
+
+  object `Access-Control-Request-Headers` extends ModeledCompanion {
+    def apply(first: String, more: String*): `Access-Control-Request-Headers` = apply(first +: more)
+    implicit val headersRenderer = Renderer.defaultSeqRenderer[String]
+  }
+  case class `Access-Control-Request-Headers`(headers: Seq[String]) extends ModeledHeader {
+    import `Access-Control-Request-Headers`.headersRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ headers
+    protected def companion = `Access-Control-Request-Headers`
+  }
+
+  object `Access-Control-Request-Method` extends ModeledCompanion
+  case class `Access-Control-Request-Method`(method: HttpMethod) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ method
+    protected def companion = `Access-Control-Request-Method`
   }
 
   object `Access-Control-Expose-Headers` extends ModeledCompanion {
@@ -122,48 +162,6 @@ object HttpHeaders {
     require(deltaSeconds >= 0, "deltaSeconds must be >= 0")
     def renderValue[R <: Rendering](r: R): r.type = r ~~ deltaSeconds
     protected def companion = `Access-Control-Max-Age`
-  }
-
-  object `Access-Control-Allow-Credentials` extends ModeledCompanion
-  case class `Access-Control-Allow-Credentials`(allow: Boolean) extends ModeledHeader {
-    def renderValue[R <: Rendering](r: R): r.type = r ~~ allow.toString
-    protected def companion = `Access-Control-Allow-Credentials`
-  }
-
-  object `Access-Control-Allow-Methods` extends ModeledCompanion {
-    def apply(first: HttpMethod, more: HttpMethod*): `Access-Control-Allow-Methods` = apply(first +: more)
-    implicit val methodsRenderer = Renderer.defaultSeqRenderer[HttpMethod]
-  }
-  case class `Access-Control-Allow-Methods`(methods: Seq[HttpMethod]) extends ModeledHeader {
-    import `Access-Control-Allow-Methods`.methodsRenderer
-    def renderValue[R <: Rendering](r: R): r.type = r ~~ methods
-    protected def companion = `Access-Control-Allow-Methods`
-  }
-
-  object `Access-Control-Allow-Headers` extends ModeledCompanion {
-    def apply(first: String, more: String*): `Access-Control-Allow-Headers` = apply(first +: more)
-    implicit val headersRenderer = Renderer.defaultSeqRenderer[String]
-  }
-  case class `Access-Control-Allow-Headers`(headers: Seq[String]) extends ModeledHeader {
-    import `Access-Control-Allow-Headers`.headersRenderer
-    def renderValue[R <: Rendering](r: R): r.type = r ~~ headers
-    protected def companion = `Access-Control-Allow-Headers`
-  }
-
-  object `Access-Control-Request-Method` extends ModeledCompanion
-  case class `Access-Control-Request-Method`(method: HttpMethod) extends ModeledHeader {
-    def renderValue[R <: Rendering](r: R): r.type = r ~~ method
-    protected def companion = `Access-Control-Request-Method`
-  }
-
-  object `Access-Control-Request-Headers` extends ModeledCompanion {
-    def apply(first: String, more: String*): `Access-Control-Request-Headers` = apply(first +: more)
-    implicit val headersRenderer = Renderer.defaultSeqRenderer[String]
-  }
-  case class `Access-Control-Request-Headers`(headers: Seq[String]) extends ModeledHeader {
-    import `Access-Control-Request-Headers`.headersRenderer
-    def renderValue[R <: Rendering](r: R): r.type = r ~~ headers
-    protected def companion = `Access-Control-Request-Headers`
   }
 
   object Authorization extends ModeledCompanion
