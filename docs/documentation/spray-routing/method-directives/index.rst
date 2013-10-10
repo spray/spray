@@ -11,6 +11,7 @@ MethodDirectives
    head
    method
    options
+   overrideMethodWithParameter
    patch
    post
    put
