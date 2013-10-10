@@ -138,7 +138,7 @@ object SslTlsSupport {
                 runDelegatedTasks()
                 encrypt(send, tempBuf, fromQueue)
             }
-            case CLOSED ⇒
+            case CLOSED ⇒ // from now on: engine.isOutboundDone == true
               if (postContentLeft) {
                 log.warning("SSLEngine closed prematurely while sending")
                 commandPL(Tcp.Abort)
@@ -176,14 +176,13 @@ object SslTlsSupport {
                 runDelegatedTasks()
                 decrypt(buffer, tempBuf)
             }
-            case CLOSED ⇒
-              if (!engine.isOutboundDone) {
+            case CLOSED ⇒ // from now on: engine.isInboundDone == true
+              if (originalCloseCommand eq null) {
                 closeEngine(tempBuf)
                 eventPL(Tcp.PeerClosed)
               } else { // now both sides are closed on the SSL level
                 eventPL(originalCloseCommand.event)
-                // close the underlying connection, we don't need it any more
-                commandPL(Tcp.Close)
+                commandPL(Tcp.Close) // close the underlying connection, we don't need it any more
               }
             case BUFFER_UNDERFLOW ⇒
               inboundReceptacle = buffer // save buffer so we can append the next one to it
