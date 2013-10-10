@@ -59,8 +59,9 @@ class HttpHeaderSpec extends Specification {
     }
 
     "Access-Control-Allow-Origin" in {
-      "Access-Control-Allow-Origin: *" =!= `Access-Control-Allow-Origin`("*")
-      "Access-Control-Allow-Origin: http://spray.io" =!= `Access-Control-Allow-Origin`("http://spray.io")
+      "Access-Control-Allow-Origin: *" =!= `Access-Control-Allow-Origin`(AllOrigins)
+      "Access-Control-Allow-Origin: null" =!= `Access-Control-Allow-Origin`(SomeOrigins(Nil))
+      "Access-Control-Allow-Origin: http://spray.io" =!= `Access-Control-Allow-Origin`(SomeOrigins(Seq("http://spray.io")))
     }
 
     "Access-Control-Expose-Headers" in {
@@ -220,7 +221,7 @@ class HttpHeaderSpec extends Specification {
     }
 
     "Origin" in {
-      "Origin: http://spray.io" =!= Origin(Uri("http://spray.io"))
+      "Origin: http://spray.io" =!= Origin(Seq("http://spray.io"))
     }
 
     "Proxy-Authenticate" in {

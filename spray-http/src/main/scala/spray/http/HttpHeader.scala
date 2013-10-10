@@ -102,8 +102,8 @@ object HttpHeaders {
   }
 
   object `Access-Control-Allow-Origin` extends ModeledCompanion
-  case class `Access-Control-Allow-Origin`(origin: Uri) extends ModeledHeader {
-    def renderValue[R <: Rendering](r: R): r.type = r ~~ origin
+  case class `Access-Control-Allow-Origin`(allowedOrigins: AllowedOrigins) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ allowedOrigins
     protected def companion = `Access-Control-Allow-Origin`
   }
 
@@ -230,7 +230,8 @@ object HttpHeaders {
 
   object Cookie extends ModeledCompanion {
     def apply(first: HttpCookie, more: HttpCookie*): `Cookie` = apply(first +: more)
-    implicit val cookiesRenderer = Renderer.seqRenderer[String, HttpCookie](separator = "; ") // cache
+    implicit val cookiesRenderer: Renderer[Seq[HttpCookie]] =
+      Renderer.seqRenderer(separator = "; ") // cache
   }
   case class Cookie(cookies: Seq[HttpCookie]) extends ModeledHeader {
     import Cookie.cookiesRenderer
@@ -279,8 +280,8 @@ object HttpHeaders {
   }
 
   object Origin extends ModeledCompanion
-  case class Origin(origin: Uri) extends ModeledHeader {
-    def renderValue[R <: Rendering](r: R): r.type = r ~~ origin
+  case class Origin(originList: Seq[HttpOrigin]) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ originList
     protected def companion = Origin
   }
 
@@ -315,10 +316,8 @@ object HttpHeaders {
   object Server extends ModeledCompanion {
     def apply(products: String): Server = apply(ProductVersion.parseMultiple(products))
     def apply(first: ProductVersion, more: ProductVersion*): Server = apply(first +: more)
-    implicit val productsRenderer = Renderer.seqRenderer[Char, ProductVersion](separator = ' ') // cache
   }
   case class Server(products: Seq[ProductVersion])(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
-    import Server.productsRenderer
     def renderValue[R <: Rendering](r: R): r.type = r ~~ products
     protected def companion = Server
   }
@@ -350,10 +349,8 @@ object HttpHeaders {
   object `User-Agent` extends ModeledCompanion {
     def apply(products: String): `User-Agent` = apply(ProductVersion.parseMultiple(products))
     def apply(first: ProductVersion, more: ProductVersion*): `User-Agent` = apply(first +: more)
-    implicit val productsRenderer = Renderer.seqRenderer[Char, ProductVersion](separator = ' ') // cache
   }
   case class `User-Agent`(products: Seq[ProductVersion])(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
-    import `User-Agent`.productsRenderer
     def renderValue[R <: Rendering](r: R): r.type = r ~~ products
     protected def companion = `User-Agent`
   }
