@@ -61,14 +61,15 @@ class FormFieldSpec extends Specification {
       marshal(formData)
         .flatMap(_.as[HttpForm])
         .flatMap(_.field("age").as[NodeSeq]) ===
-        Left(UnsupportedContentType("Field 'age' can only be read from 'multipart/form-data' form content"))
+        Left(UnsupportedContentType("Expected 'text/xml' or 'application/xml' or 'text/html' or 'application/xhtml+xml' " +
+          "but tried to read from application/x-www-form-urlencoded encoded field 'age' which provides only text/plain values."))
     }
 
     "return an error when accessing a field of multipart forms for which no Unmarshaller is available" in {
       marshal(multipartFormData)
         .flatMap(_.as[HttpForm])
         .flatMap(_.field("age").as[Int]) ===
-        Left(UnsupportedContentType("Field 'age' can only be read from 'application/x-www-form-urlencoded' form content"))
+        Left(UnsupportedContentType("Field 'age' can only be read from 'application/x-www-form-urlencoded' form content but was 'text/xml'"))
     }
   }
 
