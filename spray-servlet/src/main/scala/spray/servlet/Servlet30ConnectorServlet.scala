@@ -30,6 +30,7 @@ import akka.event.{ LoggingAdapter, Logging }
 import akka.io.Tcp
 import spray.util.pimpString_
 import spray.http._
+import scala.util.Try
 
 /**
  * The connector servlet for all servlet 3.0 containers.
@@ -57,7 +58,9 @@ class Servlet30ConnectorServlet extends HttpServlet {
   }
 
   override def service(hsRequest: HttpServletRequest, hsResponse: HttpServletResponse): Unit = {
-    def request = "%s request to '%s'" format (hsRequest.getMethod, ModelConverter.rebuildUri(hsRequest))
+    def request = "%s request to '%s'" format (
+      hsRequest.getMethod,
+      Try(ModelConverter.rebuildUri(hsRequest)).getOrElse(hsRequest.getRequestURL))
     try {
       val request = ModelConverter.toHttpRequest(hsRequest)
       val responder = new Responder(hsRequest, hsResponse, request)
@@ -87,10 +90,14 @@ class Servlet30ConnectorServlet extends HttpServlet {
     asyncContext.setTimeout(settings.requestTimeout.toMillis)
     asyncContext.addListener {
       new AsyncListener {
-        def onTimeout(event: AsyncEvent): Unit = {
-          handleTimeout(hsResponse, req)
-          asyncContext.complete()
-        }
+        def onTimeout(event: AsyncEvent): Unit =
+          if (state.compareAndSet(OPEN, COMPLETED)) {
+            handleTimeout(hsResponse, req)
+            asyncContext.complete()
+          }
+        // Ignore other possible cases:
+        // STARTED: chunked response was already started => we ignore the timeout
+        // COMPLETED: the response was completed directly before or in parallel with the timeout
         def onError(event: AsyncEvent): Unit = {
           event.getThrowable match {
             case null ⇒ log.error("Unspecified Error during async processing of {}", req)

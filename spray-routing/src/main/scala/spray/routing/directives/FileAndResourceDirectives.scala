@@ -156,7 +156,7 @@ trait FileAndResourceDirectives {
           }
         }
         if (dirs.isEmpty) reject
-        else complete(DirectoryListing(withTrailingSlash(fileSystemPath("/", path)), dirs.flatMap(_.listFiles)))
+        else complete(DirectoryListing(withTrailingSlash(fileSystemPath("/", path, '/')), dirs.flatMap(_.listFiles)))
       }
     }
 

@@ -37,7 +37,7 @@ private[parser] trait CommonActions {
       }
       case mainLower ⇒
         val registered = if (parameters.isEmpty) MediaTypes.getForKey((mainLower, subType.toLowerCase)) else None
-        registered getOrElse MediaType.custom(mainType, subType, parameters = parameters)
+        registered getOrElse MediaType.custom(mainType, subType, parameters = parameters, allowArbitrarySubtypes = true)
     }
   }
 

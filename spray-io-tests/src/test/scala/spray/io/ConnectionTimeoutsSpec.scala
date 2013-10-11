@@ -80,5 +80,27 @@ class ConnectionTimeoutsSpec extends Specification with Specs2PipelineStageTest 
       connectionActor ! TickGenerator.Tick
       commands.expectMsg(Tcp.Abort)
     }
+    "restart the idle timer when write is pending and data is received" in new Fixture(stage) {
+      Thread.sleep(210)
+
+      val write = Tcp.Write(testData)
+      connectionActor ! write
+      connectionActor ! TickGenerator.Tick
+      commands.expectMsg(write)
+      commands.expectNoMsg(210.millis)
+      connectionActor ! TickGenerator.Tick
+      commands.expectMsg(ConnectionTimeouts.TestWrite)
+      commands.expectNoMsg(100.millis)
+
+      // former write is still pending
+      connectionActor ! Tcp.Received(testData)
+      commands.expectNoMsg(110.millis)
+
+      // still no timeout because former write is still pending
+      connectionActor ! ConnectionTimeouts.NoWritePending
+      commands.expectNoMsg(210.millis)
+      connectionActor ! TickGenerator.Tick
+      commands.expectMsg(Tcp.Abort)
+    }
   }
 }

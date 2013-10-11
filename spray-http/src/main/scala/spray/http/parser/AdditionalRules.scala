@@ -45,4 +45,13 @@ private[parser] trait AdditionalRules {
   def AuthParam = rule {
     Token ~ "=" ~ (Token | QuotedString) ~~> ((_, _))
   }
+
+  def originListOrNull: Rule1[Seq[HttpOrigin]] = rule {
+    "null" ~ push(Nil: Seq[HttpOrigin]) |
+      oneOrMore(origin)
+  }
+
+  def origin: Rule1[HttpOrigin] = rule {
+    oneOrMore(!LWS ~ ANY) ~> (HttpOrigin(_)) // offload to URL parser
+  }
 }

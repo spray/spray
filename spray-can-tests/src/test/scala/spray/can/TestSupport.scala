@@ -24,6 +24,7 @@ import HttpHeaders._
 import MediaTypes._
 
 object TestSupport {
+  val ServerOnTheMove = StatusCodes.registerCustom(330, "Server on the move")
 
   def defaultParserSettings = ParserSettings(ConfigFactory.load())
 

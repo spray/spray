@@ -48,7 +48,8 @@ private[parser] trait CORSHeaders {
   }
 
   def `*Access-Control-Allow-Origin` = rule {
-    oneOrMore(Text) ~> (`Access-Control-Allow-Origin`(_)) ~ EOI
+    ("*" ~ push(AllOrigins) | originListOrNull ~~> SomeOrigins.apply) ~ EOI ~~>
+      (`Access-Control-Allow-Origin`(_))
   }
 
   def `*Access-Control-Expose-Headers` = rule {
@@ -65,7 +66,7 @@ private[parser] trait CORSHeaders {
   }
 
   def `*Origin` = rule {
-    oneOrMore(Text) ~> { uri ⇒ Origin(Uri.parseAbsolute(uri)) } ~ EOI
+    originListOrNull ~ EOI ~~> (Origin(_))
   }
 
   def HttpMethodDef = rule {
