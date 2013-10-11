@@ -20,8 +20,6 @@ import shapeless.HNil
 import spray.httpx.marshalling.marshalUnsafe
 import spray.httpx.unmarshalling.FromStringDeserializers.HexInt
 import spray.http._
-import scala.xml.NodeSeq
-import spray.routing.directives.FieldDefMagnet
 
 class FormFieldDirectivesSpec extends RoutingSpec {
 
@@ -40,6 +38,8 @@ class FormFieldDirectivesSpec extends RoutingSpec {
       "age" -> BodyPart(marshalUnsafe(<int>42</int>)),
       "VIP" -> BodyPart(HttpEntity(MediaTypes.`text/html`, "<b>yes</b>")))
   }
+  val multipartFormWithFile = MultipartFormData(Seq(
+    BodyPart(marshalUnsafe(<int>42</int>), Seq(HttpHeaders.`Content-Disposition`("form-data", Map("filename" -> "age.xml", "name" -> "file"))))))
 
   "The 'formFields' extraction directive" should {
     "properly extract the value of www-urlencoded form fields (using the general HList-based variant)" in {
@@ -76,6 +76,13 @@ class FormFieldDirectivesSpec extends RoutingSpec {
           complete(firstName + age + sex + vip)
         }
       } ~> check { responseAs[String] === "Mike<int>42</int>None<b>yes</b>" }
+    }
+    "extract an uploaded FormFile from multipart form fields" in {
+      Get("/", multipartFormWithFile) ~> {
+        formFields('file.as[FormFile]) { file ⇒
+          complete(s"type ${file.entity.contentType.mediaRange} length ${file.entity.data.length} filename ${file.name.get}")
+        }
+      } ~> check { responseAs[String] === "type text/xml length 13 filename age.xml" }
     }
     "reject the request with a MissingFormFieldRejection if a required form field is missing" in {
       Get("/", urlEncodedForm) ~> {

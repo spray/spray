@@ -28,7 +28,9 @@ class FormFieldSpec extends Specification {
   val formData =
     FormData(Map("surname" -> "Smith", "age" -> "42"))
   val multipartFormData =
-    MultipartFormData(Map("surname" -> BodyPart("Smith"), "age" -> BodyPart(marshal(<int>42</int>).get)))
+    MultipartFormData(Seq(
+      BodyPart("Smith", Seq(HttpHeaders.`Content-Disposition`("form-data", Map("name" -> "surname")))),
+      BodyPart(marshal(<int>42</int>).get, Seq(HttpHeaders.`Content-Disposition`("form-data", Map("filename" -> "age.xml", "name" -> "age"))))))
 
   "The FormField infrastructure" should {
     "properly allow access to the fields of www-urlencoded forms" in {
