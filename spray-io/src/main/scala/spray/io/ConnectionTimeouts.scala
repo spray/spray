@@ -74,7 +74,8 @@ object ConnectionTimeouts {
             case cmd                        ⇒ commandPL(cmd)
           }
           def eventPipeline = {
-            case r: Tcp.Received          ⇒ resetDeadline(); outer.eventPipeline(r)
+            // case Tcp.Received not necessary because we are just waiting for the TestWrite acknowledgements in this state.
+            // Receiving the acknowledgement will reset the timeout in any case.
             case CommandFailed(TestWrite) ⇒ become(atWork(writePossiblyPending = true)) // there's a write still pending
             case NoWritePending           ⇒ become(atWork(writePossiblyPending = false))
             case tick @ TickGenerator.Tick ⇒ // happens only if connection actor is too busy to react

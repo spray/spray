@@ -26,6 +26,7 @@ import HttpHeaders._
 import HttpMethods._
 import HttpProtocols._
 import MediaTypes._
+import spray.can.TestSupport
 
 class ResponseRendererSpec extends mutable.Specification with DataTables {
 
@@ -92,6 +93,17 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
             |Content-Length: 23
             |
             |Small f*ck up overhere!"""
+        } -> false
+      }
+
+      "a response with a custom status code, no headers and no body" in new TestSetup() {
+        render(HttpResponse(TestSupport.ServerOnTheMove)) === result {
+          """HTTP/1.1 330 Server on the move
+            |Server: spray-can/1.0.0
+            |Date: Thu, 25 Aug 2011 09:10:29 GMT
+            |Content-Length: 0
+            |
+            |"""
         } -> false
       }
 

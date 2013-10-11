@@ -61,7 +61,7 @@ object ModelConverter {
   def rebuildUri(hsRequest: HttpServletRequest)(implicit settings: ConnectorSettings, log: LoggingAdapter): Uri = {
     val buffer = addQueryString(hsRequest, hsRequest.getRequestURL())
     try {
-      val uri = Uri(buffer.toString)
+      val uri = Uri(buffer.toString, settings.uriParsingMode)
       if (settings.rootPath.isEmpty) uri
       else if (uri.path.startsWith(settings.rootPath)) uri.copy(path = uri.path.dropChars(settings.rootPathCharCount))
       else {

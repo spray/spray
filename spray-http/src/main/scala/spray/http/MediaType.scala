@@ -169,9 +169,9 @@ object MediaType {
    */
   def custom(mainType: String, subType: String, compressible: Boolean = false, binary: Boolean = false,
              fileExtensions: Seq[String] = Nil, parameters: Map[String, String] = Map.empty,
-             qValue: Double = Double.NaN): MediaType = {
+             qValue: Double = Double.NaN, allowArbitrarySubtypes: Boolean = false): MediaType = {
     require(mainType != "multipart", "Cannot create a MultipartMediaType here, use `multipart.apply` instead!")
-    require(subType != "*", "Cannot create a MediaRange here, use `MediaRange.custom` instead!")
+    require(allowArbitrarySubtypes || subType != "*", "Cannot create a MediaRange here, use `MediaRange.custom` instead!")
     val (value, params, q) = prepare(mainType, subType, parameters, qValue)
     new NonMultipartMediaType(value, mainType, subType, compressible, binary, fileExtensions, params, q) with MainTypeBased
   }

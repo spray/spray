@@ -166,6 +166,10 @@ class HttpHeaderParserSpec extends Specification {
       parseAndCache("Host: spray.io:123\r\nx")("HOST: spray.io:123\r\nx") === Host("spray.io", 123)
     }
 
+    "parse and cache an invalid modelled header as RawHeader" in new TestSetup() {
+      parseAndCache("Content-Type: abc:123\r\nx")() === RawHeader("Content-Type", "abc:123")
+    }
+
     "parse and cache a raw header" in new TestSetup(primed = false) {
       insert("hello: bob", 'Hello)
       val (ixA, headerA) = parseLine("Fancy-Pants: foo\r\nx")

@@ -38,7 +38,7 @@ private object RenderSupport {
   }
 
   implicit object ChunkedMessageEndRenderer extends Renderer[ChunkedMessageEnd] {
-    implicit val trailerRenderer = Renderer.seqRenderer[Renderable, HttpHeader](CrLf)
+    implicit val trailerRenderer = Renderer.genericSeqRenderer[Renderable, HttpHeader](CrLf, Rendering.Empty)
     def render[R <: Rendering](r: R, part: ChunkedMessageEnd): r.type = {
       r ~~ '0'
       if (!part.extension.isEmpty) r ~~ ';' ~~ part.extension
