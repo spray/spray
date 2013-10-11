@@ -58,9 +58,22 @@ class HttpHeaderSpec extends Specification {
           "Accept-Charset: UTF-8, *")
     }
 
+    "Access-Control-Allow-Credentials" in {
+      "Access-Control-Allow-Credentials: true" =!= `Access-Control-Allow-Credentials`(allow = true)
+    }
+
+    "Access-Control-Allow-Headers" in {
+      "Access-Control-Allow-Headers: Accept, X-My-Header" =!= `Access-Control-Allow-Headers`("Accept", "X-My-Header")
+    }
+
+    "Access-Control-Allow-Methods" in {
+      "Access-Control-Allow-Methods: GET, POST" =!= `Access-Control-Allow-Methods`(GET, POST)
+    }
+
     "Access-Control-Allow-Origin" in {
-      "Access-Control-Allow-Origin: *" =!= `Access-Control-Allow-Origin`("*")
-      "Access-Control-Allow-Origin: http://spray.io" =!= `Access-Control-Allow-Origin`("http://spray.io")
+      "Access-Control-Allow-Origin: *" =!= `Access-Control-Allow-Origin`(AllOrigins)
+      "Access-Control-Allow-Origin: null" =!= `Access-Control-Allow-Origin`(SomeOrigins(Nil))
+      "Access-Control-Allow-Origin: http://spray.io" =!= `Access-Control-Allow-Origin`(SomeOrigins(Seq("http://spray.io")))
     }
 
     "Access-Control-Expose-Headers" in {
@@ -71,24 +84,12 @@ class HttpHeaderSpec extends Specification {
       "Access-Control-Max-Age: 3600" =!= `Access-Control-Max-Age`(3600)
     }
 
-    "Access-Control-Allow-Credentials" in {
-      "Access-Control-Allow-Credentials: true" =!= `Access-Control-Allow-Credentials`(allow = true)
-    }
-
-    "Access-Control-Allow-Methods" in {
-      "Access-Control-Allow-Methods: GET, POST" =!= `Access-Control-Allow-Methods`(GET, POST)
-    }
-
-    "Access-Control-Allow-Headers" in {
-      "Access-Control-Allow-Headers: Accept, X-My-Header" =!= `Access-Control-Allow-Headers`("Accept", "X-My-Header")
+    "Access-Control-Request-Headers" in {
+      "Access-Control-Request-Headers: Accept, X-My-Header" =!= `Access-Control-Request-Headers`("Accept", "X-My-Header")
     }
 
     "Access-Control-Request-Method" in {
       "Access-Control-Request-Method: POST" =!= `Access-Control-Request-Method`(POST)
-    }
-
-    "Access-Control-Request-Headers" in {
-      "Access-Control-Request-Headers: Accept, X-My-Header" =!= `Access-Control-Request-Headers`("Accept", "X-My-Header")
     }
 
     "Accept-Encoding" in {
@@ -176,6 +177,8 @@ class HttpHeaderSpec extends Specification {
         `Content-Type`(ContentType(`multipart/mixed` withBoundary "ABC123"))
       "Content-Type: multipart/mixed; boundary=\"ABC/123\"" =!=
         `Content-Type`(ContentType(`multipart/mixed` withBoundary "ABC/123"))
+      "Content-Type: application/*" =!=
+        `Content-Type`(ContentType(MediaType.custom("application", "*", allowArbitrarySubtypes = true)))
     }
 
     "Cookie" in {
@@ -218,7 +221,7 @@ class HttpHeaderSpec extends Specification {
     }
 
     "Origin" in {
-      "Origin: http://spray.io" =!= Origin(Uri("http://spray.io"))
+      "Origin: http://spray.io" =!= Origin(Seq("http://spray.io"))
     }
 
     "Proxy-Authenticate" in {

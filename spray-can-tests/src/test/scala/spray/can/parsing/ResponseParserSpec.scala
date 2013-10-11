@@ -27,6 +27,7 @@ import HttpHeaders._
 import HttpMethods._
 import StatusCodes._
 import HttpProtocols._
+import spray.can.TestSupport
 
 class ResponseParserSpec extends Specification {
   val testConf: Config = ConfigFactory.parseString("""
@@ -55,6 +56,15 @@ class ResponseParserSpec extends Specification {
             |
             |"""
         } === Seq(NoContent, "", Nil, `HTTP/1.1`, 'dontClose)
+      }
+
+      "a response with a custom status code" in {
+        parse {
+          """HTTP/1.1 330 Server on the move
+            |Content-Length: 0
+            |
+            |"""
+        } === Seq(TestSupport.ServerOnTheMove, "", List(`Content-Length`(0)), `HTTP/1.1`, 'dontClose)
       }
 
       "a response with one header, a body, but no Content-Length header" in {
@@ -201,7 +211,6 @@ class ResponseParserSpec extends Specification {
       }
 
       "an illegal status code" in {
-        parse("HTTP/1.1 700 Something") === Seq("Illegal response status code")
         parse("HTTP/1.1 2000 Something") === Seq("Illegal response status code")
       }
 

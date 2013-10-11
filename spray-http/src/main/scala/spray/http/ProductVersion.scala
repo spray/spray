@@ -31,6 +31,8 @@ case class ProductVersion(product: String = "", version: String = "", comment: S
 }
 
 object ProductVersion {
+  implicit val productsRenderer: Renderer[Seq[ProductVersion]] = Renderer.seqRenderer[ProductVersion](separator = " ")
+
   def parseMultiple(string: String): Seq[ProductVersion] =
     parser.HttpParser.parse(HttpParser.ProductVersionComments, string) match {
       case Right(x)   ⇒ x

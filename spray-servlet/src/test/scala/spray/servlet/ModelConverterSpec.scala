@@ -40,7 +40,8 @@ class ModelConverterSpec extends Specification with NoTimeConversions {
     verboseErrorMessages = true,
     maxContentLength = 16,
     servletRequestAccess = false,
-    illegalHeaderWarnings = false)
+    illegalHeaderWarnings = false,
+    uriParsingMode = Uri.ParsingMode.Relaxed)
 
   val remoteAddress = `Remote-Address`("127.0.0.7")
   val textPlain = `Content-Type`(ContentTypes.`text/plain`)
@@ -84,6 +85,13 @@ class ModelConverterSpec extends Specification with NoTimeConversions {
         implicit def s = settings
         ModelConverter.toHttpRequest(RequestMock(headers = "Cookie" -> "foo=bar; bar=baz" :: Nil)) ===
           HttpRequest(headers = Cookie(HttpCookie("foo", "bar"), HttpCookie("bar", "baz")) :: Nil)
+      }
+      "example 8" in {
+        implicit def s = settings.copy(uriParsingMode = Uri.ParsingMode.RelaxedWithRawQuery)
+        val queryMock = new RequestMock("https://foo.bar/abc/def") {
+          override def getQueryString: String = "a=1&b=2&b=3=4&c"
+        }
+        ModelConverter.toHttpRequest(queryMock).uri.query === Uri.Query.Raw("a=1&b=2&b=3=4&c")
       }
     }
 

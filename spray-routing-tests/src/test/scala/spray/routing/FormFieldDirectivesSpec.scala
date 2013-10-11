@@ -20,15 +20,25 @@ import shapeless.HNil
 import spray.httpx.marshalling.marshalUnsafe
 import spray.httpx.unmarshalling.FromStringDeserializers.HexInt
 import spray.http._
+import scala.xml.NodeSeq
+import spray.routing.directives.FieldDefMagnet
 
 class FormFieldDirectivesSpec extends RoutingSpec {
 
   val nodeSeq: xml.NodeSeq = <b>yes</b>
   val urlEncodedForm = FormData(Map("firstName" -> "Mike", "age" -> "42"))
+  val urlEncodedFormWithVip = FormData(Map("firstName" -> "Mike", "age" -> "42", "VIP" -> "true"))
   val multipartForm = MultipartFormData {
     Map(
       "firstName" -> BodyPart("Mike"),
-      "age" -> BodyPart(marshalUnsafe(<int>42</int>)))
+      "age" -> BodyPart(marshalUnsafe(<int>42</int>)),
+      "VIPBoolean" -> BodyPart("true"))
+  }
+  val multipartFormWithTextHtml = MultipartFormData {
+    Map(
+      "firstName" -> BodyPart("Mike"),
+      "age" -> BodyPart(marshalUnsafe(<int>42</int>)),
+      "VIP" -> BodyPart(HttpEntity(MediaTypes.`text/html`, "<b>yes</b>")))
   }
 
   "The 'formFields' extraction directive" should {
@@ -74,24 +84,36 @@ class FormFieldDirectivesSpec extends RoutingSpec {
         }
       } ~> check { rejection === MissingFormFieldRejection("sex") }
     }
+    "properly extract the value if only a urlencoded deserializer is available for a multipart field that comes without a" +
+      "Content-Type (or text/plain)" in {
+        Get("/", multipartForm) ~> {
+          formFields('firstName, "age", 'sex?, "VIPBoolean" ? false) { (firstName, age, sex, vip) ⇒
+            complete(firstName + age + sex + vip)
+          }
+        } ~> check {
+          responseAs[String] === "Mike<int>42</int>Nonetrue"
+        }
+      }
+    "create a proper error message if only a urlencoded deserializer is available for a multipart field with custom " +
+      "Content-Type" in {
+        Get("/", multipartFormWithTextHtml) ~> {
+          formFields(('firstName, "age", 'VIP ? false)) { (firstName, age, vip) ⇒
+            complete(firstName + age + vip)
+          }
+        } ~> check {
+          rejection === UnsupportedRequestContentTypeRejection("Field 'VIP' can only be read from " +
+            "'application/x-www-form-urlencoded' form content but was 'text/html'")
+        }
+      }
     "create a proper error message if only a multipart unmarshaller is available for a www-urlencoded field" in {
-      Get("/", urlEncodedForm) ~> {
+      Get("/", urlEncodedFormWithVip) ~> {
         formFields('firstName, "age", 'sex?, "VIP" ? nodeSeq) { (firstName, age, sex, vip) ⇒
           complete(firstName + age + sex + vip)
         }
       } ~> check {
-        rejection === UnsupportedRequestContentTypeRejection("Field 'VIP' can only be read from " +
-          "'multipart/form-data' form content")
-      }
-    }
-    "create a proper error message if only a urlencoded deserializer is available for a multipart field" in {
-      Get("/", multipartForm) ~> {
-        formFields('firstName, "age", 'sex?, "VIP" ? false) { (firstName, age, sex, vip) ⇒
-          complete(firstName + age + sex + vip)
-        }
-      } ~> check {
-        rejection === UnsupportedRequestContentTypeRejection("Field 'VIP' can only be read from " +
-          "'application/x-www-form-urlencoded' form content")
+        rejection === UnsupportedRequestContentTypeRejection("Expected 'text/xml' or 'application/xml' or 'text/html' " +
+          "or 'application/xhtml+xml' but tried to read from application/x-www-form-urlencoded encoded " +
+          "field 'VIP' which provides only text/plain values.")
       }
     }
   }

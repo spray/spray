@@ -51,7 +51,17 @@ class UrlEncodedFormField(val name: String, val rawValue: Option[String]) extend
   type Raw = String
   def as[T](implicit ffc: FormFieldConverter[T]) = ffc.urlEncodedFieldConverter match {
     case Some(conv) ⇒ conv(rawValue)
-    case None       ⇒ fail(name, "multipart/form-data")
+    case None ⇒
+      ffc.multipartFieldConverter match {
+        case Some(conv) ⇒
+          conv(rawValue.map(HttpEntity(_))) match {
+            case Left(UnsupportedContentType(msg)) ⇒
+              Left(UnsupportedContentType(msg + " but tried to read from application/x-www-form-urlencoded encoded field '" +
+                name + "' which provides only text/plain values."))
+            case x ⇒ x
+          }
+        case None ⇒ fail(name, "multipart/form-data")
+      }
   }
 }
 
@@ -59,7 +69,19 @@ class MultipartFormField(val name: String, val rawValue: Option[BodyPart]) exten
   type Raw = BodyPart
   def as[T](implicit ffc: FormFieldConverter[T]) = ffc.multipartFieldConverter match {
     case Some(conv) ⇒ conv(rawValue.map(_.entity))
-    case None       ⇒ fail(name, "application/x-www-form-urlencoded")
+    case None ⇒
+      ffc.urlEncodedFieldConverter match {
+        case Some(conv) ⇒
+          rawValue match {
+            case Some(BodyPart(HttpEntity.NonEmpty(tpe, data), _)) if tpe.mediaRange.matches(MediaTypes.`text/plain`) ⇒
+              conv(Some(data.asString))
+            case None | Some(BodyPart(HttpEntity.Empty, _)) ⇒ conv(None)
+            case Some(BodyPart(HttpEntity.NonEmpty(tpe, _), _)) ⇒
+              Left(UnsupportedContentType("Field '" + name + "' can only be read from " +
+                "'application/x-www-form-urlencoded' form content but was '" + tpe.mediaRange + '\''))
+          }
+        case None ⇒ fail(name, "application/x-www-form-urlencoded")
+      }
   }
 }
 

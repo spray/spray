@@ -4,9 +4,9 @@
 
 package akka.io
 
-import java.io.IOException
 import java.nio.channels.{ SelectionKey, SocketChannel }
 import scala.collection.immutable
+import akka.util.NonFatal
 import akka.util.duration._
 import akka.actor.{ ReceiveTimeout, ActorRef }
 import akka.io.Inet.SocketOption
@@ -41,7 +41,7 @@ private[io] class TcpOutgoingConnection(_tcp: TcpExt,
     try {
       thunk
     } catch {
-      case e: IOException ⇒
+      case NonFatal(e) ⇒
         log.debug("Could not establish connection to [{}] due to {}", remoteAddress, e)
         stop()
     }

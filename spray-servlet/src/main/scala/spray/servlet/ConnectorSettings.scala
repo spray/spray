@@ -31,7 +31,8 @@ case class ConnectorSettings(
     verboseErrorMessages: Boolean,
     maxContentLength: Long,
     servletRequestAccess: Boolean,
-    illegalHeaderWarnings: Boolean) {
+    illegalHeaderWarnings: Boolean,
+    uriParsingMode: Uri.ParsingMode) {
 
   require(!bootClass.isEmpty,
     "No boot class configured. Please specify a boot class FQN in the spray.servlet.boot-class config setting.")
@@ -53,5 +54,6 @@ object ConnectorSettings extends SettingsCompanion[ConnectorSettings]("spray.ser
     c getBoolean "verbose-error-messages",
     c getBytes "max-content-length",
     c getBoolean "servlet-request-access",
-    c getBoolean "illegal-header-warnings")
+    c getBoolean "illegal-header-warnings",
+    Uri.ParsingMode(c getString "uri-parsing-mode"))
 }

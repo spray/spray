@@ -94,7 +94,7 @@ class GzipDecompressor extends DeflateDecompressor {
         val x = buffer(off)
         off += 1
         x.toInt & 0xFF
-      } else fail("Unexpected end of data")
+      } else fail("Unexpected end of data offset: " + off + " length: " + buffer.length)
     }
     def readShort(): Int = readByte() | (readByte() << 8)
     def readInt(): Int = readShort() | (readShort() << 16)

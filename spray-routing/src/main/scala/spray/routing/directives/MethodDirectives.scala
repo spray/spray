@@ -97,6 +97,7 @@ trait MethodDirectives {
 
 object MethodDirectives extends MethodDirectives {
   // format: OFF
+  //# source-quote
   private val _delete : Directive0 = method(DELETE)
   private val _get    : Directive0 = method(GET)
   private val _head   : Directive0 = method(HEAD)
@@ -104,5 +105,6 @@ object MethodDirectives extends MethodDirectives {
   private val _patch  : Directive0 = method(PATCH)
   private val _post   : Directive0 = method(POST)
   private val _put    : Directive0 = method(PUT)
+  //#
   // format: ON
 }

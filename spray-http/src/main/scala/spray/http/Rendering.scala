@@ -81,8 +81,9 @@ object Renderer {
         if (value.isEmpty) sRenderer.render(r, defaultValue) else tRenderer.render(r, value.get)
     }
 
-  def defaultSeqRenderer[T: Renderer] = seqRenderer[Renderable, T](Rendering.`, `)
-  def seqRenderer[S, T](separator: S)(implicit sRenderer: Renderer[S], tRenderer: Renderer[T]) =
+  def defaultSeqRenderer[T: Renderer] = genericSeqRenderer[Renderable, T](Rendering.`, `, Rendering.Empty)
+  def seqRenderer[T: Renderer](separator: String = ", ", empty: String = "") = genericSeqRenderer[String, T](separator, empty)
+  def genericSeqRenderer[S, T](separator: S, empty: S)(implicit sRenderer: Renderer[S], tRenderer: Renderer[T]) =
     new Renderer[Seq[T]] {
       def render[R <: Rendering](r: R, value: Seq[T]): R = {
         @tailrec def recI(values: IndexedSeq[T], ix: Int = 0): R =
@@ -100,6 +101,7 @@ object Renderer {
           } else r
 
         value match {
+          case Nil              ⇒ r ~~ empty
           case x: IndexedSeq[T] ⇒ recI(x)
           case x: LinearSeq[T]  ⇒ recL(x)
           case x                ⇒ sys.error("Unsupported Seq type: " + x)
@@ -186,6 +188,9 @@ object Rendering {
   val `\"` = CharPredicate('\\', '"')
 
   case object `, ` extends SingletonValueRenderable // default separator
+  case object Empty extends Renderable {
+    def render[R <: Rendering](r: R): r.type = r
+  }
 
   case object CrLf extends Renderable {
     def render[R <: Rendering](r: R): R = r ~~ '\r' ~~ '\n'

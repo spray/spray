@@ -93,7 +93,10 @@ private object ResponseParsing {
           def processReceivedData(data: ByteString): Unit =
             try handleParsingResult(parser(data))
             catch {
-              case NonFatal(e) ⇒ handleError(ErrorInfo(e.getMessage.nullAsEmpty))
+              case NonFatal(e) ⇒
+                handleError(ErrorInfo(
+                  "Invalid response",
+                  e.getMessage.nullAsEmpty))
             }
 
           def handleError(info: ErrorInfo): Unit = {

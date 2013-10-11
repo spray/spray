@@ -16,6 +16,7 @@
 
 package spray.httpx.marshalling
 
+import scala.util.control.NonFatal
 import akka.actor.ActorRef
 import spray.http._
 
@@ -31,15 +32,23 @@ object Marshaller extends BasicMarshallers
 
   def apply[T](f: (T, MarshallingContext) ⇒ Unit): Marshaller[T] =
     new Marshaller[T] {
-      def apply(value: T, ctx: MarshallingContext): Unit = f(value, ctx)
+      def apply(value: T, ctx: MarshallingContext): Unit =
+        try f(value, ctx)
+        catch {
+          case NonFatal(e) ⇒ ctx.handleError(e)
+        }
     }
 
   def of[T](marshalTo: ContentType*)(f: (T, ContentType, MarshallingContext) ⇒ Unit): Marshaller[T] =
     new Marshaller[T] {
       def apply(value: T, ctx: MarshallingContext): Unit =
-        ctx.tryAccept(marshalTo) match {
-          case Some(contentType) ⇒ f(value, contentType, ctx)
-          case None              ⇒ ctx.rejectMarshalling(marshalTo)
+        try {
+          ctx.tryAccept(marshalTo) match {
+            case Some(contentType) ⇒ f(value, contentType, ctx)
+            case None              ⇒ ctx.rejectMarshalling(marshalTo)
+          }
+        } catch {
+          case NonFatal(e) ⇒ ctx.handleError(e)
         }
     }
 
@@ -78,15 +87,23 @@ object ToResponseMarshaller extends LowPriorityToResponseMarshallerImplicits wit
 
   def apply[T](f: (T, ToResponseMarshallingContext) ⇒ Unit): ToResponseMarshaller[T] =
     new ToResponseMarshaller[T] {
-      def apply(value: T, ctx: ToResponseMarshallingContext): Unit = f(value, ctx)
+      def apply(value: T, ctx: ToResponseMarshallingContext): Unit =
+        try f(value, ctx)
+        catch {
+          case NonFatal(e) ⇒ ctx.handleError(e)
+        }
     }
 
   def of[T](marshalTo: ContentType*)(f: (T, ContentType, ToResponseMarshallingContext) ⇒ Unit): ToResponseMarshaller[T] =
     new ToResponseMarshaller[T] {
       def apply(value: T, ctx: ToResponseMarshallingContext): Unit =
-        ctx.tryAccept(marshalTo) match {
-          case Some(contentType) ⇒ f(value, contentType, ctx)
-          case None              ⇒ ctx.rejectMarshalling(marshalTo)
+        try {
+          ctx.tryAccept(marshalTo) match {
+            case Some(contentType) ⇒ f(value, contentType, ctx)
+            case None              ⇒ ctx.rejectMarshalling(marshalTo)
+          }
+        } catch {
+          case NonFatal(e) ⇒ ctx.handleError(e)
         }
     }
 

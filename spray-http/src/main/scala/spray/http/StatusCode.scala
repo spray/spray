@@ -28,21 +28,23 @@ sealed abstract class StatusCode extends LazyValueBytesRenderable {
 
 object StatusCode {
   import StatusCodes._
-  implicit def int2StatusCode(code: Int): StatusCode = getForKey(code) getOrElse InternalServerError
-}
-
-sealed abstract class HttpSuccess extends StatusCode {
-  def isSuccess = true
-  def isFailure = false
-}
-sealed abstract class HttpFailure extends StatusCode {
-  def isSuccess = false
-  def isFailure = true
-  def allowsEntity = true
+  implicit def int2StatusCode(code: Int): StatusCode =
+    getForKey(code).getOrElse(
+      throw new RuntimeException(
+        "Non-standard status codes cannot be created by implicit conversion. Use `StatusCodes.custom` instead."))
 }
 
 object StatusCodes extends ObjectRegistry[Int, StatusCode] {
-  
+  sealed protected abstract class HttpSuccess extends StatusCode {
+    def isSuccess = true
+    def isFailure = false
+  }
+  sealed protected abstract class HttpFailure extends StatusCode {
+    def isSuccess = false
+    def isFailure = true
+    def allowsEntity = true
+  }
+
   // format: OFF
   case class Informational private[StatusCodes] (intValue: Int)(val reason: String,
                                                                 val defaultMessage: String) extends HttpSuccess { def allowsEntity = false }
@@ -52,8 +54,39 @@ object StatusCodes extends ObjectRegistry[Int, StatusCode] {
                                                                 val htmlTemplate: String, val allowsEntity: Boolean = true) extends HttpSuccess
   case class ClientError   private[StatusCodes] (intValue: Int)(val reason: String, val defaultMessage: String) extends HttpFailure
   case class ServerError   private[StatusCodes] (intValue: Int)(val reason: String, val defaultMessage: String) extends HttpFailure
-  
-  private def reg[T <: StatusCode](code: T): T = register(code.intValue, code)
+
+  case class CustomStatusCode private[StatusCodes] (intValue: Int)(
+    val reason: String,
+    val defaultMessage: String,
+    val isSuccess: Boolean,
+    val allowsEntity: Boolean) extends StatusCode {
+    def isFailure: Boolean = !isSuccess
+  }
+
+  private def reg[T <: StatusCode](code: T): T = {
+    require(getForKey(code.intValue).isEmpty, "Status code for " + code.intValue + " already registered as '" + getForKey(code.intValue).get + "'.")
+
+    register(code.intValue, code)
+  }
+
+  /**
+   * Create and register a custom status code and allow full customization of behavior. The value of `allowsEntity`
+   * changes the parser behavior: If it is set to true, a response with this status code is required to include a
+   * `Content-Length` header to be parsed correctly when keep-alive is enabled (which is the default in HTTP/1.1).
+   * If `allowsEntity` is false, an entity is never expected.
+   */
+  def registerCustom(intValue: Int, reason: String, defaultMessage: String, isSuccess: Boolean, allowsEntity: Boolean): StatusCode =
+    reg(CustomStatusCode(intValue)(reason, defaultMessage, isSuccess, allowsEntity))
+
+  /** Create and register a custom status code with default behavior for its value region. */
+  def registerCustom(intValue: Int, reason: String, defaultMessage: String = ""): StatusCode = reg (
+    if (100 to 199 contains intValue) Informational(intValue)(reason, defaultMessage)
+    else if (200 to 299 contains intValue) Success(intValue)(reason, defaultMessage)
+    else if (300 to 399 contains intValue) Redirection(intValue)(reason, defaultMessage, defaultMessage)
+    else if (400 to 499 contains intValue) ClientError(intValue)(reason, defaultMessage)
+    else if (500 to 599 contains intValue) ServerError(intValue)(reason, defaultMessage)
+    else sys.error("Can't register status code in non-standard region without additional information")
+  )
   
   import Informational.{apply => i}
   import Success      .{apply => s}
