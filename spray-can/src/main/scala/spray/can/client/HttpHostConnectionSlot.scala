@@ -89,9 +89,8 @@ private class HttpHostConnectionSlot(host: String, port: Int,
   def connected(httpConnection: ActorRef, openRequests: Queue[RequestContext],
                 closeAfterResponseEnd: Boolean = false): Receive = {
     case part: HttpResponsePart if openRequests.nonEmpty ⇒
-      val RequestContext(request, _, commander) = openRequests.head
-      if (log.isDebugEnabled) log.debug("Delivering {} for {}", formatResponse(part), format(request))
-      commander ! part
+      dispatchToCommander(openRequests.head, part)
+
       def handleResponseCompletion(closeAfterResponseEnd: Boolean): Unit = {
         context.parent ! RequestCompleted
         context.become {
@@ -189,9 +188,10 @@ private class HttpHostConnectionSlot(host: String, port: Int,
       log.warning("{} in response to {} with {} retries left, retrying...", error.getMessage, format(request), retriesLeft)
       context.parent ! ctx.copy(retriesLeft = retriesLeft - 1)
 
-    case RequestContext(request, _, commander) ⇒
-      log.warning("{} in response to {} with no retries left, dispatching error...", error.getMessage, format(request))
-      commander ! Status.Failure(error)
+    case ctx: RequestContext ⇒
+      log.warning("{} in response to {} with no retries left, dispatching error...", error.getMessage, format(ctx.request))
+
+      dispatchToCommander(ctx, Status.Failure(error))
   }
 
   def dispatchToServer(httpConnection: ActorRef)(ctx: RequestContext): Unit = {
@@ -199,7 +199,13 @@ private class HttpHostConnectionSlot(host: String, port: Int,
     httpConnection ! ctx.request
   }
 
-  def format(part: HttpMessagePart) = part match {
+  def dispatchToCommander(requestContext: RequestContext, message: Any): Unit = {
+    val RequestContext(request, _, commander) = requestContext
+    if (log.isDebugEnabled) log.debug("Delivering {} for {}", formatResponse(message), format(request))
+    commander ! message
+  }
+
+  def format(part: HttpMessagePart): String = part match {
     case x: HttpRequestPart with HttpMessageStart ⇒
       val request = x.message.asInstanceOf[HttpRequest]
       s"${request.method} request to ${request.uri}"
@@ -207,10 +213,11 @@ private class HttpHostConnectionSlot(host: String, port: Int,
     case x                     ⇒ x.toString
   }
 
-  def formatResponse(part: HttpResponsePart) = part match {
+  def formatResponse(response: Any): String = response match {
     case HttpResponse(status, _, _, _) ⇒ status.value.toString + " response"
     case ChunkedResponseStart(HttpResponse(status, _, _, _)) ⇒ status.value.toString + " response start"
     case MessageChunk(body, _) ⇒ body.length.toString + " byte response chunk"
+    case Status.Failure(_) ⇒ "Status.Failure"
     case x ⇒ x.toString
   }
 }
