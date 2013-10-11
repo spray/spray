@@ -124,6 +124,11 @@ trait FormDataUnmarshallers {
         case error ⇒ Left(error)
       }
     }
+
+  implicit def liftFromEntityOptionUnmarshaller[T](implicit feou: FromEntityOptionUnmarshaller[T]): FromBodyPartOptionUnmarshaller[T] =
+    new FromBodyPartOptionUnmarshaller[T] {
+      def apply(part: Option[BodyPart]): Deserialized[T] = feou(part.map(_.entity))
+    }
 }
 
 object FormDataUnmarshallers extends FormDataUnmarshallers

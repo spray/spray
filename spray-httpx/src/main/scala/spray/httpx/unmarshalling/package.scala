@@ -25,6 +25,7 @@ package object unmarshalling {
   type FromStringOptionDeserializer[T] = Deserializer[Option[String], T]
   type Unmarshaller[T] = Deserializer[HttpEntity, T]
   type FromEntityOptionUnmarshaller[T] = Deserializer[Option[HttpEntity], T]
+  type FromBodyPartOptionUnmarshaller[T] = Deserializer[Option[BodyPart], T]
   type FromMessageUnmarshaller[T] = Deserializer[HttpMessage, T]
   type FromRequestUnmarshaller[T] = Deserializer[HttpRequest, T]
   type FromResponseUnmarshaller[T] = Deserializer[HttpResponse, T]

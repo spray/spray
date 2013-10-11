@@ -63,7 +63,7 @@ object FieldDefMagnet2 {
 trait FieldDefMagnetAux[A, B] extends (A ⇒ B)
 
 object FieldDefMagnetAux extends ToNameReceptaclePimps {
-  import spray.httpx.unmarshalling.{ FromRequestUnmarshaller ⇒ UM, FormFieldConverter ⇒ FFC, FromEntityOptionUnmarshaller ⇒ FEOU, _ }
+  import spray.httpx.unmarshalling.{ FromRequestUnmarshaller ⇒ UM, FormFieldConverter ⇒ FFC, FromBodyPartOptionUnmarshaller ⇒ FBPOU, _ }
   import BasicDirectives._
   import RouteDirectives._
 
@@ -84,7 +84,7 @@ object FieldDefMagnetAux extends ToNameReceptaclePimps {
     extractField[String, String](string ⇒ filter(string))
   implicit def forSymbol(implicit ev1: UM[HttpForm], ev2: FFC[String]) =
     extractField[Symbol, String](symbol ⇒ filter(symbol))
-  implicit def forNDesR[T](implicit ev1: UM[HttpForm], ev2: FEOU[T] = null) =
+  implicit def forNDesR[T](implicit ev1: UM[HttpForm], ev2: FBPOU[T] = null) =
     extractField[NameDeserializerReceptacle[T], T] { ndr ⇒
       filter(NameReceptacle[T](ndr.name))(ev1, FFC.fromFSOD(ndr.deserializer))
     }
@@ -92,7 +92,7 @@ object FieldDefMagnetAux extends ToNameReceptaclePimps {
     extractField[NameDefaultReceptacle[T], T] { ndr ⇒
       filter(NameReceptacle[T](ndr.name))(ev1, ev2.withDefault(ndr.default))
     }
-  implicit def forNDesDefR[T](implicit ev1: UM[HttpForm], ev2: FEOU[T] = null) =
+  implicit def forNDesDefR[T](implicit ev1: UM[HttpForm], ev2: FBPOU[T] = null) =
     extractField[NameDeserializerDefaultReceptacle[T], T] { ndr ⇒
       filter(NameReceptacle[T](ndr.name))(ev1, FFC.fromFSOD(ndr.deserializer.withDefaultValue(ndr.default)))
     }
