@@ -22,7 +22,7 @@ import akka.actor.{ ActorRef, Status, ActorSystem }
 import akka.io.IO
 import akka.testkit.TestProbe
 import spray.can.Http
-import spray.can.Http.ClientConnectionType
+import spray.can.Http.{ RegisterChunkHandler, ClientConnectionType }
 import spray.io.ClientSSLEngineProvider
 import spray.util.Utils._
 import spray.httpx.RequestBuilding._
@@ -36,6 +36,7 @@ class SprayCanClientSpec extends Specification {
     akka.loglevel = ERROR
     akka.io.tcp.trace-logging = off
     spray.can.client.request-timeout = 500ms
+    spray.can.server.verbose-error-messages = on
     spray.can.host-connector.max-retries = 1
     spray.can.host-connector.idle-timeout = infinite
     spray.can.host-connector.client.request-timeout = 500ms
@@ -66,10 +67,14 @@ class SprayCanClientSpec extends Specification {
       client.send(clientConnection, Get("/def") ~> Host(hostname, port))
 
       val server = acceptConnection()
+      val chunkHandler = TestProbe()
+
       server.expectMsgType[ChunkedRequestStart].request.uri.path.toString === "/abc"
-      server.expectMsg(MessageChunk("123"))
-      server.expectMsg(MessageChunk("456"))
-      server.expectMsg(ChunkedMessageEnd)
+      server.reply(RegisterChunkHandler(chunkHandler.ref))
+
+      chunkHandler.expectMsg(MessageChunk("123"))
+      chunkHandler.expectMsg(MessageChunk("456"))
+      chunkHandler.expectMsg(ChunkedMessageEnd)
       val firstRequestSender = server.sender
       server.expectMsgType[HttpRequest].uri.path.toString === "/def"
       server.reply(HttpResponse(entity = "ok-def")) // reply to the second request first

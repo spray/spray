@@ -57,6 +57,7 @@ object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.serve
   case class Timeouts(idleTimeout: Duration,
                       requestTimeout: Duration,
                       timeoutTimeout: Duration,
+                      chunkHandlerRegistrationTimeout: Duration,
                       bindTimeout: Duration,
                       unbindTimeout: Duration,
                       registrationTimeout: Duration) {
@@ -81,6 +82,7 @@ object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.serve
       c getDuration "idle-timeout",
       c getDuration "request-timeout",
       c getDuration "timeout-timeout",
+      c getDuration "chunkhandler-registration-timeout",
       c getDuration "bind-timeout",
       c getDuration "unbind-timeout",
       c getDuration "registration-timeout"),
