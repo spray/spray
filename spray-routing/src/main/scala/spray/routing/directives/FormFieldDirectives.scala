@@ -53,21 +53,14 @@ trait FieldDefMagnet2[T] {
   type Out
   def apply(value: T): Out
 }
-object FieldDefMagnet2 {
-  implicit def apply[A, B](implicit fdma: FieldDefMagnetAux[A, B]) = new FieldDefMagnet2[A] {
-    type Out = B
-    def apply(value: A) = fdma(value)
-  }
-}
 
-trait FieldDefMagnetAux[A, B] extends (A ⇒ B)
+object FieldDefMagnet2 extends ToNameReceptaclePimps {
+  type FieldDefMagnetAux[A, B] = FieldDefMagnet2[A] { type Out = B }
+  def FieldDefMagnetAux[A, B](f: A ⇒ B) = new FieldDefMagnet2[A] { type Out = B; def apply(value: A) = f(value) }
 
-object FieldDefMagnetAux extends ToNameReceptaclePimps {
   import spray.httpx.unmarshalling.{ FromRequestUnmarshaller ⇒ UM, FormFieldConverter ⇒ FFC, FromBodyPartOptionUnmarshaller ⇒ FBPOU, _ }
   import BasicDirectives._
   import RouteDirectives._
-
-  def apply[A, B](f: A ⇒ B) = new FieldDefMagnetAux[A, B] { def apply(value: A) = f(value) }
 
   /************ "regular" field extraction ******************/
 
