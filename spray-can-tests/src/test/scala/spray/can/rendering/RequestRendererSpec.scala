@@ -117,6 +117,53 @@ class RequestRendererSpec extends Specification {
              |"""
         }
       }
+      "POST request start with HTTP/1.0" in new TestSetup() {
+        ChunkedRequestStart(
+          HttpRequest(POST,
+            protocol = HttpProtocols.`HTTP/1.0`,
+            uri = "/abc/xyz",
+            headers = List(RawHeader("Age", "30"), `Content-Type`(`text/plain`), `Content-Length`(1000)))) must beRenderedTo {
+            """POST /abc/xyz HTTP/1.0
+            |Age: 30
+            |Content-Type: text/plain
+            |Content-Length: 1000
+            |Host: test.com:8080
+            |User-Agent: spray-can/1.0.0
+            |
+            |"""
+          }
+      }
+      "POST request start (chunkless chunk) without Content-Length must throw" in new TestSetup(chunklessStreaming = true) {
+        render(ChunkedRequestStart(HttpRequest(POST, uri = "/abc/xyz", headers = List(RawHeader("Age", "30"), `Content-Type`(`text/plain`))))) must
+          throwA[RuntimeException].like {
+            case e: RuntimeException ⇒ e.getMessage === "Chunkless streamed request is missing user-specified Content-Length header"
+          }
+      }
+
+      "POST request start (chunkless chunk) with body and explicit Content-Length" in new TestSetup(chunklessStreaming = true) {
+        ChunkedRequestStart(HttpRequest(POST, uri = "/abc/xyz", entity = "Yahoooo", headers = List(`Content-Length`(1000)))) must beRenderedTo {
+          """POST /abc/xyz HTTP/1.1
+            |Content-Length: 1000
+            |Host: test.com:8080
+            |User-Agent: spray-can/1.0.0
+            |Content-Type: text/plain; charset=UTF-8
+            |
+            |Yahoooo"""
+        }
+      }
+
+      "a chunkless request chunk" in new TestSetup(chunklessStreaming = true) {
+        MessageChunk(HttpData("body123".getBytes)) must beRenderedTo {
+          "body123"
+        }
+      }
+
+      "a chunkless final request chunk" in new TestSetup(chunklessStreaming = true) {
+        ChunkedMessageEnd("",
+          List(RawHeader("Age", "30"), RawHeader("Cache-Control", "public"))) must beRenderedTo {
+            ""
+          }
+      }
     }
 
     "properly handle the User-Agent header" in {
@@ -153,14 +200,21 @@ class RequestRendererSpec extends Specification {
     }
   }
 
-  class TestSetup(val userAgent: Option[`User-Agent`] = Some(`User-Agent`("spray-can/1.0.0")))
+  class TestSetup(val userAgent: Option[`User-Agent`] = Some(`User-Agent`("spray-can/1.0.0")), val chunklessStreaming: Boolean = false)
       extends RequestRenderingComponent with Scope {
-    def beRenderedTo(content: String) = {
-      beEqualTo(content.stripMargin.replace(EOL, "\r\n")) ^^ { part: HttpRequestPart ⇒
-        val r = new ByteStringRendering(256)
-        renderRequestPart(r, part, new InetSocketAddress("test.com", 8080), NoLogging)
-        r.get.utf8String
+    def beRenderedTo(content: String) = beEqualTo(content.stripMargin.replace(EOL, "\r\n")) ^^ (render _)
+
+    def render(part: HttpRequestPart): String = {
+      val r = new ByteStringRendering(256)
+      val protocol = part match {
+        case msg: HttpMessageStart ⇒ msg.message.protocol
+        case _                     ⇒ HttpProtocols.`HTTP/1.1`
       }
+      renderRequestPartRenderingContext(r,
+        RequestPartRenderingContext(part, requestProtocol = protocol),
+        new InetSocketAddress("test.com", 8080),
+        NoLogging)
+      r.get.utf8String
     }
   }
 }
