@@ -160,6 +160,8 @@ private trait OpenRequestComponent { component ⇒
     def registerChunkHandler(handler: ActorRef): Unit = {
       def dispatch(part: HttpRequestPart) = downstreamCommandPL(Pipeline.Tell(handler, part, receiverRef))
 
+      downstreamCommandPL(Tcp.ResumeReading) // counter-part to receiving ChunkedRequestStart in ServerFrontend
+
       state =
         state match {
           case WaitingForChunkHandlerBuffering(_, receiveds) ⇒ receiveds.foreach(dispatch); ReceivingRequestChunks(handler)

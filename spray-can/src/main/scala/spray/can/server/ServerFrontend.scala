@@ -116,6 +116,7 @@ private object ServerFrontend {
               } else openNewRequest(request, closeAfterResponseCompletion, WaitingForResponse())
 
             case HttpMessageStartEvent(ChunkedRequestStart(request), closeAfterResponseCompletion) ⇒
+              commandPL(Tcp.SuspendReading) // suspend reading until the handler is registered
               openNewRequest(request, closeAfterResponseCompletion, WaitingForChunkHandlerBuffering())
 
             case Http.MessageEvent(x: MessageChunk) ⇒
