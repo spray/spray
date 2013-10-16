@@ -30,6 +30,7 @@ case class ClientConnectionSettings(
     responseChunkAggregationLimit: Int,
     chunklessStreaming: Boolean,
     requestHeaderSizeHint: Int,
+    maxEncryptionChunkSize: Int,
     connectingTimeout: Duration,
     parserSettings: ParserSettings,
     proxySettings: Map[String, ProxySettings]) {
@@ -37,10 +38,9 @@ case class ClientConnectionSettings(
   requirePositive(idleTimeout)
   requirePositive(requestTimeout)
   requirePositive(reapingCycle)
-  require(0 <= responseChunkAggregationLimit && responseChunkAggregationLimit <= Int.MaxValue,
-    "response-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
-  require(0 <= requestHeaderSizeHint && requestHeaderSizeHint <= Int.MaxValue,
-    "request-size-hint must be >= 0 and <= Int.MaxValue")
+  require(0 <= responseChunkAggregationLimit, "response-chunk-aggregation-limit must be >= 0")
+  require(0 < requestHeaderSizeHint, "request-size-hint must be > 0")
+  require(0 < maxEncryptionChunkSize, "max-encryption-chunk-size must be > 0")
   requirePositive(connectingTimeout)
 }
 
@@ -59,6 +59,7 @@ object ClientConnectionSettings extends SettingsCompanion[ClientConnectionSettin
       c getBytes "response-chunk-aggregation-limit" toInt,
       c getBoolean "chunkless-streaming",
       c getBytes "request-header-size-hint" toInt,
+      c getBytes "max-encryption-chunk-size" toInt,
       c getDuration "connecting-timeout",
       ParserSettings fromSubConfig c.getConfig("parsing"),
       ProxySettings fromSubConfig c.getConfig("proxy"))
