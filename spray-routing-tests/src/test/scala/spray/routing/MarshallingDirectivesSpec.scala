@@ -79,6 +79,29 @@ class MarshallingDirectivesSpec extends RoutingSpec {
           "Expected 'text/xml' or 'application/xml' or 'text/html' or 'application/xhtml+xml'")
       }
     }
+    "extract from a multi-unmarshaller" in {
+      case class Person(name: String)
+      import spray.json.DefaultJsonProtocol._
+      import spray.httpx.SprayJsonSupport._
+      val jsonUnmarshaller: Unmarshaller[Person] = jsonFormat1(Person)
+      val xmlUnmarshaller: Unmarshaller[Person] = Unmarshaller.delegate[NodeSeq, Person](`text/xml`) { seq ⇒
+        Person(seq.text)
+      }
+
+      implicit val unmarshaller = Unmarshaller.oneOf[Person](jsonUnmarshaller, xmlUnmarshaller)
+
+      val route = entity(as[Person]) { echoComplete }
+
+      Put("/", HttpEntity(`text/xml`, "<name>Peter Xml</name>")) ~> route ~> check {
+        responseAs[String] === "Person(Peter Xml)"
+      }
+      Put("/", HttpEntity(`application/json`, """{ "name": "Paul Json" }""")) ~> route ~> check {
+        responseAs[String] === "Person(Paul Json)"
+      }
+      Put("/", HttpEntity(`text/plain`, """name = Sir Text }""")) ~> route ~> check {
+        rejection === UnsupportedRequestContentTypeRejection("Can't unmarshal from text/plain")
+      }
+    }
   }
 
   "The 'produce' directive" should {

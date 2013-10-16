@@ -28,6 +28,8 @@ import spray.http._
  */
 trait SprayJsonSupport {
 
+  implicit def sprayJsonUnmarshallerConverter[T](reader: RootJsonReader[T]) =
+    sprayJsonUnmarshaller(reader)
   implicit def sprayJsonUnmarshaller[T: RootJsonReader] =
     Unmarshaller[T](MediaTypes.`application/json`) {
       case x: HttpEntity.NonEmpty ⇒

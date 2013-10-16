@@ -47,4 +47,20 @@ object Unmarshaller {
     case Right(value) ⇒ value
     case Left(error)  ⇒ sys.error(error.toString)
   }
+
+  def oneOf[T](unmarshallers: Unmarshaller[T]*): Unmarshaller[T] =
+    new Unmarshaller[T] {
+      def apply(entity: HttpEntity): Deserialized[T] = {
+        def tryNext(unmarshallers: Seq[Unmarshaller[T]]): Deserialized[T] = unmarshallers match {
+          case head +: tail ⇒ head(entity).left.flatMap(_ ⇒ tryNext(tail))
+          case Nil ⇒
+            def tpeString = entity match {
+              case HttpEntity.NonEmpty(tpe, _) ⇒ tpe.value
+              case HttpEntity.Empty            ⇒ "an empty entity"
+            }
+            Left(UnsupportedContentType("Can't unmarshal from " + tpeString))
+        }
+        tryNext(unmarshallers)
+      }
+    }
 }
