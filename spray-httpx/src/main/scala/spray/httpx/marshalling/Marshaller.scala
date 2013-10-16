@@ -116,9 +116,45 @@ object ToResponseMarshaller extends LowPriorityToResponseMarshallerImplicits wit
         mb(f(value, contentType), ctx.withContentTypeOverriding(contentType))
       }
   }
+  implicit def fromResponse: ToResponseMarshaller[HttpResponse] =
+    new ToResponseMarshaller[HttpResponse] {
+      def apply(value: HttpResponse, ctx: ToResponseMarshallingContext): Unit = ctx.marshalTo(value)
+    }
+  // No implicit conversion to StatusCode allowed here: in `complete(i: Int)`, `i` shouldn't be marshalled
+  // as a StatusCode
+  implicit def fromStatusCode: ToResponseMarshaller[StatusCode] =
+    new ToResponseMarshaller[StatusCode] {
+      def apply(value: StatusCode, ctx: ToResponseMarshallingContext): Unit = ctx.marshalTo(HttpResponse(value))
+    }
+  implicit def fromStatusCodeAndT[S, T](implicit sConv: S ⇒ StatusCode, tMarshaller: Marshaller[T]): ToResponseMarshaller[(S, T)] =
+    new ToResponseMarshaller[(S, T)] {
+      def apply(value: (S, T), ctx: ToResponseMarshallingContext): Unit =
+        fromMarshaller(sConv(value._1), Nil).apply(value._2, ctx)
+    }
+  implicit def fromStatusCodeAndHeadersAndT[S, T](implicit sConv: S ⇒ StatusCode, tMarshaller: Marshaller[T]): ToResponseMarshaller[(S, Seq[HttpHeader], T)] =
+    new ToResponseMarshaller[(S, Seq[HttpHeader], T)] {
+      def apply(value: (S, Seq[HttpHeader], T), ctx: ToResponseMarshallingContext): Unit =
+        fromMarshaller(sConv(value._1), value._2).apply(value._3, ctx)
+    }
 }
 
 sealed abstract class LowPriorityToResponseMarshallerImplicits {
   implicit def liftMarshaller[T](implicit m: Marshaller[T]): ToResponseMarshaller[T] =
     ToResponseMarshaller.fromMarshaller()
 }
+
+/** Something that can later be marshalled into a response */
+trait ToResponseMarshallable {
+  def marshal(ctx: ToResponseMarshallingContext): Unit
+}
+object ToResponseMarshallable {
+  implicit def isMarshallable[T](value: T)(implicit marshaller: ToResponseMarshaller[T]): ToResponseMarshallable =
+    new ToResponseMarshallable {
+      def marshal(ctx: ToResponseMarshallingContext): Unit = marshaller(value, ctx)
+    }
+  implicit def marshallableIsMarshallable: ToResponseMarshaller[ToResponseMarshallable] =
+    new ToResponseMarshaller[ToResponseMarshallable] {
+      def apply(value: ToResponseMarshallable, ctx: ToResponseMarshallingContext): Unit = value.marshal(ctx)
+    }
+}
+

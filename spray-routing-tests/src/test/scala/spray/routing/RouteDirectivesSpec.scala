@@ -16,11 +16,12 @@
 
 package spray.routing
 
-import scala.concurrent.Promise
+import scala.concurrent.{ Future, Promise }
 import spray.http._
 import HttpHeaders._
 import StatusCodes._
 import MediaTypes._
+import spray.httpx.marshalling.ToResponseMarshallable
 
 class RouteDirectivesSpec extends RoutingSpec {
 
@@ -47,6 +48,40 @@ class RouteDirectivesSpec extends RoutingSpec {
       Get() ~> {
         get & complete(Promise.successful(HttpResponse(entity = "yup")).future)
       } ~> check { responseAs[String] === "yup" }
+    }
+    "allow easy handling of futured ToResponseMarshallers" in {
+      trait RegistrationStatus
+      case class Registered(name: String) extends RegistrationStatus
+      case object AlreadyRegistered extends RegistrationStatus
+
+      val route =
+        get {
+          path("register" / Segment) { name ⇒
+            def registerUser(name: String): Future[RegistrationStatus] = Future.successful {
+              name match {
+                case "otto" ⇒ AlreadyRegistered
+                case _      ⇒ Registered(name)
+              }
+            }
+            complete {
+              registerUser(name).map[ToResponseMarshallable] {
+                case Registered(_) ⇒ HttpData.Empty
+                case AlreadyRegistered ⇒
+                  import spray.json.DefaultJsonProtocol._
+                  import spray.httpx.SprayJsonSupport._
+                  (StatusCodes.BadRequest, Map("error" -> "User already Registered"))
+              }
+            }
+          }
+        }
+
+      Get("/register/otto") ~> route ~> check {
+        status === StatusCodes.BadRequest
+      }
+      Get("/register/karl") ~> route ~> check {
+        status === StatusCodes.OK
+        entity === HttpEntity.Empty
+      }
     }
   }
 
