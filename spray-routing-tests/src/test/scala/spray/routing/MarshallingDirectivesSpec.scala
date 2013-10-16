@@ -137,24 +137,4 @@ class MarshallingDirectivesSpec extends RoutingSpec {
       }
     }
   }
-
-  "Completion with a Future" should {
-    "work for successful futures" in {
-      Get() ~> complete(Promise.successful("yes").future) ~> check { responseAs[String] === "yes" }
-    }
-    "work for failed futures" in {
-      object TestException extends spray.util.SingletonException
-      Get() ~> complete(Promise.failed[String](TestException).future) ~>
-        check {
-          status === StatusCodes.InternalServerError
-          responseAs[String] === "There was an internal server error."
-        }
-    }
-    "work for futures failed with a RejectionError" in {
-      Get() ~> complete(Promise.failed[String](RejectionError(AuthorizationFailedRejection)).future) ~>
-        check {
-          rejection === AuthorizationFailedRejection
-        }
-    }
-  }
 }

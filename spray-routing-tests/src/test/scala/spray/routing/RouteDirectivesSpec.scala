@@ -45,9 +45,28 @@ class RouteDirectivesSpec extends RoutingSpec {
       }
     }
     "support completion from response futures" in {
-      Get() ~> {
-        get & complete(Promise.successful(HttpResponse(entity = "yup")).future)
-      } ~> check { responseAs[String] === "yup" }
+      "simple case without marshaller" in {
+        Get() ~> {
+          get & complete(Promise.successful(HttpResponse(entity = "yup")).future)
+        } ~> check { responseAs[String] === "yup" }
+      }
+      "for successful futures and marshalling" in {
+        Get() ~> complete(Promise.successful("yes").future) ~> check { responseAs[String] === "yes" }
+      }
+      "for failed futures and marshalling" in {
+        object TestException extends spray.util.SingletonException
+        Get() ~> complete(Promise.failed[String](TestException).future) ~>
+          check {
+            status === StatusCodes.InternalServerError
+            responseAs[String] === "There was an internal server error."
+          }
+      }
+      "for futures failed with a RejectionError" in {
+        Get() ~> complete(Promise.failed[String](RejectionError(AuthorizationFailedRejection)).future) ~>
+          check {
+            rejection === AuthorizationFailedRejection
+          }
+      }
     }
     "allow easy handling of futured ToResponseMarshallers" in {
       trait RegistrationStatus
