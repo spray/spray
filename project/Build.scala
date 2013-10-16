@@ -94,7 +94,7 @@ object Build extends Build with DocSupport {
 
 
   lazy val sprayIO = Project("spray-io", file("spray-io"))
-    .dependsOn(sprayUtil)
+    .dependsOn(sprayUtil, sprayHttp)
     .settings(sprayModuleSettings: _*)
     .settings(osgiSettings(exports = Seq("spray.io", "akka.io")): _*)
     .settings(libraryDependencies ++= provided(akkaActor, scalaReflect))

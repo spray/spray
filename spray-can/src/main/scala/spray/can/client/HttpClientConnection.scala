@@ -86,7 +86,7 @@ private object HttpClientConnection {
       ResponseParsing(parserSettings) >>
       RequestRendering(settings) >>
       ConnectionTimeouts(idleTimeout) ? (reapingCycle.isFinite && idleTimeout.isFinite) >>
-      SslTlsSupport(parserSettings.sslSessionInfoHeader) >>
+      SslTlsSupport(maxEncryptionChunkSize, parserSettings.sslSessionInfoHeader) >>
       TickGenerator(reapingCycle) ? (idleTimeout.isFinite || requestTimeout.isFinite)
   }
 
