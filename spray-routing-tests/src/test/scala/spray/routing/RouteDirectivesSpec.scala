@@ -22,6 +22,9 @@ import HttpHeaders._
 import StatusCodes._
 import MediaTypes._
 import spray.httpx.marshalling.ToResponseMarshallable
+import spray.httpx.SprayJsonSupport
+import spray.httpx.marshalling.{ ToResponseMarshallingContext, MarshallingContext, ToResponseMarshaller, Marshaller }
+import akka.actor.ActorRef
 
 class RouteDirectivesSpec extends RoutingSpec {
 
@@ -102,6 +105,24 @@ class RouteDirectivesSpec extends RoutingSpec {
         entity === HttpEntity.Empty
       }
     }
+    "do Content-Type negotiation for multi-marshallers" in {
+      val route = get & complete(Data("Ida", 83))
+
+      import HttpHeaders.Accept
+      Get().withHeaders(Accept(MediaTypes.`application/json`)) ~> route ~> check {
+        responseAs[String] ===
+          """{
+            |  "name": "Ida",
+            |  "age": 83
+            |}""".stripMargin
+      }
+      Get().withHeaders(Accept(MediaTypes.`text/xml`)) ~> route ~> check {
+        responseAs[xml.NodeSeq] === <data><name>Ida</name><age>83</age></data>
+      }
+      Get().withHeaders(Accept(MediaTypes.`text/plain`)) ~> HttpService.sealRoute(route) ~> check {
+        status === StatusCodes.NotAcceptable
+      }
+    }
   }
 
   "the redirect directive" should {
@@ -122,4 +143,18 @@ class RouteDirectivesSpec extends RoutingSpec {
     }
   }
 
+  case class Data(name: String, age: Int)
+  object Data {
+    import spray.json.DefaultJsonProtocol._
+    import spray.httpx.SprayJsonSupport._
+
+    val jsonMarshaller: Marshaller[Data] = jsonFormat2(Data.apply)
+    val xmlMarshaller: Marshaller[Data] =
+      Marshaller.delegate[Data, xml.NodeSeq](MediaTypes.`text/xml`) { (data: Data) ⇒
+        <data><name>{ data.name }</name><age>{ data.age }</age></data>
+      }
+
+    implicit val dataMarshaller: ToResponseMarshaller[Data] =
+      ToResponseMarshaller.oneOf(MediaTypes.`application/json`, MediaTypes.`text/xml`)(jsonMarshaller, xmlMarshaller)
+  }
 }

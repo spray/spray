@@ -34,7 +34,8 @@ trait SprayJsonSupport {
         val json = JsonParser(x.asString(defaultCharset = HttpCharsets.`UTF-8`))
         jsonReader[T].read(json)
     }
-
+  implicit def sprayJsonMarshallerConverter[T](writer: RootJsonWriter[T])(implicit printer: JsonPrinter = PrettyPrinter) =
+    sprayJsonMarshaller[T](writer, printer)
   implicit def sprayJsonMarshaller[T](implicit writer: RootJsonWriter[T], printer: JsonPrinter = PrettyPrinter) =
     Marshaller.delegate[T, String](ContentTypes.`application/json`) { value ⇒
       val json = writer.write(value)
