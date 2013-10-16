@@ -65,25 +65,15 @@ object Marshaller extends BasicMarshallers
 
 trait ToResponseMarshaller[-T] {
   def apply(value: T, ctx: ToResponseMarshallingContext)
+
+  def compose[U](f: U ⇒ T): ToResponseMarshaller[U] = ToResponseMarshaller((value, ctx) ⇒ apply(f(value), ctx))
 }
 
-object ToResponseMarshaller extends LowPriorityToResponseMarshallerImplicits with MetaToResponseMarshallers {
-
+object ToResponseMarshaller extends BasicToResponseMarshallers
+    with MetaToResponseMarshallers
+    with LowPriorityToResponseMarshallerImplicits {
   def fromMarshaller[T](status: StatusCode = StatusCodes.OK, headers: Seq[HttpHeader] = Nil)(implicit m: Marshaller[T]): ToResponseMarshaller[T] =
-    new ToResponseMarshaller[T] {
-      def apply(value: T, ctx: ToResponseMarshallingContext): Unit = {
-        val mCtx = new MarshallingContext {
-          def tryAccept(contentTypes: Seq[ContentType]): Option[ContentType] = ctx.tryAccept(contentTypes)
-          def handleError(error: Throwable): Unit = ctx.handleError(error)
-          def marshalTo(entity: HttpEntity, hs: HttpHeader*): Unit =
-            ctx.marshalTo(HttpResponse(status, entity, (headers ++ hs).toList))
-          def rejectMarshalling(supported: Seq[ContentType]): Unit = ctx.rejectMarshalling(supported)
-          def startChunkedMessage(entity: HttpEntity, ack: Option[Any], hs: Seq[HttpHeader])(implicit sender: ActorRef): ActorRef =
-            ctx.startChunkedMessage(HttpResponse(status, entity, (headers ++ hs).toList), ack)
-        }
-        m(value, mCtx)
-      }
-    }
+    fromStatusCodeAndHeadersAndT.compose(t ⇒ (status, headers, t))
 
   def apply[T](f: (T, ToResponseMarshallingContext) ⇒ Unit): ToResponseMarshaller[T] =
     new ToResponseMarshaller[T] {
@@ -116,29 +106,9 @@ object ToResponseMarshaller extends LowPriorityToResponseMarshallerImplicits wit
         mb(f(value, contentType), ctx.withContentTypeOverriding(contentType))
       }
   }
-  implicit def fromResponse: ToResponseMarshaller[HttpResponse] =
-    new ToResponseMarshaller[HttpResponse] {
-      def apply(value: HttpResponse, ctx: ToResponseMarshallingContext): Unit = ctx.marshalTo(value)
-    }
-  // No implicit conversion to StatusCode allowed here: in `complete(i: Int)`, `i` shouldn't be marshalled
-  // as a StatusCode
-  implicit def fromStatusCode: ToResponseMarshaller[StatusCode] =
-    new ToResponseMarshaller[StatusCode] {
-      def apply(value: StatusCode, ctx: ToResponseMarshallingContext): Unit = ctx.marshalTo(HttpResponse(value))
-    }
-  implicit def fromStatusCodeAndT[S, T](implicit sConv: S ⇒ StatusCode, tMarshaller: Marshaller[T]): ToResponseMarshaller[(S, T)] =
-    new ToResponseMarshaller[(S, T)] {
-      def apply(value: (S, T), ctx: ToResponseMarshallingContext): Unit =
-        fromMarshaller(sConv(value._1), Nil).apply(value._2, ctx)
-    }
-  implicit def fromStatusCodeAndHeadersAndT[S, T](implicit sConv: S ⇒ StatusCode, tMarshaller: Marshaller[T]): ToResponseMarshaller[(S, Seq[HttpHeader], T)] =
-    new ToResponseMarshaller[(S, Seq[HttpHeader], T)] {
-      def apply(value: (S, Seq[HttpHeader], T), ctx: ToResponseMarshallingContext): Unit =
-        fromMarshaller(sConv(value._1), value._2).apply(value._3, ctx)
-    }
 }
 
-sealed abstract class LowPriorityToResponseMarshallerImplicits {
+sealed trait LowPriorityToResponseMarshallerImplicits {
   implicit def liftMarshaller[T](implicit m: Marshaller[T]): ToResponseMarshaller[T] =
     ToResponseMarshaller.fromMarshaller()
 }
