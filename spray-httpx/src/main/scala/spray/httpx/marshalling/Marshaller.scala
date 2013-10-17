@@ -65,25 +65,15 @@ object Marshaller extends BasicMarshallers
 
 trait ToResponseMarshaller[-T] {
   def apply(value: T, ctx: ToResponseMarshallingContext)
+
+  def compose[U](f: U ⇒ T): ToResponseMarshaller[U] = ToResponseMarshaller((value, ctx) ⇒ apply(f(value), ctx))
 }
 
-object ToResponseMarshaller extends LowPriorityToResponseMarshallerImplicits with MetaToResponseMarshallers {
-
+object ToResponseMarshaller extends BasicToResponseMarshallers
+    with MetaToResponseMarshallers
+    with LowPriorityToResponseMarshallerImplicits {
   def fromMarshaller[T](status: StatusCode = StatusCodes.OK, headers: Seq[HttpHeader] = Nil)(implicit m: Marshaller[T]): ToResponseMarshaller[T] =
-    new ToResponseMarshaller[T] {
-      def apply(value: T, ctx: ToResponseMarshallingContext): Unit = {
-        val mCtx = new MarshallingContext {
-          def tryAccept(contentTypes: Seq[ContentType]): Option[ContentType] = ctx.tryAccept(contentTypes)
-          def handleError(error: Throwable): Unit = ctx.handleError(error)
-          def marshalTo(entity: HttpEntity, hs: HttpHeader*): Unit =
-            ctx.marshalTo(HttpResponse(status, entity, (headers ++ hs).toList))
-          def rejectMarshalling(supported: Seq[ContentType]): Unit = ctx.rejectMarshalling(supported)
-          def startChunkedMessage(entity: HttpEntity, ack: Option[Any], hs: Seq[HttpHeader])(implicit sender: ActorRef): ActorRef =
-            ctx.startChunkedMessage(HttpResponse(status, entity, (headers ++ hs).toList), ack)
-        }
-        m(value, mCtx)
-      }
-    }
+    fromStatusCodeAndHeadersAndT.compose(t ⇒ (status, headers, t))
 
   def apply[T](f: (T, ToResponseMarshallingContext) ⇒ Unit): ToResponseMarshaller[T] =
     new ToResponseMarshaller[T] {
@@ -118,7 +108,23 @@ object ToResponseMarshaller extends LowPriorityToResponseMarshallerImplicits wit
   }
 }
 
-sealed abstract class LowPriorityToResponseMarshallerImplicits {
+sealed trait LowPriorityToResponseMarshallerImplicits {
   implicit def liftMarshaller[T](implicit m: Marshaller[T]): ToResponseMarshaller[T] =
     ToResponseMarshaller.fromMarshaller()
 }
+
+/** Something that can later be marshalled into a response */
+trait ToResponseMarshallable {
+  def marshal(ctx: ToResponseMarshallingContext): Unit
+}
+object ToResponseMarshallable {
+  implicit def isMarshallable[T](value: T)(implicit marshaller: ToResponseMarshaller[T]): ToResponseMarshallable =
+    new ToResponseMarshallable {
+      def marshal(ctx: ToResponseMarshallingContext): Unit = marshaller(value, ctx)
+    }
+  implicit def marshallableIsMarshallable: ToResponseMarshaller[ToResponseMarshallable] =
+    new ToResponseMarshaller[ToResponseMarshallable] {
+      def apply(value: ToResponseMarshallable, ctx: ToResponseMarshallingContext): Unit = value.marshal(ctx)
+    }
+}
+
