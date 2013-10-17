@@ -49,7 +49,7 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
     if (dynRR.value == null) sys.error("This value is only available inside of a `check` construct!")
   }
 
-  def check[T](body: ⇒ T): RouteResult ⇒ T = dynRR.withValue(_)(body)
+  def check[T](body: ⇒ T): RouteResult ⇒ T = result ⇒ dynRR.withValue(result.awaitResult)(body)
 
   private def result = { assertInCheck(); dynRR.value }
   def handled: Boolean = result.handled
@@ -77,6 +77,13 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
     val r = rejections
     if (r.size == 1) r.head else failTest("Expected a single rejection but got %s (%s)".format(r.size, r))
   }
+
+    /**
+     * A dummy that can be used as `~> runRoute` to run the route but without blocking for the result.
+     * The result of the pipeline is the result that can later be checked with `check`. See the
+     * "separate running route from checking" example from ScalatestRouteTestSpec.scala.
+     */
+  def runRoute: RouteResult ⇒ RouteResult = identity
 
   // there is already an implicit class WithTransformation in scope (inherited from spray.httpx.TransformerPipelineSupport)
   // however, this one takes precedence
@@ -115,8 +122,7 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
               responder = routeResult.handler,
               unmatchedPath = effectiveRequest.uri.path)
           }
-          // since the route might detach we block until the route actually completes or times out
-          routeResult.awaitResult
+          routeResult
         }
       }
   }
