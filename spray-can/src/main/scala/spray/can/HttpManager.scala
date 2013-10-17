@@ -69,13 +69,16 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
       val commander = sender
       listeners :+= context.watch {
         context.actorOf(
-          props = Props(new HttpListener(commander, bind, httpSettings)) withDispatcher ListenerDispatcher,
+          props = Props(newHttpListener(commander, bind, httpSettings)) withDispatcher ListenerDispatcher,
           name = "listener-" + listenerCounter.next())
       }
 
     case cmd: Http.CloseAll ⇒ shutdownSettingsGroups(cmd, Set(sender))
   }
-
+  
+  def newHttpListener(commander: ActorRef, bind: Http.Bind, httpSettings: HttpExt#Settings) = 
+    new HttpListener(commander, bind, httpSettings)
+    
   def withTerminationManagement(behavior: Receive): Receive = ({
     case ev @ Terminated(child) ⇒
       if (listeners contains child)
@@ -195,13 +198,15 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
   def settingsGroupFor(settings: ClientConnectionSettings): ActorRef = {
     def createAndRegisterSettingsGroup = {
       val group = context.actorOf(
-        props = Props(new HttpClientSettingsGroup(settings, httpSettings)) withDispatcher SettingsGroupDispatcher,
+        props = Props(newHttpClientSettingsGroup(settings, httpSettings)) withDispatcher SettingsGroupDispatcher,
         name = "group-" + groupCounter.next())
       settingsGroups = settingsGroups.updated(settings, group)
       context.watch(group)
     }
     settingsGroups.getOrElse(settings, createAndRegisterSettingsGroup)
   }
+  def newHttpClientSettingsGroup(settings: ClientConnectionSettings, httpSettings: HttpExt#Settings) = 
+    new HttpClientSettingsGroup(settings, httpSettings)
 }
 
 private[can] object HttpManager {
