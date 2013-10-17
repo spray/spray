@@ -24,6 +24,7 @@ import spray.can.client._
 import spray.can.server.HttpListener
 import spray.http._
 import Http.{ ClientConnectionType, HostConnectorSetup }
+import HttpHostConnector.RequestContext
 
 private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor with ActorLogging {
   import HttpManager._
@@ -42,18 +43,21 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
     case request: HttpRequest ⇒
       try {
         val req = request.withEffectiveUri(securedConnection = false)
-        val host = req.uri.authority.host
-        val connector = connectorFor(HostConnectorSetup(host.toString, req.uri.effectivePort, sslEncryption = req.uri.scheme == "https"))
+        val connector = connectorForUri(req.uri)
         // never render absolute URIs here and we also drop any potentially existing fragment
-        val relativeUri = Uri(
-          path = if (req.uri.path.isEmpty) Uri.Path./ else req.uri.path,
-          query = req.uri.query)
-        connector.forward(req.copy(uri = relativeUri))
+        connector.forward(req.copy(uri = req.uri.toRelative.withoutFragment))
       } catch {
         case NonFatal(e) ⇒
           log.error("Illegal request: {}", e.getMessage)
           sender ! Status.Failure(e)
       }
+
+    // 3xx Redirect
+    case ctx @ RequestContext(req, _, _, commander) ⇒
+      val connector = connectorForUri(req.uri)
+      // never render absolute URIs here and we also drop any potentially existing fragment
+      val newReq = req.copy(uri = req.uri.toRelative.withoutFragment)
+      connector.tell(ctx.copy(request = newReq), commander)
 
     case (request: HttpRequest, setup: HostConnectorSetup) ⇒
       connectorFor(setup).forward(request)
@@ -158,6 +162,11 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
 
       case Terminated(child) if running contains child ⇒ self.tell(Http.Unbound, child)
     }
+
+  def connectorForUri(uri: Uri) = {
+    val host = uri.authority.host
+    connectorFor(HostConnectorSetup(host.toString, uri.effectivePort, sslEncryption = uri.scheme == "https"))
+  }
 
   def connectorFor(setup: HostConnectorSetup) = {
     val normalizedSetup = resolveAutoProxied(setup)

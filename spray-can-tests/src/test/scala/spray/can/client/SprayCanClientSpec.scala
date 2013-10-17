@@ -17,7 +17,7 @@
 package spray.can.client
 
 import org.specs2.mutable.Specification
-import com.typesafe.config.{ ConfigFactory, Config }
+import com.typesafe.config.{ ConfigValueFactory, ConfigFactory, Config }
 import akka.actor.{ ActorRef, Status, ActorSystem }
 import akka.io.IO
 import akka.testkit.TestProbe
@@ -28,6 +28,7 @@ import spray.util.Utils._
 import spray.httpx.RequestBuilding._
 import spray.http._
 import HttpHeaders._
+import StatusCodes._
 
 class SprayCanClientSpec extends Specification {
 
@@ -40,7 +41,8 @@ class SprayCanClientSpec extends Specification {
     spray.can.host-connector.idle-timeout = infinite
     spray.can.host-connector.client.request-timeout = 500ms
     spray.can.server.request-chunk-aggregation-limit = 0
-    spray.can.client.response-chunk-aggregation-limit = 0""")
+    spray.can.client.response-chunk-aggregation-limit = 0
+    spray.can.server.transparent-head-requests = off""")
   implicit val system = ActorSystem(actorSystemNameFrom(getClass), testConf)
 
   "The connection-level client infrastructure" should {
@@ -230,6 +232,151 @@ class SprayCanClientSpec extends Specification {
       val Http.HostConnectorInfo(hostConnector3, _) = probe.expectMsgType[Http.HostConnectorInfo]
       hostConnector1 === hostConnector2
       hostConnector2 !== hostConnector3
+    }
+
+    "returns 3xx HttpResponse when follow-redirects is disabled" in new TestSetup {
+      val request = Get("/def") ~> Host(hostname, port)
+      val probe = TestProbe()
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port))
+      val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      probe.reply(request)
+
+      val serverHandler = acceptConnection()
+      serverHandler.expectMsgType[HttpRequest]
+      serverHandler.reply(HttpResponse(status = TemporaryRedirect, headers = Location("/go-here") :: Nil))
+
+      val r = probe.expectMsgType[HttpResponse]
+      r.status === TemporaryRedirect
+      r.header[Location].head.value === "/go-here"
+
+      closeHostConnector(hostConnector)
+    }
+
+    "perform a redirect when max-redirects is > 0" in new TestSetup {
+      val redirectConf = system.settings.config withValue
+        ("spray.can.host-connector.max-redirects", ConfigValueFactory.fromAnyRef(5))
+
+      val request = Get("/def") ~> Host(hostname, port)
+      val probe = TestProbe()
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, settings = Some(HostConnectorSettings(redirectConf))))
+      val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      probe.reply(request)
+
+      val serverHandler = acceptConnection()
+      serverHandler.expectMsgType[HttpRequest]
+      serverHandler.reply(HttpResponse(status = TemporaryRedirect, headers = Location("/go-here") :: Nil))
+
+      val serverHandler2 = acceptConnection()
+      val req = serverHandler2.expectMsgType[HttpRequest]
+      req.method === HttpMethods.GET
+      req.uri.toString === s"http://$hostname:$port/go-here"
+
+      serverHandler2.reply(HttpResponse(entity = "ok"))
+      val r = probe.expectMsgType[HttpResponse]
+      r.entity === HttpEntity("ok")
+
+      closeHostConnector(hostConnector)
+    }
+
+    "only follow one redirect when max-redirects is set to 1" in new TestSetup {
+      val redirectConf = system.settings.config withValue
+        ("spray.can.host-connector.max-redirects", ConfigValueFactory.fromAnyRef(1))
+
+      val request = Get("/def") ~> Host(hostname, port)
+      val probe = TestProbe()
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, settings = Some(HostConnectorSettings(redirectConf))))
+      val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      probe.reply(request)
+
+      val serverHandler = acceptConnection()
+      serverHandler.expectMsgType[HttpRequest]
+      serverHandler.reply(HttpResponse(status = TemporaryRedirect, headers = Location("/go-here") :: Nil))
+
+      val serverHandler2 = acceptConnection()
+      val req = serverHandler2.expectMsgType[HttpRequest]
+      req.method === HttpMethods.GET
+      req.uri.toString === s"http://$hostname:$port/go-here"
+      serverHandler2.reply(HttpResponse(status = TemporaryRedirect, headers = Location("/now-go-here") :: Nil))
+
+      val r = probe.expectMsgType[HttpResponse]
+      r.status === TemporaryRedirect
+      r.header[Location] === Some(Location("/now-go-here"))
+
+      closeHostConnector(hostConnector)
+    }
+
+    "follow 302 redirect for a POST request with a GET request" in new TestSetup {
+      val redirectConf = system.settings.config withValue
+        ("spray.can.host-connector.max-redirects", ConfigValueFactory.fromAnyRef(5))
+
+      val request = Post("/def") ~> Host(hostname, port)
+      val probe = TestProbe()
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, settings = Some(HostConnectorSettings(redirectConf))))
+      val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      probe.reply(request)
+
+      val serverHandler = acceptConnection()
+      serverHandler.expectMsgType[HttpRequest]
+      serverHandler.reply(HttpResponse(status = Found, headers = Location("/go-here") :: Nil))
+
+      val serverHandler2 = acceptConnection()
+      val req = serverHandler2.expectMsgType[HttpRequest]
+      req.method === HttpMethods.GET
+      req.uri.toString === s"http://$hostname:$port/go-here"
+
+      serverHandler2.reply(HttpResponse(entity = "ok"))
+      val r = probe.expectMsgType[HttpResponse]
+      r.entity === HttpEntity("ok")
+
+      closeHostConnector(hostConnector)
+    }
+
+    "follow 302 redirect for a HEAD request with a HEAD request" in new TestSetup {
+      val redirectConf = system.settings.config withValue
+        ("spray.can.host-connector.max-redirects", ConfigValueFactory.fromAnyRef(5))
+
+      val request = Head("/head") ~> Host(hostname, port)
+      val probe = TestProbe()
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, settings = Some(HostConnectorSettings(redirectConf))))
+      val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      probe.reply(request)
+
+      val serverHandler = acceptConnection()
+      val firstReq = serverHandler.expectMsgType[HttpRequest]
+      firstReq.method === HttpMethods.HEAD
+      serverHandler.reply(HttpResponse(status = Found, headers = Location("/go-here") :: Nil))
+
+      val serverHandler2 = acceptConnection()
+      val req = serverHandler2.expectMsgType[HttpRequest]
+      req.method === HttpMethods.HEAD
+      req.uri.toString === s"http://$hostname:$port/go-here"
+
+      serverHandler2.reply(HttpResponse(status = OK))
+      val r = probe.expectMsgType[HttpResponse]
+      r.status === OK
+
+      closeHostConnector(hostConnector)
+    }
+
+    "not follow 301 redirect for a POST request as this requires user confirmation" in new TestSetup {
+      val redirectConf = system.settings.config withValue
+        ("spray.can.host-connector.max-redirects", ConfigValueFactory.fromAnyRef(5))
+
+      val request = Post("/def") ~> Host(hostname, port)
+      val probe = TestProbe()
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, settings = Some(HostConnectorSettings(redirectConf))))
+      val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      probe.reply(request)
+
+      val serverHandler = acceptConnection()
+      serverHandler.expectMsgType[HttpRequest]
+      serverHandler.reply(HttpResponse(status = MovedPermanently, headers = Location("/go-here") :: Nil))
+
+      val r = probe.expectMsgType[HttpResponse]
+      r.status === MovedPermanently
+      r.header[Location] === Some(Location("/go-here"))
+
+      closeHostConnector(hostConnector)
     }
   }
 
