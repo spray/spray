@@ -75,10 +75,10 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
 
     case cmd: Http.CloseAll ⇒ shutdownSettingsGroups(cmd, Set(sender))
   }
-  
-  def newHttpListener(commander: ActorRef, bind: Http.Bind, httpSettings: HttpExt#Settings) = 
+
+  def newHttpListener(commander: ActorRef, bind: Http.Bind, httpSettings: HttpExt#Settings) =
     new HttpListener(commander, bind, httpSettings)
-    
+
   def withTerminationManagement(behavior: Receive): Receive = ({
     case ev @ Terminated(child) ⇒
       if (listeners contains child)
@@ -205,7 +205,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
     }
     settingsGroups.getOrElse(settings, createAndRegisterSettingsGroup)
   }
-  def newHttpClientSettingsGroup(settings: ClientConnectionSettings, httpSettings: HttpExt#Settings) = 
+  def newHttpClientSettingsGroup(settings: ClientConnectionSettings, httpSettings: HttpExt#Settings) =
     new HttpClientSettingsGroup(settings, httpSettings)
 }
 
