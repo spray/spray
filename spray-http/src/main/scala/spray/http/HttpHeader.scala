@@ -309,6 +309,18 @@ object HttpHeaders {
   }
 
   object Origin extends ModeledCompanion // TODO: turn argument into repeated parameter for more convenience
+
+  object Link extends ModeledCompanion {
+    def apply(first: LinkDirective, more: LinkDirective*): Link = apply(first +: more)
+    def apply[L <: LinkParam](uri: Uri, first: L, more: L*): Link = apply(LinkDirective(uri, first +: more))
+    implicit val directivesRenderer = Renderer.defaultSeqRenderer[LinkDirective]
+  }
+  case class Link(directives: Seq[LinkDirective]) extends ModeledHeader {
+    import Link.directivesRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ directives
+    protected def companion = Link
+  }
+
   case class Origin(originList: Seq[HttpOrigin]) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ originList
     protected def companion = Origin

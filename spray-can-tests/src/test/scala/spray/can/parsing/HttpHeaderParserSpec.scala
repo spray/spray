@@ -119,38 +119,39 @@ class HttpHeaderParserSpec extends Specification {
 
     "prime an empty parser with all defined HeaderValueParsers" in new TestSetup() {
       check {
-        """   ┌─\r-\n- EmptyHeader
-          |   |                 ┌─c-h-a-r-s-e-t-:- (Accept-Charset)
-          |   |               ┌─e-n-c-o-d-i-n-g-:- (Accept-Encoding)
-          |   |               | └─l-a-n-g-u-a-g-e-:- (Accept-Language)
-          |   |       ┌─p-t---r-a-n-g-e-s-:- (Accept-Ranges)
+       """|   ┌─\r-\n- EmptyHeader
+          |   |               ┌─c-h-a-r-s-e-t-:- (Accept-Charset)
+          |   |       ┌─p-t---e-n-c-o-d-i-n-g-:- (Accept-Encoding)
+          |   |       |     | | ┌─l-a-n-g-u-a-g-e-:- (Accept-Language)
+          |   |       |     | └─r-a-n-g-e-s-:- (Accept-Ranges)
           |   |       |     |                ┌─\r-\n- Accept: */*
           |   |       |     └─:-(Accept)- -*-/-*-\r-\n- Accept: */*
-          |   |       |                                     ┌─c-r-e-d-e-n-t-i-a-l-s-:- (Access-Control-Allow-Credentials)
-          |   |       |                                   ┌─h-e-a-d-e-r-s-:- (Access-Control-Allow-Headers)
-          |   |       |                     ┌─a-l-l-o-w---m-e-t-h-o-d-s-:- (Access-Control-Allow-Methods)
-          |   |       |                     |             └─o-r-i-g-i-n-:- (Access-Control-Allow-Origin)
-          | ┌─a-c-c-e-s-s---c-o-n-t-r-o-l---e-x-p-o-s-e---h-e-a-d-e-r-s-:- (Access-Control-Expose-Headers)
-          | |   |                           | ┌─m-a-x---a-g-e-:- (Access-Control-Max-Age)
-          | |   |                           | |               ┌─h-e-a-d-e-r-s-:- (Access-Control-Request-Headers)
+          |   |       |                     ┌─a-l-l-o-w---c-r-e-d-e-n-t-i-a-l-s-:- (Access-Control-Allow-Credentials)
+          |   |       |                     | |           |   ┌─h-e-a-d-e-r-s-:- (Access-Control-Allow-Headers)
+          |   |       |                     | |           | ┌─m-e-t-h-o-d-s-:- (Access-Control-Allow-Methods)
+          |   |       |                     | |           └─o-r-i-g-i-n-:- (Access-Control-Allow-Origin)
+          |   |       |                     | └─e-x-p-o-s-e---h-e-a-d-e-r-s-:- (Access-Control-Expose-Headers)
+          | ┌─a-c-c-e-s-s---c-o-n-t-r-o-l---m-a-x---a-g-e-:- (Access-Control-Max-Age)
+          | |   |                           |                 ┌─h-e-a-d-e-r-s-:- (Access-Control-Request-Headers)
           | |   |                           └─r-e-q-u-e-s-t---m-e-t-h-o-d-:- (Access-Control-Request-Method)
-          | |   | ┌─l-l-o-w-:- (Allow)
-          | |   └─u-t-h-o-r-i-z-a-t-i-o-n-:- (Authorization)
+          | |   └─l-l-o-w-:- (Allow)
+          | |     └─u-t-h-o-r-i-z-a-t-i-o-n-:- (Authorization)
           | | ┌─a-c-h-e---c-o-n-t-r-o-l-:-(Cache-Control)- -m-a-x---a-g-e-=-0-\r-\n- Cache-Control: max-age=0
           | | |                                             └─n-o---c-a-c-h-e-\r-\n- Cache-Control: no-cache
           | | |   ┌─n-e-c-t-i-o-n-:-(Connection)- -K-e-e-p---A-l-i-v-e-\r-\n- Connection: Keep-Alive
           | | |   |                                | ┌─c-l-o-s-e-\r-\n- Connection: close
           | | |   |                                └─k-e-e-p---a-l-i-v-e-\r-\n- Connection: keep-alive
-          | | |   |         ┌─d-i-s-p-o-s-i-t-i-o-n-:- (Content-Disposition)
-          | | |   |         | └─e-n-c-o-d-i-n-g-:- (Content-Encoding)
-          |-c-o-n-t-e-n-t---l-e-n-g-t-h-:-(Content-Length)- -0-\r-\n- Content-Length: 0
-          | |   |           | ┌─r-a-n-g-e-:- (Content-Range)
+          | | |   |           ┌─d-i-s-p-o-s-i-t-i-o-n-:- (Content-Disposition)
+          | | |   |         ┌─e-n-c-o-d-i-n-g-:- (Content-Encoding)
+          | | |   |         | └─l-e-n-g-t-h-:-(Content-Length)- -0-\r-\n- Content-Length: 0
+          |-c-o-n-t-e-n-t---r-a-n-g-e-:- (Content-Range)
           | |   |           └─t-y-p-e-:- (Content-Type)
           | |   └─o-k-i-e-:- (Cookie)
           | |   ┌─d-a-t-e-:- (Date)
-          | | ┌─e-x-p-e-c-t-:-(Expect)- -1-0-0---c-o-n-t-i-n-u-e-\r-\n- Expect: 100-continue
-          | | | | ┌─h-o-s-t-:- (Host)
-          | | | | | ┌─a-s-t---m-o-d-i-f-i-e-d-:- (Last-Modified)
+          | |   | └─e-x-p-e-c-t-:-(Expect)- -1-0-0---c-o-n-t-i-n-u-e-\r-\n- Expect: 100-continue
+          | | ┌─h-o-s-t-:- (Host)
+          | | | |     ┌─a-s-t---m-o-d-i-f-i-e-d-:- (Last-Modified)
+          | | | |   ┌─i-n-k-:- (Link)
           | | | └─l-o-c-a-t-i-o-n-:- (Location)
           | | |   └─o-r-i-g-i-n-:- (Origin)
           | └─p-r-o-x-y---a-u-t-h-e-n-t-i-c-a-t-e-:- (Proxy-Authenticate)
@@ -165,7 +166,7 @@ class HttpHeaderParserSpec extends Specification {
           |       └─x---f-o-r-w-a-r-d-e-d---f-o-r-:- (X-Forwarded-For)
           |""" -> parser.formatTrie
       }
-      parser.formatSizes === "535 nodes, 33 nodeData rows, 49 values"
+      parser.formatSizes === "540 nodes, 35 nodeData rows, 50 values"
       parser.contentHistogram ===
         Map("Connection" -> 3, "Content-Length" -> 1, "Accept" -> 2, "Cache-Control" -> 2, "Expect" -> 1)
     }
@@ -237,8 +238,8 @@ class HttpHeaderParserSpec extends Specification {
       }
       randomHeaders.take(300).foldLeft(0) {
         case (acc, rawHeader) ⇒ acc + parseAndCache(rawHeader.toString + "\r\nx", rawHeader)
-      } === 103
-      parser.formatSizes === "3048 nodes, 107 nodeData rows, 255 values"
+      } === 102
+      parser.formatSizes === "3045 nodes, 108 nodeData rows, 255 values"
     }
 
     "continue parsing modelled headers even if the overall cache capacity is reached" in new TestSetup() {
@@ -249,8 +250,8 @@ class HttpHeaderParserSpec extends Specification {
       }
       randomHostHeaders.take(300).foldLeft(0) {
         case (acc, header) ⇒ acc + parseAndCache(header.toString + "\r\nx", header)
-      } === 206
-      parser.formatSizes === "3188 nodes, 184 nodeData rows, 255 values"
+      } === 205
+      parser.formatSizes === "3181 nodes, 185 nodeData rows, 255 values"
     }
 
     "continue parsing raw headers even if the header-specific cache capacity is reached" in new TestSetup() {

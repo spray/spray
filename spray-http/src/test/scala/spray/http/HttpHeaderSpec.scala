@@ -26,6 +26,7 @@ import MediaRanges._
 import HttpCharsets._
 import HttpEncodings._
 import HttpMethods._
+import LinkDirectives._
 import spray.util._
 
 class HttpHeaderSpec extends Specification {
@@ -243,6 +244,35 @@ class HttpHeaderSpec extends Specification {
         "https://spray.io/%7Bsec%7D")
       "Location: https://spray.io/ sec" =!= ErrorInfo("Illegal HTTP header 'Location': Illegal URI " +
         "reference, unexpected character ' ' at position 17", "\nhttps://spray.io/ sec\n                 ^\n")
+    }
+
+    "Link" in {
+      """Link: </?page=2>; rel=next""" =!= Link(Uri("/?page=2"), next)
+      """Link: <https://spray.io>; rel=next""" =!= Link(Uri("https://spray.io"), next)
+      """Link: </>; rel=prev, </page/2>; rel="next"""" =!=
+        Link(LinkDirective(Uri("/"), prev), LinkDirective(Uri("/page/2"), next))
+        .renderedTo("""</>; rel=prev, </page/2>; rel=next""")
+
+      """Link: </>; rel="x.y-z http://spray.io"""" =!= Link(Uri("/"), rel("x.y-z http://spray.io"))
+
+      """Link: </>; title="My Title"""" =!= Link(Uri("/"), new title("My Title"))
+      """Link: </>; rel=next; title="My Title"""" =!= Link(Uri("/"), next, new title("My Title"))
+
+      """Link: </>; anchor="http://example.com"""" =!= Link(Uri("/"), anchor(Uri("http://example.com")))
+
+      /* RFC 5988 examples */
+      """Link: <http://example.com/TheBook/chapter2>; rel="previous"; title="previous chapter"""" =!=
+        Link(Uri("http://example.com/TheBook/chapter2"), rel("previous"), new title("previous chapter"))
+        .renderedTo("""<http://example.com/TheBook/chapter2>; rel=previous; title="previous chapter"""")
+
+      """Link: </>; rel="http://example.net/foo"""" =!= Link(Uri("/"), rel("http://example.net/foo"))
+        .renderedTo("</>; rel=http://example.net/foo")
+
+      """Link: <http://example.org/>; rel="start http://example.net/relation/other"""" =!= Link(Uri("http://example.org/"),
+        rel("start http://example.net/relation/other"))
+
+      skipped("TODO: only one 'rel=' is allowed; http://tools.ietf.org/html/rfc5988#section-5.3 requires any subsequent ones to be skipped")
+      """Link: </>; rel=prev""" =!= Link(Uri("/"), prev, next)
     }
 
     "Origin" in {
