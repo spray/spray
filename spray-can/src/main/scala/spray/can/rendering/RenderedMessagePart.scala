@@ -22,6 +22,7 @@ import spray.http._
 
 private[can] case class RequestPartRenderingContext(
   requestPart: HttpRequestPart,
+  requestProtocol: HttpProtocol = HttpProtocols.`HTTP/1.1`,
   ack: Tcp.Event = Tcp.NoAck) extends Command
 
 private[can] case class ResponsePartRenderingContext(

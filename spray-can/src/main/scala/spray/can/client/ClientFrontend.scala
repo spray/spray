@@ -42,26 +42,26 @@ private object ClientFrontend {
           val commandPipeline: CPL = {
             case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequest, ack)) if closeCommanders.isEmpty ⇒
               if (lastRequestComplete) {
-                render(x, ack)
+                render(x, x, ack)
                 openRequests = openRequests enqueue new RequestRecord(x, context.sender, state = Complete(Timestamp.now))
               } else log.warning("Received new HttpRequest before previous chunking request was " +
                 "finished, ignoring...")
 
             case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedRequestStart, ack)) if closeCommanders.isEmpty ⇒
               if (lastRequestComplete) {
-                render(x, ack)
+                render(x, x.request, ack)
                 openRequests = openRequests enqueue new RequestRecord(x, context.sender, state = WaitingForChunkedEnd)
               } else log.warning("Received new ChunkedRequestStart before previous chunking " +
                 "request was finished, ignoring...")
 
             case Http.MessageCommand(HttpMessagePartWrapper(x: MessageChunk, ack)) if closeCommanders.isEmpty ⇒
               if (!lastRequestComplete) {
-                render(x, ack)
+                render(x, openRequests.last.request.message, ack)
               } else log.warning("Received MessageChunk outside of chunking request context, ignoring...")
 
             case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedMessageEnd, ack)) if closeCommanders.isEmpty ⇒
               if (!lastRequestComplete) {
-                render(x, ack)
+                render(x, openRequests.last.request.message, ack)
                 openRequests.last.state = Complete(Timestamp.now) // only start timer once the request is completed
               } else log.warning("Received ChunkedMessageEnd outside of chunking request " +
                 "context, ignoring...")
@@ -118,12 +118,12 @@ private object ClientFrontend {
             case ev ⇒ eventPL(ev)
           }
 
-          def render(part: HttpRequestPart, ack: Option[Any]): Unit = {
+          def render(part: HttpRequestPart, message: HttpMessage, ack: Option[Any]): Unit = {
             val sentAck = ack match {
               case Some(x) ⇒ Pipeline.AckEvent(x)
               case None    ⇒ Tcp.NoAck(PartAndSender(part, context.sender))
             }
-            commandPL(RequestPartRenderingContext(part, sentAck))
+            commandPL(RequestPartRenderingContext(part, message.protocol, sentAck))
           }
 
           def checkForTimeout(): Unit =
