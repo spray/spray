@@ -46,6 +46,7 @@ class DemoService extends Actor with ActorLogging {
 
     case HttpRequest(GET, Uri.Path("/stop"), _, _, _) =>
       sender ! HttpResponse(entity = "Shutting down in 1 second ...")
+      sender ! Http.Close
       context.system.scheduler.scheduleOnce(1.second) { context.system.shutdown() }
 
     case r@HttpRequest(POST, Uri.Path("/file-upload"), headers, entity: HttpEntity.NonEmpty, protocol) =>
