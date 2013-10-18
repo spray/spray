@@ -41,16 +41,16 @@ case class ServerSettings(
     verboseErrorMessages: Boolean,
     requestChunkAggregationLimit: Int,
     responseHeaderSizeHint: Int,
+    maxEncryptionChunkSize: Int,
     defaultHostHeader: Host,
     backpressureSettings: Option[BackpressureSettings],
     parserSettings: ParserSettings) {
 
   requirePositive(reapingCycle)
   require(0 <= pipeliningLimit && pipeliningLimit <= 128, "pipelining-limit must be >= 0 and <= 128")
-  require(0 <= requestChunkAggregationLimit && requestChunkAggregationLimit <= Int.MaxValue,
-    "request-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
-  require(0 <= responseHeaderSizeHint && responseHeaderSizeHint <= Int.MaxValue,
-    "response-size-hint must be >= 0 and <= Int.MaxValue")
+  require(0 <= requestChunkAggregationLimit, "request-chunk-aggregation-limit must be >= 0")
+  require(0 <= responseHeaderSizeHint, "response-size-hint must be > 0")
+  require(0 < maxEncryptionChunkSize, "max-encryption-chunk-size must be > 0")
 }
 
 object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.server") {
@@ -96,6 +96,7 @@ object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.serve
     c getBoolean "verbose-error-messages",
     c getBytes "request-chunk-aggregation-limit" toInt,
     c getBytes "response-header-size-hint" toInt,
+    c getBytes "max-encryption-chunk-size" toInt,
     defaultHostHeader =
       HttpParser.parseHeader(RawHeader("Host", c getString "default-host-header")) match {
         case Right(x: Host) ⇒ x
