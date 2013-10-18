@@ -462,8 +462,8 @@ private[io] object TcpConnection {
   }
 
   object EmptyPendingWrite extends PendingWrite {
-    def commander: ActorRef = ???
-    def doWrite(info: ConnectionInfo): PendingWrite = ???
-    def release(): Unit = ???
+    def commander: ActorRef = throw new IllegalStateException
+    def doWrite(info: ConnectionInfo): PendingWrite = throw new IllegalStateException
+    def release(): Unit = throw new IllegalStateException
   }
 }

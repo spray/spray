@@ -234,8 +234,8 @@ object Tcp extends ExtensionKey[TcpExt] {
   object NoAck extends NoAck(null)
 
   /**
-   * Common interface for all write commands, i.e. [[akka.io.Tcp.Write]], [[akka.io.Tcp.WriteFile]]
-   * and [[akka.io.Tcp.CompoundWrite]]
+   * Common interface for all write commands, currently [[akka.io.Tcp.Write]], [[akka.io.Tcp.WriteFile]]
+   * and [[akka.io.Tcp.CompoundWrite]].
    */
   sealed abstract class WriteCommand extends Command {
     /**
@@ -243,6 +243,24 @@ object Tcp extends ExtensionKey[TcpExt] {
      * a `CompoundWrite`.
      */
     def +:(other: SimpleWriteCommand): CompoundWrite = CompoundWrite(other, this)
+
+    /**
+     * Prepends this command with a number of other writes.
+     * The first element of the given Iterable becomes the first sub write of a potentially
+     * created `CompoundWrite`.
+     */
+    def ++:(writes: Iterable[WriteCommand]): WriteCommand =
+      writes.foldRight(this) {
+        case (a: SimpleWriteCommand, b) ⇒ a +: b
+        case (a: CompoundWrite, b)      ⇒ a ++: b
+      }
+  }
+
+  object WriteCommand {
+    /**
+     * Combines the given number of write commands into one atomic `WriteCommand`.
+     */
+    def apply(writes: Iterable[WriteCommand]): WriteCommand = writes ++: Write.empty
   }
 
   /**
@@ -258,7 +276,7 @@ object Tcp extends ExtensionKey[TcpExt] {
 
     /**
      * An acknowledgment is only sent if this write command “wants an ack”, which is
-     * equivalent to the [[akka.io.Tcp.#ack]] token not being a of type [[akka.io.Tcp.NoAck]].
+     * equivalent to the `ack` token not being a of type [[akka.io.Tcp.NoAck]].
      */
     def wantsAck: Boolean = !ack.isInstanceOf[NoAck]
   }
@@ -313,7 +331,21 @@ object Tcp extends ExtensionKey[TcpExt] {
    * If the sub commands contain `ack` requests they will be honored as soon as the
    * respective write has been written completely.
    */
-  case class CompoundWrite(head: SimpleWriteCommand, tail: WriteCommand) extends WriteCommand
+  case class CompoundWrite(override val head: SimpleWriteCommand, tailCommand: WriteCommand) extends WriteCommand
+      with immutable.Iterable[SimpleWriteCommand] {
+
+    def iterator: Iterator[SimpleWriteCommand] =
+      new Iterator[SimpleWriteCommand] {
+        private[this] var current: WriteCommand = CompoundWrite.this
+        def hasNext: Boolean = current ne null
+        def next(): SimpleWriteCommand =
+          current match {
+            case null                  ⇒ Iterator.empty.next()
+            case CompoundWrite(h, t)   ⇒ current = t; h
+            case x: SimpleWriteCommand ⇒ current = null; x
+          }
+      }
+  }
 
   /**
    * When `useResumeWriting` is in effect as was indicated in the [[akka.io.Tcp.Register]] message
