@@ -4,6 +4,8 @@ import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import sbtassembly.Plugin.AssemblyKeys._
 import sbtassembly.Plugin._
+import sbtunidoc.Plugin._
+import sbtunidoc.Plugin.UnidocKeys._
 import spray.revolver.RevolverPlugin.Revolver
 import twirl.sbt.TwirlPlugin.Twirl
 import com.typesafe.sbt.osgi.SbtOsgi
@@ -81,7 +83,12 @@ object BuildSettings {
   )
 
   lazy val siteSettings = basicSettings ++ formatSettings ++ noPublishing ++ Twirl.settings ++ Revolver.settings ++
-    SiteSupport.settings
+    SiteSupport.settings ++ seq(
+      resourceGenerators in Compile <+= (target in ScalaUnidoc in unidoc in LocalRootProject){ docsLocation =>
+        constant(Seq(docsLocation)).map(_.flatMap(_.***.get))
+      },
+      assembly <<= assembly.dependsOn(unidoc in LocalRootProject)
+    )
 
   lazy val docsSettings = basicSettings ++ noPublishing ++ seq(
     unmanagedSourceDirectories in Test <<= baseDirectory { _ ** "code" get }

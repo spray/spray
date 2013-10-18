@@ -1,8 +1,10 @@
 import sbt._
 import Keys._
 import com.typesafe.sbt.osgi.SbtOsgi._
+import sbtunidoc.Plugin._
+import UnidocKeys._
 
-object Build extends Build with DocSupport {
+object Build extends Build {
   import BuildSettings._
   import Dependencies._
 
@@ -20,7 +22,29 @@ object Build extends Build with DocSupport {
       sprayIO, sprayIOTests, sprayRouting, sprayRoutingTests, sprayServlet, sprayTestKit, sprayUtil)
     .settings(basicSettings: _*)
     .settings(noPublishing: _*)
-    .settings(moveApiDocsSettings: _*)
+    .settings(unidocSettings: _*)
+    .settings(
+      excludedProjects in unidoc in ScalaUnidoc ++= Seq(
+        "docs", "echo-server", "examples", "on-jetty", "on-spray-can", "server-benchmark", "simple-http-client",
+        "simple-http-server", "simple-routing-app", "simple-spray-client", "simple-spray-servlet-server", "site",
+        "spray-can-examples", "spray-client-examples", "spray-io-examples", "spray-routing-examples",
+        "spray-servlet-examples"
+      ),
+      target in (ScalaUnidoc, unidoc) <<= (resourceManaged in Compile in site, version) { (path, version) =>
+        (path / "api" / version)
+      },
+      /* Use this task to generate list to paste into above excludedProjects list.
+         We could do it directly if excludedProjects were a Task
+      TaskKey[Unit]("print-aggregated", "") <<= state map { state =>
+        val ps =
+          Set(
+            docs, site, examples
+          ).flatMap(Utils.aggregatedProjects(Project.structure(state)))
+        println(ps.toSeq.sorted.map("\"" + _ + "\"").mkString(", "))
+      },*/
+      scalacOptions in (ScalaUnidoc, unidoc) += "-Ymacro-no-expand"
+    )
+
 
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -165,7 +189,6 @@ object Build extends Build with DocSupport {
   // -------------------------------------------------------------------------------------------------------------------
   // Site Project
   // -------------------------------------------------------------------------------------------------------------------
-
   lazy val site = Project("site", file("site"))
     .dependsOn(sprayCaching, sprayCan, sprayRouting)
     .settings(siteSettings: _*)
