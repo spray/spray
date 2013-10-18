@@ -383,9 +383,8 @@ object SslTlsSupport {
   case class SSLSessionEstablished(info: SSLSessionInfo) extends Event
 }
 
-private[io] sealed abstract class SSLEngineProviderCompanion {
+private[io] sealed abstract class SSLEngineProviderCompanion(protected val clientMode: Boolean) {
   type Self <: (PipelineContext ⇒ Option[SSLEngine])
-  protected def clientMode: Boolean
 
   protected def fromFunc(f: PipelineContext ⇒ Option[SSLEngine]): Self
 
@@ -397,34 +396,28 @@ private[io] sealed abstract class SSLEngineProviderCompanion {
       cp(plc) map { sslContext ⇒
         val address = plc.remoteAddress
         val engine = sslContext.createSSLEngine(address.getHostName, address.getPort)
-        engine setUseClientMode clientMode
+        engine.setUseClientMode(clientMode)
         engine
       }
     }
 }
 
 trait ServerSSLEngineProvider extends (PipelineContext ⇒ Option[SSLEngine])
-object ServerSSLEngineProvider extends SSLEngineProviderCompanion {
+object ServerSSLEngineProvider extends SSLEngineProviderCompanion(clientMode = false) {
   type Self = ServerSSLEngineProvider
-  protected def clientMode = false
-
-  implicit def fromFunc(f: PipelineContext ⇒ Option[SSLEngine]): Self = {
+  implicit def fromFunc(f: PipelineContext ⇒ Option[SSLEngine]): Self =
     new ServerSSLEngineProvider {
       def apply(plc: PipelineContext) = f(plc)
     }
-  }
 }
 
 trait ClientSSLEngineProvider extends (PipelineContext ⇒ Option[SSLEngine])
-object ClientSSLEngineProvider extends SSLEngineProviderCompanion {
+object ClientSSLEngineProvider extends SSLEngineProviderCompanion(clientMode = true) {
   type Self = ClientSSLEngineProvider
-  protected def clientMode = true
-
-  implicit def fromFunc(f: PipelineContext ⇒ Option[SSLEngine]): Self = {
+  implicit def fromFunc(f: PipelineContext ⇒ Option[SSLEngine]): Self =
     new ClientSSLEngineProvider {
       def apply(plc: PipelineContext) = f(plc)
     }
-  }
 }
 
 trait SSLContextProvider extends (PipelineContext ⇒ Option[SSLContext]) // source-quote-SSLContextProvider
@@ -432,9 +425,8 @@ object SSLContextProvider {
   implicit def forContext(implicit context: SSLContext = SSLContext.getDefault): SSLContextProvider =
     fromFunc(_ ⇒ Some(context))
 
-  implicit def fromFunc(f: PipelineContext ⇒ Option[SSLContext]): SSLContextProvider = {
+  implicit def fromFunc(f: PipelineContext ⇒ Option[SSLContext]): SSLContextProvider =
     new SSLContextProvider {
       def apply(plc: PipelineContext) = f(plc)
     }
-  }
 }
