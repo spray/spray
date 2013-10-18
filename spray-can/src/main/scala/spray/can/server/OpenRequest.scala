@@ -42,12 +42,15 @@ private sealed trait OpenRequest {
   def handleResponseEndAndReturnNextOpenRequest(part: HttpMessagePartWrapper): OpenRequest
   def handleResponsePart(part: HttpMessagePartWrapper)
   def enqueueCommand(command: Command)
+  def registerChunkHandler(handler: ActorRef)
 
   // events
   def handleMessageChunk(chunk: MessageChunk)
   def handleChunkedMessageEnd(part: ChunkedMessageEnd)
   def handleSentAckAndReturnNextUnconfirmed(ev: AckEventWithReceiver): OpenRequest
   def handleClosed(ev: Http.ConnectionClosed)
+
+  def isWaitingForChunkHandler: Boolean
 }
 
 private trait OpenRequestComponent { component ⇒
@@ -80,8 +83,10 @@ private trait OpenRequestComponent { component ⇒
           request.copy(method = HttpMethods.GET)
         else request
       val partToDispatch: HttpRequestPart =
-        if (state == WaitingForChunkedEnd) ChunkedRequestStart(requestToDispatch)
-        else requestToDispatch
+        state match {
+          case _: WaitingForChunkHandler ⇒ ChunkedRequestStart(requestToDispatch)
+          case _                         ⇒ requestToDispatch
+        }
       if (context.log.isDebugEnabled)
         context.log.debug("Dispatching {} to handler {}", format(partToDispatch), handler)
       downstreamCommandPL(Pipeline.Tell(handler, partToDispatch, receiverRef))
@@ -96,9 +101,15 @@ private trait OpenRequestComponent { component ⇒
 
     def checkForTimeout(now: Timestamp): Unit = {
       state match {
-        case WaitingForChunkedEnd ⇒
+        case w: WaitingForChunkHandler ⇒
+          if ((w.timestamp + settings.chunkHandlerRegistrationTimeout).isPast(now)) {
+            context.log.warning("A chunk handler wasn't registered timely. Aborting the connection.")
+            downstreamCommandPL(Tcp.Abort)
+          }
+        case _: ReceivingRequestChunks ⇒
+        case StreamingResponseChunks   ⇒
         case WaitingForResponse(timestamp) ⇒
-          if ((timestamp + requestTimeout).isPast) {
+          if ((timestamp + requestTimeout).isPast(now)) {
             val timeoutHandler =
               if (settings.timeoutHandler.isEmpty) handler
               else context.actorContext.actorFor(settings.timeoutHandler)
@@ -109,7 +120,7 @@ private trait OpenRequestComponent { component ⇒
             state = WaitingForTimeoutResponse()
           }
         case WaitingForTimeoutResponse(timestamp) ⇒
-          if ((timestamp + timeoutTimeout).isPast) {
+          if ((timestamp + timeoutTimeout).isPast(now)) {
             val response = timeoutResponse(request)
             // we always close the connection after a timeout-timeout
             sendPart(response.withHeaders(HttpHeaders.Connection("close") :: response.headers))
@@ -136,7 +147,7 @@ private trait OpenRequestComponent { component ⇒
     }
 
     def handleResponsePart(part: HttpMessagePartWrapper): Unit = {
-      state = WaitingForChunkedEnd // disable request timeout checking once the first response part has come in
+      state = StreamingResponseChunks // disable request timeout checking once the first response part has come in
       handler = context.actorContext.sender // remember who to send Closed events to
       sendPart(part)
       dispatchNextQueuedResponse()
@@ -146,25 +157,38 @@ private trait OpenRequestComponent { component ⇒
       responseQueue = responseQueue enqueue command
     }
 
+    def registerChunkHandler(handler: ActorRef): Unit = {
+      def dispatch(part: HttpRequestPart) = downstreamCommandPL(Pipeline.Tell(handler, part, receiverRef))
+
+      downstreamCommandPL(Tcp.ResumeReading) // counter-part to receiving ChunkedRequestStart in ServerFrontend
+
+      state =
+        state match {
+          case WaitingForChunkHandlerBuffering(_, receiveds) ⇒ receiveds.foreach(dispatch); ReceivingRequestChunks(handler)
+          case WaitingForChunkHandlerReceivedAll(_, receiveds) ⇒ receiveds.foreach(dispatch); WaitingForResponse()
+          case x ⇒ throw new IllegalStateException("Didn't expect " + x)
+        }
+    }
+
     /***** EVENTS *****/
 
-    def handleMessageChunk(chunk: MessageChunk): Unit = {
-      if (nextInChain.isEmpty)
-        downstreamCommandPL(Pipeline.Tell(handler, chunk, receiverRef))
-      else
-        // we accept non-tail recursion since HTTP pipeline depth is limited (and small)
-        nextInChain handleMessageChunk chunk
-    }
+    def handleMessageChunk(chunk: MessageChunk): Unit =
+      state match {
+        case WaitingForChunkHandlerBuffering(timeout, receiveds) ⇒ state = WaitingForChunkHandlerBuffering(timeout, receiveds.enqueue(chunk))
+        case ReceivingRequestChunks(chunkHandler) ⇒ downstreamCommandPL(Pipeline.Tell(chunkHandler, chunk, receiverRef))
+        case x if nextInChain.isEmpty ⇒ throw new IllegalArgumentException(s"$this Didn't expect message chunks in state $state")
+        case _ ⇒ nextInChain handleMessageChunk chunk
+      }
 
-    def handleChunkedMessageEnd(part: ChunkedMessageEnd): Unit = {
-      if (nextInChain.isEmpty) {
-        // only start request timeout checking after request has been completed
-        state = WaitingForResponse()
-        downstreamCommandPL(Pipeline.Tell(handler, part, receiverRef))
-      } else
-        // we accept non-tail recursion since HTTP pipeline depth is limited (and small)
-        nextInChain handleChunkedMessageEnd part
-    }
+    def handleChunkedMessageEnd(part: ChunkedMessageEnd): Unit =
+      state match {
+        case WaitingForChunkHandlerBuffering(timeout, receiveds) ⇒ state = WaitingForChunkHandlerReceivedAll(timeout, receiveds.enqueue(part))
+        case ReceivingRequestChunks(chunkHandler) ⇒
+          state = WaitingForResponse()
+          downstreamCommandPL(Pipeline.Tell(chunkHandler, part, receiverRef))
+        case x if nextInChain.isEmpty ⇒ throw new IllegalArgumentException(s"$this Didn't expect ChunkedMessageEnd in state $state")
+        case _                        ⇒ nextInChain handleChunkedMessageEnd part
+      }
 
     def handleSentAckAndReturnNextUnconfirmed(ev: AckEventWithReceiver) = {
       downstreamCommandPL(Pipeline.Tell(ev.receiver, ev.ack, receiverRef))
@@ -202,6 +226,8 @@ private trait OpenRequestComponent { component ⇒
       case MessageChunk(body, _) ⇒ body.length.toString + " byte request chunk"
       case x                     ⇒ x.toString
     }
+
+    def isWaitingForChunkHandler: Boolean = state.isInstanceOf[WaitingForChunkHandler]
   }
 
   object EmptyOpenRequest extends OpenRequest {
@@ -223,6 +249,9 @@ private trait OpenRequestComponent { component ⇒
 
     def enqueueCommand(command: Command): Unit = {}
 
+    def registerChunkHandler(handler: ActorRef): Unit =
+      throw new IllegalStateException("Received RegisterChunkHandler for non-existing request")
+
     // events
     def handleMessageChunk(chunk: MessageChunk): Unit = { throw new IllegalStateException }
     def handleChunkedMessageEnd(part: ChunkedMessageEnd): Unit = { throw new IllegalStateException }
@@ -233,6 +262,8 @@ private trait OpenRequestComponent { component ⇒
     def handleClosed(ev: Http.ConnectionClosed): Unit = {
       downstreamCommandPL(Pipeline.Tell(context.handler, ev, context.self))
     }
+
+    def isWaitingForChunkHandler: Boolean = false
   }
 
 }
@@ -240,7 +271,54 @@ private trait OpenRequestComponent { component ⇒
 private case class AckEventWithReceiver(ack: Any, receiver: ActorRef) extends Event
 private case class PartAndSender(part: HttpResponsePart, sender: ActorRef)
 
+/**
+ * The state of a request. State transformations:
+ *
+ * Initial state:
+ *   -> WaitingForChunkHandlerBuffering: if incoming request is chunked
+ *   -> WaitingForResponse: if request was received completely
+ *
+ * WaitingForChunkHandlerBuffering:
+ *   -> WaitingForChunkHandlerReceivedAll: if ChunkedMessageEnd was received before chunk handler was registered
+ *   -> ReceivingRequestChunks: after chunk handler was registered
+ *
+ * WaitingForChunkHandlerReceivedAll:
+ *   -> WaitingForResponse: after chunk handler was registered
+ *
+ * ReceivingRequestChunks:
+ *   -> WaitingForResponse: after ChunkedMessageEnd was received and dispatched
+ *
+ * WaitingForResponse:
+ *   -> -finish-: if complete response was received
+ *   -> StreamingResponseChunks: after a ChunkedResponseStart was sent
+ *   -> WaitingForTimeoutResponse: if the timeout triggered before a response (start) was produced
+ *
+ * StreamingResponseStart:
+ *   -> -finish-: if ChunkedMessageEnd was sent
+ *
+ * WaitingForTimeoutResponse:
+ *   -> -finish-: if the timeout response was delivered
+ *   -> -finish-: if the timeout timeout triggered before the timeout response was produced
+ *
+ */
 private sealed trait RequestState
-private case object WaitingForChunkedEnd extends RequestState
+private sealed abstract class WaitingForChunkHandler extends RequestState {
+  def timestamp: Timestamp
+  def receivedChunks: Queue[HttpRequestPart]
+}
+/** Got a ChunkedRequestStart, waiting for chunk handler to register */
+private case class WaitingForChunkHandlerBuffering(
+  timestamp: Timestamp = Timestamp.now,
+  receivedChunks: Queue[HttpRequestPart] = Queue.empty) extends WaitingForChunkHandler
+/** Got ChunkedMessageEnd, waiting for chunk handler to register */
+private case class WaitingForChunkHandlerReceivedAll(
+  timestamp: Timestamp,
+  receivedChunks: Queue[HttpRequestPart]) extends WaitingForChunkHandler
+/** Got the chunk handler, receiving and dispatching request chunks */
+private case class ReceivingRequestChunks(chunkHandler: ActorRef) extends RequestState
+/** Request was fully delivered waiting for response */
 private case class WaitingForResponse(timestamp: Timestamp = Timestamp.now) extends RequestState
+/** ChunkedRequestStart was sent waiting for remaining chunks */
+private case object StreamingResponseChunks extends RequestState
+/** Timed-out while waiting for request, `Timeout` was dispatched, now waiting for timeout response */
 private case class WaitingForTimeoutResponse(timestamp: Timestamp = Timestamp.now) extends RequestState

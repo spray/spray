@@ -22,12 +22,14 @@ import akka.actor._
 import spray.io.Command
 import spray.http._
 import spray.can.Http
+import spray.can.Http.RegisterChunkHandler
 
 private object ResponseReceiverRef {
   private val responseStateOffset = Unsafe.instance.objectFieldOffset(
     classOf[ResponseReceiverRef].getDeclaredField("_responseStateDoNotCallMeDirectly"))
 
   sealed trait ResponseState
+  case object WaitingForChunkHandler extends ResponseState
   case object Uncompleted extends ResponseState
   case object Completed extends ResponseState
   case object Chunking extends ResponseState
@@ -37,7 +39,8 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
     extends UnregisteredActorRef(openRequest.context.actorContext) {
   import ResponseReceiverRef._
 
-  @volatile private[this] var _responseStateDoNotCallMeDirectly: ResponseState = Uncompleted
+  @volatile private[this] var _responseStateDoNotCallMeDirectly: ResponseState =
+    if (openRequest.isWaitingForChunkHandler) WaitingForChunkHandler else Uncompleted
 
   def handle(message: Any)(implicit sender: ActorRef) {
     require(RefUtils.isLocal(sender), "A request cannot be completed from a remote actor")
@@ -52,22 +55,26 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
             dispatch(part, Uncompleted, Chunking)
           case _: MessageChunk      ⇒ dispatch(part, Chunking, Chunking)
           case _: ChunkedMessageEnd ⇒ dispatch(part, Chunking, Completed)
+
         }
-      case x: Command ⇒ dispatch(x)
+      case RegisterChunkHandler(handler) ⇒ dispatch(ChunkHandlerRegistration(openRequest, handler), WaitingForChunkHandler, Uncompleted)
+      case x: Command                    ⇒ dispatch(x)
       case x ⇒
         openRequest.context.log.warning("Illegal response {} to {}", x, requestInfo)
         unhandledMessage(x)
     }
   }
 
-  private def dispatch(msg: HttpMessagePartWrapper, expectedState: ResponseState, newState: ResponseState)(implicit sender: ActorRef) {
+  private def dispatch(msg: HttpMessagePartWrapper, expectedState: ResponseState, newState: ResponseState)(implicit sender: ActorRef): Unit =
+    dispatch(new Response(openRequest, Http.MessageCommand(msg)))
+  private def dispatch(cmd: Command, expectedState: ResponseState, newState: ResponseState)(implicit sender: ActorRef): Unit = {
     if (Unsafe.instance.compareAndSwapObject(this, responseStateOffset, expectedState, newState)) {
-      dispatch(new Response(openRequest, Http.MessageCommand(msg)))
+      dispatch(cmd)
     } else {
-      openRequest.context.log.warning("Cannot dispatch {} as response (part) for {} since current response state is " +
-        "'{}' but should be '{}'", msg.messagePart.getClass.getSimpleName, requestInfo,
+      openRequest.context.log.warning("Cannot dispatch {} for {} since current response state is " +
+        "'{}' but should be '{}'", cmd.getClass.getSimpleName, requestInfo,
         Unsafe.instance.getObjectVolatile(this, responseStateOffset), expectedState)
-      unhandledMessage(msg)
+      unhandledMessage(cmd)
     }
   }
 
@@ -85,3 +92,4 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
 }
 
 private case class Response(openRequest: OpenRequest, cmd: Command) extends Command
+private case class ChunkHandlerRegistration(openRequest: OpenRequest, chunkHandler: ActorRef) extends Command()

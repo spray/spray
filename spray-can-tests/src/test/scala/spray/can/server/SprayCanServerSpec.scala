@@ -31,6 +31,7 @@ import spray.util.Utils.temporaryServerHostnameAndPort
 import spray.httpx.RequestBuilding._
 import spray.http._
 import HttpProtocols._
+import spray.can.Http.RegisterChunkHandler
 import spray.can.client.ClientConnectionSettings
 
 class SprayCanServerSpec extends Specification with NoTimeConversions {
@@ -96,21 +97,27 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
       val probe = sendRequest(connection, ChunkedRequestStart(Get("/abc")))
       serverHandler.expectMsgType[ChunkedRequestStart].request.uri === Uri(s"http://$hostname:$port/abc")
       probe.send(connection, MessageChunk("123"))
-      probe.send(connection, MessageChunk("456"))
-      serverHandler.expectMsg(MessageChunk("123"))
-      serverHandler.expectMsg(MessageChunk("456"))
-      probe.send(connection, ChunkedMessageEnd)
-      serverHandler.expectMsg(ChunkedMessageEnd)
 
-      serverHandler.reply(ChunkedResponseStart(HttpResponse(entity = "yeah")))
-      serverHandler.reply(MessageChunk("234"))
-      serverHandler.reply(MessageChunk("345"))
-      serverHandler.reply(ChunkedMessageEnd)
+      val chunkHandler = TestProbe()
+      serverHandler.reply(RegisterChunkHandler(chunkHandler.ref))
+
+      probe.send(connection, MessageChunk("456"))
+
+      chunkHandler.expectMsg(MessageChunk("123"))
+      chunkHandler.expectMsg(MessageChunk("456"))
+      probe.send(connection, ChunkedMessageEnd)
+      chunkHandler.expectMsg(ChunkedMessageEnd)
+
+      chunkHandler.reply(ChunkedResponseStart(HttpResponse(entity = "yeah")))
+      chunkHandler.reply(MessageChunk("234"))
+      chunkHandler.reply(MessageChunk("345"))
+      chunkHandler.reply(ChunkedMessageEnd)
       probe.expectMsgType[ChunkedResponseStart].response.entity === HttpEntity.Empty
       probe.expectMsg(MessageChunk("yeah"))
       probe.expectMsg(MessageChunk("234"))
       probe.expectMsg(MessageChunk("345"))
       probe.expectMsg(ChunkedMessageEnd)
+      serverHandler.expectNoMsg()
     }
 
     "maintain response order for pipelined requests" in new TestSetup {

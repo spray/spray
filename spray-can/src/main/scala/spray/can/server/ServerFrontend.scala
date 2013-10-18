@@ -75,6 +75,8 @@ private object ServerFrontend {
               // a response for a non-current openRequest has to be queued
               openRequest.enqueueCommand(command)
 
+            case ChunkHandlerRegistration(openRequest, handler) ⇒ openRequest.registerChunkHandler(handler)
+
             case CommandWrapper(SetRequestTimeout(timeout)) ⇒
               _requestTimeout = timeout
               if (_requestTimeout.isFinite() && _idleTimeout.isFinite() && _idleTimeout <= _requestTimeout) {
@@ -114,7 +116,8 @@ private object ServerFrontend {
               } else openNewRequest(request, closeAfterResponseCompletion, WaitingForResponse())
 
             case HttpMessageStartEvent(ChunkedRequestStart(request), closeAfterResponseCompletion) ⇒
-              openNewRequest(request, closeAfterResponseCompletion, WaitingForChunkedEnd)
+              commandPL(Tcp.SuspendReading) // suspend reading until the handler is registered
+              openNewRequest(request, closeAfterResponseCompletion, WaitingForChunkHandlerBuffering())
 
             case Http.MessageEvent(x: MessageChunk) ⇒
               firstOpenRequest handleMessageChunk x

@@ -14,6 +14,7 @@ private[spray] class Timestamp private (val timestampNanos: Long) extends AnyVal
     else (timestampNanos - other.timestampNanos).nanos
 
   def isPast: Boolean = System.nanoTime() >= timestampNanos
+  def isPast(now: Timestamp): Boolean = now.timestampNanos >= timestampNanos
   def isFuture: Boolean = !isPast
 
   def isFinite: Boolean = timestampNanos < Long.MaxValue
