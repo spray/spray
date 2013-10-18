@@ -37,12 +37,13 @@ class SprayCanClientSpec extends Specification {
     akka.loglevel = ERROR
     akka.io.tcp.trace-logging = off
     spray.can.client.request-timeout = 500ms
-    spray.can.server.verbose-error-messages = on
+    spray.can.client.response-chunk-aggregation-limit = 0
     spray.can.host-connector.max-retries = 1
     spray.can.host-connector.idle-timeout = infinite
     spray.can.host-connector.client.request-timeout = 500ms
+    spray.can.server.pipelining-limit = 4
+    spray.can.server.verbose-error-messages = on
     spray.can.server.request-chunk-aggregation-limit = 0
-    spray.can.client.response-chunk-aggregation-limit = 0
     spray.can.server.transparent-head-requests = off""")
   implicit val system = ActorSystem(actorSystemNameFrom(getClass), testConf)
 

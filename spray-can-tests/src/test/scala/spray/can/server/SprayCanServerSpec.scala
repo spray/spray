@@ -42,8 +42,9 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
       io.tcp.trace-logging = off
     }
     spray.can.server.request-chunk-aggregation-limit = 0
-    spray.can.client.response-chunk-aggregation-limit = 0
-    spray.can.server.verbose-error-messages = on""")
+    spray.can.server.pipelining-limit = 4
+    spray.can.server.verbose-error-messages = on
+    spray.can.client.response-chunk-aggregation-limit = 0""")
   implicit val system = ActorSystem(getClass.getSimpleName, testConf)
 
   "The server-side spray-can HTTP infrastructure" should {
