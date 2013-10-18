@@ -2,6 +2,7 @@ package spray.httpx
 
 import org.specs2.mutable.Specification
 import org.json4s.DefaultFormats
+import play.api.libs.json.Json
 import spray.httpx.unmarshalling._
 import spray.httpx.marshalling._
 import spray.json._
@@ -87,6 +88,23 @@ class LiftJsonSupportSpec extends Specification with LiftJsonSupport {
       HttpEntity(ContentTypes.`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
     }
     "provide marshalling support for a case class" in {
+      marshal(Employee.simple) === Right(HttpEntity(ContentTypes.`application/json`, Employee.json))
+    }
+    "use UTF-8 as the default charset for JSON source decoding" in {
+      HttpEntity(MediaTypes.`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
+    }
+  }
+}
+
+class PlayJsonSupportSpec extends Specification with PlayJsonSupport {
+  implicit val employeeReader = Json.reads[Employee]
+  implicit val employeeWriter = Json.writes[Employee]
+
+  "The PlayJsonSupport" should {
+    "provide unmarshalling capability for case classes with an in-scope Reads[T]" in {
+      HttpEntity(ContentTypes.`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
+    }
+    "provide marshalling capability for case classes with an in-scope Writes[T]" in {
       marshal(Employee.simple) === Right(HttpEntity(ContentTypes.`application/json`, Employee.json))
     }
     "use UTF-8 as the default charset for JSON source decoding" in {
