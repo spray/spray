@@ -108,8 +108,10 @@ private object ServerFrontend {
                       HttpResponse(StatusCodes.InternalServerError, StatusCodes.InternalServerError.defaultMessage)
                   }
                 if (firstOpenRequest.isEmpty) commandPL {
-                  ResponsePartRenderingContext(response, request.method, request.protocol,
-                    closeAfterResponseCompletion, if (autoBackPressure) Tcp.NoAck else Tcp.NoAck(PartAndSender(response, context.self)))
+                  val ack =
+                    if (serverSettings.autoBackPressureEnabled) Tcp.NoAck
+                    else Tcp.NoAck(PartAndSender(response, context.self))
+                  ResponsePartRenderingContext(response, request.method, request.protocol, closeAfterResponseCompletion, ack)
                 }
                 else throw new NotImplementedError("fastPath is not yet supported with pipelining enabled")
 
@@ -158,8 +160,6 @@ private object ServerFrontend {
             nextOpenRequest.dispatchInitialRequestPartToHandler()
             if (firstUnconfirmed.isEmpty) firstUnconfirmed = firstOpenRequest
           }
-
-          def autoBackPressure = serverSettings.backpressureSettings.isDefined
         }
     }
   }

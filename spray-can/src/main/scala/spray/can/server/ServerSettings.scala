@@ -51,6 +51,8 @@ case class ServerSettings(
   require(0 <= requestChunkAggregationLimit, "request-chunk-aggregation-limit must be >= 0")
   require(0 <= responseHeaderSizeHint, "response-size-hint must be > 0")
   require(0 < maxEncryptionChunkSize, "max-encryption-chunk-size must be > 0")
+
+  def autoBackPressureEnabled: Boolean = backpressureSettings.isDefined && (pipeliningLimit > 1)
 }
 
 object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.server") {

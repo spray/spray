@@ -207,7 +207,7 @@ private trait OpenRequestComponent { component ⇒
       val responsePart = part.messagePart.asInstanceOf[HttpResponsePart]
       val ack = part.ack match {
         case None ⇒
-          if (settings.backpressureSettings.isDefined) Tcp.NoAck else Tcp.NoAck(PartAndSender(responsePart, context.sender))
+          if (settings.autoBackPressureEnabled) Tcp.NoAck else Tcp.NoAck(PartAndSender(responsePart, context.sender))
         case Some(x) ⇒
           pendingSentAcks += 1
           AckEventWithReceiver(x, handler)
