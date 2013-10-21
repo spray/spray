@@ -9,7 +9,9 @@ trait BasicToResponseMarshallers {
 
   // No implicit conversion to StatusCode allowed here: in `complete(i: Int)`, `i` shouldn't be marshalled
   // as a StatusCode
-  implicit def fromStatusCode: ToResponseMarshaller[StatusCode] = fromResponse.compose(s ⇒ HttpResponse(status = s))
+  implicit def fromStatusCode: ToResponseMarshaller[StatusCode] =
+    fromResponse.compose(s ⇒ HttpResponse(status = s, entity = s.defaultMessage))
+
   implicit def fromStatusCodeAndT[S, T](implicit sConv: S ⇒ StatusCode, tMarshaller: Marshaller[T]): ToResponseMarshaller[(S, T)] =
     fromStatusCodeAndHeadersAndT[T].compose { case (s, t) ⇒ (sConv(s), Nil, t) }
 
