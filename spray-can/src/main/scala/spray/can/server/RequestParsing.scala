@@ -71,8 +71,7 @@ private[can] object RequestParsing {
           def handleError(status: StatusCode, info: ErrorInfo): Unit = {
             log.warning("Illegal request, responding with status '{}': {}", status, info.formatPretty)
             val msg = if (settings.verboseErrorMessages) info.formatPretty else info.summary
-            commandPL(ResponsePartRenderingContext(HttpResponse(status, msg)))
-            commandPL(Http.Close)
+            commandPL(ResponsePartRenderingContext(HttpResponse(status, msg), closeAfterResponseCompletion = true))
             parser = Result.IgnoreAllFurtherInput
           }
 
@@ -83,10 +82,7 @@ private[can] object RequestParsing {
               try handleParsingResult(parser(data))
               catch {
                 case e: ExceptionWithErrorInfo ⇒ handleError(StatusCodes.BadRequest, e.info)
-                case NonFatal(e) ⇒
-                  handleError(StatusCodes.BadRequest,
-                    ErrorInfo("Illegal request",
-                      e.getMessage.nullAsEmpty))
+                case NonFatal(e)               ⇒ handleError(StatusCodes.BadRequest, ErrorInfo("Illegal request", e.getMessage.nullAsEmpty))
               }
 
             case ev ⇒ eventPL(ev)
