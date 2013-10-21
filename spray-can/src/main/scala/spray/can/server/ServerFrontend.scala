@@ -41,8 +41,13 @@ private object ServerFrontend {
     new RawPipelineStage[Context] {
       def apply(_context: Context, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines with OpenRequestComponent {
-          var firstOpenRequest: OpenRequest = EmptyOpenRequest
+          // A reference to the first request in the chain whose response hasn't been fully ack'd
           var firstUnconfirmed: OpenRequest = EmptyOpenRequest
+
+          // A reference into the unconfirmed list for the first request for which
+          // no response was yet produced. This queue is strictly a suffix of the unconfirmed list.
+          var firstOpenRequest: OpenRequest = EmptyOpenRequest
+
           var _requestTimeout: Duration = serverSettings.requestTimeout
           var _idleTimeout: Duration = serverSettings.idleTimeout
           var _timeoutTimeout: Duration = serverSettings.timeoutTimeout
@@ -136,12 +141,13 @@ private object ServerFrontend {
               commandPL(Pipeline.Tell(responseSender, Http.SendFailed(part), context.self))
               commandPL(Tcp.Abort)
 
-            case x: Http.ConnectionClosed ⇒
-              if (firstUnconfirmed.isEmpty)
-                firstOpenRequest handleClosed x // dispatches to the handler if no request is open
-              else
-                firstUnconfirmed handleClosed x // also includes the firstOpenRequest and beyond
-              eventPL(x) // terminates the connection actor
+            case ev: Http.ConnectionClosed ⇒
+              def sendClosed(receiver: ActorRef) = downstreamCommandPL(Pipeline.Tell(receiver, ev, context.handler))
+
+              val interestedParties = firstUnconfirmed.handleClosed(ev) + context.handler
+              interestedParties.foreach(sendClosed)
+
+              eventPL(ev) // terminates the connection actor
 
             case TickGenerator.Tick ⇒
               if (requestTimeout.isFinite())
