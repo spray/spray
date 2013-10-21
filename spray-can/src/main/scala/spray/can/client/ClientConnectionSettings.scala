@@ -56,10 +56,10 @@ object ClientConnectionSettings extends SettingsCompanion[ClientConnectionSettin
       c getDuration "idle-timeout",
       c getDuration "request-timeout",
       c getDuration "reaping-cycle",
-      c getBytes "response-chunk-aggregation-limit" toInt,
+      c getIntBytes "response-chunk-aggregation-limit",
       c getBoolean "chunkless-streaming",
-      c getBytes "request-header-size-hint" toInt,
-      c getBytes "max-encryption-chunk-size" toInt,
+      c getIntBytes "request-header-size-hint",
+      c getIntBytes "max-encryption-chunk-size",
       c getDuration "connecting-timeout",
       ParserSettings fromSubConfig c.getConfig("parsing"),
       ProxySettings fromSubConfig c.getConfig("proxy"))
