@@ -35,7 +35,7 @@ private object ResponseRendering {
               val rendering = new HttpDataRendering(settings.responseHeaderSizeHint)
               val close = renderResponsePartRenderingContext(rendering, ctx, context.log)
               commandPL(toTcpWriteCommand(rendering.get, ctx.ack))
-              if (close) commandPL(Http.Close)
+              if (close) commandPL(Http.ConfirmedClose)
 
             case cmd ⇒ commandPL(cmd)
           }

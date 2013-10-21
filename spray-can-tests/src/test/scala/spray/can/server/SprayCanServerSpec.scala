@@ -143,11 +143,11 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
           val socket = openClientSocket()
           val serverHandler = acceptConnection()
           val writer = write(socket, request + "\r\n\r\n")
-          serverHandler.expectMsg(Http.Closed)
           val (text, reader) = readAll(socket)()
+          socket.close()
+          serverHandler.expectMsg(Http.ConfirmedClosed)
           text must startWith("HTTP/1.1 400 Bad Request")
           text.takeRight(errorMsg.length) === errorMsg
-          socket.close()
         }
       "when an HTTP/1.1 request has no Host header" in errorTest(
         request = "GET / HTTP/1.1",

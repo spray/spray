@@ -70,7 +70,7 @@ class ResponseRenderingSpec extends Specification with Specs2PipelineStageTest {
           |
           |"""
       }
-      commands.expectMsg(Http.Close)
+      commands.expectMsg(Http.ConfirmedClose)
     }
   }
 }

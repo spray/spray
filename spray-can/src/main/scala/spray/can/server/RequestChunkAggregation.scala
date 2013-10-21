@@ -58,7 +58,8 @@ private object RequestChunkAggregation {
           def closeWithError(): Unit = {
             val msg = "Aggregated request entity greater than configured limit of " + limit + " bytes"
             context.log.error(msg + ", closing connection")
-            commandPL(ResponsePartRenderingContext(HttpResponse(StatusCodes.RequestEntityTooLarge, msg)))
+            commandPL(ResponsePartRenderingContext(HttpResponse(StatusCodes.RequestEntityTooLarge, msg),
+              closeAfterResponseCompletion = true))
             commandPL(Http.Close)
             eventPipeline.become(eventPL) // disable this stage
           }
