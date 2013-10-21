@@ -62,7 +62,8 @@ object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.serve
                       chunkHandlerRegistrationTimeout: Duration,
                       bindTimeout: Duration,
                       unbindTimeout: Duration,
-                      registrationTimeout: Duration) {
+                      registrationTimeout: Duration,
+                      parsingErrorAbortTimeout: Duration) {
     requirePositive(idleTimeout)
     requirePositive(requestTimeout)
     requirePositive(timeoutTimeout)
@@ -87,7 +88,8 @@ object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.serve
       c getDuration "chunkhandler-registration-timeout",
       c getDuration "bind-timeout",
       c getDuration "unbind-timeout",
-      c getDuration "registration-timeout"),
+      c getDuration "registration-timeout",
+      c getDuration "parsing-error-abort-timeout"),
     c getDuration "reaping-cycle",
     c getBoolean "stats-support",
     c getBoolean "remote-address-header",
