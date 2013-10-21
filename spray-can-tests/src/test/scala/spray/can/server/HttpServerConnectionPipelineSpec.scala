@@ -309,7 +309,8 @@ private class HttpServerConnectionPipelineSpec extends Specification with RawSpe
       message === HttpRequest(uri = "http://test.com/", headers = List(`Host`("test.com")))
 
       val probe = TestProbe()
-      requestSender.tell(Http.MessageCommand(ChunkedResponseStart(HttpResponse(entity = "1234567"))), probe.ref)
+      val responseStart = ChunkedResponseStart(HttpResponse(entity = "1234567"))
+      requestSender.tell(Http.MessageCommand(responseStart), probe.ref)
       val Tcp.Write(StringBytes(data), ack) = commands.expectMsgType[Tcp.Write]
       wipeDate(data) === prep {
         """HTTP/1.1 200 OK
@@ -320,7 +321,7 @@ private class HttpServerConnectionPipelineSpec extends Specification with RawSpe
           |
           |"""
       }
-      ack === AckEventWithReceiver(Http.Closed, probe.ref)
+      ack === AckEventWithReceiver(Http.Closed, responseStart, probe.ref)
     }
 
     "dispatch Timeout messages in case of a request timeout (and dispatch respective response)" in new MyFixture() {

@@ -27,6 +27,7 @@ import spray.can.Http
 import spray.http._
 import spray.io._
 import spray.util.Timestamp
+import akka.io.Tcp.NoAck
 
 private object ServerFrontend {
 
@@ -73,7 +74,7 @@ private object ServerFrontend {
 
             case Response(openRequest, command) ⇒
               // a response for a non-current openRequest has to be queued
-              openRequest.enqueueCommand(command)
+              openRequest.enqueueCommand(command, context.sender)
 
             case ChunkHandlerRegistration(openRequest, handler) ⇒ openRequest.registerChunkHandler(handler)
 
@@ -110,12 +111,12 @@ private object ServerFrontend {
                 if (firstOpenRequest.isEmpty) commandPL {
                   val ack =
                     if (serverSettings.autoBackPressureEnabled) Tcp.NoAck
-                    else Tcp.NoAck(PartAndSender(response, context.self))
+                    else Tcp.NoAck(AckEventWithReceiver(NoAck, response, context.self))
                   ResponsePartRenderingContext(response, request.method, request.protocol, closeAfterResponseCompletion, ack)
                 }
                 else throw new NotImplementedError("fastPath is not yet supported with pipelining enabled")
 
-              } else openNewRequest(request, closeAfterResponseCompletion, WaitingForResponse())
+              } else openNewRequest(request, closeAfterResponseCompletion, WaitingForResponse(context.sender))
 
             case HttpMessageStartEvent(ChunkedRequestStart(request), closeAfterResponseCompletion) ⇒
               commandPL(Tcp.SuspendReading) // suspend reading until the handler is registered
@@ -130,10 +131,10 @@ private object ServerFrontend {
             case x: AckEventWithReceiver ⇒
               firstUnconfirmed = firstUnconfirmed handleSentAckAndReturnNextUnconfirmed x
 
-            case Tcp.CommandFailed(WriteCommandWithLastAck(Tcp.NoAck(PartAndSender(part, responseSender)))) ⇒
-              // TODO: implement automatic checkpoint buffering and write resuming
-              context.log.error("Could not write response part {}, closing connection", part)
+            case Tcp.CommandFailed(WriteCommandWithLastAck(AckEventWithReceiver(_, part, responseSender))) ⇒
+              context.log.error("Could not write response part {}, aborting connection.", part)
               commandPL(Pipeline.Tell(responseSender, Http.SendFailed(part), context.self))
+              commandPL(Tcp.Abort)
 
             case x: Http.ConnectionClosed ⇒
               if (firstUnconfirmed.isEmpty)
@@ -157,7 +158,7 @@ private object ServerFrontend {
           def openNewRequest(request: HttpRequest, closeAfterResponseCompletion: Boolean, state: RequestState): Unit = {
             val nextOpenRequest = new DefaultOpenRequest(request, closeAfterResponseCompletion, state)
             firstOpenRequest = firstOpenRequest appendToEndOfChain nextOpenRequest
-            nextOpenRequest.dispatchInitialRequestPartToHandler()
+            nextOpenRequest.dispatchInitialRequestPartToHandler(context.sender)
             if (firstUnconfirmed.isEmpty) firstUnconfirmed = firstOpenRequest
           }
         }
