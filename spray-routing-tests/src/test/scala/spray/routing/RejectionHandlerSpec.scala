@@ -132,8 +132,8 @@ class RejectionHandlerSpec extends RoutingSpec {
       }
     }
     "respond with NotAcceptable for requests resulting in UnacceptedResponseContentTypeRejection" in {
-      Get() ~> `Accept`(`text/css`) ~> {
-        wrap { complete("text text text") }
+      Get() ~> `Accept`(`text/css`) ~> `Accept-Encoding`(HttpEncodings.identity) ~> {
+        wrap { complete("text text text") ~ encodeResponse(Gzip)(complete("test")) }
       } ~> check {
         status === NotAcceptable
         responseAs[String] === "Resource representation is only available " +
