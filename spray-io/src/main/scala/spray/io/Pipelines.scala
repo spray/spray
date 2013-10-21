@@ -127,10 +127,12 @@ trait RawPipelineStage[-C <: PipelineContext] { left ⇒
 }
 
 object RawPipelineStage {
-  type PipelineStageContext[C <: PipelineContext] = MacroContext { type PrefixType = RawPipelineStage[C] }
-  def enabled[C <: PipelineContext](c: PipelineStageContext[C])(condition: c.Expr[Boolean]) =
+  // TODO: we previously used PipelineStageContext instead of MacroContext, which would spare us the ugly
+  // asInstanceOf cast in the macro implementation. However, scaladoc has a problem with that for some reason.
+  // type PipelineStageContext[C <: PipelineContext] = MacroContext { type PrefixType = RawPipelineStage[C] }
+  def enabled[C <: PipelineContext](c: MacroContext)(condition: c.Expr[Boolean]): c.Expr[RawPipelineStage[C]] =
     c.universe.reify {
-      if (condition.splice) c.prefix.splice else EmptyPipelineStage
+      if (condition.splice) c.prefix.asInstanceOf[c.Expr[RawPipelineStage[C]]].splice else EmptyPipelineStage
     }
 }
 
