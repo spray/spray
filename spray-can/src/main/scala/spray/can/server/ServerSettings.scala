@@ -98,9 +98,9 @@ object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.serve
     c getString "timeout-handler",
     c getBoolean "chunkless-streaming",
     c getBoolean "verbose-error-messages",
-    c getBytes "request-chunk-aggregation-limit" toInt,
-    c getBytes "response-header-size-hint" toInt,
-    c getBytes "max-encryption-chunk-size" toInt,
+    c getIntBytes "request-chunk-aggregation-limit",
+    c getIntBytes "response-header-size-hint",
+    c getIntBytes "max-encryption-chunk-size",
     defaultHostHeader =
       HttpParser.parseHeader(RawHeader("Host", c getString "default-host-header")) match {
         case Right(x: Host) ⇒ x

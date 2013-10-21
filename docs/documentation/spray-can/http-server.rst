@@ -172,15 +172,11 @@ Exactly which actor receives it depends on the current state of request processi
 The connection actor sends ``Http.ConnectionClosed`` events coming in from the underlying IO layer
 
 - to the handler actor
-
-  - if no request is currently open
-  - if a request is open and no response has been received yet
-  - if an un-ACKed response has been received
-
+- to the *request* chunk handler if one is defined and no response part was yet received
 - to the sender of the last received response part
 
   - if the ACK for an ACKed response part has not yet been dispatched
-  - if a chunk stream has not yet been finished (with a ``ChunkedMessageEnd``)
+  - if a *response* chunk stream has not yet been finished (with a ``ChunkedMessageEnd``)
 
 .. note:: The application can always choose to actively close a connection by sending one of the three defined
    ``Http.CloseCommand`` messages to the sender of a request or the connection actor (see :ref:`CommonBehavior`).
