@@ -62,7 +62,7 @@ private trait OpenRequestComponent { component ⇒
   def timeoutTimeout: Duration
 
   class DefaultOpenRequest(val request: HttpRequest,
-                           private[this] val closeAfterResponseCompletion: Boolean,
+                           private[this] var closeAfterResponseCompletion: Boolean,
                            private[this] var state: RequestState) extends OpenRequest {
     private[this] val receiverRef = new ResponseReceiverRef(this)
     private[this] var nextInChain: OpenRequest = EmptyOpenRequest
@@ -206,7 +206,7 @@ private trait OpenRequestComponent { component ⇒
           case WaitingForFinalResponseAck(lastSender) ⇒ lastSender
           case _                                      ⇒ context.handler
         }
-
+      if (nextInChain.isEmpty) closeAfterResponseCompletion = true
       nextInChain.handleClosed(ev) + handler
     }
 

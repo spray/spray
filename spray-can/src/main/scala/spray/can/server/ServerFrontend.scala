@@ -147,7 +147,9 @@ private object ServerFrontend {
               val interestedParties = firstUnconfirmed.handleClosed(ev) + context.handler
               interestedParties.foreach(sendClosed)
 
-              eventPL(ev) // terminates the connection actor
+              if (ev ne Http.PeerClosed) eventPL(ev) // will stop this actor
+              else if (firstUnconfirmed.isEmpty) downstreamCommandPL(Tcp.Close) // idle connection, close actively
+            // else if (ev == PeerClosed) last in chain will close the connection eventually
 
             case TickGenerator.Tick ⇒
               if (requestTimeout.isFinite())
