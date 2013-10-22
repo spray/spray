@@ -71,7 +71,7 @@ private object ResponseParsing {
             }
 
           val commandPipeline: CPL = {
-            case x @ RequestPartRenderingContext(reqStart: HttpMessageStart, _) ⇒
+            case x @ RequestPartRenderingContext(reqStart: HttpMessageStart, _, _) ⇒
               val req = reqStart.message.asInstanceOf[HttpRequest]
               if (openRequestMethods.isEmpty) responseParser.setRequestMethodForNextResponse(req.method)
               openRequestMethods = openRequestMethods enqueue req.method

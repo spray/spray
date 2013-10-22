@@ -89,8 +89,11 @@ add them to an outgoing request:
 - ``Content-Length``
 - ``Transfer-Encoding``
 
-There is one exception: for requests with an empty entity *spray-can* will render manually added ``Content-Type``
-headers.
+There are two exceptions for requests in ``ChunkedRequestStart`` messages:
+
+1. They are allowed to contain a user-specified ``Content-Type`` header if their entity is empty.
+2. They *must* contain a user-specified ``Content-Length`` header if ``spray.can.client.chunkless-streaming`` is enabled.
+   This ``Content-Length`` header *must* fit the total length of all requests chunks.
 
 Additionally *spray-can* will render a
 
@@ -137,3 +140,41 @@ is to simply bring one into scope implicitly:
 .. includecode:: ../code/docs/HttpServerExamplesSpec.scala
    :snippet: sslcontext-provision
 
+
+Redirection Following
+---------------------
+
+Automatic redirection following for ``3xx`` responses is supported by setting configuring the
+``spray.can.host-connector.max-redirects`` setting. This is the logic that is then applied:
+
+ - If set to zero redirection responses will not be followed, i.e. they'll be returned to the user as is.
+ - If set to a value > zero redirection responses will be followed up to the given number of times.
+ - If the redirection chain is longer than the configured value the first redirection response that is
+   is not followed anymore is returned to the user as is.
+
+By default ``max-redirects`` is set to 0.
+
+Since this setting is at the host level, it is possible to configure a different number of ``max-redirects`` for
+different hosts (see :ref:`RequestLevelApi`). In this situation the ``max-redirects`` configured for the host of the
+initial request is respected for the entire redirection chain. This is true even if redirection means changing to another
+host.
+
+Which redirects are followed?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This table shows which http method is used to follow redirects for given request methods and response status codes. Any
+request method and response status code combination not in the table will not result in redirection following and the
+response will be returned as is.
+
+.. rst-class:: table table-striped
+
+======================== ======================= ========================== ==============
+Request Method           Response Status Code    Redirection Method         Specification
+======================== ======================= ========================== ==============
+GET / HEAD               301 / 302 / 303 / 307   Original request method    `RFC 2616`_
+Any (except GET / HEAD)  302 / 303               GET                        `RFC 2616`_
+Any                      308                     Original request method    `Draft Spec`_
+======================== ======================= ========================== ==============
+
+.. _RFC 2616: http://tools.ietf.org/html/rfc2616#section-10.3
+.. _Draft Spec: http://tools.ietf.org/html/draft-reschke-http-status-308-07#section-3

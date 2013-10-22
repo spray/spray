@@ -10,14 +10,11 @@ import spray.util._
 import spray.http._
 import HttpMethods._
 import MediaTypes._
+import spray.can.Http.RegisterChunkHandler
 
 class DemoService extends Actor with ActorLogging {
   implicit val timeout: Timeout = 1.second // for the actor 'asks'
   import context.dispatcher // ExecutionContext for the futures and scheduler
-
-  // a map from connections to chunk handlers
-  // will be created on ChunkedRequestStart and removed on ChunkedRequestEnd
-  var chunkHandlers = Map.empty[ActorRef, ActorRef]
 
   def receive = {
     // when a new connection comes in we register ourselves as the connection handler
@@ -49,6 +46,7 @@ class DemoService extends Actor with ActorLogging {
 
     case HttpRequest(GET, Uri.Path("/stop"), _, _, _) =>
       sender ! HttpResponse(entity = "Shutting down in 1 second ...")
+      sender ! Http.Close
       context.system.scheduler.scheduleOnce(1.second) { context.system.shutdown() }
 
     case r@HttpRequest(POST, Uri.Path("/file-upload"), headers, entity: HttpEntity.NonEmpty, protocol) =>
@@ -56,15 +54,9 @@ class DemoService extends Actor with ActorLogging {
       r.asPartStream().foreach(self.tell(_, sender))
 
     case s@ChunkedRequestStart(HttpRequest(POST, Uri.Path("/file-upload"), _, _, _)) =>
-      require(!chunkHandlers.contains(sender))
       val client = sender
       val handler = context.actorOf(Props(new FileUploadHandler(client, s)))
-      chunkHandlers += (client -> handler)
-      handler.tell(s, client)
-    case c: MessageChunk => chunkHandlers(sender).tell(c, sender)
-    case e: ChunkedMessageEnd =>
-      chunkHandlers(sender).tell(e, sender)
-      chunkHandlers -= sender
+      sender ! RegisterChunkHandler(handler)
 
     case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
 

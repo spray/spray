@@ -86,7 +86,10 @@ object RejectionHandler {
       complete(BadRequest, "Request entity expected but not supplied")
 
     case rejections @ (UnacceptedResponseContentTypeRejection(_) :: _) ⇒
-      val supported = rejections.flatMap { case UnacceptedResponseContentTypeRejection(supported) ⇒ supported }
+      val supported = rejections.flatMap {
+        case UnacceptedResponseContentTypeRejection(supported) ⇒ supported
+        case _ ⇒ Nil
+      }
       complete(NotAcceptable, "Resource representation is only available with these Content-Types:\n" + supported.map(_.value).mkString("\n"))
 
     case rejections @ (UnacceptedResponseEncodingRejection(_) :: _) ⇒

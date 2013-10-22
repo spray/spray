@@ -25,36 +25,48 @@ trait PathDirectives extends PathMatchers with ImplicitPathMatcherConstruction {
   import PathMatcher._
 
   /**
-   * Rejects the request if the unmatchedPath of the [[spray.routing.RequestContext]] is not matched by the
-   * given PathMatcher. If matched the value extracted by the PathMatcher is extracted.
+   * Tries to consume a leading slash from the unmatched path of the [[spray.routing.RequestContext]]
+   * before applying the given matcher. The matcher has to match the remaining path completely
+   * or leave only a single trailing slash.
+   * If matched the value extracted by the PathMatcher is extracted on the directive level.
    */
-  def path[L <: HList](pm: PathMatcher[L]): Directive[L] = pathPrefix(pm ~ PathEnd)
+  def path[L <: HList](pm: PathMatcher[L]): Directive[L] = pathPrefix(pm ~ (Slash?) ~ PathEnd)
 
   /**
-   * Rejects the request if the unmatchedPath of the [[spray.RequestContext]] does not have a prefix
-   * matched the given PathMatcher. If matched the value extracted by the PathMatcher is extracted
-   * and the matched parts of the path are consumed.
+   * Tries to consume a leading slash from the unmatched path of the [[spray.routing.RequestContext]]
+   * before applying the given matcher. The matcher has to match a prefix of the remaining path.
+   * If matched the value extracted by the PathMatcher is extracted on the directive level.
    */
-  def pathPrefix[L <: HList](pm: PathMatcher[L]): Directive[L] = {
-    val matcher = Slash ~ pm
-    extract(ctx ⇒ matcher(ctx.unmatchedPath)).flatMap {
+  def pathPrefix[L <: HList](pm: PathMatcher[L]): Directive[L] = rawPathPrefix(Slash ~ pm)
+
+  /**
+   * Applies the given matcher directly to the unmatched path of the [[spray.routing.RequestContext]]
+   * (i.e. without implicitly consuming a leading slash).
+   * The matcher has to match a prefix of the remaining path.
+   * If matched the value extracted by the PathMatcher is extracted on the directive level.
+   */
+  def rawPathPrefix[L <: HList](pm: PathMatcher[L]): Directive[L] =
+    extract(ctx ⇒ pm(ctx.unmatchedPath)).flatMap {
       case Matched(rest, values) ⇒ hprovide(values) & mapRequestContext(_.copy(unmatchedPath = rest))
       case Unmatched             ⇒ reject
     }
-  }
 
   /**
    * Checks whether the unmatchedPath of the [[spray.RequestContext]] has a prefix matched by the
-   * given PathMatcher. However, as opposed to the pathPrefix directive the matched path is not
+   * given PathMatcher. In analogy to the `pathPrefix` directive a leading slash is implied.
+   */
+  def pathPrefixTest[L <: HList](pm: PathMatcher[L]): Directive[L] = rawPathPrefixTest(Slash ~ pm)
+
+  /**
+   * Checks whether the unmatchedPath of the [[spray.RequestContext]] has a prefix matched by the
+   * given PathMatcher. However, as opposed to the `pathPrefix` directive the matched path is not
    * actually "consumed".
    */
-  def pathPrefixTest[L <: HList](pm: PathMatcher[L]): Directive[L] = {
-    val matcher = Slash ~ pm
-    extract(ctx ⇒ matcher(ctx.unmatchedPath)).flatMap {
+  def rawPathPrefixTest[L <: HList](pm: PathMatcher[L]): Directive[L] =
+    extract(ctx ⇒ pm(ctx.unmatchedPath)).flatMap {
       case Matched(_, values) ⇒ hprovide(values)
       case Unmatched          ⇒ reject
     }
-  }
 
   /**
    * Rejects the request if the unmatchedPath of the [[spray.RequestContext]] does not have a suffix

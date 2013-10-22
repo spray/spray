@@ -94,6 +94,7 @@ class HttpClientConnectionPipelineSpec extends Specification with RawSpecs2Pipel
       connectionActor ! Tcp.Received(ByteString(rawResponse("123")))
       connectionActor ! Tcp.PeerClosed
       commands.expectMsg(Pipeline.Tell(probe.ref, response("123"), connectionActor))
+      commands.expectMsg(Tcp.Close)
       commands.expectNoMsg(100.millis)
     }
 

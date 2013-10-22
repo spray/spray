@@ -27,6 +27,7 @@ import spray.can.Http
 import spray.http._
 import spray.io._
 import spray.util.Timestamp
+import akka.io.Tcp.NoAck
 
 private object ServerFrontend {
 
@@ -40,8 +41,13 @@ private object ServerFrontend {
     new RawPipelineStage[Context] {
       def apply(_context: Context, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines with OpenRequestComponent {
-          var firstOpenRequest: OpenRequest = EmptyOpenRequest
+          // A reference to the first request in the chain whose response hasn't been fully ack'd
           var firstUnconfirmed: OpenRequest = EmptyOpenRequest
+
+          // A reference into the unconfirmed list for the first request for which
+          // no response was yet produced. This queue is strictly a suffix of the unconfirmed list.
+          var firstOpenRequest: OpenRequest = EmptyOpenRequest
+
           var _requestTimeout: Duration = serverSettings.requestTimeout
           var _idleTimeout: Duration = serverSettings.idleTimeout
           var _timeoutTimeout: Duration = serverSettings.timeoutTimeout
@@ -73,7 +79,9 @@ private object ServerFrontend {
 
             case Response(openRequest, command) ⇒
               // a response for a non-current openRequest has to be queued
-              openRequest.enqueueCommand(command)
+              openRequest.enqueueCommand(command, context.sender)
+
+            case ChunkHandlerRegistration(openRequest, handler) ⇒ openRequest.registerChunkHandler(handler)
 
             case CommandWrapper(SetRequestTimeout(timeout)) ⇒
               _requestTimeout = timeout
@@ -106,15 +114,18 @@ private object ServerFrontend {
                       HttpResponse(StatusCodes.InternalServerError, StatusCodes.InternalServerError.defaultMessage)
                   }
                 if (firstOpenRequest.isEmpty) commandPL {
-                  ResponsePartRenderingContext(response, request.method, request.protocol,
-                    closeAfterResponseCompletion, if (autoBackPressure) Tcp.NoAck else Tcp.NoAck(PartAndSender(response, context.self)))
+                  val ack =
+                    if (serverSettings.autoBackPressureEnabled) Tcp.NoAck
+                    else Tcp.NoAck(AckEventWithReceiver(NoAck, response, context.self))
+                  ResponsePartRenderingContext(response, request.method, request.protocol, closeAfterResponseCompletion, ack)
                 }
                 else throw new UnsupportedOperationException("fastPath is not yet supported with pipelining enabled")
 
-              } else openNewRequest(request, closeAfterResponseCompletion, WaitingForResponse())
+              } else openNewRequest(request, closeAfterResponseCompletion, WaitingForResponse(context.sender))
 
             case HttpMessageStartEvent(ChunkedRequestStart(request), closeAfterResponseCompletion) ⇒
-              openNewRequest(request, closeAfterResponseCompletion, WaitingForChunkedEnd)
+              commandPL(Tcp.SuspendReading) // suspend reading until the handler is registered
+              openNewRequest(request, closeAfterResponseCompletion, WaitingForChunkHandlerBuffering())
 
             case Http.MessageEvent(x: MessageChunk) ⇒
               firstOpenRequest handleMessageChunk x
@@ -125,17 +136,20 @@ private object ServerFrontend {
             case x: AckEventWithReceiver ⇒
               firstUnconfirmed = firstUnconfirmed handleSentAckAndReturnNextUnconfirmed x
 
-            case Tcp.CommandFailed(WriteCommandWithLastAck(Tcp.NoAck(PartAndSender(part, responseSender)))) ⇒
-              // TODO: implement automatic checkpoint buffering and write resuming
-              context.log.error("Could not write response part {}, closing connection", part)
+            case Tcp.CommandFailed(WriteCommandWithLastAck(AckEventWithReceiver(_, part, responseSender))) ⇒
+              context.log.error("Could not write response part {}, aborting connection.", part)
               commandPL(Pipeline.Tell(responseSender, Http.SendFailed(part), context.self))
+              commandPL(Tcp.Abort)
 
-            case x: Http.ConnectionClosed ⇒
-              if (firstUnconfirmed.isEmpty)
-                firstOpenRequest handleClosed x // dispatches to the handler if no request is open
-              else
-                firstUnconfirmed handleClosed x // also includes the firstOpenRequest and beyond
-              eventPL(x) // terminates the connection actor
+            case ev: Http.ConnectionClosed ⇒
+              def sendClosed(receiver: ActorRef) = downstreamCommandPL(Pipeline.Tell(receiver, ev, context.handler))
+
+              val interestedParties = firstUnconfirmed.handleClosed(ev) + context.handler
+              interestedParties.foreach(sendClosed)
+
+              if (ev ne Http.PeerClosed) eventPL(ev) // will stop this actor
+              else if (firstUnconfirmed.isEmpty) downstreamCommandPL(Tcp.Close) // idle connection, close actively
+            // else if (ev == PeerClosed) last in chain will close the connection eventually
 
             case TickGenerator.Tick ⇒
               if (requestTimeout.isFinite())
@@ -152,11 +166,9 @@ private object ServerFrontend {
           def openNewRequest(request: HttpRequest, closeAfterResponseCompletion: Boolean, state: RequestState): Unit = {
             val nextOpenRequest = new DefaultOpenRequest(request, closeAfterResponseCompletion, state)
             firstOpenRequest = firstOpenRequest appendToEndOfChain nextOpenRequest
-            nextOpenRequest.dispatchInitialRequestPartToHandler()
+            nextOpenRequest.dispatchInitialRequestPartToHandler(context.sender)
             if (firstUnconfirmed.isEmpty) firstUnconfirmed = firstOpenRequest
           }
-
-          def autoBackPressure = serverSettings.backpressureSettings.isDefined
         }
     }
   }

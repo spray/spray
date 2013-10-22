@@ -56,7 +56,7 @@ marked ``private`` to the *spray-can* package. All communication with these acto
 the majority of which are defined in the `spray.can.Http`_ object.
 
 .. _Akka IO: http://doc.akka.io/docs/akka/2.2.0-RC1/scala/io.html
-.. _spray.can.Http: https://github.com/spray/spray/blob/release/1.0/spray-can/src/main/scala/spray/can/Http.scala#L29
+.. _spray.can.Http: https://github.com/spray/spray/blob/release/1.0/spray-can/src/main/scala/spray/can/Http.scala#L31
 
 
 Starting and Stopping
@@ -110,7 +110,7 @@ and the different response parts of a chunked response need to be sent to the sa
 
 .. caution:: Since the ``ActorRef`` used as the sender of a request is an UnregisteredActorRef_ it is not
    reachable remotely. This means that the actor designated as handler by the application needs to live in the same
-   JVM as the HTTP extension. This will be changed before the 1.1 final release.
+   JVM as the HTTP extension.
 
 .. _UnregisteredActorRef: /documentation/1.1-M7/spray-util/#unregisteredactorref
 
@@ -172,15 +172,11 @@ Exactly which actor receives it depends on the current state of request processi
 The connection actor sends ``Http.ConnectionClosed`` events coming in from the underlying IO layer
 
 - to the handler actor
-
-  - if no request is currently open
-  - if a request is open and no response has been received yet
-  - if an un-ACKed response has been received
-
+- to the *request* chunk handler if one is defined and no response part was yet received
 - to the sender of the last received response part
 
   - if the ACK for an ACKed response part has not yet been dispatched
-  - if a chunk stream has not yet been finished (with a ``ChunkedMessageEnd``)
+  - if a *response* chunk stream has not yet been finished (with a ``ChunkedMessageEnd``)
 
 .. note:: The application can always choose to actively close a connection by sending one of the three defined
    ``Http.CloseCommand`` messages to the sender of a request or the connection actor (see :ref:`CommonBehavior`).
@@ -219,7 +215,7 @@ the connection alive if the client supports this (i.e. it either sent a ``Connec
 HTTP/1.1 capabilities without sending a ``Connection: close`` header).
 
 The following response headers are managed by the *spray-can* layer itself and as such are **ignored** if you "manually"
-add them to the response:
+add them to the response (you'll see a warning in your logs):
 
 - ``Content-Type``
 - ``Content-Length``
@@ -227,8 +223,13 @@ add them to the response:
 - ``Date``
 - ``Server``
 
-There is one exception: if you disable the ``transparent-head-requests`` config setting and send a response with an
-empty entity *spray-can* will render manually added ``Content-Type`` and ``Content-Length`` headers.
+There are three exceptions:
+
+1. Responses to HEAD requests that have an empty entity are allowed to contain a user-specified ``Content-Type`` header.
+2. Responses in ``ChunkedResponseStart`` messages that have an empty entity are allowed to contain a user-specified
+   ``Content-Type`` header.
+3. Responses in ``ChunkedResponseStart`` messages are allowed to contain a user-specified
+   ``Content-Length`` header if ``spray.can.server.chunkless-streaming`` is enabled.
 
 .. note:: The ``Content-Type`` header has special status in *spray* since its value is part of the ``HttpEntity`` model
    class. Even though the header also remains in the ``headers`` list of the ``HttpRequest`` *sprays* higher layers

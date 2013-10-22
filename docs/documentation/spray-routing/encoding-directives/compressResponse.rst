@@ -3,8 +3,9 @@
 compressResponse
 ================
 
-Always compresses the response using either ``GZIP`` or ``Deflate` unless specifically
-requested not to by the ``Accept-Encoding: identity`` request header.
+Uses the first of a given number of encodings that the client accepts.
+If none are accepted the request is rejected with an ``UnacceptedResponseEncodingRejection``.
+By default, if no encoders are specified, the tried list is ``Gzip``, ``Deflate`` and ``NoEncoding``.
 
 Signature
 ---------

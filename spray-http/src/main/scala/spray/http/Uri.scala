@@ -172,6 +172,18 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
                                 defaultAuthority: Authority = Authority.Empty): Uri =
     effectiveHttpRequestUri(scheme, authority.host, authority.port, path, query, fragment, securedConnection,
       hostHeaderHost, hostHeaderPort, defaultAuthority)
+
+  /**
+   * Converts this URI into a relative URI by keeping the path, query and fragment, but dropping the scheme and authority.
+   */
+  def toRelative =
+    Uri(path = if (path.isEmpty) Uri.Path./ else path, query = query, fragment = fragment)
+
+  /**
+   * Drops the fragment from this URI
+   */
+  def withoutFragment =
+    copy(fragment = None)
 }
 
 object Uri {

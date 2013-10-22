@@ -56,8 +56,7 @@ object BackPressureHandling {
         new DynamicPipelines { effective ⇒
           import context.log
 
-          def initialPipeline =
-            writeThrough(new OutQueue(ackRate), isReading = true, closeCommand = None)
+          become(writeThrough(new OutQueue(ackRate), isReading = true, closeCommand = None))
 
           /**
            * In this state all incoming write requests have already been relayed to the connection. There's a buffer
@@ -66,7 +65,7 @@ object BackPressureHandling {
            * Invariant:
            *   * we've not experienced any failed writes
            */
-          def writeThrough(out: OutQueue, isReading: Boolean, closeCommand: Option[Tcp.CloseCommand]): Pipelines = new Pipelines {
+          def writeThrough(out: OutQueue, isReading: Boolean, closeCommand: Option[Tcp.CloseCommand]): State = new State {
             def resumeReading(): Unit = {
               commandPL(Tcp.ResumeReading)
               become(writeThrough(out, isReading = true, closeCommand))
@@ -128,13 +127,13 @@ object BackPressureHandling {
            * The state where writing is suspended and we are waiting for WritingResumed. Reading will be suspended
            * if it currently isn't and if the connection isn't already going to be closed.
            */
-          def buffering(out: OutQueue, failedSeq: Int, isReading: Boolean, closeCommand: Option[CloseCommand]): Pipelines = {
+          def buffering(out: OutQueue, failedSeq: Int, isReading: Boolean, closeCommand: Option[CloseCommand]): State = {
             def isClosing = closeCommand.isDefined
 
             if (!isClosing && isReading) {
               commandPL(Tcp.SuspendReading)
               buffering(out, failedSeq, isReading = false, closeCommand)
-            } else new Pipelines {
+            } else new State {
               def commandPipeline = {
                 case w: Tcp.Write ⇒
                   if (isClosing) log.warning("Can't process more writes when closing. Dropping...")
@@ -178,7 +177,7 @@ object BackPressureHandling {
             }
           }
 
-          def closed(): Pipelines = new Pipelines {
+          def closed(): State = new State {
             def commandPipeline = {
               case c @ (_: Tcp.Write | _: Tcp.CloseCommand) ⇒ log.warning("Connection is already closed, dropping command " + c)
               case c                                        ⇒ commandPL(c)

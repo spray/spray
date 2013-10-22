@@ -35,7 +35,7 @@ object RoutingSettings extends SettingsCompanion[RoutingSettings]("spray.routing
   def fromSubConfig(c: Config) = apply(
     c getBoolean "verbose-error-messages",
     c getBytes "file-chunking-threshold-size",
-    math.min(c getBytes "file-chunking-chunk-size", Int.MaxValue).toInt,
+    c getIntBytes "file-chunking-chunk-size",
     c getConfig "users",
     c getBoolean "render-vanity-footer")
 

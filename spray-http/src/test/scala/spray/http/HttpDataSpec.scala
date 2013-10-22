@@ -19,6 +19,7 @@ package spray.http
 import java.io.File
 import org.parboiled.common.FileUtils
 import org.specs2.mutable.Specification
+import org.specs2.matcher.MatchResult
 import akka.util.ByteString
 
 class HttpDataSpec extends Specification {
@@ -120,7 +121,7 @@ class HttpDataSpec extends Specification {
     }
   }
 
-  def testCopyToArray(data: HttpData): Unit = {
+  def testCopyToArray(data: HttpData): MatchResult[Any] = {
     testCopyToArray(data, sourceOffset = 0, targetOffset = 0, span = 12) === "Ken sent me!xxxx"
     testCopyToArray(data, sourceOffset = 0, targetOffset = 2, span = 12) === "xxKen sent me!xx"
     testCopyToArray(data, sourceOffset = 0, targetOffset = 4, span = 12) === "xxxxKen sent me!"

@@ -41,9 +41,9 @@ object ConnectionTimeouts {
         var idleDeadline = Timestamp.never
         def resetDeadline() = idleDeadline = Timestamp.now + timeout
 
-        def initialPipeline = atWork(writePossiblyPending = false)
+        become(atWork(writePossiblyPending = false))
 
-        def atWork(writePossiblyPending: Boolean): Pipelines = new Pipelines {
+        def atWork(writePossiblyPending: Boolean): State = new State {
           resetDeadline()
           val commandPipeline: CPL = {
             case write: Tcp.WriteCommand ⇒
@@ -64,7 +64,7 @@ object ConnectionTimeouts {
             case ev                                        ⇒ eventPL(ev)
           }
         }
-        def checkForPendingWrite(): Pipelines = new Pipelines {
+        def checkForPendingWrite(): State = new State {
           resetDeadline()
           commandPL(TestWrite)
 

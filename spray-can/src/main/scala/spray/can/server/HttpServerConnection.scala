@@ -42,9 +42,12 @@ private class HttpServerConnection(tcpConnection: ActorRef,
   override def supervisorStrategy = ExtraStrategies.stoppingStrategy
 
   def receive: Receive = {
-    case Tcp.Register(handler, keepOpenOnPeerClosed, _)         ⇒ register(handler, keepOpenOnPeerClosed)
-
-    case Http.Register(handler, keepOpenOnPeerClosed, fastPath) ⇒ register(handler, keepOpenOnPeerClosed, fastPath)
+    // legacy, to support routing.HttpService without needing to depend on spray-can from spray-routing
+    case Tcp.Register(handler, keepOpenOnPeerClosed, _) ⇒
+      if (keepOpenOnPeerClosed)
+        log.warning("Tcp.Register(keepOpenOnPeerClosed = true) not supported for HTTP connections")
+      register(handler)
+    case Http.Register(handler, fastPath) ⇒ register(handler, fastPath)
 
     case ReceiveTimeout ⇒
       log.warning("Configured registration timeout of {} expired, stopping", settings.registrationTimeout)
@@ -57,12 +60,12 @@ private class HttpServerConnection(tcpConnection: ActorRef,
       }
   }
 
-  def register(handler: ActorRef, keepOpenOnPeerClosed: Boolean, fastPath: Http.FastPath = Http.EmptyFastPath): Unit = {
+  def register(handler: ActorRef, fastPath: Http.FastPath = Http.EmptyFastPath): Unit = {
     context.resetReceiveTimeout()
-    tcpConnection ! Tcp.Register(self, keepOpenOnPeerClosed)
+    tcpConnection ! Tcp.Register(self, keepOpenOnPeerClosed = true)
     context.watch(tcpConnection)
     context.watch(handler)
-    context.become(running(tcpConnection, pipelineStage, pipelineContext(handler, fastPath), keepOpenOnPeerClosed = false))
+    context.become(running(tcpConnection, pipelineStage, pipelineContext(handler, fastPath)))
   }
 
   def pipelineContext(_handler: ActorRef, _fastPath: Http.FastPath) = new SslTlsContext with ServerFrontend.Context {
@@ -214,8 +217,8 @@ private object HttpServerConnection {
       RequestParsing(settings) >>
       ResponseRendering(settings) >>
       (reapingCycle.isFinite && idleTimeout.isFinite) ? ConnectionTimeouts(idleTimeout) >>
-      sslEncryption ? SslTlsSupport(parserSettings.sslSessionInfoHeader) >>
+      sslEncryption ? SslTlsSupport(maxEncryptionChunkSize, parserSettings.sslSessionInfoHeader) >>
       (reapingCycle.isFinite && (idleTimeout.isFinite || requestTimeout.isFinite)) ? TickGenerator(reapingCycle) >>
-      backpressureSettings.isDefined ? BackPressureHandling(backpressureSettings.get.noAckRate, backpressureSettings.get.readingLowWatermark)
+      autoBackPressureEnabled ? BackPressureHandling(backpressureSettings.get.noAckRate, backpressureSettings.get.readingLowWatermark)
   }
 }

@@ -16,6 +16,8 @@
 
 package spray.http
 
+import HttpHeaders.`Content-Disposition`
+
 /**
  * Basic model for multipart content as defined in RFC 2046.
  * If you are looking for a model for `multipart/form-data` you should be using [[spray.http.MultipartFormData]].
@@ -24,6 +26,9 @@ case class MultipartContent(parts: Seq[BodyPart])
 
 object MultipartContent {
   val Empty = MultipartContent(Nil)
+
+  def apply(files: Map[String, FormFile]): MultipartContent =
+    MultipartContent(files.map(e ⇒ BodyPart.forFile(e._1, e._2)).toSeq)
 }
 
 /**
@@ -35,12 +40,19 @@ case class BodyPart(entity: HttpEntity, headers: Seq[HttpHeader] = Nil) {
   def filename: Option[String] = dispositionParameterValue("filename")
   def disposition: Option[String] =
     headers.collectFirst {
-      case disposition: HttpHeaders.`Content-Disposition` ⇒ disposition.dispositionType
+      case disposition: `Content-Disposition` ⇒ disposition.dispositionType
     }
 
   def dispositionParameterValue(parameter: String): Option[String] =
     headers.collectFirst {
-      case HttpHeaders.`Content-Disposition`("form-data", parameters) if parameters.contains(parameter) ⇒
+      case `Content-Disposition`("form-data", parameters) if parameters.contains(parameter) ⇒
         parameters(parameter)
     }
+}
+object BodyPart {
+  def forFile(fieldName: String, file: FormFile): BodyPart = {
+    BodyPart(file.entity,
+      Seq(`Content-Disposition`("form-data",
+        Map("name" -> fieldName) ++ file.name.map("filename" -> _))))
+  }
 }

@@ -118,7 +118,7 @@ trait EncodingDirectives {
   def decompressRequest(): Directive0 = decompressRequest(Gzip, Deflate, NoEncoding)
 
   /**
-   * Decompresses the incoming request if it encoded with one of the given
+   * Decompresses the incoming request if it is encoded with one of the given
    * encoders. If the request encoding doesn't match one of the given encoders
    * the request is rejected with an `UnsupportedRequestEncodingRejection`.
    */

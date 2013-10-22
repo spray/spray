@@ -23,12 +23,14 @@ import spray.util._
 case class HostConnectorSettings(
     maxConnections: Int,
     maxRetries: Int,
+    maxRedirects: Int,
     pipelining: Boolean,
     idleTimeout: Duration,
     connectionSettings: ClientConnectionSettings) {
 
   require(maxConnections > 0, "max-connections must be > 0")
   require(maxRetries >= 0, "max-retries must be >= 0")
+  require(maxRedirects >= 0, "max-redirects must be >= 0")
   requirePositive(idleTimeout)
 }
 
@@ -36,6 +38,7 @@ object HostConnectorSettings extends SettingsCompanion[HostConnectorSettings]("s
   def fromSubConfig(c: Config) = apply(
     c getInt "host-connector.max-connections",
     c getInt "host-connector.max-retries",
+    c getInt "host-connector.max-redirects",
     c getBoolean "host-connector.pipelining",
     c getDuration "host-connector.idle-timeout",
     ClientConnectionSettings fromSubConfig c.getConfig("client"))
