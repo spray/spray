@@ -49,7 +49,7 @@ private sealed trait OpenRequest {
   def handleMessageChunk(chunk: MessageChunk)
   def handleChunkedMessageEnd(part: ChunkedMessageEnd)
   def handleSentAckAndReturnNextUnconfirmed(ev: AckEventWithReceiver): OpenRequest
-  def handleClosed(ev: Http.ConnectionClosed)
+  def handleClosed(ev: Http.ConnectionClosed): Set[ActorRef]
 
   def isWaitingForChunkHandler: Boolean
 }
@@ -62,7 +62,7 @@ private trait OpenRequestComponent { component ⇒
   def timeoutTimeout: Duration
 
   class DefaultOpenRequest(val request: HttpRequest,
-                           private[this] val closeAfterResponseCompletion: Boolean,
+                           private[this] var closeAfterResponseCompletion: Boolean,
                            private[this] var state: RequestState) extends OpenRequest {
     private[this] val receiverRef = new ResponseReceiverRef(this)
     private[this] var nextInChain: OpenRequest = EmptyOpenRequest
@@ -196,8 +196,7 @@ private trait OpenRequestComponent { component ⇒
       if (pendingSentAcks == 0) nextInChain else this
     }
 
-    def handleClosed(ev: Http.ConnectionClosed): Unit = {
-      def sendClosed(receiver: ActorRef) = downstreamCommandPL(Pipeline.Tell(receiver, ev, receiverRef))
+    def handleClosed(ev: Http.ConnectionClosed): Set[ActorRef] = {
 
       val handler =
         state match {
@@ -207,8 +206,8 @@ private trait OpenRequestComponent { component ⇒
           case WaitingForFinalResponseAck(lastSender) ⇒ lastSender
           case _                                      ⇒ context.handler
         }
-      sendClosed(handler)
-      if (handler != context.handler) sendClosed(handler)
+      if (nextInChain.isEmpty) closeAfterResponseCompletion = true
+      nextInChain.handleClosed(ev) + handler
     }
 
     /***** PRIVATE *****/
@@ -264,10 +263,7 @@ private trait OpenRequestComponent { component ⇒
     def handleSentAckAndReturnNextUnconfirmed(ev: AckEventWithReceiver) =
       throw new IllegalStateException("Received unmatched send confirmation: " + ev.ack)
 
-    def handleClosed(ev: Http.ConnectionClosed): Unit = {
-      downstreamCommandPL(Pipeline.Tell(context.handler, ev, context.self))
-    }
-
+    def handleClosed(ev: Http.ConnectionClosed): Set[ActorRef] = Set.empty
     def isWaitingForChunkHandler: Boolean = false
   }
 

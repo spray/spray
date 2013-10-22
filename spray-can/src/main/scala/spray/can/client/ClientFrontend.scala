@@ -103,6 +103,7 @@ private object ClientFrontend {
 
             case x: Tcp.ConnectionClosed ⇒
               openRequests.foldLeft(closeCommanders)(_ + _.sender) foreach (dispatch(_, x))
+              if (x eq Tcp.PeerClosed) commandPL(Tcp.Close)
               eventPL(x) // terminates the connection actor
 
             case TickGenerator.Tick ⇒
