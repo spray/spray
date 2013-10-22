@@ -26,9 +26,9 @@ package object unmarshalling {
   type Unmarshaller[T] = Deserializer[HttpEntity, T]
   type FromEntityOptionUnmarshaller[T] = Deserializer[Option[HttpEntity], T]
   type FromBodyPartOptionUnmarshaller[T] = Deserializer[Option[BodyPart], T]
-  type FromMessageUnmarshaller[T] = Deserializer[HttpMessage, T]
-  type FromRequestUnmarshaller[T] = Deserializer[HttpRequest, T]
-  type FromResponseUnmarshaller[T] = Deserializer[HttpResponse, T]
+  type FromMessageUnmarshaller[T] = Deserializer[HttpMessage, T] // source-quote-FromMessageUnmarshaller
+  type FromRequestUnmarshaller[T] = Deserializer[HttpRequest, T] // source-quote-FromRequestUnmarshaller
+  type FromResponseUnmarshaller[T] = Deserializer[HttpResponse, T] // source-quote-FromResponseUnmarshaller
 
   implicit def formFieldExtractor(form: HttpForm) = FormFieldExtractor(form)
   implicit def pimpBodyPart(bodyPart: BodyPart) = new PimpedHttpEntity(bodyPart.entity)

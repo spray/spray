@@ -8,56 +8,49 @@ EncodingDirectives
 
    compressResponse
    compressResponseIfRequested
-   compressResponseWith
    decodeRequest
    decompressRequest
-   decompressRequestWith
    encodeResponse
    requestEncodedWith
    responseEncodingAccepted
 
 .. _WhenToUseWhichCompressResponseDirective:
 
-When to use which compressResponse directive?
----------------------------------------------
-There are three different versions of the ``compressResponse`` directive with
-slightly different behavior for choosing when to compress the response.
+When to use which compression directive?
+----------------------------------------
 
-You can use the table below to decide which directive to use.
+There are three different directives for performing response compressing with slightly different behavior:
 
-====================================== ===================================================================
-directive                              behavior
-====================================== ===================================================================
-:ref:`-compressResponse-`              Always compresses the response unless specifically requested not to
-                                       by the ``Accept-Encoding: identity`` request header
-:ref:`-compressResponseWith-`          Always compresses the response
-:ref:`-compressResponseIfRequested-`   Only compresses the response when specifically requested by the
-                                       ``Accept-Encoding`` request header
-====================================== ===================================================================
+:ref:`-encodeResponse-`
+  Always compresses the response with the one given encoding, rejects the request with an
+  ``UnacceptedResponseEncodingRejection`` if the client doesn't accept the given encoding.
+
+:ref:`-compressResponse-`
+  Uses the first of a given number of encodings that the client accepts.
+  If none are accepted the request is rejected.
+
+:ref:`-compressResponseIfRequested-`
+  Only compresses the response when specifically requested by the
+  ``Accept-Encoding`` request header (i.e. the default is "no compression").
 
 See the individual directives for more detailed usage examples.
+
 
 .. _WhenToUseWhichDecompressRequestDirective:
 
-When to use which decompressRequest directive?
-----------------------------------------------
-There are two different versions of the ``decompressRequest`` directive with the main difference
-being whether to try all possible decompression codecs, including ``NoEncoding``, or only a
-specified subset of them.
+When to use which decompression directive?
+------------------------------------------
 
-You can use the table below to decide which directive to use.
+There are two different directives for performing request decompressing with slightly different behavior:
 
-============================== ===================================================================
-directive                      behavior
-============================== ===================================================================
-:ref:`-decompressRequest-`     will try to decompress the request with either ``Gzip``,
-                               ``Deflate``, or ``NoEncoding``, assuming the latter if no
-                               ``Content-Encoding`` header is present.
-:ref:`-decompressRequestWith-` will only try the specified Codecs in order, rejecting the request
-                               if no matching ``Content-Encoding`` header is found.
-============================== ===================================================================
+:ref:`-decodeRequest-`
+  Attempts to decompress the request using the one given decoder, rejects the request with an
+  ``UnsupportedRequestEncodingRejection`` if the request is not encoded with the given encoder.
 
-See the individual directives for more detailed usage examples.
+:ref:`-decompressRequest-`
+  Decompresses the request if it is encoded with one of the given encoders.
+  If the request's encoding doesn't match one of the given encoders it is rejected.
+
 
 Combining compression and decompression
 ---------------------------------------

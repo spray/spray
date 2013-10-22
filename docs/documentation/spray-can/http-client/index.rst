@@ -89,8 +89,11 @@ add them to an outgoing request:
 - ``Content-Length``
 - ``Transfer-Encoding``
 
-There is one exception: for requests with an empty entity *spray-can* will render manually added ``Content-Type``
-headers.
+There are two exceptions for requests in ``ChunkedRequestStart`` messages:
+
+1. They are allowed to contain a user-specified ``Content-Type`` header if their entity is empty.
+2. They *must* contain a user-specified ``Content-Length`` header if ``spray.can.client.chunkless-streaming`` is enabled.
+   This ``Content-Length`` header *must* fit the total length of all requests chunks.
 
 Additionally *spray-can* will render a
 
@@ -141,8 +144,8 @@ is to simply bring one into scope implicitly:
 Redirection Following
 ---------------------
 
-Automatic redirection following for 3xx responses is supported by setting the ``spray.can.host-connector.max-redirects``
-as follows:
+Automatic redirection following for ``3xx`` responses is supported by setting configuring the
+``spray.can.host-connector.max-redirects`` setting. This is the logic that is then applied:
 
  - If set to zero redirection responses will not be followed, i.e. they'll be returned to the user as is.
  - If set to a value > zero redirection responses will be followed up to the given number of times.
@@ -160,7 +163,7 @@ Which redirects are followed?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This table shows which http method is used to follow redirects for given request methods and response status codes. Any
-Request method and response status code combination not in the table will not result in redirection following and the
+request method and response status code combination not in the table will not result in redirection following and the
 response will be returned as is.
 
 .. rst-class:: table table-striped
