@@ -51,3 +51,5 @@ object MultipartFormData {
     case (key, value) ⇒ value.copy(headers = `Content-Disposition`("form-data", Map("name" -> key)) +: value.headers)
   }.toSeq)
 }
+
+case class FormFile(name: Option[String], entity: HttpEntity.NonEmpty)

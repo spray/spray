@@ -27,14 +27,15 @@ private[can] object RequestRendering {
   def apply(settings: ClientConnectionSettings): PipelineStage =
     new PipelineStage with RequestRenderingComponent {
       val userAgent = settings.userAgentHeader.toOption.map(`User-Agent`(_))
+      val chunklessStreaming = settings.chunklessStreaming
 
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val commandPipeline: CPL = {
-            case RequestPartRenderingContext(requestPart, ack) ⇒
+            case ctx: RequestPartRenderingContext ⇒
               val rendering = new HttpDataRendering(settings.requestHeaderSizeHint)
-              renderRequestPart(rendering, requestPart, context.remoteAddress, context.log)
-              commandPL(toTcpWriteCommand(rendering.get, ack))
+              renderRequestPartRenderingContext(rendering, ctx, context.remoteAddress, context.log)
+              commandPL(toTcpWriteCommand(rendering.get, ctx.ack))
 
             case cmd ⇒ commandPL(cmd)
           }

@@ -144,3 +144,18 @@ Because the second form of wrapping is less attractive there is no real helper i
 We generally do not want to encourage such type of design. (With one exception: Simply overriding the Content-Type of
 another ``Marshaller`` can be done efficiently. This is why the ``MarshallingContext`` already comes with a
 ``withContentTypeOverriding`` copy helper.)
+
+
+ToResponseMarshaller
+--------------------
+
+The plain ``Marshaller[T]`` is agnostic to whether it is used on the server- or on the client-side. This means that
+it can be used to produce the entities (and additional headers) for responses as well as requests.
+
+Sometimes, however, this is not enough. If you know that you need to only marshal to ``HttpResponse`` instances (e.g.
+because you only use *spray* on the server-side) you can also write a ``ToResponseMarshaller[T]`` for your type.
+This more specialized marshaller allows you to produce the complete ``HttpResponse`` instance rather than only its
+entity. As such the marshaller can also set the status code of the response (which doesn't exist on the request side).
+
+When looking for a way to marshal a custom type ``T`` *spray* (or rather the Scala compiler) first looks for a
+``ToResponseMarshaller[T]`` for the type. Only if none is found will an in-scope ``Marshaller[T]`` be used.

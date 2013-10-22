@@ -26,9 +26,10 @@ import RenderSupport._
 
 private[can] trait RequestRenderingComponent {
   def userAgent: Option[`User-Agent`]
+  def chunklessStreaming: Boolean
 
-  def renderRequestPart(r: Rendering, part: HttpRequestPart, serverAddress: InetSocketAddress,
-                        log: LoggingAdapter): Unit = {
+  def renderRequestPartRenderingContext(r: Rendering, ctx: RequestPartRenderingContext, serverAddress: InetSocketAddress,
+                                        log: LoggingAdapter): Unit = {
     def renderRequestStart(request: HttpRequest, allowUserContentType: Boolean,
                            userSpecifiedContentLength: Boolean): Unit = {
       def render(h: HttpHeader) = r ~~ h ~~ CrLf
@@ -83,7 +84,7 @@ private[can] trait RequestRenderingComponent {
             if (!hostHeaderSeen) r ~~ Host(serverAddress) ~~ CrLf
             if (!userAgentSeen && userAgent.isDefined) r ~~ userAgent.get ~~ CrLf
             if (!contentLengthSeen && userSpecifiedContentLength)
-              log.error("Chunkless streamed request is missing user-specified Content-Length header")
+              throw new RuntimeException("Chunkless streamed request is missing user-specified Content-Length header")
             request.entity match {
               case HttpEntity.NonEmpty(ContentTypes.NoContentType, _) ⇒
               case HttpEntity.NonEmpty(contentType, _) if !contentTypeSeen ⇒ r ~~ `Content-Type` ~~ contentType ~~ CrLf
@@ -96,6 +97,8 @@ private[can] trait RequestRenderingComponent {
       renderHeaders(headers)
     }
 
+    def chunkless = chunklessStreaming || (ctx.requestProtocol eq HttpProtocols.`HTTP/1.0`)
+
     def renderRequest(request: HttpRequest): Unit = {
       renderRequestStart(request, allowUserContentType = false, userSpecifiedContentLength = false)
       val bodyLength = request.entity.data.length
@@ -104,20 +107,20 @@ private[can] trait RequestRenderingComponent {
     }
 
     def renderChunkedRequestStart(request: HttpRequest): Unit = {
-      renderRequestStart(request, allowUserContentType = request.entity.isEmpty,
-        userSpecifiedContentLength = false) // change to `userSpecifiedContentLength = chunkless` when implementing chunkless request streaming
-      r ~~ `Transfer-Encoding` ~~ Chunked ~~ CrLf ~~ CrLf
+      renderRequestStart(request, allowUserContentType = request.entity.isEmpty, userSpecifiedContentLength = chunkless)
+      if (!chunkless) r ~~ `Transfer-Encoding` ~~ Chunked ~~ CrLf
+      r ~~ CrLf
       request.entity match {
-        case x: HttpEntity.NonEmpty ⇒ r ~~ MessageChunk(x.data)
+        case x: HttpEntity.NonEmpty ⇒ if (chunkless) r ~~ x.data else r ~~ MessageChunk(x.data)
         case _                      ⇒ // nothing to do
       }
     }
 
-    part match {
+    ctx.requestPart match {
       case x: HttpRequest         ⇒ renderRequest(x)
       case x: ChunkedRequestStart ⇒ renderChunkedRequestStart(x.request)
-      case x: MessageChunk        ⇒ r ~~ x
-      case x: ChunkedMessageEnd   ⇒ r ~~ x
+      case x: MessageChunk        ⇒ if (chunkless) r ~~ x.data else r ~~ x
+      case x: ChunkedMessageEnd   ⇒ if (!chunkless) r ~~ x
     }
   }
 }

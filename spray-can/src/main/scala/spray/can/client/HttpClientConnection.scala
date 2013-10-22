@@ -45,7 +45,8 @@ private class HttpClientConnection(connectCommander: ActorRef,
       context.setReceiveTimeout(Duration.Undefined)
       log.debug("Connected to {}", connected.remoteAddress)
       val tcpConnection = sender
-      tcpConnection ! Tcp.Register(self)
+      // if sslEncryption is enabled we may need keepOpenOnPeerClosed
+      tcpConnection ! Tcp.Register(self, keepOpenOnPeerClosed = connect.sslEncryption)
       context.watch(tcpConnection)
       connectCommander ! connected
       context.become(running(tcpConnection, pipelineStage, pipelineContext(connected)))
@@ -86,7 +87,7 @@ private object HttpClientConnection {
       ResponseParsing(parserSettings) >>
       RequestRendering(settings) >>
       ConnectionTimeouts(idleTimeout) ? (reapingCycle.isFinite && idleTimeout.isFinite) >>
-      SslTlsSupport(parserSettings.sslSessionInfoHeader) >>
+      SslTlsSupport(maxEncryptionChunkSize, parserSettings.sslSessionInfoHeader) >>
       TickGenerator(reapingCycle) ? (idleTimeout.isFinite || requestTimeout.isFinite)
   }
 

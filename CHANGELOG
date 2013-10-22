@@ -1,3 +1,95 @@
+Version 1.2-RC1 (2013-10-22)
+----------------------------
+- Upgraded to Scala 2.10.3, Akka 2.2.3 and latest versions of all dependencies
+
+- spray-caching: added a size method to ``Cache[V]``
+
+- spray-can:
+
+  + "privatized" all classes/objects not meant to be part of public API
+  + replaced ``InetSocketAddress`` in ``HostConnectorSetup`` with hostname/port pair (#394)
+  + moved ``client.ssl-encryption`` setting from reference.conf into ``Http.Connect`` message (#396)
+  + when creating ``HostConnectorSettings`` expect client settings at ``spray.can.client`` (#408)
+  + introduced dedicated exceptions for connection failure and request timeout for host-level API
+  + made Content-Length a long value (#443)
+  + add auto-chunking for responses without content-length (#455)
+  + broke out ``ServerSettings`` timeout settings into sub case class (#489)
+  + change rendering of default ``User-Agent`` (#462)
+  + added support for custom status codes (#564)
+  + added explicit registration of chunk handler for incoming message chunks (#473)
+  + added client-side redirection following (#132)
+  + removed of ``Http.Register::keepOpenOnPeerClosed`` (#401)
+  + a ton of other fixes, additions and smaller improvements
+
+- spray-http:
+
+  + added ``startsWith`` and ``dropChars`` method to Uri.Path model
+  + added support for ``Accept`` header extensions and media-type parameters (#310)
+  + fixed raw queries performing %-decoding and not being rendered as raw (#330)
+  + made only standard charsets available as constants (#340)
+  + added model for CORS headers
+  + allowed empty ``Host`` headers
+  + fixed ``Location`` header parsing to accept relative URIs (#484)
+  + introduced ``HttpData`` model replacing the byte array in ``HttpBody`` and ``MessageChunk`` (#365)
+  + added ``CONNECT`` method and support for custom HTTP methods (#428)
+  + added ``StatusCode::allowsEntity`` member
+  + made multipart form-data more flexible but have it adhere to the RFC more strictly
+  + introduced a distinction between "?key=" and "?key" in queries (#460)
+  + added effectivePort method on ``Uri``
+  + many other fixes, additions and smaller improvements
+
+- spray-httpx:
+
+  + flexibilized ``RequestBuilding`` and ``ResponseTransformation`` by generalizing the ``~>`` operator
+  + added ``mapHeaders``, ``removeHeader`` and ``removeHeaders`` to RequestBuilding
+  + moved ``unmarshal`` and ``unmarshalUnsafe`` to ``Unmarshaller`` object
+  + changed default StringMarshaller to prefer ``UTF-8`` encoding over ``ISO-8859-1`` (#498)
+  + added default marshallers for ``ByteString`` and ``HttpData``
+  + changed default charset for ``application/x-www-form-urlencoded`` to ``UTF-8`` (#526)
+  + added support for custom ``Content-Disposition`` headers
+  + added support for non-strict ``FormDataUnmarshaller``
+  + added ``FromMessageUnmarshaller``, ``FromRequestUnmarshaller`` and ``FromResponseUnmarshaller``
+  + extended ``MarshallingContext`` with support for specifying additional HTTP headers
+  + introduced `ToResponseMarshaller` and supporting infrastructure
+  + added ``Unmarshaller.oneOf`` to create negotiating ``Unmarshaller`` (#581)
+  + added support for play-json (un)marshalling
+  + many other fixes, additions and smaller improvements
+
+- spray-io:
+
+  + upgraded to latest upstream Akka IO additions and fixes
+  + significantly improved ``SslTlsSupport`` (#544)
+  + smaller fixes, additions and improvements
+
+- spray-routing:
+
+  + added ``headerValueByName(Symbol)`` and ``optionalHeaderValueByName(Symbol)`` overload
+  + added ``rejection`` parameter to ``Directive::hrequire`` and ``Directive::require``
+  + added ``separateOnSlashes`` helper for PathMatchers (#334)
+  + moved ``UserPassAuthenticator.cached`` to ``CachedUserPassAuthenticator.apply`` (#352)
+  + redefined ``PathMatchers.Empty`` as ``PathMatchers.Neutral`` with explicit type annotation (#339)
+  + renamed ``PathMatcher.(flat)map`` => ``h(flat)map``, introduced ``map/flatMap`` (#274)
+  + added ``detach`` directive which executes its inner route in a future, removed ``detachTo`` (#240)
+  + added ``scheme`` directives
+  + added ``PathMatchers.Segments`` which will match all remaining segments as ``List[String]``
+  + added some higher-level compression/decompression directives
+  + added ``autoChunkFileBytes`` directive
+  + fixed ``getFromDirectory`` and ``getFromResourceDirectory`` not working properly for URIs with encoded chars
+  + added ``requestInstance`` and ``requestUri`` directives (#525)
+  + removed layer of ``*Aux`` classes by type aliases for simplicity
+  + removed ``CompletionMagnet`` in favor of new ``ToResponseMarshaller``
+  + removed superfluous ``RequestContext::complete`` overloads
+  + added ``PathMatcher::?`` modifier, removed ``Slash_!``
+  + many other fixes, additions and smaller improvements
+
+- spray-servlet:
+
+  + added support for providing the ``javax.servlet.http.HttpServletRequest`` in a special header
+  + added ``illegal-header-warnings`` setting in analogy to spray-can (#553)
+  + added ``spray.servlet.uri-parsing-mode`` setting (#574)
+  + smaller fixes, additions and improvements
+
+
 Version 1.2-M8 (2013-06-10)
 ---------------------------
 - Upgraded to Scala 2.10.2, Akka 2.2.0-RC1 and latest versions of all dependencies

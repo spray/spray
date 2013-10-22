@@ -40,18 +40,15 @@ object Pipelines {
 }
 
 trait DynamicPipelines extends Pipelines {
-  def initialPipeline: Pipelines
-  private[this] var _cpl: Pipeline[Command] = _
-  private[this] var _epl: Pipeline[Event] = _
+  type State = Pipelines
+  private[this] var _cpl: Pipeline[Command] = Pipeline.Uninitialized
+  private[this] var _epl: Pipeline[Event] = Pipeline.Uninitialized
 
-  def commandPipeline = {
-    if (_cpl eq null) become(initialPipeline)
-    cmd ⇒ _cpl(cmd)
-  }
-  def eventPipeline = {
-    if (_epl eq null) become(initialPipeline)
-    event ⇒ _epl(event)
-  }
+  def commandPipeline = cmd ⇒ process(cmd, _cpl)
+  def eventPipeline = ev ⇒ process(ev, _epl)
+
+  protected def process[T](msg: T, pl: Pipeline[T]): Unit = pl(msg)
+
   def become(newPipes: Pipelines): Unit = {
     _cpl = newPipes.commandPipeline
     _epl = newPipes.eventPipeline
@@ -130,10 +127,12 @@ trait RawPipelineStage[-C <: PipelineContext] { left ⇒
 }
 
 object RawPipelineStage {
-  type PipelineStageContext[C <: PipelineContext] = MacroContext { type PrefixType = RawPipelineStage[C] }
-  def enabled[C <: PipelineContext](c: PipelineStageContext[C])(condition: c.Expr[Boolean]) =
+  // TODO: we previously used PipelineStageContext instead of MacroContext, which would spare us the ugly
+  // asInstanceOf cast in the macro implementation. However, scaladoc has a problem with that for some reason.
+  // type PipelineStageContext[C <: PipelineContext] = MacroContext { type PrefixType = RawPipelineStage[C] }
+  def enabled[C <: PipelineContext](c: MacroContext)(condition: c.Expr[Boolean]): c.Expr[RawPipelineStage[C]] =
     c.universe.reify {
-      if (condition.splice) c.prefix.splice else EmptyPipelineStage
+      if (condition.splice) c.prefix.asInstanceOf[c.Expr[RawPipelineStage[C]]].splice else EmptyPipelineStage
     }
 }
 

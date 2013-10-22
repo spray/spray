@@ -85,13 +85,13 @@ object Build extends Build {
     )): _*)
     .settings(libraryDependencies ++=
       compile(mimepull) ++
-      provided(akkaActor, sprayJson, twirlApi, liftJson, json4sNative, json4sJackson) ++
+      provided(akkaActor, sprayJson, twirlApi, liftJson, json4sNative, json4sJackson, playJson) ++
       test(specs2)
     )
 
 
   lazy val sprayIO = Project("spray-io", file("spray-io"))
-    .dependsOn(sprayUtil)
+    .dependsOn(sprayUtil, sprayHttp)
     .settings(sprayModuleSettings: _*)
     .settings(osgiSettings(exports = Seq("spray.io")): _*)
     .settings(libraryDependencies ++= provided(akkaActor, scalaReflect))

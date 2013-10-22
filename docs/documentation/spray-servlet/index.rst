@@ -114,7 +114,6 @@ However, the different response parts of a chunked response need to be sent to t
 
 .. caution:: Since the ``ActorRef`` used as the sender of a request is an UnregisteredActorRef_ it is not
    reachable remotely. This means that the service actor needs to live in the same JVM as the connector servlet.
-   This will be changed before the 1.1 final release.
 
 .. _UnregisteredActorRef: /documentation/1.1-M7/spray-util/#unregisteredactorref
 

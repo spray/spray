@@ -34,7 +34,7 @@ class PimpedConfig(underlying: Config) {
   def getIntBytes(path: String): Int = {
     val value: Long = underlying getBytes path
     if (value <= Int.MaxValue) value.toInt
-    else sys.error(s"Config setting $path must not be larger than ${Int.MaxValue}")
+    else sys.error(s"Config setting '$path' must not be larger than ${Int.MaxValue}")
   }
 
   def getPossiblyInfiniteIntBytes(path: String): Int = underlying.getString(path) match {

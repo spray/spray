@@ -79,21 +79,14 @@ trait ParamDefMagnet2[T] {
   type Out
   def apply(value: T): Out
 }
+
 object ParamDefMagnet2 {
-  implicit def apply[A, B](implicit pdma: ParamDefMagnetAux[A, B]) = new ParamDefMagnet2[A] {
-    type Out = B
-    def apply(value: A) = pdma(value)
-  }
-}
+  type ParamDefMagnetAux[A, B] = ParamDefMagnet2[A] { type Out = B }
+  def ParamDefMagnetAux[A, B](f: A ⇒ B) = new ParamDefMagnet2[A] { type Out = B; def apply(value: A) = f(value) }
 
-trait ParamDefMagnetAux[A, B] extends (A ⇒ B)
-
-object ParamDefMagnetAux {
   import spray.httpx.unmarshalling.{ FromStringOptionDeserializer ⇒ FSOD, _ }
   import BasicDirectives._
   import RouteDirectives._
-
-  def apply[A, B](f: A ⇒ B) = new ParamDefMagnetAux[A, B] { def apply(value: A) = f(value) }
 
   /************ "regular" parameter extraction ******************/
 

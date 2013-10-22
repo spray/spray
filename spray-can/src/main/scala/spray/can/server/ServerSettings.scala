@@ -41,25 +41,29 @@ case class ServerSettings(
     verboseErrorMessages: Boolean,
     requestChunkAggregationLimit: Int,
     responseHeaderSizeHint: Int,
+    maxEncryptionChunkSize: Int,
     defaultHostHeader: Host,
     backpressureSettings: Option[BackpressureSettings],
     parserSettings: ParserSettings) {
 
   requirePositive(reapingCycle)
   require(0 <= pipeliningLimit && pipeliningLimit <= 128, "pipelining-limit must be >= 0 and <= 128")
-  require(0 <= requestChunkAggregationLimit && requestChunkAggregationLimit <= Int.MaxValue,
-    "request-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
-  require(0 <= responseHeaderSizeHint && responseHeaderSizeHint <= Int.MaxValue,
-    "response-size-hint must be >= 0 and <= Int.MaxValue")
+  require(0 <= requestChunkAggregationLimit, "request-chunk-aggregation-limit must be >= 0")
+  require(0 <= responseHeaderSizeHint, "response-size-hint must be > 0")
+  require(0 < maxEncryptionChunkSize, "max-encryption-chunk-size must be > 0")
+
+  def autoBackPressureEnabled: Boolean = backpressureSettings.isDefined && (pipeliningLimit > 1)
 }
 
 object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.server") {
   case class Timeouts(idleTimeout: Duration,
                       requestTimeout: Duration,
                       timeoutTimeout: Duration,
+                      chunkHandlerRegistrationTimeout: Duration,
                       bindTimeout: Duration,
                       unbindTimeout: Duration,
-                      registrationTimeout: Duration) {
+                      registrationTimeout: Duration,
+                      parsingErrorAbortTimeout: Duration) {
     requirePositive(idleTimeout)
     requirePositive(requestTimeout)
     requirePositive(timeoutTimeout)
@@ -81,9 +85,11 @@ object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.serve
       c getDuration "idle-timeout",
       c getDuration "request-timeout",
       c getDuration "timeout-timeout",
+      c getDuration "chunkhandler-registration-timeout",
       c getDuration "bind-timeout",
       c getDuration "unbind-timeout",
-      c getDuration "registration-timeout"),
+      c getDuration "registration-timeout",
+      c getDuration "parsing-error-abort-timeout"),
     c getDuration "reaping-cycle",
     c getBoolean "stats-support",
     c getBoolean "remote-address-header",
@@ -92,8 +98,9 @@ object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.serve
     c getString "timeout-handler",
     c getBoolean "chunkless-streaming",
     c getBoolean "verbose-error-messages",
-    c getBytes "request-chunk-aggregation-limit" toInt,
-    c getBytes "response-header-size-hint" toInt,
+    c getIntBytes "request-chunk-aggregation-limit",
+    c getIntBytes "response-header-size-hint",
+    c getIntBytes "max-encryption-chunk-size",
     defaultHostHeader =
       HttpParser.parseHeader(RawHeader("Host", c getString "default-host-header")) match {
         case Right(x: Host) ⇒ x

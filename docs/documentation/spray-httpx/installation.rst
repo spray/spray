@@ -3,7 +3,7 @@ Installation
 
 The :ref:`maven-repo` chapter contains all the info about how to pull *spray-httpx* into your classpath.
 
-Afterwards use the following imports to bring all relevant identifiers into scope:
+Afterwards you can use the following imports to bring all relevant identifiers into scope:
 
 - ``import spray.httpx.encoding._`` for everything related to (de)compression
 - ``import spray.httpx.marshalling._`` for everything related to marshalling

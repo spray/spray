@@ -1,5 +1,6 @@
 import sbt._
 import com.decodified.scalassh.{Command => SshCommand, _}
+import sbt.Load.BuildStructure
 import scala.Console.{RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE}
 
 
@@ -93,5 +94,15 @@ object Utils {
     def trace(t: => Throwable) {}
     def success(message: => String) {}
     def log(level: Level.Value, message: => String) {}
+  }
+
+  def aggregatedProjects(structure: BuildStructure)(project: ProjectDefinition[_ <: ProjectReference]): Set[String] = {
+    def resolve(p: ProjectReference): ResolvedProject = p match {
+      case LocalProject(projectId) => structure.allProjects.find(_.id == projectId).get
+      case ProjectRef(uri, p) => structure.units(uri).defined(p)
+      case x => throw new IllegalStateException("Can't handle "+x)
+    }
+
+    Set(project.id) ++ project.aggregate.map(resolve).flatMap(aggregatedProjects(structure))
   }
 }

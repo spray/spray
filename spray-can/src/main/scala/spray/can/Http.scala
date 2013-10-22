@@ -86,8 +86,8 @@ object Http extends ExtensionKey[HttpExt] {
   }
 
   case class Register(handler: ActorRef,
-                      keepOpenOnPeerClosed: Boolean = false,
                       fastPath: FastPath = EmptyFastPath) extends Command
+  case class RegisterChunkHandler(handler: ActorRef) extends Command
 
   case class Unbind(timeout: Duration) extends Command
   object Unbind extends Unbind(Duration.Zero)

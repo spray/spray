@@ -3,10 +3,9 @@
 decompressRequest
 =================
 
-Will try to decompress the request with either ``Gzip``, ``Deflate``, or ``NoEncoding``
-based on the presence of a matching ``Content-Encoding`` header, and assuming ``NoEncoding``
-if no ``Content-Encoding`` header is present. If the request contains an incorrect
-``Content-Encoding`` header it will be rejected with a ``CorruptRequestEncodingRejection``.
+Decompresses the request if it is encoded with one of the given encoders.
+If the request's encoding doesn't match one of the given encoders it is rejected with an
+``UnsupportedRequestEncodingRejection``.
 
 Signature
 ---------

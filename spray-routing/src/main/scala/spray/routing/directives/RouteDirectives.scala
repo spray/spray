@@ -18,7 +18,7 @@ package spray.routing
 package directives
 
 import scala.concurrent.{ ExecutionContext, Future }
-import spray.httpx.marshalling.{ Marshaller, ToResponseMarshaller }
+import spray.httpx.marshalling.{ ToResponseMarshaller, ToResponseMarshallable }
 import spray.http._
 import StatusCodes._
 
@@ -46,8 +46,8 @@ trait RouteDirectives {
   /**
    * Completes the request using the given arguments.
    */
-  def complete: (⇒ CompletionMagnet) ⇒ StandardRoute = magnet ⇒ new StandardRoute {
-    def apply(ctx: RequestContext): Unit = magnet.apply(ctx)
+  def complete: (⇒ ToResponseMarshallable) ⇒ StandardRoute = marshallable ⇒ new StandardRoute {
+    def apply(ctx: RequestContext): Unit = ctx.complete(marshallable)
   }
 
   /**
@@ -62,37 +62,5 @@ trait RouteDirectives {
 object RouteDirectives extends RouteDirectives {
   private val _reject: StandardRoute = new StandardRoute {
     def apply(ctx: RequestContext): Unit = ctx.reject()
-  }
-}
-
-sealed abstract class CompletionMagnet extends Route
-
-object CompletionMagnet {
-  implicit def fromObject[T: ToResponseMarshaller](obj: T): CompletionMagnet =
-    new CompletionRoute(obj)
-
-  implicit def fromStatusObject[T: Marshaller](tuple: (StatusCode, T)): CompletionMagnet =
-    fromStatusHeadersObject((tuple._1, Nil, tuple._2))
-
-  implicit def fromStatusHeadersObject[T: Marshaller](tuple: (StatusCode, List[HttpHeader], T)): CompletionMagnet =
-    new CompletionRoute(tuple._3)(ToResponseMarshaller.fromMarshaller(tuple._1, tuple._2))
-
-  implicit def fromHttpResponse(response: HttpResponse): CompletionMagnet =
-    new CompletionMagnet {
-      def apply(ctx: RequestContext): Unit = ctx.complete(response)
-    }
-  implicit def fromStatus(status: StatusCode): CompletionMagnet =
-    new CompletionMagnet {
-      def apply(ctx: RequestContext): Unit = ctx.complete(status)
-    }
-  implicit def fromHttpResponseFuture(future: Future[HttpResponse])(implicit ec: ExecutionContext): CompletionMagnet =
-    new CompletionMagnet {
-      def apply(ctx: RequestContext): Unit = ctx.complete(future)
-    }
-  implicit def fromStatusCodeFuture(future: Future[StatusCode])(implicit ec: ExecutionContext): CompletionMagnet =
-    future.map(status ⇒ HttpResponse(status, entity = status.defaultMessage))
-
-  private class CompletionRoute[T: ToResponseMarshaller](obj: T) extends CompletionMagnet {
-    def apply(ctx: RequestContext): Unit = ctx.complete(obj)
   }
 }

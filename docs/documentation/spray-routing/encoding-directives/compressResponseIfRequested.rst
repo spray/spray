@@ -3,8 +3,8 @@
 compressResponseIfRequested
 ===========================
 
-Only compresses the response when specifically requested to do so by the
-presense of a ``Accept-Encoding`` request header.
+Only compresses the response when specifically requested by the
+``Accept-Encoding`` request header (i.e. the default is "no compression").
 
 Signature
 ---------
