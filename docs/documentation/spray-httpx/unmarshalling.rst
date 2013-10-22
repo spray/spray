@@ -127,3 +127,55 @@ re-implementation you could be doing this:
 
 .. includecode:: code/docs/UnmarshallingExamplesSpec.scala
    :snippet: example-3
+
+
+More specific Unmarshallers
+---------------------------
+
+The plain ``Unmarshaller[T]`` is agnostic to whether it is used on the server- or on the client-side. This means that
+it can be used to deserialize the entities from requests as well as responses. Also, the only information that an
+``Unmarshaller[T]`` has access to for its job is the message entity. Sometimes this is not enough.
+
+FromMessageUnmarshaller
+~~~~~~~~~~~~~~~~~~~~~~~
+
+If you need access to the message headers during unmarshalling you can write an ``FromMessageUnmarshaller[T]`` for your
+type. It is defined as such:
+
+.. includecode:: /../spray-httpx/src/main/scala/spray/httpx/unmarshalling/package.scala
+   :snippet: source-quote-FromMessageUnmarshaller
+
+and allows access to all members of the ``HttpMessage`` superclass of the ``HttpRequest`` and ``HttpResponse`` types,
+most importantly: the message headers. Since, like the plain ``Unmarshaller[T]``, it can deserialize requests as well
+as responses it can be used on the server- as well as the client-side.
+
+An in-scope ``FromMessageUnmarshaller[T]`` takes precedence before any potentially available plain ``Unmarshaller[T]``.
+
+FromRequestUnmarshaller
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``FromRequestUnmarshaller[T]`` is the most "powerful" unmarshaller that can be used on the server-side
+(and only there). It is defined like this:
+
+.. includecode:: /../spray-httpx/src/main/scala/spray/httpx/unmarshalling/package.scala
+   :snippet: source-quote-FromRequestUnmarshaller
+
+and allows access to all members of the incoming ``HttpRequest`` instance.
+
+An in-scope ``FromRequestUnmarshaller[T]`` takes precedence before any potentially available
+``FromMessageUnmarshaller[T]`` or plain ``Unmarshaller[T]``.
+
+FromResponseUnmarshaller
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``FromResponseUnmarshaller[T]`` is the most "powerful" unmarshaller that can be used on the client-side
+(and only there). It is defined like this:
+
+.. includecode:: /../spray-httpx/src/main/scala/spray/httpx/unmarshalling/package.scala
+   :snippet: source-quote-FromResponseUnmarshaller
+
+and allows access to all members of the incoming ``HttpResponse`` instance.
+
+An in-scope ``FromResponseUnmarshaller[T]`` takes precedence before any potentially available
+``FromMessageUnmarshaller[T]`` or plain ``Unmarshaller[T]``.
+

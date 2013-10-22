@@ -11,7 +11,9 @@ If you use SBT_ you'll want to add the following resolver::
 
   resolvers += "spray repo" at "http://repo.spray.io"
 
-Nightly builds are available from http://nightlies.spray.io.
+Nightly builds are available from http://nightlies.spray.io, to use them add this resolver::
+
+  resolvers += "spray nightlies repo" at "http://nightlies.spray.io"
 
 
 Artifact Naming

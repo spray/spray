@@ -42,21 +42,20 @@ sealed trait ContentNode {
     if (uri == this.uri) Some(this)
     else children.mapFind(_.find(uri))
 
-  def render[R <: Rendering](r: R, prefix: String = ""): r.type = {
+  def render[R <: Rendering](r: R, prefix: String = ""): r.type =
     if (children.nonEmpty) {
       r ~~ prefix ~~ name ~~ ": " ~~ uri ~~ '\n'
       children foreach (_.render(r, prefix + "  "))
       r
     } else r
-  }
 }
 
 abstract class BranchRootNode(val title: String, val name: String, val uri: String, val loadUri: String,
-                              val doc: SphinxDoc, docVersion: String) extends ContentNode {
+                              val doc: SphinxDoc, docVersion: String, extraChildren: Seq[ContentNode] = Nil) extends ContentNode {
   val children: Seq[ContentNode] = {
     def findTocTreeWrapper(n: Node): Node =
       if (n.attribute("class").get.text.startsWith("toctree-wrapper")) n else findTocTreeWrapper((n \ "div").head)
-    (findTocTreeWrapper(XML.loadString(doc.body)) \ "ul" \ "li").par.map(SubNode(this, docVersion)).seq
+    extraChildren ++ (findTocTreeWrapper(XML.loadString(doc.body)) \ "ul" \ "li").par.map(SubNode(this, docVersion)).seq
   }
 }
 
@@ -67,7 +66,7 @@ class RootNode(doc: SphinxDoc) extends BranchRootNode("REST/HTTP for your Akka/S
 
 object SubNode {
   private final val DOC_URI = "documentation/"
-  def apply(parent: ContentNode, docVersion: String)(li: Node): ContentNode = {
+  def apply(parent: ContentNode, docVersion: String, extraChildren: Seq[ContentNode] = Nil)(li: Node): ContentNode = {
     val a = (li \ "a").head
     val rawUri = (a \ "@href").text
     if (rawUri == DOC_URI && docVersion.isEmpty)
@@ -79,7 +78,7 @@ object SubNode {
           if (rawUri.startsWith(DOC_URI)) (DOC_URI + docVersion + '/' + rawUri.substring(DOC_URI.length)) -> rawUri
           else (DOC_URI + docVersion + '/' + rawUri) -> ("documentation-" + docVersion + '/' + rawUri)
         } else rawUri -> rawUri
-      new SubNode(li, docVersion, name, uri, loadUri, parent)
+      new SubNode(li, docVersion, name, uri, loadUri, parent, extraChildren)
     }
   }
 
@@ -95,22 +94,24 @@ object SubNode {
       val children: Seq[ContentNode] = {
         val other = Main.settings.otherVersions map { v ⇒
           SphinxDoc.load(s"documentation-$v/index/") match {
-            case Some(d) ⇒ new BranchRootNode("Documentation » " + v, v, DOC_URI + v + '/', "documentation-" + v, d, v) {
-              def isRoot = false
-              def parent = docRoot
-            }
+            case Some(d) ⇒
+              new BranchRootNode("Documentation » " + v, v, DOC_URI + v + '/', "documentation-" + v, d, v, APIDocNode.findFor(v)) {
+                def isRoot = false
+                def parent = docRoot
+              }
             case None ⇒ sys.error(s"index.fjson for documentation version $v not found")
           }
         }
-        (other :+ SubNode(this, Main.settings.mainVersion)(li)).sortBy(_.name)
+        lazy val main: ContentNode = SubNode(this, Main.settings.mainVersion, extraChildren = APIDocNode.findFor(Main.settings.mainVersion))(li)
+        (other :+ main).sortBy(_.name)
       }
     }
 }
 
 class SubNode(li: Node, docVersion: String,
-              val name: String, val uri: String, val loadUri: String, val parent: ContentNode) extends ContentNode {
+              val name: String, val uri: String, val loadUri: String, val parent: ContentNode, extraChildren: Seq[ContentNode] = Nil) extends ContentNode {
   def title = if (parent.isRoot) name else parent.title + " » " + name
-  val children: Seq[ContentNode] = (li \ "ul" \ "li").map(SubNode(this, docVersion))(collection.breakOut)
+  val children: Seq[ContentNode] = extraChildren ++ (li \ "ul" \ "li").map(SubNode(this, docVersion))(collection.breakOut)
   private[this] var lastDoc: Option[SphinxDoc] = None
   def doc: SphinxDoc = lastDoc.getOrElse {
     import SphinxDoc.load
@@ -129,4 +130,20 @@ class SubNode(li: Node, docVersion: String,
     loaded
   }
   def isRoot = false
+}
+
+case class APIDocNode(docVersion: String) extends ContentNode {
+  def title: String = "API"
+  def name: String = "API"
+  def children: Seq[ContentNode] = Nil
+  def uri: String = "documentation/" + docVersion + "/api/"
+  def isRoot: Boolean = true
+  def doc: SphinxDoc = ???
+  def loadUri: String = ???
+  def parent: ContentNode = ???
+}
+
+object APIDocNode {
+  def findFor(version: String): Seq[APIDocNode] =
+    if (getClass.getClassLoader.getResource("api/" + version + "/index.html") ne null) Seq(APIDocNode(version)) else Nil
 }

@@ -30,6 +30,7 @@ class RootNodeSpec extends Specification {
     "properly find a node by uri" in {
       //      RootNode.find("documentation/spray-io/big-picture/").toString ===
       //        "Some(Big Picture: documentation/spray-io/big-picture/)"
+      pending
     }
   }
 

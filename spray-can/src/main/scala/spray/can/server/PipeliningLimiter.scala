@@ -49,25 +49,15 @@ private object PipeliningLimiter {
           var parkedRequestParts = Queue.empty[Event]
           var openRequests = 0
 
-          val commandPipeline: CPL = {
-            case cmd @ ResponsePartRenderingContext(_: HttpMessageEnd, _, _, _, _) ⇒
-              openRequests -= 1
-              commandPL(cmd)
-              if (parkedRequestParts.nonEmpty) {
-                unparkOneRequest()
-                if (parkedRequestParts.isEmpty) commandPL(Tcp.ResumeReading)
-              }
-
-            case cmd ⇒ commandPL(cmd)
-          }
-
+          def commandPipeline: CPL = commandPL
           val eventPipeline: EPL = {
-            case ev @ HttpMessageStartEvent(part, _) ⇒ handleEvent(ev, part)
-            case ev @ Http.MessageEvent(part)        ⇒ handleEvent(ev, part)
+            case ev @ HttpMessageStartEvent(part, _) ⇒ handleRequestPart(ev, part)
+            case ev @ Http.MessageEvent(part)        ⇒ handleRequestPart(ev, part)
+            case ev: AckEventWithReceiver            ⇒ handleResponseAck(ev)
             case ev                                  ⇒ eventPL(ev)
           }
 
-          def handleEvent(ev: Event, part: HttpMessagePart): Unit =
+          def handleRequestPart(ev: Event, part: HttpMessagePart): Unit =
             if (openRequests < pipeliningLimit) {
               if (part.isInstanceOf[HttpMessageEnd]) openRequests += 1
               eventPL(ev)
@@ -75,6 +65,14 @@ private object PipeliningLimiter {
               commandPL(Tcp.SuspendReading)
               parkedRequestParts = parkedRequestParts enqueue ev
             }
+          def handleResponseAck(ev: AckEventWithReceiver): Unit = {
+            openRequests -= 1
+            eventPL(ev)
+            if (parkedRequestParts.nonEmpty) {
+              unparkOneRequest()
+              if (parkedRequestParts.isEmpty) commandPL(Tcp.ResumeReading)
+            }
+          }
 
           @tailrec
           def unparkOneRequest(): Unit =

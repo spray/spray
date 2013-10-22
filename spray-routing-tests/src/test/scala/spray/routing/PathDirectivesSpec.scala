@@ -16,324 +16,196 @@
 
 package spray.routing
 
+import org.specs2.matcher.MatchResult
+
 class PathDirectivesSpec extends RoutingSpec {
-
   val echoUnmatchedPath = unmatchedPath { echoComplete }
-  val echoCaptureAndUnmatchedPath: String ⇒ Route =
-    capture ⇒ ctx ⇒ ctx.complete(capture + ":" + ctx.unmatchedPath)
+  def echoCaptureAndUnmatchedPath[T]: T ⇒ Route =
+    capture ⇒ ctx ⇒ ctx.complete(capture.toString + ":" + ctx.unmatchedPath)
 
-  "routes created with the path(string) combinator" should {
-    "block completely unmatching requests" in {
-      Get("/noway/this/works") ~> path("hello") { completeOk } ~> check { handled must beFalse }
-    }
-    "block prefix requests" in {
-      Get("/noway/this/works") ~> path("noway" / "this") { completeOk } ~> check { handled must beFalse }
-    }
-    "let fully matching requests pass and clear the RequestContext.unmatchedPath" in {
-      Get("/noway/this/works") ~> {
-        path("noway" / "this" / "works") { echoUnmatchedPath }
-      } ~> check { responseAs[String] === "" }
-    }
-    "implicitly match trailing slashes" in {
-      Get("/works/") ~> path("works") { completeOk } ~> check { response === Ok }
-      Get("/") ~> path("") { completeOk } ~> check { response === Ok }
-    }
+  case class testFor(route: Route) {
+    def apply(expectedResponse: String = null): String ⇒ MatchResult[Any] = exampleString ⇒
+      "\\[([^\\]]+)\\]".r.findFirstMatchIn(exampleString) match {
+        case Some(uri) ⇒ Get(uri.group(1)) ~> route ~> check {
+          if (expectedResponse eq null) handled must beFalse
+          else responseAs[String] === expectedResponse
+        }
+        case None ⇒ failTest("Example '" + exampleString + "' doesn't contain a test uri")
+      }
   }
 
-  "routes created with the pathPrefix(string) combinator" should {
-    "block unmatching requests" in {
-      Get("/noway/this/works") ~> pathPrefix("hello") { completeOk } ~> check { handled must beFalse }
-    }
-    "let matching requests pass and adapt RequestContext.unmatchedPath" in {
-      Get("/noway/this/works") ~> {
-        pathPrefix("noway") { echoUnmatchedPath }
-      } ~> check { responseAs[String] === "/this/works" }
-    }
-    "match and consume segment prefixes" in {
-      Get("/abc/efg") ~> {
-        pathPrefix("abc" / "e") { echoUnmatchedPath }
-      } ~> check { responseAs[String] === "fg" }
-    }
-    "be stackable" in {
-      "within one single pathPrefix(...) combinator" in {
-        Get("/noway/this/works") ~> {
-          pathPrefix("noway" / "this" / "works" ~ Rest) { echoComplete }
-        } ~> check { responseAs[String] === "" }
-      }
-      "when nested" in {
-        Get("/noway/this/works") ~> {
-          (pathPrefix("noway") & pathPrefix("this")) { echoUnmatchedPath }
-        } ~> check { responseAs[String] === "/works" }
-      }
-    }
+  """path("foo")""" should {
+    val test = testFor(path("foo") { echoUnmatchedPath })
+    "reject [/bar]" in test()
+    "reject [/foobar]" in test()
+    "reject [/foo/bar]" in test()
+    "accept [/foo] and clear the unmatchedPath" in test("")
+    "accept [/foo/] and clear the unmatchedPath" in test("")
+  }
+  """path("")""" should {
+    val test = testFor(path("") { echoUnmatchedPath })
+    "reject [/foo]" in test()
+    "accept [/] and clear the unmatchedPath" in test("")
   }
 
-  "routes created with the pathPrefix(regex) combinator" should {
-    "block unmatching requests" in {
-      Get("/noway/this/works") ~> pathPrefix("\\d".r) { echoComplete } ~> check { handled must beFalse }
-    }
-    "let matching requests pass, extract the match value and adapt RequestContext.unmatchedPath" in {
-      "when the regex is a simple regex (example 1)" in {
-        Get("/abcdef/ghijk/lmno") ~> {
-          pathPrefix("abcdef" / "ghijk".r) { echoCaptureAndUnmatchedPath }
-        } ~> check { responseAs[String] === "ghijk:/lmno" }
-      }
-      "when the regex is a simple regex (example 2)" in {
-        Get("/abcdef/ghijk/lmno") ~> {
-          pathPrefix("abcdef" / "gh[ij]+".r) { echoCaptureAndUnmatchedPath }
-        } ~> check { responseAs[String] === "ghij:k/lmno" }
-      }
-      "when the regex is a group regex (example 1)" in {
-        Get("/abcdef/ghijk/lmno") ~> {
-          pathPrefix("abcdef" / "(ghijk)".r) { echoCaptureAndUnmatchedPath }
-        } ~> check { responseAs[String] === "ghijk:/lmno" }
-      }
-      "when the regex is a group regex (example 2)" in {
-        Get("/abcdef/ghijk/lmno") ~> {
-          pathPrefix("abcdef" / "gh(ij)".r) { echoCaptureAndUnmatchedPath }
-        } ~> check { responseAs[String] === "ij:k/lmno" }
-      }
-      "when the regex is a group regex (example 3)" in {
-        Get("/abcdef/ghijk/lmno") ~> {
-          pathPrefix("abcdef" / "(gh)i".r) { echoCaptureAndUnmatchedPath }
-        } ~> check { responseAs[String] === "gh:jk/lmno" }
-      }
-      "for segment prefixes" in {
-        Get("/noway/this/works") ~> {
-          pathPrefix("n([ow]+)".r) { echoCaptureAndUnmatchedPath }
-        } ~> check { responseAs[String] === "ow:ay/this/works" }
-      }
-    }
-    "be stackable" in {
-      "within one single path(...) combinator" in {
-        Get("/compute/23/19") ~> {
-          pathPrefix("compute" / "\\d+".r / "\\d+".r) { (a, b) ⇒
-            complete((a.toInt + b.toInt).toString)
-          }
-        } ~> check { responseAs[String] === "42" }
-      }
-      "within one single path(...) combinator" in {
-        Get("/compute/23/19") ~> {
-          pathPrefix("compute" / "\\d+".r) { a ⇒
-            pathPrefix("\\d+".r) { b ⇒
-              complete((a.toInt + b.toInt).toString)
-            }
-          }
-        } ~> check { responseAs[String] === "42" }
-      }
-    }
+  """pathPrefix("foo")""" should {
+    val test = testFor(pathPrefix("foo") { echoUnmatchedPath })
+    "reject [/bar]" in test()
+    "accept [/foobar]" in test("bar")
+    "accept [/foo/bar]" in test("/bar")
+    "accept [/foo] and clear the unmatchedPath" in test("")
+    "accept [/foo/] and clear the unmatchedPath" in test("/")
+  }
+
+  """pathPrefix("foo" / "bar")""" should {
+    val test = testFor(pathPrefix("foo" / "bar") { echoUnmatchedPath })
+    "reject [/bar]" in test()
+    "accept [/foo/bar]" in test("")
+    "accept [/foo/bar/baz]" in test("/baz")
+  }
+
+  """pathPrefix("ab[cd]+".r)""" should {
+    val test = testFor(pathPrefix("ab[cd]+".r) { echoCaptureAndUnmatchedPath })
+    "reject [/bar]" in test()
+    "reject [/ab/cd]" in test()
+    "reject [/abcdef]" in test("abcd:ef")
+    "reject [/abcdd/ef]" in test("abcdd:/ef")
+  }
+
+  """pathPrefix("ab(cd)".r)""" should {
+    val test = testFor(pathPrefix("ab(cd)+".r) { echoCaptureAndUnmatchedPath })
+    "reject [/bar]" in test()
+    "reject [/ab/cd]" in test()
+    "reject [/abcdef]" in test("cd:ef")
+    "reject [/abcde/fg]" in test("cd:e/fg")
+  }
+
+  "pathPrefix(regex)" should {
     "fail when the regex contains more than one group" in {
-      path("compute" / "yea(\\d+)(\\d+)".r / "\\d+".r) { (a, b) ⇒
-        completeOk
-      } must throwA[IllegalArgumentException]
+      path("a(b+)(c+)".r) { echoCaptureAndUnmatchedPath } must throwAn[IllegalArgumentException]
     }
   }
 
-  "the predefined IntNumber PathMatcher" should {
-    val route = path("id" / IntNumber) { echoComplete }
-    "properly extract digit sequences at the path end into an integer" in {
-      Get("/id/23") ~> route ~> check { responseAs[String] === "23" }
-    }
-    "properly extract digit sequences in the middle of the path into an integer" in {
-      Get("/id/12345yes") ~> {
-        path("id" / IntNumber ~ "yes") { echoComplete }
-      } ~> check { responseAs[String] === "12345" }
-    }
-    "reject empty matches" in {
-      Get("/id/") ~> route ~> check { handled must beFalse }
-    }
-    "reject non-digit matches" in {
-      Get("/id/xyz") ~> route ~> check { handled must beFalse }
-    }
-    "reject digit sequences representing numbers greater than Int.MaxValue" in {
-      Get("/id/2147483648") ~> route ~> check { handled must beFalse }
-    }
+  "pathPrefix(IntNumber)" should {
+    val test = testFor(pathPrefix(IntNumber) { echoCaptureAndUnmatchedPath })
+    "accept [/23]" in test("23:")
+    "accept [/12345yes]" in test("12345:yes")
+    "reject [/]" in test()
+    "reject [/abc]" in test()
+    "reject [/2147483648]" in test() // > Int.MaxValue
   }
 
-  "the predefined JavaUUID PathMatcher" should {
-    "properly extract UUID sequences at the path end into an UUID" in {
-      Get("/id/bdea8652-f26c-40ca-8157-0b96a2a8389d") ~> {
-        path("id" / JavaUUID) { echoComplete }
-      } ~> check { responseAs[String] === "bdea8652-f26c-40ca-8157-0b96a2a8389d" }
-    }
-    "properly extract UUID sequences in the middle of the path into an UUID" in {
-      Get("/id/bdea8652-f26c-40ca-8157-0b96a2a8389dyes") ~> {
-        path("id" / JavaUUID ~ "yes") { echoComplete }
-      } ~> check { responseAs[String] === "bdea8652-f26c-40ca-8157-0b96a2a8389d" }
-    }
-    "reject empty matches" in {
-      Get("/id/") ~> path("id" / JavaUUID) { echoComplete } ~> check { handled must beFalse }
-    }
-    "reject non-UUID matches" in {
-      Get("/id/xyz") ~> path("id" / JavaUUID) { echoComplete } ~> check { handled must beFalse }
-    }
+  "pathPrefix(JavaUUID)" should {
+    val test = testFor(pathPrefix(JavaUUID) { echoCaptureAndUnmatchedPath })
+    "accept [/bdea8652-f26c-40ca-8157-0b96a2a8389d]" in test("bdea8652-f26c-40ca-8157-0b96a2a8389d:")
+    "accept [/bdea8652-f26c-40ca-8157-0b96a2a8389dyes]" in test("bdea8652-f26c-40ca-8157-0b96a2a8389d:yes")
+    "reject [/]" in test()
+    "reject [/abc]" in test()
   }
 
-  "trailing slashes in the URI" should {
-    "be matched by path matchers no having a trailing slash" in {
-      Get("/a/") ~> path("a") { completeOk } ~> check { response === Ok }
-    }
-    "be matched by path matchers having a trailing slash" in {
-      Get("/a/") ~> path("a" ~ Slash) { completeOk } ~> check { response === Ok }
-    }
+  "pathPrefix(Map(\"red\" -> 1, \"green\" -> 2, \"blue\" -> 3))" should {
+    val test = testFor(pathPrefix(Map("red" -> 1, "green" -> 2, "blue" -> 3)) { echoCaptureAndUnmatchedPath })
+    "accept [/green]" in test("2:")
+    "accept [/redsea]" in test("1:sea")
+    "reject [/black]" in test()
   }
 
-  "URIs without trailing slash" should {
-    "be matched by path matchers no having a trailing slash" in {
-      Get("/a") ~> path("a") { completeOk } ~> check { response === Ok }
-    }
-    "not be matched by path matchers having a trailing slash" in {
-      Get("/a") ~> path("a/") { completeOk } ~> check { handled must beFalse }
-    }
+  "pathPrefix(Segment)" should {
+    val test = testFor(pathPrefix(Segment) { echoCaptureAndUnmatchedPath })
+    "accept [/abc]" in test("abc:")
+    "accept [/abc/]" in test("abc:/")
+    "accept [/abc/def]" in test("abc:/def")
+    "reject [/]" in test()
   }
 
-  "A PathMatcher constructed implicitly from a Map[String, T]" should {
-    val colors = Map("red" -> 1, "green" -> 2, "blue" -> 3)
-    val route = path("color" / colors) { echoComplete }
-    "properly match its map keys" in {
-      Get("/color/green") ~> route ~> check { responseAs[String] === "2" }
-    }
-    "not match something else" in {
-      Get("/color/black") ~> route ~> check { handled must beFalse }
-    }
+  "pathPrefix(Segments)" should {
+    val test = testFor(pathPrefix(Segments) { echoCaptureAndUnmatchedPath })
+    "accept [/]" in test("List():")
+    "accept [/a/b/c]" in test("List(a, b, c):")
+    "accept [/a/b/c/]" in test("List(a, b, c):")
   }
 
-  "The predefined Segment PathMatcher" should {
-    val route = path("id" / Segment) { echoComplete }
-    "properly extract chars at the path end into a String" in {
-      Get("/id/abc") ~> route ~> check { responseAs[String] === "abc" }
-    }
-    "properly extract chars in the middle of the path into a String" in {
-      Get("/id/yes/no") ~> path("id" / Segment / "no") { echoComplete } ~> check { responseAs[String] === "yes" }
-    }
-    "reject empty matches" in {
-      Get("/id/") ~> route ~> check { handled must beFalse }
-    }
+  """pathPrefix(separateOnSlashes("a/b"))""" should {
+    val test = testFor(pathPrefix(separateOnSlashes("a/b")) { echoUnmatchedPath })
+    "accept [/a/b]" in test("")
+    "accept [/a/b/]" in test("/")
+    "accept [/a/c]" in test()
+  }
+  """pathPrefix(separateOnSlashes("abc"))""" should {
+    val test = testFor(pathPrefix(separateOnSlashes("abc")) { echoUnmatchedPath })
+    "accept [/abc]" in test("")
+    "accept [/abcdef]" in test("def")
+    "accept [/ab]" in test()
   }
 
-  "The predefined Segments PathMatcher" should {
-    val route = path("dir" / Segments) { echoComplete }
-    "properly extract zero segments into the empty list" in {
-      Get("/dir") ~> route ~> check { responseAs[String] === "List()" }
-    }
-    "properly extract n segments without trailing slash" in {
-      Get("/dir/a/b/c/d") ~> route ~> check { responseAs[String] === "List(a, b, c, d)" }
-    }
-    "properly extract n segments with trailing slash" in {
-      Get("/dir/a/b/c/d/e/") ~> route ~> check { responseAs[String] === "List(a, b, c, d, e)" }
-    }
+  """pathPrefixTest("a" / Segment ~ Slash)""" should {
+    val test = testFor(pathPrefixTest("a" / Segment ~ Slash) { echoCaptureAndUnmatchedPath })
+    "accept [/a/bc/]" in test("bc:/a/bc/")
+    "accept [/a/bc]" in test()
+    "accept [/a/]" in test()
   }
 
-  "The `separateOnSlashes` creator" should {
-    "properly match several path segments" in {
-      Get("/a/b") ~> path(separateOnSlashes("a/b")) { completeOk } ~> check { response === Ok }
-      Get("/a/b") ~> path(separateOnSlashes("a/b/")) { completeOk } ~> check { response === Ok }
-    }
-    "properly match several a single segment" in {
-      Get("/abc") ~> path(separateOnSlashes("abc")) { completeOk } ~> check { response === Ok }
-    }
-    "not match on mismatching path segments" in {
-      Get("/abc/def/ghi") ~> path(separateOnSlashes("abc/def/ghj")) { completeOk } ~> check { handled must beFalse }
-      Get("/abc/def/ghi") ~> path(separateOnSlashes("/abc/def/ghi")) { completeOk } ~> check { handled must beFalse }
-    }
+  """pathSuffix("edit" / Segment)""" should {
+    val test = testFor(pathSuffix("edit" / Segment) { echoCaptureAndUnmatchedPath })
+    "accept [/orders/123/edit]" in test("123:/orders/")
+    "accept [/orders/123/ed]" in test()
+    "accept [/edit]" in test()
   }
 
-  "The `pathPrefixTest` directive" should {
-    "match uris without consuming them" in {
-      Get("/a") ~> pathPrefixTest("a") { echoUnmatchedPath } ~> check { responseAs[String] === "/a" }
-    }
-    "be usable for testing for trailing slashs in URIs" in {
-      val route = pathPrefixTest(Segment ~ Slash_!) { _ ⇒ completeOk }
-      "example 1" in {
-        Get("/a/") ~> route ~> check { response === Ok }
-      }
-      "example 2" in {
-        Get("/a") ~> route ~> check { handled === false }
-      }
-    }
+  "pathSuffixTest(Slash)" should {
+    val test = testFor(pathSuffixTest(Slash) { echoUnmatchedPath })
+    "accept [/]" in test("/")
+    "accept [/foo/]" in test("/foo/")
+    "accept [/foo]" in test()
   }
 
-  "The `pathSuffix` directive" should {
-    "allow matching and consuming of path suffixes" in {
-      "example 1" in {
-        Get("/orders/123/edit") ~> {
-          pathSuffix("edit" / Segment) { echoCaptureAndUnmatchedPath }
-        } ~> check { responseAs[String] === "123:/orders/" }
-      }
-      "example 2" in {
-        Get("/orders/123/edit/") ~> {
-          pathSuffix(Slash ~ "edit" / Segment) { echoCaptureAndUnmatchedPath }
-        } ~> check { responseAs[String] === "123:/orders/" }
-      }
-      "example 3" in {
-        Get("/orders/123/edit") ~> {
-          pathSuffix("edit" / IntNumber / "orders" ~ Slash ~ PathEnd) { echoComplete }
-        } ~> check { responseAs[String] === "123" }
-      }
-    }
+  """pathPrefix("foo" | "bar")""" in {
+    val test = testFor(pathPrefix("foo" | "bar") { echoUnmatchedPath })
+    "accept [/foo]" in test("")
+    "accept [/foops]" in test("ps")
+    "accept [/bar]" in test("")
+    "reject [/baz]" in test()
   }
 
-  "The `pathSuffixTest` matcher modifier" should {
-    "enable testing for trailing slashes" in {
-      val route = pathSuffixTest(Slash) { completeOk }
-      "example 1" in {
-        Get("/a/b/") ~> route ~> check { response === Ok }
-      }
-      "example 2" in {
-        Get("/a/b") ~> route ~> check { handled must beFalse }
-      }
-    }
+  """pathSuffix(!"foo")""" in {
+    val test = testFor(pathSuffix(!"foo") { echoUnmatchedPath })
+    "accept [/bar]" in test("/bar")
+    "reject [/foo]" in test()
+  }
+
+  "pathPrefix(IntNumber?)" in {
+    val test = testFor(pathPrefix(IntNumber?) { echoCaptureAndUnmatchedPath })
+    "accept [/12]" in test("Some(12):")
+    "accept [/12a]" in test("Some(12):a")
+    "accept [/foo]" in test("None:foo")
+  }
+
+  """pathPrefix("foo"?)""" in {
+    val test = testFor(pathPrefix("foo"?) { echoUnmatchedPath })
+    "accept [/foo]" in test("")
+    "accept [/fool]" in test("l")
+    "accept [/bar]" in test("bar")
   }
 
   "PathMatchers" should {
+    import shapeless._
     "support the hmap modifier" in {
-      import shapeless._
-      Get("/yes-no") ~> {
-        path(Rest.hmap { case s :: HNil ⇒ s.split('-').toList :: HNil }) { echoComplete }
-      } ~> check { responseAs[String] === "List(yes, no)" }
+      val test = testFor(path(Rest.hmap { case s :: HNil ⇒ s.split('-').toList :: HNil }) { echoComplete })
+      "accept [/yes-no]" in test("List(yes, no)")
     }
     "support the map modifier" in {
-      Get("/yes-no") ~> {
-        path(Rest.map(_.split('-').toList)) { echoComplete }
-      } ~> check { responseAs[String] === "List(yes, no)" }
+      val test = testFor(path(Rest.map(_.split('-').toList)) { echoComplete })
+      "accept [/yes-no]" in test("List(yes, no)")
     }
     "support the hflatMap modifier" in {
-      import shapeless._
-      val route = path(Rest.hflatMap { case s :: HNil ⇒ Some(s).filter("yes" ==).map(_ :: HNil) }) { echoComplete }
-      Get("/yes") ~> route ~> check { responseAs[String] === "yes" }
-      Get("/blub") ~> route ~> check { handled must beFalse }
+      val test = testFor(path(Rest.hflatMap { case s :: HNil ⇒ Some(s).filter("yes" ==).map(_ :: HNil) }) { echoComplete })
+      "accept [/yes]" in test("yes")
+      "reject [/blub]" in test()
     }
     "support the flatMap modifier" in {
-      val route = path(Rest.flatMap(s ⇒ Some(s).filter("yes" ==))) { echoComplete }
-      Get("/yes") ~> route ~> check { responseAs[String] === "yes" }
-      Get("/blub") ~> route ~> check { handled must beFalse }
-    }
-    "support the `|` operator" in {
-      val route = path("ab" / ("cd" | "ef") / "gh") { completeOk }
-      "example 1" in {
-        Get("/ab/cd/gh") ~> route ~> check { response === Ok }
-      }
-      "example 2" in {
-        Get("/ab/ef/gh") ~> route ~> check { response === Ok }
-      }
-      "example 3" in {
-        Get("/ab/xy/gh") ~> route ~> check { handled === false }
-      }
-      "example 4" in {
-        val route = path(LongNumber | JavaUUID) { echoComplete }
-        Get("/123") ~> route ~> check { responseAs[String] === "123" }
-        Get("/bdea8652-f26c-40ca-8157-0b96a2a8389d") ~> route ~> check { responseAs[String] must startWith("bdea8652") }
-      }
-
-    }
-    "support the unary_! modifier" in {
-      val route = pathPrefix("ab" / !"cd" ~ Rest) { echoComplete }
-      "example 1a" in {
-        Get("/ab/cef") ~> route ~> check { responseAs[String] === "cef" }
-      }
-      "example 2" in {
-        Get("/ab/cde") ~> route ~> check { handled === false }
-      }
+      val test = testFor(path(Rest.flatMap(s ⇒ Some(s).filter("yes" ==))) { echoComplete })
+      "accept [/yes]" in test("yes")
+      "reject [/blub]" in test()
     }
   }
 }

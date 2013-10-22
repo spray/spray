@@ -67,6 +67,12 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
               path("") {
                 complete(page(home()))
               } ~
+              pathPrefix("documentation" / Segment / "api") { version =>
+                val dir = "api/"+version+"/"
+                rawPathPrefix(Slash ~ PathEnd)(getFromResource(dir+"index.html")) ~
+                getFromResourceDirectory(dir) ~
+                path("")(redirect("/documentation/"+version+"/api/", MovedPermanently))
+              } ~
               pathSuffixTest(Slash) {
                 path("home") {
                   redirect("/", MovedPermanently)

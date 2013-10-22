@@ -25,9 +25,13 @@ import spray.can.Http
 import spray.can.rendering.ResponsePartRenderingContext
 import spray.http._
 import spray.can.server.RequestParsing.HttpMessageStartEvent
+import akka.io.Tcp.NoAck
+import akka.actor.DeadLetterActorRef
+import akka.testkit.TestProbe
 
 class PipelineLimiterSpec extends Specification with Specs2PipelineStageTest with NoTimeConversions {
   val stage = PipeliningLimiter(2)
+  val handler = TestProbe()
 
   "The PipeliningLimiter PipelineStage" should {
 
@@ -52,24 +56,36 @@ class PipelineLimiterSpec extends Specification with Specs2PipelineStageTest wit
 
       connectionActor ! response("a")
       commands.expectMsg(response("a"))
-      events.expectMsg(request("c"))
 
       connectionActor ! response("b")
       commands.expectMsg(response("b"))
+
+      connectionActor ! ackFor("a")
+      events.expectMsg(ackFor("a"))
+      events.expectMsg(request("c"))
+
+      connectionActor ! ackFor("b")
+      events.expectMsg(ackFor("b"))
       events.expectMsg(request("d"))
 
       connectionActor ! response("c")
       commands.expectMsg(response("c"))
+      connectionActor ! ackFor("c")
+      events.expectMsg(ackFor("c"))
       commands.expectMsg(Tcp.ResumeReading)
       events.expectMsg(request("e"))
 
       connectionActor ! response("d")
       commands.expectMsg(response("d"))
+      connectionActor ! ackFor("d")
+      events.expectMsg(ackFor("d"))
       commands.expectNoMsg(50.millis)
       events.expectNoMsg(50.millis)
 
       connectionActor ! response("e")
       commands.expectMsg(response("e"))
+      connectionActor ! ackFor("e")
+      events.expectMsg(ackFor("e"))
       commands.expectNoMsg(50.millis)
     }
 
@@ -88,6 +104,8 @@ class PipelineLimiterSpec extends Specification with Specs2PipelineStageTest wit
 
       connectionActor ! response("a")
       commands.expectMsg(response("a"))
+      connectionActor ! ackFor("a")
+      events.expectMsg(ackFor("a"))
 
       connectionActor ! requestStart("c")
       events.expectMsg(requestStart("c"))
@@ -110,6 +128,8 @@ class PipelineLimiterSpec extends Specification with Specs2PipelineStageTest wit
 
       connectionActor ! response("b")
       commands.expectMsg(response("b"))
+      connectionActor ! ackFor("b")
+      events.expectMsg(ackFor("b"))
       commands.expectMsg(Tcp.ResumeReading)
       events.expectMsg(requestStart("d"))
       events.expectMsg(requestChunk("d1"))
@@ -123,6 +143,11 @@ class PipelineLimiterSpec extends Specification with Specs2PipelineStageTest wit
 
       connectionActor ! response("d")
       commands.expectMsg(response("d"))
+
+      connectionActor ! ackFor("c")
+      events.expectMsg(ackFor("c"))
+      connectionActor ! ackFor("d")
+      events.expectMsg(ackFor("d"))
     }
   }
 
@@ -135,4 +160,6 @@ class PipelineLimiterSpec extends Specification with Specs2PipelineStageTest wit
   def responseStart(body: String) = ResponsePartRenderingContext(HttpResponse(entity = body))
   def responseChunk(body: String) = ResponsePartRenderingContext(MessageChunk(body))
   def responseEnd(ext: String) = ResponsePartRenderingContext(ChunkedMessageEnd(ext))
+
+  def ackFor(body: String) = AckEventWithReceiver(NoAck, response(body).responsePart, handler.ref)
 }

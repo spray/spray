@@ -24,16 +24,14 @@ trait ConnectionHandler extends Actor with ActorLogging {
 
   //# final-stages
   def baseCommandPipeline(tcpConnection: ActorRef): Pipeline[Command] = {
-    case x: Tcp.WriteCommand ⇒ tcpConnection ! x
+    case x @ (_: Tcp.WriteCommand | _: Tcp.CloseCommand) ⇒ tcpConnection ! x
     case Pipeline.Tell(receiver, msg, sender) ⇒ receiver.tell(msg, sender)
-    case x: Tcp.CloseCommand ⇒ tcpConnection ! x
     case x @ (Tcp.SuspendReading | Tcp.ResumeReading | Tcp.ResumeWriting) ⇒ tcpConnection ! x
     case _: Droppable ⇒ // don't warn
     case cmd ⇒ log.warning("command pipeline: dropped {}", cmd)
   }
 
-  def baseEventPipeline(keepOpenOnPeerClosed: Boolean): Pipeline[Event] = {
-    case Tcp.PeerClosed if keepOpenOnPeerClosed ⇒ // don't automatically stop
+  def baseEventPipeline: Pipeline[Event] = {
     case x: Tcp.ConnectionClosed ⇒
       log.debug("Stopping connection actor, connection was {}", x)
       context.stop(self)
@@ -44,16 +42,14 @@ trait ConnectionHandler extends Actor with ActorLogging {
   //#
 
   def running(tcpConnection: ActorRef, stage: PipelineStage, remoteAddress: InetSocketAddress,
-              localAddress: InetSocketAddress, keepOpenOnPeerClosed: Boolean = false): Receive = {
+              localAddress: InetSocketAddress): Receive = {
     val pipelineContext = PipelineContext(context, remoteAddress, localAddress, log)
-    running(tcpConnection, stage, pipelineContext, keepOpenOnPeerClosed)
+    running(tcpConnection, stage, pipelineContext)
   }
 
   def running[C <: PipelineContext](tcpConnection: ActorRef, pipelineStage: RawPipelineStage[C],
-                                    pipelineContext: C, keepOpenOnPeerClosed: Boolean = false): Receive = {
-    val stage = pipelineStage(pipelineContext,
-      baseCommandPipeline(tcpConnection),
-      baseEventPipeline(keepOpenOnPeerClosed))
+                                    pipelineContext: C): Receive = {
+    val stage = pipelineStage(pipelineContext, baseCommandPipeline(tcpConnection), baseEventPipeline)
     running(tcpConnection, stage)
   }
 

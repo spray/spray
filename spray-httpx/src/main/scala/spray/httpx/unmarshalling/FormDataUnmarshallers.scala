@@ -124,6 +124,19 @@ trait FormDataUnmarshallers {
         case error ⇒ Left(error)
       }
     }
+
+  implicit def formFileUnmarshaller: FromBodyPartOptionUnmarshaller[FormFile] =
+    new FromBodyPartOptionUnmarshaller[FormFile] {
+      def apply(partOption: Option[BodyPart]): Deserialized[FormFile] = partOption match {
+        case Some(part @ BodyPart(entity: HttpEntity.NonEmpty, _)) ⇒ Right(FormFile(part.filename, entity))
+        case _ ⇒ Left(ContentExpected)
+      }
+    }
+
+  implicit def liftFromEntityOptionUnmarshaller[T](implicit feou: FromEntityOptionUnmarshaller[T]): FromBodyPartOptionUnmarshaller[T] =
+    new FromBodyPartOptionUnmarshaller[T] {
+      def apply(part: Option[BodyPart]): Deserialized[T] = feou(part.map(_.entity))
+    }
 }
 
 object FormDataUnmarshallers extends FormDataUnmarshallers

@@ -16,32 +16,28 @@ Its documentation doesn't live here but in the (old) `github wiki`_.
 1.0/1.1/1.2
 -----------
 
-Since the Scala universe has recently shifted from Scala 2.9 to Scala 2.10 the next *spray* release will be
-a triple release, targeting both Scala and three Akka versions at the same time.
+Since the Scala universe has shifted from Scala 2.9 to Scala 2.10 the next *spray* release is a triple release,
+targeting both Scala and three Akka versions at the same time.
 
-However, at present *spray* 1.0/1.1/1.2 is not yet quite completed, the current milestone release is |1.0|, |1.1| or
-|1.2|, depending on what Scala/Akka version you are targeting.
+Currently the first release candidate for *spray* 1.0/1.1/1.2 is available, please choose |1.0|, |1.1| or
+|1.2| depending on what Scala/Akka version you are targeting.
 
 .. rst-class:: wide
 
 - | *spray* |1.0| is built against Scala 2.9.3 and Akka 2.0.5.
   | It's sources live in the `release/1.0`_ branch of the *spray* repository.
-  | (Note that 1.0-M8 suffered from a regression in *spray-routing* and has been superseded by 1.0-M8.1)
 
-- | *spray* |1.1| is built against Scala 2.10.2 and Akka 2.1.4.
+- | *spray* |1.1| is built against Scala 2.10.3 and Akka 2.1.4.
   | It's sources live in the `release/1.1`_ branch of the *spray* repository.
 
-- | *spray* |1.2| is built against Scala 2.10.2 and Akka 2.2.0-RC1.
+- | *spray* |1.2| is built against Scala 2.10.3 and Akka 2.2.3.
   | It's sources live in the `release/1.2`_ branch of the *spray* repository.
-
-  Note that |1.2| is *not* compatible with Akka 2.2.0 final due to a binary incompatibility introduced with Akka 2.2.0-RC2.
-  Please use the **1.2-20130710** nightly build (or later) for Akka 2.2.0 final!
 
 For information about where to find the *spray* artifacts please check out the :ref:`maven-repo` chapter.
 
-.. |1.0| replace:: **1.0-M8.1**
-.. |1.1| replace:: **1.1-M8**
-.. |1.2| replace:: **1.2-M8**
+.. |1.0| replace:: **1.0-RC1**
+.. |1.1| replace:: **1.1-RC1**
+.. |1.2| replace:: **1.2-RC1**
 
 
 Nightly Builds

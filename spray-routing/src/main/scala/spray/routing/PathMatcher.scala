@@ -20,6 +20,7 @@ import java.util.UUID
 import scala.util.matching.Regex
 import scala.annotation.tailrec
 import shapeless._
+import spray.routing.directives.NameReceptacle
 import spray.http.Uri.Path
 import spray.util._
 
@@ -103,6 +104,42 @@ object PathMatcher extends ImplicitPathMatcherConstruction {
     def flatMap[R](f: T ⇒ Option[R]): PathMatcher1[R] =
       matcher.hflatMap { case e :: HNil ⇒ f(e).map(_ :: HNil) }
   }
+
+  implicit class PimpedPathMatcher[L <: HList](underlying: PathMatcher[L]) {
+    def ?(implicit opt: PathMatcher.Optional[L]): PathMatcher[opt.Out] =
+      new PathMatcher[opt.Out] { def apply(path: Path) = opt(path, underlying(path)) }
+  }
+
+  sealed trait Optional[L <: HList] {
+    type Out <: HList
+    def apply(path: Path, matching: Matching[L]): Matching[Out]
+  }
+  object Optional {
+    implicit object OptionalHNil extends Optional[HNil] {
+      type Out = HNil
+      def apply(path: Path, matching: Matching[HNil]) =
+        matching match {
+          case x: Matched[_] ⇒ x
+          case _             ⇒ Matched(path, HNil)
+        }
+    }
+    implicit def optionalSingleElement[T] = new Optional[T :: HNil] {
+      type Out = Option[T] :: HNil
+      def apply(path: Path, matching: Matching[T :: HNil]): Matching[Out] =
+        matching match {
+          case Matched(rest, value) ⇒ Matched(rest, Some(value.head) :: HNil)
+          case _                    ⇒ Matched(path, None :: HNil)
+        }
+    }
+    implicit def default[A, B, L <: HNil] = new Optional[A :: B :: L] {
+      type Out = Option[A :: B :: L] :: HNil
+      def apply(path: Path, matching: Matching[A :: B :: L]): Matching[Out] =
+        matching match {
+          case Matched(rest, values) ⇒ Matched(rest, Some(values) :: HNil)
+          case Unmatched             ⇒ Matched(path, None :: HNil)
+        }
+    }
+  }
 }
 
 trait ImplicitPathMatcherConstruction {
@@ -121,6 +158,9 @@ trait ImplicitPathMatcherConstruction {
    */
   implicit def segmentStringToPathMatcher(segment: String): PathMatcher0 =
     PathMatcher(segment :: Path.Empty, HNil)
+
+  implicit def stringOptionNameReceptacle2PathMatcher(nr: NameReceptacle[Option[String]]): PathMatcher0 =
+    PathMatcher(nr.name)?
 
   /**
    * Creates a PathMatcher that consumes (a prefix of) the first path segment
@@ -179,21 +219,8 @@ trait PathMatchers {
 
   /**
    * A PathMatcher that matches a single slash character ('/').
-   * Also matches at the very end of the requests URI path if no slash is present.
    */
   object Slash extends PathMatcher0 {
-    def apply(path: Path) = path match {
-      case Path.Empty       ⇒ Matched.Empty
-      case Path.Slash(tail) ⇒ Matched(tail, HNil)
-      case _                ⇒ Unmatched
-    }
-  }
-
-  /**
-   * A PathMatcher that matches a single slash character ('/').
-   * Contrary to the `Slash` matcher it does *not* match the very end of the path if no slash is present.
-   */
-  object Slash_! extends PathMatcher0 {
     def apply(path: Path) = path match {
       case Path.Slash(tail) ⇒ Matched(tail, HNil)
       case _                ⇒ Unmatched
@@ -202,12 +229,11 @@ trait PathMatchers {
 
   /**
    * A PathMatcher that matches the very end of the requests URI path.
-   * Also matches if the only unmatched character left is a single slash.
    */
   object PathEnd extends PathMatcher0 {
     def apply(path: Path) = path match {
-      case Path.Empty | Path.SingleSlash ⇒ Matched.Empty
-      case _                             ⇒ Unmatched
+      case Path.Empty ⇒ Matched.Empty
+      case _          ⇒ Unmatched
     }
   }
 

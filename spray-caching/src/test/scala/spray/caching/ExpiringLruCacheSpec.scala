@@ -44,7 +44,7 @@ class ExpiringLruCacheSpec extends Specification with NoTimeConversions {
     "return stored values upon cache hit on existing values" in {
       val cache = lruCache[String]()
       cache(1)("A").await === "A"
-      cache(1)(failure("Cached expression was evaluated despite a cache hit"): String).await === "A"
+      cache(1)(failure("Cached expression was evaluated despite a cache hit").asInstanceOf[String]).await === "A"
       cache.store.toString === "{1=A}"
       cache.size === 1
     }

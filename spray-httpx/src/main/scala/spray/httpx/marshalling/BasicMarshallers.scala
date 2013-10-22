@@ -61,17 +61,17 @@ trait BasicMarshallers {
       }
     }
 
-  //# string-marshaller
   def stringMarshaller(charset: HttpCharset, more: HttpCharset*): Marshaller[String] =
     stringMarshaller(ContentType(`text/plain`, charset), more map (ContentType(`text/plain`, _)): _*)
+
+  //# string-marshaller
+  // prefer UTF-8 encoding, but also render with other encodings if the client requests them
+  implicit val StringMarshaller = stringMarshaller(ContentTypes.`text/plain(UTF-8)`, ContentTypes.`text/plain`)
 
   def stringMarshaller(contentType: ContentType, more: ContentType*): Marshaller[String] =
     Marshaller.of[String](contentType +: more: _*) { (value, contentType, ctx) ⇒
       ctx.marshalTo(HttpEntity(contentType, value))
     }
-
-  // prefer UTF-8 encoding, but also render with other encodings if the client requests them
-  implicit val StringMarshaller = stringMarshaller(ContentTypes.`text/plain(UTF-8)`, ContentTypes.`text/plain`)
   //#
 
   //# nodeseq-marshaller

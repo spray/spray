@@ -17,14 +17,14 @@
 package spray.io
 
 import java.nio.ByteBuffer
-import javax.net.ssl.{ SSLContext, SSLException, SSLEngineResult, SSLEngine, SSLSession }
-import javax.net.ssl.SSLEngineResult.HandshakeStatus._
-import scala.collection.immutable.Queue
+import javax.net.ssl.{ SSLContext, SSLException, SSLEngineResult, SSLEngine }
 import scala.annotation.tailrec
-import akka.util.ByteString
+import akka.util.{ ByteStringBuilder, ByteString }
 import akka.io.Tcp
+import spray.http.HttpData
 import spray.util._
 import SSLEngineResult.Status._
+import SSLEngineResult.HandshakeStatus._
 
 trait SslTlsContext extends PipelineContext {
   /**
@@ -47,212 +47,344 @@ trait SslTlsContext extends PipelineContext {
  */
 object SslTlsSupport {
 
-  def apply(publishSslSessionInfo: Boolean) = new OptionalPipelineStage[SslTlsContext] {
+  def apply(maxEncryptionChunkSize: Int, publishSslSessionInfo: Boolean,
+            tracing: Boolean = false): OptionalPipelineStage[SslTlsContext] =
+    new OptionalPipelineStage[SslTlsContext] {
+      def enabled(context: SslTlsContext) = context.sslEngine.isDefined
 
-    def enabled(context: SslTlsContext) = context.sslEngine.isDefined
+      def applyIfEnabled(context: SslTlsContext, commandPL: CPL, eventPL: EPL): Pipelines =
+        new DynamicPipelines {
+          import context._
+          val engine = context.sslEngine.get
+          var pendingInboundBytes: ByteBuffer = EmptyByteBuffer // encrypted bytes to be decrypted
+          var pendingOutboundBytes: ByteBuffer = EmptyByteBuffer // plaintext bytes to be encrypted
+          val pendingEncryptedBytes = new ByteStringBuilder // encrypted bytes to be sent
 
-    def applyIfEnabled(context: SslTlsContext, commandPL: CPL, eventPL: EPL): Pipelines =
-      new Pipelines {
-        import context._
-        val engine = context.sslEngine.get
-        var pendingSends = Queue.empty[Send]
-        var inboundReceptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
-        var originalCloseCommand: Tcp.CloseCommand = _
+          become(defaultState())
 
-        val commandPipeline: CPL = {
-          case x: Tcp.Write ⇒
-            if (pendingSends.isEmpty) withTempBuf(encrypt(Send(x), _))
-            else pendingSends = pendingSends enqueue Send(x)
+          // No ACK pending,
+          // if the given stream is empty no write is currently pending, otherwise its head is the currently pending write
+          // if closedEvent is defined an outbound close is scheduled after the current chunk stream is sent
+          def defaultState(remainingOutgoingData: Stream[WriteChunk] = Stream.empty,
+                           closedEvent: Option[Tcp.ConnectionClosed] = None): State = new State {
+            if (tracing) log.debug("Transitioning to defaultState")
+            val commandPipeline: CPL = {
+              case x: Tcp.WriteCommand ⇒
+                if (tracing) log.debug("Received write {} in defaultState", x.getClass)
+                startSending(x, remainingOutgoingData, closedEvent, sendNow = true)
+              case x @ (Tcp.Close | Tcp.ConfirmedClose) ⇒
+                log.debug("Closing outbound SSL stream due to reception of {}", x)
+                startClosing(x.asInstanceOf[Tcp.CloseCommand].event)
+              case Tcp.Abort ⇒ abort() // do we need to close anything in this case?
+              case cmd       ⇒ commandPL(cmd)
+            }
+            val eventPipeline: EPL = {
+              case Tcp.Received(data) ⇒
+                if (tracing) log.debug("Received {} inbound bytes in defaultState", data.size)
+                enqueueInboundBytes(data)
+                decrypt()
+                if (encryptedBytesPending) {
+                  sendEncryptedBytes()
+                  become {
+                    if (isOutboundDone) finishingClose(closedEvent)
+                    else waitingForAck(remainingOutgoingData, closedEvent)
+                  }
+                } else assert(!isOutboundDone)
+              case Tcp.PeerClosed     ⇒ receivedUnexpectedPeerClosed()
+              case x: Tcp.ErrorClosed ⇒ eventPL(x) // is there anything we need to close in this case?
+              case x @ (_: Tcp.ConnectionClosed | WriteChunkAck) ⇒
+                throw new IllegalStateException("Received " + x + " in defaultState")
+              case ev ⇒ eventPL(ev)
+            }
+          }
 
-          case x @ (Tcp.Close | Tcp.ConfirmedClose) ⇒
-            originalCloseCommand = x.asInstanceOf[Tcp.CloseCommand]
+          // ACK pending,
+          // if the given stream is empty no write is currently pending, otherwise its head is the currently pending write
+          // if closedEvent is defined an outbound close is scheduled after the current chunk stream is sent
+          def waitingForAck(remainingOutgoingData: Stream[WriteChunk] = Stream.empty,
+                            closedEvent: Option[Tcp.ConnectionClosed] = None): State = new State {
+            if (tracing) log.debug("Transitioning to waitingForAck")
+            val commandPipeline: CPL = {
+              case x: Tcp.WriteCommand ⇒
+                if (tracing) log.debug("Received write {} in waitingForAck", x.getClass)
+                startSending(x, remainingOutgoingData, closedEvent, sendNow = false)
+              case x @ (Tcp.Close | Tcp.ConfirmedClose) ⇒
+                if (closedEvent.isEmpty) {
+                  log.debug("Scheduling close of outbound SSL stream due to reception of {}", x)
+                  become(waitingForAck(remainingOutgoingData, Some(x.asInstanceOf[Tcp.CloseCommand].event)))
+                } else log.debug("Dropping {} since an SSL-level close is already scheduled", x)
+              case Tcp.Abort ⇒ abort() // do we need to close anything in this case?
+              case cmd       ⇒ commandPL(cmd)
+            }
+            val eventPipeline: EPL = {
+              case Tcp.Received(data) ⇒
+                if (tracing) log.debug("Received {} inbound bytes in waitingForAck", data.size)
+                enqueueInboundBytes(data)
+                decrypt()
+                if (isOutboundDone) become(finishingClose(closedEvent)) // else stay in this state
+              case WriteChunkAck ⇒
+                if (tracing) log.debug("Received WriteChunkAck in waitingForAck")
+                if (encryptedBytesPending) sendEncryptedBytes()
+                else {
+                  if (bytesLeft(pendingOutboundBytes))
+                    become(defaultState(remainingOutgoingData, closedEvent)) // we need to wait for incoming inbound data
+                  else if (remainingOutgoingData.isEmpty)
+                    startClosingOrReturnToDefaultState()
+                  else {
+                    if (tracing) log.debug("Finished sending write chunk")
+                    val WriteChunk(_, write) #:: tail = remainingOutgoingData
+                    if (write.wantsAck) eventPL(write.ack)
+                    if (tail.isEmpty) startClosingOrReturnToDefaultState()
+                    else {
+                      setPendingOutboundBytes(tail.head.buffer)
+                      encrypt()
+                      sendEncryptedBytes()
+                      become(waitingForAck(tail, closedEvent))
+                    }
+                  }
+                }
+              case Tcp.PeerClosed          ⇒ receivedUnexpectedPeerClosed()
+              case x: Tcp.ErrorClosed      ⇒ eventPL(x) // is there anything we need to close in this case?
+              case x: Tcp.ConnectionClosed ⇒ throw new IllegalStateException("Received " + x + " in waitingForAck")
+              case ev                      ⇒ eventPL(ev)
+            }
+            def startClosingOrReturnToDefaultState(): Unit =
+              closedEvent match {
+                case Some(ev) ⇒ startClosing(ev)
+                case None     ⇒ become(defaultState())
+              }
+          }
 
-            log.debug("Closing SSLEngine due to reception of {}", x)
+          // SSLEngine is outbound done, ACK pending for SSL-level closing sequence bytes that were already sent
+          // the inbound side might still be open, however we don't wait for the peer's closing bytes
+          // but simply issue a ConfirmedClose to the TCP layer
+          def finishingClose(closedEvent: Option[Tcp.ConnectionClosed] = None,
+                             closeCommand: Tcp.CloseCommand = Tcp.ConfirmedClose): State = new State {
+            if (tracing) log.debug("Transitioning to finishClose({}, {})", closedEvent, closeCommand)
+            commandPL(closeCommand)
+            val commandPipeline: CPL = {
+              case x: Tcp.WriteCommand                  ⇒ failWrite(x, "the SSL connection is already closing")
+              case x @ (Tcp.Close | Tcp.ConfirmedClose) ⇒ log.debug("Dropping {} since the SSL connection is already closing", x)
+              case Tcp.Abort                            ⇒ abort() // do we need to close anything in this case?
+              case cmd                                  ⇒ commandPL(cmd)
+            }
+            val eventPipeline: EPL = {
+              case Tcp.Received(data) ⇒
+                if (tracing) log.debug("Received {} inbound bytes in finishingClose", data.size)
+                if (!engine.isInboundDone) {
+                  enqueueInboundBytes(data)
+                  decrypt()
+                } else log.warning("Dropping {} bytes that were received after SSL-level close", data.size)
+              case WriteChunkAck           ⇒ // ignore, expected as ACK for the closing outbound bytes
+              case Tcp.PeerClosed          ⇒ // expected after the final inbound packet, we simply drop it here
+              case _: Tcp.ConnectionClosed ⇒ eventPL(closedEvent getOrElse Tcp.PeerClosed)
+              case ev                      ⇒ eventPL(ev)
+            }
+          }
+
+          def startSending(write: Tcp.WriteCommand, remainingOutgoingData: Stream[WriteChunk],
+                           closedEvent: Option[Tcp.ConnectionClosed], sendNow: Boolean): Unit =
+            if (closedEvent.isEmpty) {
+              if (remainingOutgoingData.isEmpty) {
+                val chunkStream = writeChunkStream(write)
+                if (chunkStream.nonEmpty) {
+                  setPendingOutboundBytes(chunkStream.head.buffer)
+                  encrypt()
+                  if (sendNow) sendEncryptedBytes()
+                  become(waitingForAck(chunkStream))
+                } // else ignore
+              } else failWrite(write, "there is already another write in progress")
+            } else failWrite(write, "the SSL connection is already closing")
+
+          def startClosing(closedEvent: Tcp.ConnectionClosed): Unit = {
             engine.closeOutbound()
-            withTempBuf(closeEngine)
-
-          // don't send close command to network here, it's the job of the SSL engine
-          // to shutdown the connection when getting CLOSED in encrypt
-
-          case cmd ⇒ commandPL(cmd)
-        }
-
-        val eventPipeline: EPL = {
-          case Tcp.Received(data) ⇒
-            val buf = if (inboundReceptacle != null) {
-              try ByteBuffer.allocate(inboundReceptacle.remaining + data.length).put(inboundReceptacle)
-              finally inboundReceptacle = null
-            } else ByteBuffer allocate data.length
-            data copyToBuffer buf
-            buf.flip()
-            withTempBuf(decrypt(buf, _))
-
-          case x: Tcp.ConnectionClosed ⇒
-            // After we have closed the connection we ignore FIN from the other side.
-            // That's to avoid a strange condition where we know that no truncation attack
-            // can happen any more (because we actively closed the connection) but the peer
-            // isn't behaving properly and didn't send close_notify. Why is this condition strange?
-            // Because if we had closed the connection directly after we sent close_notify (which
-            // is allowed by the spec) we wouldn't even have noticed.
-            if (!engine.isOutboundDone)
-              try engine.closeInbound()
-              catch { case e: SSLException ⇒ } // ignore warning about possible possible truncation attacks
-
-            if (x.isAborted || (originalCloseCommand eq null)) eventPL(x)
-            else if (!engine.isInboundDone) eventPL(originalCloseCommand.event)
-          // else close message was sent by decrypt case CLOSED
-
-          case ev ⇒ eventPL(ev)
-        }
-
-        def publishSSLSessionEstablished() =
-          if (publishSslSessionInfo) eventPL(SSLSessionEstablished(SSLSessionInfo(engine)))
-
-        /**
-         * Encrypts the given buffers and dispatches the results to the commandPL as IOPeer.Send messages.
-         */
-        @tailrec
-        def encrypt(send: Send, tempBuf: ByteBuffer, fromQueue: Boolean = false): Unit = {
-          import send._
-          log.debug("Encrypting {} bytes", buffer.remaining)
-          tempBuf.clear()
-          val ackDefinedAndPreContentLeft = ack != Tcp.NoAck && buffer.remaining > 0
-          val result = engine.wrap(buffer, tempBuf)
-          val postContentLeft = buffer.remaining > 0
-          tempBuf.flip()
-          if (tempBuf.remaining > 0) {
-            val writeAck = if (ackDefinedAndPreContentLeft && !postContentLeft) ack else Tcp.NoAck
-            commandPL(Tcp.Write(ByteString(tempBuf), writeAck))
-          }
-          result.getStatus match {
-            case OK ⇒ result.getHandshakeStatus match {
-              case status @ (NOT_HANDSHAKING | FINISHED) ⇒
-                if (status == FINISHED) publishSSLSessionEstablished()
-                if (postContentLeft) encrypt(send, tempBuf, fromQueue)
-              case NEED_WRAP ⇒ encrypt(send, tempBuf, fromQueue)
-              case NEED_UNWRAP ⇒
-                pendingSends =
-                  if (fromQueue) send +: pendingSends // output coming from the queue needs to go to the front
-                  else pendingSends enqueue send // "new" output to the back of the queue
-              case NEED_TASK ⇒
-                runDelegatedTasks()
-                encrypt(send, tempBuf, fromQueue)
+            encrypt()
+            sendEncryptedBytes()
+            become {
+              if (isOutboundDone) finishingClose(Some(closedEvent))
+              else waitingForAck(closedEvent = Some(closedEvent))
             }
-            case CLOSED ⇒
-              if (postContentLeft) {
-                log.warning("SSLEngine closed prematurely while sending")
-                commandPL(Tcp.Abort)
-              }
-              commandPL(Tcp.ConfirmedClose)
-            case BUFFER_OVERFLOW ⇒
-              throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
-            case BUFFER_UNDERFLOW ⇒
-              throw new IllegalStateException // BUFFER_UNDERFLOW should never appear as a result of a wrap
           }
-        }
 
-        /**
-         * Decrypts the given buffer and dispatches the results to the eventPL as a Received message.
-         */
-        @tailrec
-        def decrypt(buffer: ByteBuffer, tempBuf: ByteBuffer): Unit = {
-          log.debug("Decrypting {} bytes", buffer.remaining)
-          tempBuf.clear()
-          val result = engine.unwrap(buffer, tempBuf)
-          tempBuf.flip()
-          if (tempBuf.remaining > 0) eventPL(Tcp.Received(ByteString(tempBuf)))
-          result.getStatus match {
-            case OK ⇒ result.getHandshakeStatus match {
-              case status @ (NOT_HANDSHAKING | FINISHED) ⇒
-                if (status == FINISHED) publishSSLSessionEstablished()
-                if (buffer.remaining > 0) decrypt(buffer, tempBuf)
-                else processPendingSends(tempBuf)
-              case NEED_UNWRAP ⇒ decrypt(buffer, tempBuf)
-              case NEED_WRAP ⇒
-                if (pendingSends.isEmpty) encrypt(Send.Empty, tempBuf)
-                else processPendingSends(tempBuf)
-                if (buffer.remaining > 0) decrypt(buffer, tempBuf)
-              case NEED_TASK ⇒
-                runDelegatedTasks()
-                decrypt(buffer, tempBuf)
+          def receivedUnexpectedPeerClosed(): Unit = {
+            log.debug("Received unexpected Tcp.PeerClosed, invalidating SSL session")
+            try {
+              engine.closeInbound() // invalidates SSL session and should throw SSLException
+              throw new IllegalStateException("No SSLException after unexpected Tcp.PeerClosed")
+            } catch { case e: SSLException ⇒ } // ignore warning about truncation attack
+            become(finishingClose(Some(Tcp.ErrorClosed("Peer closed SSL connection prematurely")), Tcp.Close))
+          }
+
+          def abort(): Unit = {
+            commandPL(Tcp.Abort)
+            become {
+              new State {
+                def commandPipeline = commandPL
+                val eventPipeline: EPL = {
+                  case Tcp.Received(data) ⇒ log.debug("Dropping {} received bytes due to connection having been aborted", data.size)
+                  case ev                 ⇒ eventPL(ev)
+                }
+              }
             }
-            case CLOSED ⇒
-              if (!engine.isOutboundDone) {
-                closeEngine(tempBuf)
-                eventPL(Tcp.PeerClosed)
-              } else { // now both sides are closed on the SSL level
-                eventPL(originalCloseCommand.event)
-                // close the underlying connection, we don't need it any more
-                commandPL(Tcp.Close)
+          }
+
+          override def process[T](msg: T, pl: Pipeline[T]): Unit =
+            try pl(msg)
+            catch {
+              case e: SSLException ⇒
+                log.error("Aborting encrypted connection to {} due to {}", context.remoteAddress, Utils.fullErrorMessageFor(e))
+                abort()
+            }
+
+          abstract class PumpAction {
+            // returns true if the action was completed successfully,
+            // otherwise the connection has already been aborted
+            def apply(): Unit = {
+              val tempBuf = SslBufferPool.acquire()
+              try apply(tempBuf)
+              finally SslBufferPool.release(tempBuf)
+            }
+            def apply(tempBuf: ByteBuffer): Unit
+          }
+
+          // pumps inbound and outbound data through the SSLEngine starting with encrypting
+          // potentially decrypted bytes are immediately dispatched to the eventPL
+          // potentially encrypted bytes are accumulated in the pendingEncryptedBytes builder
+          // pumping is only stopped by a buffer underflow on the inbound side or when both sides are done
+          val encrypt: PumpAction = new PumpAction {
+            @tailrec def apply(tempBuf: ByteBuffer): Unit = {
+              assert(!engine.isOutboundDone)
+              tempBuf.clear()
+              val result = engine.wrap(pendingOutboundBytes, tempBuf)
+              tempBuf.flip()
+              if (bytesLeft(tempBuf)) pendingEncryptedBytes ++= ByteString(tempBuf)
+              result.getStatus match {
+                case OK ⇒ result.getHandshakeStatus match {
+                  case status @ (NOT_HANDSHAKING | FINISHED) ⇒
+                    if (status == FINISHED) publishSSLSessionEstablished()
+                    if (bytesLeft(pendingOutboundBytes)) apply(tempBuf)
+                    else decrypt(tempBuf)
+                  case NEED_WRAP   ⇒ apply(tempBuf)
+                  case NEED_UNWRAP ⇒ decrypt(tempBuf)
+                  case NEED_TASK   ⇒ runDelegatedTasks(); apply(tempBuf)
+                }
+                case CLOSED           ⇒ if (!engine.isInboundDone) decrypt(tempBuf)
+                case BUFFER_OVERFLOW  ⇒ throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
+                case BUFFER_UNDERFLOW ⇒ throw new IllegalStateException // should never appear as a result of a wrap
               }
-            case BUFFER_UNDERFLOW ⇒
-              inboundReceptacle = buffer // save buffer so we can append the next one to it
-            case BUFFER_OVERFLOW ⇒
-              throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
+            }
+          }
+
+          // same as `encrypt` but starts with decrypting
+          val decrypt: PumpAction = new PumpAction {
+            @tailrec def apply(tempBuf: ByteBuffer): Unit = {
+              assert(!engine.isInboundDone)
+              tempBuf.clear()
+              val result = engine.unwrap(pendingInboundBytes, tempBuf)
+              tempBuf.flip()
+              if (bytesLeft(tempBuf)) {
+                if (tracing) log.debug("Dispatching {} decrypted bytes: {}", tempBuf.remaining, tempBuf.duplicate.drainToString)
+                eventPL(Tcp.Received(ByteString(tempBuf)))
+              }
+              result.getStatus match {
+                case OK ⇒ result.getHandshakeStatus match {
+                  case status @ (NOT_HANDSHAKING | FINISHED) ⇒
+                    if (status == FINISHED) publishSSLSessionEstablished()
+                    if (bytesLeft(pendingInboundBytes)) apply(tempBuf)
+                    else encrypt(tempBuf)
+                  case NEED_UNWRAP ⇒ apply(tempBuf)
+                  case NEED_WRAP   ⇒ encrypt(tempBuf)
+                  case NEED_TASK   ⇒ runDelegatedTasks(); apply(tempBuf)
+                }
+                case CLOSED ⇒
+                  if (!engine.isOutboundDone) {
+                    engine.closeOutbound() // when the inbound side is done we immediately close the outbound side as well
+                    encrypt(tempBuf) // and continue pumping (until both sides are done or we have a BUFFER_UNDERFLOW)
+                  }
+                case BUFFER_UNDERFLOW ⇒ // too few inbound data, stop "pumping"
+                case BUFFER_OVERFLOW  ⇒ throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
+              }
+            }
+          }
+
+          def sendEncryptedBytes(): Unit = {
+            val result = pendingEncryptedBytes.result()
+            pendingEncryptedBytes.clear()
+            if (tracing) log.debug("Sending {} encrypted bytes", result.size)
+            commandPL(Tcp.Write(result, WriteChunkAck))
+          }
+
+          def bytesLeft(buffer: ByteBuffer) = buffer.remaining > 0
+
+          def encryptedBytesPending = pendingEncryptedBytes.length > 0 // why doesn't ByteStringBuilder have an `isEmpty`?
+
+          def setPendingOutboundBytes(buffer: ByteBuffer): Unit = {
+            assert(!bytesLeft(pendingOutboundBytes))
+            pendingOutboundBytes = buffer
+          }
+
+          def enqueueInboundBytes(data: ByteString): Unit =
+            pendingInboundBytes =
+              if (bytesLeft(pendingInboundBytes)) {
+                val buffer = ByteBuffer.allocate(pendingInboundBytes.remaining + data.size)
+                buffer.put(pendingInboundBytes)
+                data.copyToBuffer(buffer)
+                buffer
+              } else data.toByteBuffer
+
+          @tailrec def runDelegatedTasks(): Unit = {
+            val task = engine.getDelegatedTask
+            if (task != null) {
+              task.run()
+              runDelegatedTasks()
+            }
+          }
+
+          def isOutboundDone: Boolean =
+            if (engine.isInboundDone) {
+              // our pumping logic should make sure that we immediately outbound close and flush
+              // after having detected an inbound close
+              assert(engine.isOutboundDone)
+              true
+            } else engine.isOutboundDone
+
+          def publishSSLSessionEstablished(): Unit = {
+            if (tracing) log.debug("Publishing SSLSessionInfo")
+            if (publishSslSessionInfo) eventPL(SSLSessionEstablished(SSLSessionInfo(engine)))
+          }
+
+          def failWrite(cmd: Tcp.WriteCommand, msg: String): Unit = {
+            log.debug("Failing write command because " + msg)
+            context.self ! cmd.failureMessage
           }
         }
 
-        def withTempBuf(f: ByteBuffer ⇒ Unit): Unit = {
-          val tempBuf = SslBufferPool.acquire()
-          try f(tempBuf)
-          catch {
-            case e: SSLException ⇒
-              log.error("Closing encrypted connection to {} due to {}", context.remoteAddress, Utils.fullErrorMessageFor(e))
-              commandPL(Tcp.Close)
-          } finally SslBufferPool release tempBuf
-        }
-
-        @tailrec
-        def runDelegatedTasks(): Unit = {
-          val task = engine.getDelegatedTask
-          if (task != null) {
-            task.run()
-            runDelegatedTasks()
+      def writeChunkStream(cmd: Tcp.WriteCommand): Stream[WriteChunk] = {
+        def chunkStream(httpData: HttpData, write: Tcp.SimpleWriteCommand): Stream[WriteChunk] =
+          if (httpData.isEmpty) Stream.cons(WriteChunk(EmptyByteBuffer, write), Stream.empty)
+          else httpData.toChunkStream(maxEncryptionChunkSize) map { data ⇒
+            WriteChunk(ByteBuffer.wrap(data.toByteArray), write)
           }
-        }
-
-        @tailrec
-        def processPendingSends(tempBuf: ByteBuffer): Unit = {
-          if (!pendingSends.isEmpty) {
-            val next = pendingSends.head
-            pendingSends = pendingSends.tail
-            encrypt(next, tempBuf, fromQueue = true)
-            // it may be that the send we just passed to `encrypt` was put back into the queue because
-            // the SSLEngine demands a `NEED_UNWRAP`, in this case we want to stop looping
-            if (!pendingSends.isEmpty && pendingSends.head != next)
-              processPendingSends(tempBuf)
-          }
-        }
-
-        @tailrec
-        def closeEngine(tempBuf: ByteBuffer): Unit = {
-          if (!engine.isOutboundDone) {
-            encrypt(Send.Empty, tempBuf)
-            closeEngine(tempBuf)
-          }
+        cmd match {
+          case w @ Tcp.Write.empty                     ⇒ Stream.empty
+          case w @ Tcp.Write(bytes, _)                 ⇒ chunkStream(HttpData(bytes), w)
+          case w @ Tcp.WriteFile(path, offset, len, _) ⇒ chunkStream(HttpData.fromFile(path, offset, len), w)
+          case Tcp.CompoundWrite(head, tail)           ⇒ writeChunkStream(head).append(writeChunkStream(tail))
         }
       }
-  }
-
-  private final class Send(val buffer: ByteBuffer, val ack: Event)
-
-  private object Send {
-    val Empty = new Send(ByteBuffer wrap EmptyByteArray, Tcp.NoAck)
-    def apply(write: Tcp.Write) = {
-      val buffer = ByteBuffer allocate write.data.length
-      write.data copyToBuffer buffer
-      buffer.flip()
-      new Send(buffer, write.ack)
     }
-  }
+
+  private case class WriteChunk(buffer: ByteBuffer, write: Tcp.SimpleWriteCommand)
+  private object WriteChunkAck extends Event
+
+  private val EmptyByteBuffer = ByteBuffer.wrap(spray.util.EmptyByteArray)
 
   /** Event dispatched upon successful SSL handshaking. */
   case class SSLSessionEstablished(info: SSLSessionInfo) extends Event
 }
 
-private[io] sealed abstract class SSLEngineProviderCompanion {
+private[io] sealed abstract class SSLEngineProviderCompanion(protected val clientMode: Boolean) {
   type Self <: (PipelineContext ⇒ Option[SSLEngine])
-  protected def clientMode: Boolean
 
   protected def fromFunc(f: PipelineContext ⇒ Option[SSLEngine]): Self
 
@@ -264,34 +396,28 @@ private[io] sealed abstract class SSLEngineProviderCompanion {
       cp(plc) map { sslContext ⇒
         val address = plc.remoteAddress
         val engine = sslContext.createSSLEngine(address.getHostName, address.getPort)
-        engine setUseClientMode clientMode
+        engine.setUseClientMode(clientMode)
         engine
       }
     }
 }
 
 trait ServerSSLEngineProvider extends (PipelineContext ⇒ Option[SSLEngine])
-object ServerSSLEngineProvider extends SSLEngineProviderCompanion {
+object ServerSSLEngineProvider extends SSLEngineProviderCompanion(clientMode = false) {
   type Self = ServerSSLEngineProvider
-  protected def clientMode = false
-
-  implicit def fromFunc(f: PipelineContext ⇒ Option[SSLEngine]): Self = {
+  implicit def fromFunc(f: PipelineContext ⇒ Option[SSLEngine]): Self =
     new ServerSSLEngineProvider {
       def apply(plc: PipelineContext) = f(plc)
     }
-  }
 }
 
 trait ClientSSLEngineProvider extends (PipelineContext ⇒ Option[SSLEngine])
-object ClientSSLEngineProvider extends SSLEngineProviderCompanion {
+object ClientSSLEngineProvider extends SSLEngineProviderCompanion(clientMode = true) {
   type Self = ClientSSLEngineProvider
-  protected def clientMode = true
-
-  implicit def fromFunc(f: PipelineContext ⇒ Option[SSLEngine]): Self = {
+  implicit def fromFunc(f: PipelineContext ⇒ Option[SSLEngine]): Self =
     new ClientSSLEngineProvider {
       def apply(plc: PipelineContext) = f(plc)
     }
-  }
 }
 
 trait SSLContextProvider extends (PipelineContext ⇒ Option[SSLContext]) // source-quote-SSLContextProvider
@@ -299,9 +425,8 @@ object SSLContextProvider {
   implicit def forContext(implicit context: SSLContext = SSLContext.getDefault): SSLContextProvider =
     fromFunc(_ ⇒ Some(context))
 
-  implicit def fromFunc(f: PipelineContext ⇒ Option[SSLContext]): SSLContextProvider = {
+  implicit def fromFunc(f: PipelineContext ⇒ Option[SSLContext]): SSLContextProvider =
     new SSLContextProvider {
       def apply(plc: PipelineContext) = f(plc)
     }
-  }
 }
