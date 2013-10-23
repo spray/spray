@@ -95,15 +95,15 @@ object SubNode {
         val other = Main.settings.otherVersions map { v ⇒
           SphinxDoc.load(s"documentation-$v/index/") match {
             case Some(d) ⇒
-              new BranchRootNode("Documentation » " + v, v, DOC_URI + v + '/', "documentation-" + v, d, v, APIDocNode.findFor(v)) {
+              new BranchRootNode("Documentation » " + v, v, DOC_URI + v + '/', "documentation-" + v, d, v) {
                 def isRoot = false
                 def parent = docRoot
               }
             case None ⇒ sys.error(s"index.fjson for documentation version $v not found")
           }
         }
-        lazy val main: ContentNode = SubNode(this, Main.settings.mainVersion, extraChildren = APIDocNode.findFor(Main.settings.mainVersion))(li)
-        (other :+ main).sortBy(_.name)
+        val nodes = other ++ APIDocNode.findFor(_parent, Main.settings.mainVersion) :+ SubNode(this, Main.settings.mainVersion)(li)
+        nodes.sortBy(_.name)
       }
     }
 }
@@ -132,18 +132,20 @@ class SubNode(li: Node, docVersion: String,
   def isRoot = false
 }
 
-case class APIDocNode(docVersion: String) extends ContentNode {
-  def title: String = "API"
-  def name: String = "API"
-  def children: Seq[ContentNode] = Nil
-  def uri: String = "documentation/" + docVersion + "/api/"
-  def isRoot: Boolean = true
-  def doc: SphinxDoc = ???
-  def loadUri: String = ???
-  def parent: ContentNode = ???
+case class APIDocNode(_parent: ContentNode, docVersion: String) extends ContentNode {
+  def title: String = "API (snapshot)"
+  def name = title
+  def children = Nil
+  def uri = "documentation/" + docVersion + "/api/"
+  def isRoot = true
+  def doc = ???
+  def loadUri = ???
+  def parent = _parent
 }
 
 object APIDocNode {
-  def findFor(version: String): Seq[APIDocNode] =
-    if (getClass.getClassLoader.getResource("api/" + version + "/index.html") ne null) Seq(APIDocNode(version)) else Nil
+  def findFor(_parent: ContentNode, version: String): Seq[APIDocNode] =
+    if (getClass.getClassLoader.getResource("api/" + version + "/index.html") ne null)
+      Seq(APIDocNode(_parent, version))
+    else Nil
 }
