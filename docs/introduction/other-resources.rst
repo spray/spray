@@ -1,5 +1,11 @@
-External Resources
-==================
+Other Resources
+===============
+
+"*spray*: REST on Akka" talk from `scala.io`__ 2013
+  | Slides: `/scala.io`__
+
+__ http://scala.io
+__ /scala.io
 
 "*spray*: REST on Akka" talk from the Northeast Scala Symposium 2012
   | Video: http://www.youtube.com/watch?v=fUuLJmWB__E
