@@ -108,7 +108,8 @@ object Build extends Build {
       "spray.json.*;resolution := optional",
       "net.liftweb.*;resolution := optional",
       "org.json4s.*;resolution := optional",
-      "twirl.*;resolution := optional"
+      "twirl.*;resolution := optional",
+      "play.*;resolution := optional"
     )): _*)
     .settings(libraryDependencies ++=
       compile(mimepull) ++
