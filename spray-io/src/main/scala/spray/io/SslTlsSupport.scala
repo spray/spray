@@ -329,6 +329,7 @@ object SslTlsSupport {
                 val buffer = ByteBuffer.allocate(pendingInboundBytes.remaining + data.size)
                 buffer.put(pendingInboundBytes)
                 data.copyToBuffer(buffer)
+                buffer.flip()
                 buffer
               } else data.toByteBuffer
 

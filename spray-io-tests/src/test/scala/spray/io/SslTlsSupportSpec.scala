@@ -158,6 +158,61 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       serverConn.close()
       server.close()
     }
+    "properly handle half-delivered SSL frames in a dialog between a spray client and a spray server" in new TestSetup {
+      val server = new SpraySslServer
+      val connAttempt = attemptSpraySslClientConnection(server.address)
+      val serverConn = server.acceptOne()
+
+      // finish connect manually to specify custom handler
+      val connectedProbe = connAttempt.connectedProbe
+      val connected = connectedProbe.expectMsgType[Tcp.Connected]
+      val connActor = connectedProbe.sender
+
+      object StartChunking
+      object clientConn extends SslConnection with SpraySslClientConnection {
+        def connection: ActorRef = connActor
+
+        /**
+         * A special connection actor that can be switched into a mode in which Tcp.Received bytes are chunked into two
+         * Tcp.Received events: one with 100 bytes and one with the rest. This enables to test what happens if SSL
+         * frames are only received partly.
+         */
+        class ReceiveChunkingConnectionActor extends ConnectionActor[ClientSSLEngineProvider](events.ref, connection, connected)(ClientSSLEngineProvider.default) {
+          val realReceive = super.receive
+          override def receive = justForward
+          def justForward: Receive = {
+            case StartChunking                   ⇒ context.become(chunking)
+            case x if realReceive.isDefinedAt(x) ⇒ realReceive(x)
+          }
+          def chunking: Receive = {
+            case x @ Tcp.Received(data) ⇒
+              realReceive(Tcp.Received(data.take(100)))
+              val rest = data.drop(100)
+              if (rest.nonEmpty) realReceive(Tcp.Received(rest))
+            case x if realReceive.isDefinedAt(x) ⇒ realReceive(x)
+          }
+        }
+        lazy val handler = system.actorOf(Props(new ReceiveChunkingConnectionActor), "client" + counter.incrementAndGet())
+      }
+
+      clientConn.writeLn("Foo")
+      serverConn.expectReceivedString("Foo\n")
+      // only start chunking after the handshake
+      clientConn.handler ! StartChunking
+      val text = "bar" * 500
+      serverConn.writeLn(text)
+      clientConn.expectReceivedString(text + "\n")
+
+      val baselineSessionCounts = sessionCounts()
+      clientConn.command(Tcp.Close)
+      serverConn.events.expectMsg(Tcp.PeerClosed)
+      TestUtils.verifyActorTermination(serverConn.handler)
+      sessionCounts() === baselineSessionCounts
+      clientConn.events.expectMsg(Tcp.Closed)
+      TestUtils.verifyActorTermination(clientConn.handler)
+      server.close()
+      sessionCounts() === baselineSessionCounts
+    }
 
     "produce a PeerClosed event upon receiving an SSL-level termination sequence" in new TestSetup {
       val server = new JavaSslServer
@@ -222,8 +277,9 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       new SpraySslClientConnectionAttempt(probe)
     }
 
-    class SpraySslClientConnectionAttempt(connectedProbe: TestProbe) {
-      def finishConnect() = new SpraySslClientConnection(connectedProbe.expectMsgType[Tcp.Connected], connectedProbe.sender)
+    class SpraySslClientConnectionAttempt(val connectedProbe: TestProbe) {
+      def finishConnect() =
+        new SimpleSpraySslClientConnection(connectedProbe.expectMsgType[Tcp.Connected], connectedProbe.sender)
     }
 
     sealed abstract class SslConnection {
@@ -237,12 +293,18 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       }
     }
 
-    class SpraySslClientConnection(connected: Tcp.Connected, connection: ActorRef) extends SslConnection {
-      val handler = system.actorOf(Props(new ConnectionActor[ClientSSLEngineProvider](events.ref, connection, connected)),
-        "client" + counter.incrementAndGet())
+    trait SpraySslClientConnection {
+      def connection: ActorRef
+      def handler: ActorRef
       connection ! Tcp.Register(handler, keepOpenOnPeerClosed = true)
       def command(msg: Any): Unit = handler ! msg
       def writeLn(msg: String) = command(Tcp.Write(ByteString(msg + '\n')))
+    }
+    class SimpleSpraySslClientConnection(connected: Tcp.Connected, val connection: ActorRef)
+        extends SslConnection
+        with SpraySslClientConnection {
+      lazy val handler = system.actorOf(Props(new ConnectionActor[ClientSSLEngineProvider](events.ref, connection, connected)),
+        "client" + counter.incrementAndGet())
     }
 
     class SpraySslServer {
