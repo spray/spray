@@ -230,6 +230,22 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       TestUtils.verifyActorTermination(clientConn.handler)
       server.close()
     }
+
+    "handle untrusted server certificates gracefully" in new TestSetup {
+      override implicit val sslContext = SSLContext.getDefault
+
+      val server = new SpraySslServer
+      val connAttempt = attemptSpraySslClientConnection(server.address)
+      val serverConn = server.acceptOne()
+      val clientConn = connAttempt.finishConnect()
+
+      clientConn.writeLn("Foo")
+      serverConn.events.expectMsg(Tcp.Aborted)
+      TestUtils.verifyActorTermination(serverConn.handler)
+      clientConn.events.expectMsgType[Tcp.ErrorClosed]
+      TestUtils.verifyActorTermination(clientConn.handler)
+      server.close()
+    }
   }
 
   step { system.shutdown() }
