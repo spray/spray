@@ -140,6 +140,22 @@ class RequestParserSpec extends Specification {
             |"""
         } === Seq(PUT, Uri("/resource/yes"), `HTTP/1.1`, List(Host("x"), `Content-Length`(2147483649L)), 'dontClose)
       }
+      "with several identical `Content-Type` headers" in {
+        parse {
+          """GET /data HTTP/1.1
+            |Host: x
+            |Content-Type: application/pdf
+            |Content-Type: application/pdf
+            |Content-Length: 0
+            |
+            |"""
+        } === Seq(
+          GET,
+          Uri("/data"),
+          `HTTP/1.1`,
+          List(`Content-Length`(0), `Content-Type`(`application/pdf`), Host("x")),
+          "", 'dontClose)
+      }
     }
 
     "properly parse a chunked request" in {
