@@ -41,7 +41,9 @@ object HttpCharset {
   def custom(value: String, aliases: String*): Option[HttpCharset] =
     try Some(HttpCharset(value)(aliases: _*))
     catch {
-      case e: java.nio.charset.UnsupportedCharsetException ⇒ None
+      // per documentation all exceptions thrown by `Charset.forName`
+      // are IllegalArgumentExceptions
+      case e: IllegalArgumentException ⇒ None
     }
 }
 
