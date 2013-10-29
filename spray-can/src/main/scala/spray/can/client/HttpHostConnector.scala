@@ -90,7 +90,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
       sender ! PoisonPill
 
     case ReceiveTimeout ⇒
-      if (context.children.isEmpty) {
+      if (slotStates.isEmpty) {
         log.debug("Initiating idle shutdown")
         context.parent ! DemandIdleShutdown
         context.become { // after having initiated our shutdown we must be bounce all requests
@@ -122,7 +122,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
   def firstIdleConnection: Option[ActorRef] = findChild { case SlotState.Connected(reqs) ⇒ reqs.isEmpty }
 
   def firstUnconnectedConnection: Option[ActorRef] = findChild { case SlotState.Unconnected ⇒ true } orElse {
-    if (context.children.size < settings.maxConnections) Some(newConnectionChild()) else None
+    if (slotStates.size < settings.maxConnections) Some(newConnectionChild()) else None
   }
 
   def newConnectionChild(): ActorRef = {
