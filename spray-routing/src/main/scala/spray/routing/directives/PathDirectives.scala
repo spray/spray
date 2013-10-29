@@ -30,7 +30,7 @@ trait PathDirectives extends PathMatchers with ImplicitPathMatcherConstruction {
    * or leave only a single trailing slash.
    * If matched the value extracted by the PathMatcher is extracted on the directive level.
    */
-  def path[L <: HList](pm: PathMatcher[L]): Directive[L] = pathPrefix(pm ~ (Slash?) ~ PathEnd)
+  def path[L <: HList](pm: PathMatcher[L]): Directive[L] = pathPrefix(pm ~ PathEnd)
 
   /**
    * Tries to consume a leading slash from the unmatched path of the [[spray.routing.RequestContext]]
@@ -91,6 +91,19 @@ trait PathDirectives extends PathMatchers with ImplicitPathMatcherConstruction {
       case Matched(_, values) ⇒ hprovide(values)
       case Unmatched          ⇒ reject
     }
+
+  /**
+   * Rejects the request if the unmatchedPath of the [[spray.RequestContext]] is non-empty,
+   * or said differently: only passes on the request to its inner route if the request path
+   * has been matched completely.
+   */
+  def pathEnd: Directive0 = rawPathPrefix(PathEnd)
+
+  /**
+   * Only passes on the request to its inner route if the request path has been matched
+   * completely or only consists of exactly one remaining slash.
+   */
+  def pathEndOrSingleSlash: Directive0 = rawPathPrefix(Slash.? ~ PathEnd)
 }
 
 object PathDirectives extends PathDirectives
