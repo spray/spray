@@ -63,6 +63,12 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
             pathPrefix("_images") {
               getFromResourceDirectory("sphinx/json/_images")
             } ~
+            pathPrefix("scala.io") {
+              path("") {
+                getFromResource("scala.io/index.html")
+              } ~
+              getFromResourceDirectory("scala.io")
+            } ~
             logRequest(showRequest _) {
               path("") {
                 complete(page(home()))

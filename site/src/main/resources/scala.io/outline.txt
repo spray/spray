@@ -1,0 +1,195 @@
+spray: REST on Akka
+scala.io - Paris - 2013-10-24
+
+ What is spray?
+ - embeddable HTTP stack for your Akka (Scala) applications
+ - targeted at building HTTP integration layers rather than web applications
+ - server- and client-side
+
+But, why?
+Isn't HTTP on the JVM a "solved" problem?
+Can't we just use Netty?
+(or servlets, or restlet, or undertow, ...)
+
+Yes, we can
+(it's being done all the time)
+But: Do we want to?
+
+Not really!
+- servlet containers?
+- XML configuration?
+- mutable APIs?
+- Java Collections?
+- adapter layers?
+- limited type-safety?
+[[- great piece of software
+- guys sure know what they are doing
+- still, its written in Java, with a Java-style API]]]
+
+What we want!
+- case-class-based model
+- actor-based APIs (message protocols)
+- functions as values
+- Scala/Akka Futures
+- Scala collections
+- type classes
+- type safety
+
+What we also want!
+- unified thread-pool mgmt. (Akka dispatchers)
+- unified configuration (Typesafe config)
+- unified logging (Akka event bus)
+- unified debugging / optimization
+  - full-stack problem analysis
+  - Typesafe console
+
+We want to build on Akka!
+- our whole application that is, not just a few bits!
+- same principles, concepts and coding style in all layers of the stack:
+  much easier problem analysis
+
+spray builds on Akka
+ - entirely built in Scala, no wrapping of Java libraries
+ - fully async and non-blocking
+ - only one type of active components in all layers: Actors
+ - core API type: message protocol
+ - actor-friendly (e.g. "tell don't ask")
+ - fast, lightweight, modular, testable
+[[integration with akka-based application is completely seamless]]
+
+spray components
+- HTTP data model (spray-http)
+- low-level HTTP server- and client layer (spray-can)
+- high-level server- and client-side DSLs (spray-routing, spray-client)
+- other: spray-servlet, spray-testkit, ...
+
+HTTP model
+- case-class-based data model
+- high-level abstractions for most things HTTP
+- fully immutable, little logic
+- predefined instances for common media types, status codes, encodings, charsets, cache-control directives, etc.
+- open for extension (e.g. registration of custom media types)
+
+HTTP model: show me code
+- case class HttpRequest
+- case class HttpResponse
+- case class Uri
+- case class `Content-Type`
+- case class `Set-Cookie`
+- case class RawHeader
+
+Low-level HTTP layer
+- directly sits on top of the new Akka IO
+- performs TCP <-> HTTP "translation"
+- cleanly separated layer of actors provided as an Akka Extension
+- implements "essentials", no higher-level features (like file serving)
+
+Low-level HTTP layer: the stack
+{image}
+
+Towards Akka IO (briefly)
+network communication is
+- packet-based
+- no continuous flow of bytes
+- rather: chunked into messages
+
+Towards Akka IO (2)
+old-school Java IO (before NIO): stream-based
+- input: read a stream, block if no data
+- output: write to stream, block if sending is not currently possible
+-> paradigm mismatch: stream-based vs. message based
+
+Towards Akka IO (3)
+Java NIO ("new" IO):
+- extended API with support for async, non-blocking IO ops
+- but:
+  - hard to use
+  - still not message-based
+
+Akka IO
+- bridges the gap between Java NIO and Akka actors
+- msg-based API surfaces the nature of the network
+- *events* come in
+  - connection established
+  - bytes received
+  - connection closed
+  - error occured
+- *commands* drive from our side
+  - attempt connecting
+  - send bytes
+  - close connection
+[[used to be spray-io, move to akka at the beginning of this year]]
+
+spray-can
+- provides multiple message-based APIs
+  - server-side: connection-level
+  - client-side: connection-, host- and request-level
+- high-performance: max throughput with acceptable latency
+- supports massive amounts of concurrent connections
+- supports HTTP pipelining
+- supports chunked messages (request- and response streaming)
+- performs timeout mgmt. (mainly: request- and connection-idle timeouts)
+[[> 50K on single machine, no reason why > 100K shouldn't be possible]]
+
+spray-can: show me code
+Easy-to-understand message protocol
+{code snippet}
+
+spray-routing
+- internal DSL for the direct interface layer to the application
+- type-safe, yet flexible (thanks to shapeless)
+- much more than just routing: behavior definition
+- small and simple building blocks: directives
+- highly composable
+
+API Layer: How it fits in
+[[architecture image from page 16 from ScalaDays2012 talk]]
+
+API Layer Responsibilities
+- request routing based on method, path, query parameters, entity
+- (Un)marshalling to / from domain objects
+- encoding / decoding (compression)
+- authentication / authorization
+- caching and serving static content
+- RESTful error handling
+
+API Layer: show me code
+[[page 19 from ScalaDays2012 talk]]
+
+Predefined Directives (RC1)
+[[page 24 from ScalaDays2012 talk]]
+
+Real-World Example
+[[page 25 from ScalaDays2012 talk]]
+
+Best Practices
+- Keep route structure clean and readable, 
+  pull out all logic into custom directives
+- Don’t let API layer leak into application
+- Use (Un)marshalling infrastructure
+- Think about error handling/reporting right from the start
+- Use sbt-revolver for fast dev turn-around
+
+There is more...
+- spray-servlet
+- Request/response streaming
+- Testing routes
+- client-side APIs
+- JSON support
+- ...
+
+What's next?
+- RC1 for spray 1.0 / 1.1 / 1.2 just released
+- After the final: spray becomes akka-http
+- Play will gradually move onto akka-http
+- Improvements, features, further hardening
+  - websockets
+  - SPDY
+  - ...
+
+Getting started
+- Main site & documentation: http://spray.io
+- Mailing list:  http://groups.google.com/group/spray-user
+- Twitter:  @sprayio
+
+THANK YOU!

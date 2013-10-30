@@ -26,7 +26,7 @@ private[can] object RequestRendering {
 
   def apply(settings: ClientConnectionSettings): PipelineStage =
     new PipelineStage with RequestRenderingComponent {
-      val userAgent = settings.userAgentHeader.toOption.map(`User-Agent`(_))
+      val userAgent = settings.userAgentHeader
       val chunklessStreaming = settings.chunklessStreaming
 
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =

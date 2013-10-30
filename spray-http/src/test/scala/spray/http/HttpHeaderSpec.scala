@@ -38,10 +38,10 @@ class HttpHeaderSpec extends Specification {
         Accept(`audio/midi` withQValue 0.2, `audio/basic`)
       "Accept: text/plain;q=0.5, text/html,\r\n text/css;q=0.8" =!=
         Accept(`text/plain` withQValue 0.5, `text/html`, `text/css` withQValue 0.8).renderedTo(
-          "Accept: text/plain;q=0.5, text/html, text/css;q=0.8")
+          "text/plain;q=0.5, text/html, text/css;q=0.8")
       "Accept: text/html, image/gif, image/jpeg, *;q=.2, */*;q=.2" =!=
         Accept(`text/html`, `image/gif`, `image/jpeg`, `*/*` withQValue 0.2, `*/*` withQValue 0.2).renderedTo(
-          "Accept: text/html, image/gif, image/jpeg, */*;q=0.2, */*;q=0.2")
+          "text/html, image/gif, image/jpeg, */*;q=0.2, */*;q=0.2")
       "Accept: application/vnd.spray" =!=
         Accept(`application/vnd.spray`)
       "Accept: */*, text/*; foo=bar, custom/custom; bar=\"b>az\"" =!=
@@ -54,8 +54,7 @@ class HttpHeaderSpec extends Specification {
 
     "Accept-Charset" in {
       "Accept-Charset: utf8; q=0.5, *" =!=
-        `Accept-Charset`(`UTF-8`, HttpCharsets.`*`).renderedTo(
-          "Accept-Charset: UTF-8, *")
+        `Accept-Charset`(`UTF-8`, HttpCharsets.`*`).renderedTo("UTF-8, *")
     }
 
     "Access-Control-Allow-Credentials" in {
@@ -96,22 +95,16 @@ class HttpHeaderSpec extends Specification {
       "Accept-Encoding: compress, gzip, fancy" =!=
         `Accept-Encoding`(compress, gzip, HttpEncoding.custom("fancy"))
       "Accept-Encoding: gzip;q=1.0, identity; q=0.5, *;q=0" =!=
-        `Accept-Encoding`(gzip, identity, HttpEncodings.`*`).renderedTo(
-          "Accept-Encoding: gzip, identity, *")
-      "Accept-Encoding: " =!=
-        `Accept-Encoding`(identity).renderedTo(
-          "Accept-Encoding: identity")
+        `Accept-Encoding`(gzip, identity, HttpEncodings.`*`).renderedTo("gzip, identity, *")
+      "Accept-Encoding: " =!= `Accept-Encoding`(identity).renderedTo("identity")
     }
 
     "Accept-Language" in {
       "Accept-Language: da, en-gb ;q=0.8, en;q=0.7" =!=
-        `Accept-Language`(Language("da"), Language("en", "gb"), Language("en")).renderedTo(
-          "Accept-Language: da, en-gb, en")
+        `Accept-Language`(Language("da"), Language("en", "gb"), Language("en")).renderedTo("da, en-gb, en")
       "Accept-Language: de-CH-1901, *;q=0" =!=
-        `Accept-Language`(Language("de", "CH", "1901"), LanguageRanges.`*`).renderedTo(
-          "Accept-Language: de-CH-1901, *")
-      "Accept-Language: es-419, es" =!=
-        `Accept-Language`(Language("es", "419"), Language("es"))
+        `Accept-Language`(Language("de", "CH", "1901"), LanguageRanges.`*`).renderedTo("de-CH-1901, *")
+      "Accept-Language: es-419, es" =!= `Accept-Language`(Language("es", "419"), Language("es"))
     }
 
     "Authorization" in {
@@ -119,7 +112,7 @@ class HttpHeaderSpec extends Specification {
         Authorization(BasicHttpCredentials("Aladdin", "open sesame"))
       """Authorization: Fancy yes="n:o", nonce=42""" =!=
         Authorization(GenericHttpCredentials("Fancy", Map("yes" -> "n:o", "nonce" -> "42"))).renderedTo(
-          """Authorization: Fancy yes="n:o",nonce=42""")
+          """Fancy yes="n:o",nonce=42""")
       """Authorization: Fancy yes=no,nonce="4\\2"""" =!=
         Authorization(GenericHttpCredentials("Fancy", Map("yes" -> "no", "nonce" -> """4\2""")))
       "Authorization: Basic Qm9iOg==" =!=
@@ -167,8 +160,7 @@ class HttpHeaderSpec extends Specification {
       "Content-Type: application/pdf" =!=
         `Content-Type`(`application/pdf`)
       "Content-Type: text/plain; charset=utf8" =!=
-        `Content-Type`(ContentType(`text/plain`, `UTF-8`)).renderedTo(
-          "Content-Type: text/plain; charset=UTF-8")
+        `Content-Type`(ContentType(`text/plain`, `UTF-8`)).renderedTo("text/plain; charset=UTF-8")
       "Content-Type: text/xml; version=3; charset=windows-1252" =!=
         `Content-Type`(ContentType(MediaType.custom("text", "xml", parameters = Map("version" -> "3")), HttpCharsets.getForKey("windows-1252")))
       "Content-Type: text/plain; charset=fancy-pants" =!=
@@ -184,15 +176,15 @@ class HttpHeaderSpec extends Specification {
     "Cookie" in {
       "Cookie: SID=31d4d96e407aad42" =!= `Cookie`(HttpCookie("SID", "31d4d96e407aad42"))
       "Cookie: SID=31d4d96e407aad42; lang=en>US" =!= `Cookie`(HttpCookie("SID", "31d4d96e407aad42"), HttpCookie("lang", "en>US"))
-      "Cookie: a=1;b=2" =!= `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("Cookie: a=1; b=2")
-      "Cookie: a=1 ;b=2" =!= `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("Cookie: a=1; b=2")
-      "Cookie: a=1; b=2" =!= `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("Cookie: a=1; b=2")
+      "Cookie: a=1;b=2" =!= `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
+      "Cookie: a=1 ;b=2" =!= `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
+      "Cookie: a=1; b=2" =!= `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
     }
 
     "Date" in {
       "Date: Wed, 13 Jul 2011 08:12:31 GMT" =!= Date(DateTime(2011, 7, 13, 8, 12, 31))
       "Date: Fri, 23 Mar 1804 12:11:10 UTC" =!= Date(DateTime(1804, 3, 23, 12, 11, 10)).renderedTo(
-        "Date: Fri, 23 Mar 1804 12:11:10 GMT")
+        "Fri, 23 Mar 1804 12:11:10 GMT")
     }
 
     "Expect" in {
@@ -215,7 +207,7 @@ class HttpHeaderSpec extends Specification {
       "Location: https://spray.io/secure" =!= Location(Uri("https://spray.io/secure"))
       "Location: /en-us/default.aspx" =!= Location(Uri("/en-us/default.aspx"))
       "Location: https://spray.io/{sec}" =!= Location(Uri("https://spray.io/{sec}")).renderedTo(
-        "Location: https://spray.io/%7Bsec%7D")
+        "https://spray.io/%7Bsec%7D")
       "Location: https://spray.io/ sec" =!= ErrorInfo("Illegal HTTP header 'Location': Illegal URI " +
         "reference, unexpected character ' ' at position 17", "\nhttps://spray.io/ sec\n                 ^\n")
     }
@@ -248,7 +240,7 @@ class HttpHeaderSpec extends Specification {
 
     "Set-Cookie" in {
       "Set-Cookie: SID=\"31d4d96e407aad42\"" =!=
-        `Set-Cookie`(HttpCookie("SID", "31d4d96e407aad42")).renderedTo("Set-Cookie: SID=31d4d96e407aad42")
+        `Set-Cookie`(HttpCookie("SID", "31d4d96e407aad42")).renderedTo("SID=31d4d96e407aad42")
       "Set-Cookie: SID=31d4d96e407aad42; Domain=example.com; Path=/" =!=
         `Set-Cookie`(HttpCookie("SID", "31d4d96e407aad42", path = Some("/"), domain = Some("example.com")))
       "Set-Cookie: lang=en-US; Expires=Wed, 09 Jun 2021 10:18:14 GMT; Path=/hello" =!=
@@ -260,15 +252,14 @@ class HttpHeaderSpec extends Specification {
       "Set-Cookie: foo=bar; domain=example.com; Path=/this is a path with blanks; extension with blanks" =!=
         `Set-Cookie`(HttpCookie("foo", "bar", domain = Some("example.com"), path = Some("/this is a path with blanks"),
           extension = Some("extension with blanks"))).renderedTo(
-          "Set-Cookie: foo=bar; Domain=example.com; Path=/this is a path with blanks; extension with blanks")
+          "foo=bar; Domain=example.com; Path=/this is a path with blanks; extension with blanks")
     }
 
     "User-Agent" in {
       "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_3) AppleWebKit/537.31" =!=
         `User-Agent`(ProductVersion("Mozilla", "5.0", "Macintosh; Intel Mac OS X 10_8_3"), ProductVersion("AppleWebKit", "537.31"))
       "User-Agent: foo(bar)(baz)" =!=
-        `User-Agent`(ProductVersion("foo", "", "bar"), ProductVersion(comment = "baz")).renderedTo(
-          "User-Agent: foo (bar) (baz)")
+        `User-Agent`(ProductVersion("foo", "", "bar"), ProductVersion(comment = "baz")).renderedTo("foo (bar) (baz)")
     }
 
     "WWW-Authenticate" in {
@@ -282,7 +273,7 @@ class HttpHeaderSpec extends Specification {
                            opaque=5ccc069c403ebaf9f0171e9517f40e41""".replace(EOL, "\r\n") =!=
         `WWW-Authenticate`(HttpChallenge("Digest", "testrealm@host.com", Map("qop" -> "auth,auth-int",
           "nonce" -> "dcd98b7102dd2f0e8b11d0f600bfb0c093", "opaque" -> "5ccc069c403ebaf9f0171e9517f40e41"))).renderedTo(
-          "WWW-Authenticate: Digest realm=\"testrealm@host.com\",qop=\"auth,auth-int\",nonce=dcd98b7102dd2f0e8b11d0f600bfb0c093,opaque=5ccc069c403ebaf9f0171e9517f40e41")
+          "Digest realm=\"testrealm@host.com\",qop=\"auth,auth-int\",nonce=dcd98b7102dd2f0e8b11d0f600bfb0c093,opaque=5ccc069c403ebaf9f0171e9517f40e41")
       "WWW-Authenticate: Basic realm=WallyWorld,attr=\"val>ue\", Fancy realm=yeah" =!=
         `WWW-Authenticate`(HttpChallenge("Basic", "WallyWorld", Map("attr" -> "val>ue")), HttpChallenge("Fancy", "yeah"))
       """WWW-Authenticate: Fancy realm="Secure Area",nonce=42""" =!=
@@ -292,9 +283,33 @@ class HttpHeaderSpec extends Specification {
     "X-Forwarded-For" in {
       "X-Forwarded-For: 1.2.3.4" =!= `X-Forwarded-For`("1.2.3.4")
       "X-Forwarded-For: 234.123.5.6, 8.8.8.8" =!= `X-Forwarded-For`("234.123.5.6", "8.8.8.8")
-      "X-Forwarded-For: 1.2.3.4, unknown" =!= `X-Forwarded-For`(Seq(Some(HttpIp("1.2.3.4")), None))
-      "X-Forwarded-For: 0:0:0:0:0:0:0:1" =!= `X-Forwarded-For`("::1")
+      "X-Forwarded-For: 1.2.3.4, unknown" =!= `X-Forwarded-For`(RemoteAddress("1.2.3.4"), RemoteAddress.Unknown)
       "X-Forwarded-For: 192.0.2.43, 2001:db8:cafe:0:0:0:0:17" =!= `X-Forwarded-For`("192.0.2.43", "2001:db8:cafe::17")
+      "X-Forwarded-For: 1234:5678:9abc:def1:2345:6789:abcd:ef00" =!= `X-Forwarded-For`("1234:5678:9abc:def1:2345:6789:abcd:ef00")
+      "X-Forwarded-For: 1234:567:9a:d:2:67:abc:ef00" =!= `X-Forwarded-For`("1234:567:9a:d:2:67:abc:ef00")
+      "X-Forwarded-For: 2001:db8:85a3::8a2e:370:7334" =!=> "2001:db8:85a3:0:0:8a2e:370:7334"
+      "X-Forwarded-For: 1:2:3:4:5:6:7:8" =!= `X-Forwarded-For`("1:2:3:4:5:6:7:8")
+      "X-Forwarded-For: ::2:3:4:5:6:7:8" =!=> "0:2:3:4:5:6:7:8"
+      "X-Forwarded-For: ::3:4:5:6:7:8" =!=> "0:0:3:4:5:6:7:8"
+      "X-Forwarded-For: ::4:5:6:7:8" =!=> "0:0:0:4:5:6:7:8"
+      "X-Forwarded-For: ::5:6:7:8" =!=> "0:0:0:0:5:6:7:8"
+      "X-Forwarded-For: ::6:7:8" =!=> "0:0:0:0:0:6:7:8"
+      "X-Forwarded-For: ::7:8" =!=> "0:0:0:0:0:0:7:8"
+      "X-Forwarded-For: ::8" =!=> "0:0:0:0:0:0:0:8"
+      "X-Forwarded-For: 1:2:3:4:5:6:7::" =!=> "1:2:3:4:5:6:7:0"
+      "X-Forwarded-For: 1:2:3:4:5:6::" =!=> "1:2:3:4:5:6:0:0"
+      "X-Forwarded-For: 1:2:3:4:5::" =!=> "1:2:3:4:5:0:0:0"
+      "X-Forwarded-For: 1:2:3:4::" =!=> "1:2:3:4:0:0:0:0"
+      "X-Forwarded-For: 1:2:3::" =!=> "1:2:3:0:0:0:0:0"
+      "X-Forwarded-For: 1:2::" =!=> "1:2:0:0:0:0:0:0"
+      "X-Forwarded-For: 1::" =!=> "1:0:0:0:0:0:0:0"
+      "X-Forwarded-For: 1::3:4:5:6:7:8" =!=> "1:0:3:4:5:6:7:8"
+      "X-Forwarded-For: 1:2::4:5:6:7:8" =!=> "1:2:0:4:5:6:7:8"
+      "X-Forwarded-For: 1:2:3::5:6:7:8" =!=> "1:2:3:0:5:6:7:8"
+      "X-Forwarded-For: 1:2:3:4::6:7:8" =!=> "1:2:3:4:0:6:7:8"
+      "X-Forwarded-For: 1:2:3:4:5::7:8" =!=> "1:2:3:4:5:0:7:8"
+      "X-Forwarded-For: 1:2:3:4:5:6::8" =!=> "1:2:3:4:5:6:0:8"
+      "X-Forwarded-For: ::" =!=> "0:0:0:0:0:0:0:0"
     }
 
     "RawHeader" in {
@@ -304,6 +319,16 @@ class HttpHeaderSpec extends Specification {
 
   implicit class TestLine(line: String) {
     def =!=(testHeader: TestExample) = testHeader(line)
+    def =!=>(expectedRendering: String): MatchResult[Any] = {
+      val Array(name, value) = line.split(": ", 2)
+      val Right(header) = HttpParser.parseHeader(RawHeader(name, value))
+      header.toString === {
+        header match {
+          case x: ModeledHeader ⇒ x.name + ": " + expectedRendering
+          case _                ⇒ expectedRendering
+        }
+      }
+    }
   }
   sealed trait TestExample extends (String ⇒ MatchResult[Any])
   implicit class TestHeader(header: HttpHeader) extends TestExample {
@@ -314,7 +339,13 @@ class HttpHeaderSpec extends Specification {
     protected def rendersTo(line: String) = header.toString === line
     def renderedTo(expectedRendering: String): TestHeader =
       new TestHeader(header) {
-        override protected def rendersTo(line: String) = header.toString === expectedRendering
+        override protected def rendersTo(line: String) =
+          header.toString === {
+            header match {
+              case x: ModeledHeader ⇒ x.name + ": " + expectedRendering
+              case _                ⇒ expectedRendering
+            }
+          }
       }
   }
   implicit class TestError(expectedError: ErrorInfo) extends TestExample {
