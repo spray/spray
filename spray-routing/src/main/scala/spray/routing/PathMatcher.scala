@@ -53,6 +53,23 @@ trait PathMatcher[L <: HList] extends (Path ⇒ PathMatcher.Matching[L]) { self 
   def hmap[R <: HList](f: L ⇒ R): PathMatcher[R] = transform(_.map(f))
 
   def hflatMap[R <: HList](f: L ⇒ Option[R]): PathMatcher[R] = transform(_.flatMap(f))
+
+  def repeat(separator: PathMatcher0 = PathMatchers.Neutral)(implicit lift: PathMatcher.Lift[L, List]): PathMatcher[lift.Out] =
+    new PathMatcher[lift.Out] {
+      def apply(path: Path) = self(path) match {
+        case Matched(remaining, extractions) ⇒
+          def result1 = Matched(remaining, lift(extractions))
+          separator(remaining) match {
+            case Matched(remaining2, _) ⇒ this(remaining2) match {
+              case Matched(`remaining2`, _) ⇒ result1 // we made no progress, so "go back" to before the separator
+              case Matched(rest, result)    ⇒ Matched(rest, lift(extractions, result))
+              case Unmatched                ⇒ throw new IllegalStateException
+            }
+            case Unmatched ⇒ result1
+          }
+        case Unmatched ⇒ Matched(path, lift())
+      }
+    }
 }
 
 object PathMatcher extends ImplicitPathMatcherConstruction {
@@ -106,38 +123,56 @@ object PathMatcher extends ImplicitPathMatcherConstruction {
   }
 
   implicit class PimpedPathMatcher[L <: HList](underlying: PathMatcher[L]) {
-    def ?(implicit opt: PathMatcher.Optional[L]): PathMatcher[opt.Out] =
-      new PathMatcher[opt.Out] { def apply(path: Path) = opt(path, underlying(path)) }
+    def ?(implicit lift: PathMatcher.Lift[L, Option]): PathMatcher[lift.Out] =
+      new PathMatcher[lift.Out] {
+        def apply(path: Path) = underlying(path) match {
+          case Matched(rest, extractions) ⇒ Matched(rest, lift(extractions))
+          case Unmatched                  ⇒ Matched(path, lift())
+        }
+      }
   }
 
-  sealed trait Optional[L <: HList] {
+  sealed trait Lift[L <: HList, M[+_]] {
     type Out <: HList
-    def apply(path: Path, matching: Matching[L]): Matching[Out]
+    def apply(): Out
+    def apply(value: L): Out
+    def apply(value: L, more: Out): Out
   }
-  object Optional {
-    implicit object OptionalHNil extends Optional[HNil] {
+  object Lift {
+    trait MOps[M[+_]] {
+      def apply(): M[Nothing]
+      def apply[T](value: T): M[T]
+      def apply[T](value: T, more: M[T]): M[T]
+    }
+    object MOps {
+      implicit object OptionMOps extends MOps[Option] {
+        def apply(): Option[Nothing] = None
+        def apply[T](value: T): Option[T] = Some(value)
+        def apply[T](value: T, more: Option[T]): Option[T] = Some(value)
+      }
+      implicit object ListMOps extends MOps[List] {
+        def apply(): List[Nothing] = Nil
+        def apply[T](value: T): List[T] = value :: Nil
+        def apply[T](value: T, more: List[T]): List[T] = value :: more
+      }
+    }
+    implicit def liftHNil[M[+_]] = new Lift[HNil, M] {
       type Out = HNil
-      def apply(path: Path, matching: Matching[HNil]) =
-        matching match {
-          case x: Matched[_] ⇒ x
-          case _             ⇒ Matched(path, HNil)
-        }
+      def apply() = HNil
+      def apply(value: HNil) = value
+      def apply(value: HNil, more: Out) = value
     }
-    implicit def optionalSingleElement[T] = new Optional[T :: HNil] {
-      type Out = Option[T] :: HNil
-      def apply(path: Path, matching: Matching[T :: HNil]): Matching[Out] =
-        matching match {
-          case Matched(rest, value) ⇒ Matched(rest, Some(value.head) :: HNil)
-          case _                    ⇒ Matched(path, None :: HNil)
-        }
+    implicit def liftSingleElement[A, M[+_]](implicit mops: MOps[M]) = new Lift[A :: HNil, M] {
+      type Out = M[A] :: HNil
+      def apply() = mops() :: HNil
+      def apply(value: A :: HNil) = mops(value.head) :: HNil
+      def apply(value: A :: HNil, more: Out) = mops(value.head, more.head) :: HNil
     }
-    implicit def default[A, B, L <: HNil] = new Optional[A :: B :: L] {
-      type Out = Option[A :: B :: L] :: HNil
-      def apply(path: Path, matching: Matching[A :: B :: L]): Matching[Out] =
-        matching match {
-          case Matched(rest, values) ⇒ Matched(rest, Some(values) :: HNil)
-          case Unmatched             ⇒ Matched(path, None :: HNil)
-        }
+    implicit def default[A, B, L <: HList, M[+_]](implicit mops: MOps[M]) = new Lift[A :: B :: L, M] {
+      type Out = M[A :: B :: L] :: HNil
+      def apply() = mops() :: HNil
+      def apply(value: A :: B :: L) = mops(value) :: HNil
+      def apply(value: A :: B :: L, more: Out) = mops(value, more.head) :: HNil
     }
   }
 }
@@ -368,21 +403,10 @@ trait PathMatchers {
 
   /**
    * A PathMatcher that matches all remaining segments as a List[String].
-   * This can also be no segments resulting in the empty list. This matcher will
-   * consume the complete remaining path so it isn't possible to match a suffix
-   * after this matcher has run.
+   * This can also be no segments resulting in the empty list.
+   * If the path has a trailing slash this slash will *not* be matched.
    */
-  object Segments extends PathMatcher1[List[String]] {
-    def apply(path: Path): Matching[List[String] :: HNil] =
-      path match {
-        case Path.Segment(segment, tail) ⇒
-          apply(tail).map {
-            case rest :: HNil ⇒ (segment :: rest) :: HNil
-          }
-        case Path.Slash(tail) ⇒ apply(tail)
-        case Path.Empty       ⇒ Matched(Path.Empty, Nil :: HNil)
-      }
-  }
+  val Segments = Segment.repeat(separator = Slash)
 
   @deprecated("Use `Segment` instead", "1.0-M8/1.1-M8")
   def PathElement = Segment

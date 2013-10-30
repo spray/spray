@@ -59,6 +59,7 @@ class ResponseParserSpec extends Specification {
       }
 
       "a response with a custom status code" in {
+        TestSupport.ServerOnTheMove must haveClass[StatusCodes.Redirection] // access to trigger registration
         parse {
           """HTTP/1.1 330 Server on the move
             |Content-Length: 0

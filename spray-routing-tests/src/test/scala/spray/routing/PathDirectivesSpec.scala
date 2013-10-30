@@ -40,7 +40,7 @@ class PathDirectivesSpec extends RoutingSpec {
     "reject [/foobar]" in test()
     "reject [/foo/bar]" in test()
     "accept [/foo] and clear the unmatchedPath" in test("")
-    "accept [/foo/] and clear the unmatchedPath" in test("")
+    "reject [/foo/]" in test()
   }
   """path("")""" should {
     val test = testFor(path("") { echoUnmatchedPath })
@@ -122,7 +122,7 @@ class PathDirectivesSpec extends RoutingSpec {
     val test = testFor(pathPrefix(Segments) { echoCaptureAndUnmatchedPath })
     "accept [/]" in test("List():")
     "accept [/a/b/c]" in test("List(a, b, c):")
-    "accept [/a/b/c/]" in test("List(a, b, c):")
+    "accept [/a/b/c/]" in test("List(a, b, c):/")
   }
 
   """pathPrefix(separateOnSlashes("a/b"))""" should {
@@ -185,6 +185,28 @@ class PathDirectivesSpec extends RoutingSpec {
     "accept [/foo]" in test("")
     "accept [/fool]" in test("l")
     "accept [/bar]" in test("bar")
+  }
+
+  """pathPrefix("foo") & pathEnd""" in {
+    val test = testFor((pathPrefix("foo") & pathEnd) { echoUnmatchedPath })
+    "reject [/foobar]" in test()
+    "reject [/foo/bar]" in test()
+    "accept [/foo] and clear the unmatchedPath" in test("")
+    "reject [/foo/]" in test()
+  }
+
+  """pathPrefix("foo") & pathEndOrSingleSlash""" in {
+    val test = testFor((pathPrefix("foo") & pathEndOrSingleSlash) { echoUnmatchedPath })
+    "reject [/foobar]" in test()
+    "reject [/foo/bar]" in test()
+    "accept [/foo] and clear the unmatchedPath" in test("")
+    "accept [/foo/] and clear the unmatchedPath" in test("")
+  }
+
+  """pathPrefix(IntNumber ~ ("|" ~ IntNumber).repeated)""" in {
+    val test = testFor(pathPrefix(IntNumber.repeat(separator = "|")) { echoCaptureAndUnmatchedPath })
+    "accept [/1|2|3rest]" in test("List(1, 2, 3):rest")
+    "accept [/rest]" in test("List():rest")
   }
 
   "PathMatchers" should {
