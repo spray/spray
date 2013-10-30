@@ -16,9 +16,12 @@
 
 package spray.httpx.marshalling
 
+import scala.xml.NodeSeq
 import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
 import spray.http._
+import MediaTypes._
+import HttpCharsets._
 
 class MetaMarshallersSpec extends Specification {
   implicit val system = ActorSystem()
@@ -40,6 +43,23 @@ class MetaMarshallersSpec extends Specification {
       ctx.entity === Some(HttpEntity("abc"))
       ctx.chunks.map(_.data.asString) === Seq("def", "ghi", "jkl")
       ctx.chunkedMessageEnd === Some(ChunkedMessageEnd)
+    }
+  }
+
+  "MMarshallers" should {
+    "allow provision of Marshaller[M[T]] given a MarshallerM[M]" in {
+      class CakeLayer[M[_]](implicit marshallerM: MarshallerM[M]) {
+        def apply(value: Either[M[NodeSeq], M[String]]): HttpEntity =
+          value match {
+            case Left(mn)  ⇒ marshalUnsafe(mn) // requires a Marshaller[M[NodeSeq]]
+            case Right(ms) ⇒ marshalUnsafe(ms) // requires a Marshaller[M[String]]
+          }
+      }
+      val optionCakeLayer = new CakeLayer[Option]
+      optionCakeLayer(Right(Some("foo"))) === HttpEntity("foo")
+      optionCakeLayer(Right(None)) === HttpEntity.Empty
+      optionCakeLayer(Left(Some(<i>42</i>))) === HttpEntity(ContentType(`text/xml`, `UTF-8`), "<i>42</i>")
+      optionCakeLayer(Left(None)) === HttpEntity.Empty
     }
   }
 

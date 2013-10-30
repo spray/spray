@@ -84,6 +84,7 @@ private[parsing] abstract class HttpMessagePartParser(val settings: ParserSettin
 
       case h: `Content-Type` ⇒
         if (cth.isEmpty) parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, clh, Some(h), teh, e100, hh)
+        else if (cth.get == h) parseHeaderLines(input, lineEnd, headers, headerCount, ch, clh, cth, teh, e100, hh)
         else fail("HTTP message must not contain more than one Content-Type header")
 
       case h: `Transfer-Encoding` ⇒

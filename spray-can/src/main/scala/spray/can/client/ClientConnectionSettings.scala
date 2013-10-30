@@ -21,9 +21,10 @@ import akka.util.Duration
 import akka.actor.ActorRefFactory
 import spray.can.parsing.ParserSettings
 import spray.util._
+import spray.http.HttpHeaders.`User-Agent`
 
 case class ClientConnectionSettings(
-    userAgentHeader: String,
+    userAgentHeader: Option[`User-Agent`],
     idleTimeout: Duration,
     requestTimeout: Duration,
     reapingCycle: Duration,
@@ -52,7 +53,7 @@ object ClientConnectionSettings extends SettingsCompanion[ClientConnectionSettin
           "Use Http.Connect(sslEncryption = true) to enable ssl encryption for a connection.")
 
     apply(
-      c getString "user-agent-header",
+      (c getString "user-agent-header" toOption).map(`User-Agent`(_)),
       c getDuration "idle-timeout",
       c getDuration "request-timeout",
       c getDuration "reaping-cycle",

@@ -32,6 +32,8 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
   private[this] val counter = Iterator from 0
   private[this] val dispatchStrategy = if (settings.pipelining) pipelinedStrategy else nonPipelinedStrategy
   private[this] var slotStates = Map.empty[ActorRef, SlotState] // state per child
+  private[this] var idleConnections = List.empty[ActorRef] // FILO queue of idle connections, managed by updateSlotState
+  private[this] var unconnectedConnections = List.empty[ActorRef] // FILO queue of unconnected, managed by updateSlotState
   private[this] val headers =
     if (defaultHeaders.exists(_.isInstanceOf[HttpHeaders.Host])) defaultHeaders
     else {
@@ -57,7 +59,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
       dispatchStrategy(ctx.copy(request = requestWithDefaultHeaders))
 
     case RequestCompleted ⇒
-      slotStates = slotStates.updated(sender, slotStates(sender).dequeueOne)
+      updateSlotState(sender, slotStates(sender).dequeueOne)
       dispatchStrategy.onConnectionStateChange()
 
     case Http.CloseAll(cmd) ⇒
@@ -79,19 +81,19 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
             SlotState.Connected(reqs drop rescheduledRequestCount) // we've already scheduled new requests onto this connection
           case x ⇒ throw new IllegalStateException("Unexpected slot state: " + x)
         }
-      slotStates = slotStates.updated(sender, newState)
+      updateSlotState(sender, newState)
       dispatchStrategy.onConnectionStateChange()
 
     case Terminated(child) ⇒
-      slotStates -= child
+      removeSlot(child)
       dispatchStrategy.onConnectionStateChange()
 
     case DemandIdleShutdown ⇒
-      slotStates -= sender
+      removeSlot(sender)
       sender ! PoisonPill
 
     case ReceiveTimeout ⇒
-      if (context.children.isEmpty) {
+      if (slotStates.isEmpty) {
         log.debug("Initiating idle shutdown")
         context.parent ! DemandIdleShutdown
         context.become { // after having initiated our shutdown we must be bounce all requests
@@ -117,13 +119,9 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
     case _: Disconnected | RequestCompleted | DemandIdleShutdown ⇒ // ignore
   }
 
-  def findChild(predicate: PartialFunction[SlotState, Boolean]): Option[ActorRef] =
-    slotStates find { case (child, state) ⇒ predicate.isDefinedAt(state) && predicate(state) } map { _._1 }
-
-  def firstIdleConnection: Option[ActorRef] = findChild { case SlotState.Connected(reqs) ⇒ reqs.isEmpty }
-
-  def firstUnconnectedConnection: Option[ActorRef] = findChild { case SlotState.Unconnected ⇒ true } orElse {
-    if (context.children.size < settings.maxConnections) Some(newConnectionChild()) else None
+  def firstIdleConnection: Option[ActorRef] = idleConnections.headOption
+  def firstUnconnectedConnection: Option[ActorRef] = unconnectedConnections.headOption orElse {
+    if (slotStates.size < settings.maxConnections) Some(newConnectionChild()) else None
   }
 
   def newConnectionChild(): ActorRef = {
@@ -133,14 +131,45 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
           clientConnectionSettingsGroup)),
         name = counter.next().toString)
     }
-    slotStates = slotStates.updated(child, SlotState.Unconnected)
+    updateSlotState(child, SlotState.Unconnected)
     child
+  }
+
+  /** update slot state and manage idleConnections and unconnectedConnections queues */
+  def updateSlotState(child: ActorRef, newState: SlotState): Unit = {
+    val oldState = slotStates.get(child)
+    slotStates = slotStates.updated(child, newState)
+    (oldState, newState) match {
+      case (s, SlotState.Unconnected) ⇒
+        require(s != Some(SlotState.Unconnected))
+        unconnectedConnections ::= child
+        if (s == Some(SlotState.Idle)) idleConnections = idleConnections.filterNot(_ == child)
+      case (Some(SlotState.Connected(_)), SlotState.Idle) ⇒ idleConnections ::= child
+
+      case (Some(SlotState.Unconnected), SlotState.Connected(_)) ⇒
+        require(unconnectedConnections.head == child)
+        unconnectedConnections = unconnectedConnections.tail
+
+      case (Some(SlotState.Idle), SlotState.Connected(_)) ⇒
+        require(idleConnections.head == child)
+        idleConnections = idleConnections.tail
+
+      case (Some(SlotState.Connected(_)), SlotState.Connected(_)) ⇒ // ignore
+      case (Some(SlotState.Idle), SlotState.Idle) ⇒ throw new IllegalStateException
+      case (None, _) ⇒ throw new IllegalStateException // may only change to Unconnected
+      case (Some(SlotState.Unconnected), SlotState.Idle) ⇒ throw new IllegalStateException // not possible
+    }
+  }
+  def removeSlot(child: ActorRef): Unit = {
+    slotStates -= child
+    unconnectedConnections = unconnectedConnections.filterNot(_ == child)
+    idleConnections = idleConnections.filterNot(_ == child)
   }
 
   def dispatch(ctx: RequestContext, connection: ActorRef): Unit = {
     connection ! ctx
     val currentState = slotStates(connection)
-    slotStates = slotStates.updated(connection, currentState.enqueue(ctx.request))
+    updateSlotState(connection, currentState.enqueue(ctx.request))
   }
 
   sealed abstract class DispatchStrategy {
@@ -191,6 +220,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
         def onlyIdempotent: ((ActorRef, SlotState)) ⇒ Boolean = {
           case (child, SlotState.Connected(reqs)) ⇒ reqs.forall(_.method.isIdempotent)
           case (child, SlotState.Unconnected)     ⇒ true
+          case (child, SlotState.Idle)            ⇒ true
         }
         slotStates.toSeq.filter(onlyIdempotent).sortBy(_._2.openRequestCount).headOption.map(_._1)
       }
@@ -209,15 +239,22 @@ private[can] object HttpHostConnector {
     def openRequestCount: Int
   }
   object SlotState {
-    case class Connected(openRequests: Queue[HttpRequest]) extends SlotState {
-      def enqueue(request: HttpRequest) = Connected(openRequests.enqueue(request))
-      def dequeueOne = Connected(openRequests.tail)
-      def openRequestCount = openRequests.size
-    }
-    case object Unconnected extends SlotState {
+    sealed private[SlotState] abstract class WithoutRequests extends SlotState {
       def enqueue(request: HttpRequest) = Connected(Queue(request))
       def dequeueOne = throw new IllegalStateException
       def openRequestCount = 0
     }
+    case object Unconnected extends WithoutRequests
+    case class Connected(openRequests: Queue[HttpRequest]) extends SlotState {
+      require(openRequests.nonEmpty)
+      def enqueue(request: HttpRequest) = Connected(openRequests.enqueue(request))
+      def dequeueOne = {
+        val reqs = openRequests.tail
+        if (reqs.isEmpty) Idle
+        else Connected(reqs)
+      }
+      def openRequestCount = openRequests.size
+    }
+    case object Idle extends WithoutRequests
   }
 }

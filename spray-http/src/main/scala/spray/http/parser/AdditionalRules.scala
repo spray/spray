@@ -24,11 +24,8 @@ import BasicRules._
 private[parser] trait AdditionalRules {
   this: Parser ⇒
 
-  def Ip: Rule1[HttpIp] = rule(
-    group(IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber) ~> (HttpIp(_)) ~ OptWS)
-
-  def IpNumber = rule {
-    Digit ~ optional(Digit ~ optional(Digit))
+  def Ip: Rule1[RemoteAddress] = rule {
+    IPv4Address ~~> ((a, b, c, d) ⇒ RemoteAddress(Array(a, b, c, d)))
   }
 
   def Challenge = rule {

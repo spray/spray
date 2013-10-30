@@ -1,3 +1,35 @@
+Version 1.0-RC2 (2013-10-30)
+----------------------------
+
+- spray-can:
+
+  + changed `ClientConnectionSettings::userAgentHeader` from `String` to `Option[`User-Agent`]` (#458)
+  + relaxed parser to allow several identical `Content-Type` headers (#463)
+  + improved `HttpHostConnector` for better performance with large numbers of connections (#643)
+
+- spray-http:
+
+  + fixed `DateTime` to allow years up to 9999 (#502)
+  + fixed exception leaking from `HttpCharset.custom` (#637)
+  + remodeled `HttpIp` to `RemoteAddress` (#638)
+
+- spray-httpx:
+
+  + made play dependency optional in OSGi Import-Package statement
+  + added `MarshallerM` helper type for abstracting over monadic marshallers
+
+- spray-io:
+
+  + fixed broken inbound bytes buffering in SslTlsSupport (#633)
+  + removed too tight assertions, replaced remaining `assert`s (#631)
+
+- spray-routing:
+
+  + changed `path` directive and `Segments` matcher to never match trailing slashes
+  + added `pathEnd`, `pathSingleSlash` and `pathEndOrSingleSlash` directive (#628)
+  + added `PathMatcher::repeated` modifier (#636)
+
+
 Version 1.0-RC1 (2013-10-22)
 ----------------------------
 - Upgraded to latest versions of all dependencies

@@ -305,9 +305,11 @@ object HttpHeaders {
     protected def companion = `Raw-Request-URI`
   }
 
-  object `Remote-Address` extends ModeledCompanion
-  case class `Remote-Address`(ip: HttpIp) extends ModeledHeader {
-    def renderValue[R <: Rendering](r: R): R = r ~~ ip
+  object `Remote-Address` extends ModeledCompanion {
+    def apply(address: String): `Remote-Address` = apply(RemoteAddress(address))
+  }
+  case class `Remote-Address`(address: RemoteAddress) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): R = r ~~ address
     protected def companion = `Remote-Address`
   }
 
@@ -364,12 +366,13 @@ object HttpHeaders {
   }
 
   object `X-Forwarded-For` extends ModeledCompanion {
-    def apply(first: HttpIp, more: HttpIp*): `X-Forwarded-For` = apply((first +: more).map(Some(_)))
-    implicit val ipsRenderer = Renderer.defaultSeqRenderer[Option[HttpIp]](Renderer.optionRenderer("unknown"))
+    def apply(first: String, more: String*): `X-Forwarded-For` = apply((first +: more).map(RemoteAddress.apply))
+    def apply(first: RemoteAddress, more: RemoteAddress*): `X-Forwarded-For` = apply(first +: more)
+    implicit val addressesRenderer = Renderer.defaultSeqRenderer[RemoteAddress]
   }
-  case class `X-Forwarded-For`(ips: Seq[Option[HttpIp]]) extends ModeledHeader {
-    import `X-Forwarded-For`.ipsRenderer
-    def renderValue[R <: Rendering](r: R): R = r ~~ ips
+  case class `X-Forwarded-For`(addresses: Seq[RemoteAddress]) extends ModeledHeader {
+    import `X-Forwarded-For`.addressesRenderer
+    def renderValue[R <: Rendering](r: R): R = r ~~ addresses
     protected def companion = `X-Forwarded-For`
   }
 

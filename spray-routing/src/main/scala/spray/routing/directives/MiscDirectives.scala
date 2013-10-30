@@ -40,7 +40,7 @@ trait MiscDirectives {
    * Directive extracting the IP of the client from either the X-Forwarded-For, Remote-Address or X-Real-IP header
    * (in that order of priority).
    */
-  def clientIP: Directive1[HttpIp] = MiscDirectives._clientIP
+  def clientIP: Directive1[RemoteAddress] = MiscDirectives._clientIP
 
   /**
    * Wraps the inner Route with JSONP support. If a query parameter with the given name is present in the request and
@@ -137,10 +137,10 @@ object MiscDirectives extends MiscDirectives {
 
   private val validJsonpChars = AlphaNum ++ '.' ++ '_' ++ '$'
 
-  private val _clientIP: Directive1[HttpIp] =
-    headerValuePF { case `X-Forwarded-For`(ips) if ips.flatten.nonEmpty ⇒ ips.flatten.head } |
-      headerValuePF { case `Remote-Address`(ip) ⇒ ip } |
-      headerValuePF { case h if h.is("x-real-ip") ⇒ h.value }
+  private val _clientIP: Directive1[RemoteAddress] =
+    headerValuePF { case `X-Forwarded-For`(Seq(address, _*)) ⇒ address } |
+      headerValuePF { case `Remote-Address`(address) ⇒ address } |
+      headerValuePF { case h if h.is("x-real-ip") ⇒ RemoteAddress(h.value) }
 
   private val _requestEntityEmpty: Directive0 =
     extract(_.request.entity.isEmpty).flatMap(if (_) pass else reject)

@@ -89,7 +89,7 @@ object SslTlsSupport {
                     if (isOutboundDone) finishingClose(closedEvent)
                     else waitingForAck(remainingOutgoingData, closedEvent)
                   }
-                } else assert(!isOutboundDone)
+                } else verify(!isOutboundDone)
               case Tcp.PeerClosed     ⇒ receivedUnexpectedPeerClosed()
               case x: Tcp.ErrorClosed ⇒ eventPL(x) // is there anything we need to close in this case?
               case x @ (_: Tcp.ConnectionClosed | WriteChunkAck) ⇒
@@ -253,7 +253,6 @@ object SslTlsSupport {
           // pumping is only stopped by a buffer underflow on the inbound side or when both sides are done
           val encrypt: PumpAction = new PumpAction {
             @tailrec def apply(tempBuf: ByteBuffer): Unit = {
-              assert(!engine.isOutboundDone)
               tempBuf.clear()
               val result = engine.wrap(pendingOutboundBytes, tempBuf)
               tempBuf.flip()
@@ -278,7 +277,6 @@ object SslTlsSupport {
           // same as `encrypt` but starts with decrypting
           val decrypt: PumpAction = new PumpAction {
             @tailrec def apply(tempBuf: ByteBuffer): Unit = {
-              assert(!engine.isInboundDone)
               tempBuf.clear()
               val result = engine.unwrap(pendingInboundBytes, tempBuf)
               tempBuf.flip()
@@ -320,7 +318,7 @@ object SslTlsSupport {
             byteStringBuilderLength.get(pendingEncryptedBytes).asInstanceOf[Int] > 0 // no `isEmpty` or at least `length` available!
 
           def setPendingOutboundBytes(buffer: ByteBuffer): Unit = {
-            assert(!bytesLeft(pendingOutboundBytes))
+            verify(!bytesLeft(pendingOutboundBytes))
             pendingOutboundBytes = buffer
           }
 
@@ -330,6 +328,7 @@ object SslTlsSupport {
                 val buffer = ByteBuffer.allocate(pendingInboundBytes.remaining + data.size)
                 buffer.put(pendingInboundBytes)
                 data.copyToBuffer(buffer)
+                buffer.flip()
                 buffer
               } else data.toByteBuffer
 
@@ -345,7 +344,7 @@ object SslTlsSupport {
             if (engine.isInboundDone) {
               // our pumping logic should make sure that we immediately outbound close and flush
               // after having detected an inbound close
-              assert(engine.isOutboundDone)
+              verify(engine.isOutboundDone)
               true
             } else engine.isOutboundDone
 
@@ -358,6 +357,9 @@ object SslTlsSupport {
             log.debug("Failing write command because " + msg)
             context.self ! cmd.failureMessage
           }
+
+          def verify(condition: Boolean): Unit =
+            if (!condition) throw new IllegalStateException
         }
 
       def writeChunkStream(cmd: Tcp.WriteCommand): Stream[WriteChunk] = {

@@ -21,7 +21,7 @@ import akka.actor.{ ActorRef, Actor, Props, ActorRefFactory }
 import akka.io.Tcp
 import spray.http._
 
-trait MetaMarshallers {
+trait MetaMarshallers extends LowerPriorityImplicitMetaMarshallers {
 
   implicit def optionMarshaller[T](implicit m: Marshaller[T]) =
     Marshaller[Option[T]] { (value, ctx) ⇒
@@ -94,5 +94,24 @@ object MetaMarshallers extends MetaMarshallers {
         context.stop(self)
     }
   }
+}
 
+trait LowerPriorityImplicitMetaMarshallers {
+  implicit def mMarshaller[M[_], T](implicit mm: MarshallerM[M], mt: Marshaller[T]): Marshaller[M[T]] =
+    mm.marshaller
+}
+
+trait MarshallerM[M[_]] {
+  def marshaller[T: Marshaller]: Marshaller[M[T]]
+}
+
+object MarshallerM {
+  implicit val optionMarshallerM: MarshallerM[Option] =
+    new MarshallerM[Option] { def marshaller[T: Marshaller] = implicitly[Marshaller[Option[T]]] }
+
+  implicit def futureMarshallerM(implicit ec: ExecutionContext): MarshallerM[Future] =
+    new MarshallerM[Future] { def marshaller[T: Marshaller] = implicitly[Marshaller[Future[T]]] }
+
+  implicit def streamMarshallerM(implicit refFactory: ActorRefFactory): MarshallerM[Stream] =
+    new MarshallerM[Stream] { def marshaller[T: Marshaller] = implicitly[Marshaller[Stream[T]]] }
 }

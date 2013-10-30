@@ -72,8 +72,61 @@ private[parser] object BasicRules extends Parser {
 
   def ListSep = rule { oneOrMore("," ~ OptWS) }
 
-  // we don't match scoped IPv6 addresses
-  def IPv6Address = rule { oneOrMore(Hex | anyOf(":.")) }
+  def IPv4Address: Rule4[Byte, Byte, Byte, Byte] = {
+    def IpNumber = {
+      def Digit04 = rule { "0" - "4" }
+      def Digit05 = rule { "0" - "5" }
+      def Digit19 = rule { "1" - "9" }
+      rule {
+        group(
+          ch('2') ~ (Digit04 ~ Digit | ch('5') ~ Digit05)
+            | ch('1') ~ Digit ~ Digit
+            | Digit19 ~ Digit
+            | Digit) ~> (java.lang.Integer.parseInt(_).toByte)
+      }
+    }
+    rule { IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber ~ OptWS }
+  }
 
-  def IPv6Reference: Rule1[String] = rule { group("[" ~ IPv6Address ~ "]") ~> identityFunc }
+  def IPv6Address: Rule1[Array[Byte]] = {
+    import org.parboiled.{ Context ⇒ PC }
+    def arr(ctx: PC[Any]): Array[Byte] = ctx.getValueStack.peek().asInstanceOf[Array[Byte]]
+    def zero(ix: Int, count: Int = 1): PC[Any] ⇒ Unit =
+      ctx ⇒ { val a = arr(ctx); java.util.Arrays.fill(a, ix, ix + count, 0.toByte) }
+    def h4(ix: Int) = Hex ~ ((ctx: PC[Any]) ⇒ arr(ctx)(ix) = CharUtils.hexValue(ctx.getFirstMatchChar).toByte)
+    def h8(ix: Int) = Hex ~ Hex ~ ((ctx: PC[Any]) ⇒
+      arr(ctx)(ix) = (CharUtils.hexValue(ctx.getInputBuffer.charAt(ctx.getCurrentIndex - 2)) * 16 +
+        CharUtils.hexValue(ctx.getInputBuffer.charAt(ctx.getCurrentIndex - 1))).toByte)
+    def h16(ix: Int): Rule0 = h8(ix) ~ h8(ix + 1) | h4(ix) ~ h8(ix + 1) | zero(ix) ~ h8(ix + 1) | zero(ix) ~ h4(ix + 1)
+    def h16c(ix: Int): Rule0 = h16(ix) ~ ch(':') ~ !ch(':')
+    def ch16o(ix: Int): Rule0 = optional(ch(':') ~ !ch(':')) ~ (h16(ix) | zero(ix, 2))
+    def ls32: Rule0 = rule(
+      h16(12) ~ ch(':') ~ h16(14)
+        | IPv4Address ~~% withContext((a, b, c, d, cx) ⇒ { arr(cx)(12) = a; arr(cx)(13) = b; arr(cx)(14) = c; arr(cx)(15) = d }))
+    def cc(ix: Int): Rule0 = ch(':') ~ ch(':') ~ zero(ix, 2)
+    def tail2 = rule { h16c(2) ~ tail4 }
+    def tail4 = rule { h16c(4) ~ tail6 }
+    def tail6 = rule { h16c(6) ~ tail8 }
+    def tail8 = rule { h16c(8) ~ tail10 }
+    def tail10 = rule { h16c(10) ~ ls32 }
+    rule(
+      !(ch(':') ~ Hex) ~ push(new Array[Byte](16)) ~ (
+        h16c(0) ~ tail2
+        | cc(0) ~ tail2
+        | ch16o(0) ~ (
+          cc(2) ~ tail4
+          | ch16o(2) ~ (
+            cc(4) ~ tail6
+            | ch16o(4) ~ (
+              cc(6) ~ tail8
+              | ch16o(6) ~ (
+                cc(8) ~ tail10
+                | ch16o(8) ~ (
+                  cc(10) ~ ls32
+                  | ch16o(10) ~ (
+                    cc(12) ~ h16(14)
+                    | ch16o(12) ~ cc(14)))))))))
+  }
+
+  def IPv6Reference: Rule1[String] = rule { group("[" ~ oneOrMore(Hex | anyOf(":.")) ~ "]") ~> identityFunc }
 }
