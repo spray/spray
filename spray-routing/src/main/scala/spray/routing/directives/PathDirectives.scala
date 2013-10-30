@@ -104,6 +104,12 @@ trait PathDirectives extends PathMatchers with ImplicitPathMatcherConstruction {
    * completely or only consists of exactly one remaining slash.
    */
   def pathEndOrSingleSlash: Directive0 = rawPathPrefix(Slash.? ~ PathEnd)
+
+  /**
+   * Only passes on the request to its inner route if the request path
+   * consists of exactly one remaining slash.
+   */
+  def pathSingleSlash: Directive0 = pathPrefix(PathEnd)
 }
 
 object PathDirectives extends PathDirectives
