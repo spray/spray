@@ -35,6 +35,33 @@ Previously, all chunks of a request came in subsequently without any interaction
 ActorRef of an actor to handle the chunks before any actual ``MessageChunks`` will be delivered. This allows to
 separate the handling of multiple incoming request chunk streams to several chunk handlers.
 
+_`PathMatcher infrastructure`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The path matching infrastructure was changed by replacing automatic behavior with more explicit directives. Mainly, this
+affects uses of nested ``path("")`` directives. Previously, ``path("")`` would either match 1) nothing, 2) a single slash,
+or 3) two slashes before the path end. Since the question of whether to deliver identical content under two different
+URIs (adding a trailing slash to a URI results in a semantically *different* URI!) is one of continuous discussion
+(see for example: http://googlewebmastercentral.blogspot.de/2010/04/to-slash-or-not-to-slash.html) we want to make it
+easy for your to pick your strategy and be consistent about it. With the new version, you can use one of the new
+directives instead of ``path("")`` to be explicit about what to match:
+
+  * ``pathEnd``, which matches just the path end without any trailing slashes
+  * ``pathSingleSlash``, which matches the path only when it ends with a slash
+  * ``pathEndOrSingleSlash``, which matches in both cases
+
+Directives ``path`` and ``pathPrefix`` previously matched an optional beginning slash from the (remaining) path. The
+beginning slash is now required. If that's not what you want use ``rawPathPrefix`` instead.
+
+Also:
+
+ * ``PathMatcher.Slash`` replaces the old ``PathMatcher.Slash_!`` which matches exactly one slash.
+ * ``PathMatcher.PathEnd`` now matches exactly the end of the path (before: an optional slash as well).
+ * ``PathMatcher.Segments`` also doesn't match a trailing slash any more.
+ * ``PathMatcher.Empty`` was renamed to ``PathMatcher.Neutral``.
+
+It is now easy to create path matchers for optional or repeated matches. Use ``PathMatcher.?`` to make a ``PathMatcher``
+optional. Use ``PathMatcher.repeat`` to capture several matches.
 
 _`(Un)marshalling`
 ~~~~~~~~~~~~~~~~~~
@@ -100,6 +127,7 @@ Other changes:
  - ``SslTlsSupport`` pipeline stage now publishes a ``SSLSessionEstablished`` event with session details [80982d4]_.
  - New ``ParserSettings.sslSessionInfoHeader`` setting which enables the automatic addition of a synthetic
    ``SSL-Session-Info`` header to a request/response with SSL session information [e486900]_.
+ - ``ClientConnectionSettings.userAgentHeader`` is now modelled directly by an ``Option[User-Agent]``. [da12531]_.
 
 .. [ab17f00] `use util.Timestamp instead of longs for timeout checking <http://github.com/spray/spray/commit/ab17f00>`_
 .. [f6b0292] `get rid of Http.Register.keepOpenOnPeerClosed, fixes #401 <http://github.com/spray/spray/commit/f6b0292>`_
@@ -117,6 +145,7 @@ Other changes:
 .. [a47f3b0] `replace InetSocketAddress in HostConnectorSetup with hostname/port pair, fixes #394 <http://github.com/spray/spray/commit/a47f3b0>`_
 .. [80982d4] `Publish SSLSessionEstablished event from SslTlsSupport upon successful SSL handshaking <http://github.com/spray/spray/commit/80982d4>`_
 .. [e486900] `Add SSLSessionInfo header to requests on server and responses on client <http://github.com/spray/spray/commit/e486900>`_
+.. [da12531] `model user-agent-header value as User-Agent to fail fast, fixes #458 <http://github.com/spray/spray/commit/da12531>`_
 
 
 spray-http
@@ -137,6 +166,8 @@ spray-http
    ``Uri.ParsingMode.RelaxedWithRawQuery`` [d8a9ee4]_.
  - ``MediaRanges.custom`` was renamed to ``MediaRange.custom`` [a915b8f]_.
  - ``HttpSuccess`` and ``HttpFailure`` are not public API any more. Use ``StatusCode.isSuccess`` instead [a9e0d2c]_.
+ - ``HttpIp`` was replaced by ``RemoteAddress`` which also supports "unknown" addresses. ``X-Forwarded-For.ips`` member
+   was renamed to ``addresses``. ``Remote-Address.ip`` member was renamed to `address` [443b0d8]_.
 
 .. [015f3c6] `add HttpOrigin and use it for Access-Control-Allow-Origin and Origin headers, fixes #579 <http://github.com/spray/spray/commit/015f3c6>`_
 .. [e058a43] `allow creation of custom MediaTypes with '*' as a subtype when called by the parser, fixes #529 <http://github.com/spray/spray/commit/e058a43>`_
@@ -149,6 +180,7 @@ spray-http
 .. [a915b8f] `fix raw queries still performing %-decoding and not being rendered as raw, fixes #330 <http://github.com/spray/spray/commit/a915b8f>`_
 .. [d8a9ee4] `add support for Accept-Header extensions and media-type parameters, closes #310 <http://github.com/spray/spray/commit/d8a9ee4>`_
 .. [a9e0d2c] `support for custom status codes, fixes #564 <http://github.com/spray/spray/commit/a9e0d2c>`_
+.. [443b0d8] `remodel HttpIp to RemoteAddress, fixes #638 <http://github.com/spray/spray/commit/443b0d8>`_
 
 
 spray-routing
@@ -156,8 +188,6 @@ spray-routing
 
  - ``RequestContext.complete`` overloads were removed in favor of using the marshalling infrastructure
    (see `(Un)marshalling`) [4d787dc]_.
- - ``Slash_!`` is gone and ``Slash`` got its semantics. ``PathEnd`` now just matches the end of the path.
-   ``PathDirectives`` were adapted to have the same semantics as before [1480e73]_.
  - ``CompletionMagnet`` is gone in favor of the new ``ToResponseMarshaller`` infrastructure [7a36de5]_.
  - ``FieldDefMagnetAux``, ``ParamDefMagnetAux``, and ``AnyParamDefMagnetAux`` are gone and replaced by a simpler
    construct [d86cb80]_.
@@ -177,8 +207,15 @@ spray-routing
  - ``AuthenticationFailedRejection`` and ``AuthenticationRequiredRejection`` were merged and
    remodelled. [034779d]_
  - ``PathMatchers.Empty`` was renamed to ``PathMatchers.Neutral`` [ee7fe47]_.
+ - ``Slash_!`` is gone and ``Slash`` got its semantics. ``PathEnd`` now just matches the end of the path.
+   ``PathDirectives`` were adapted to have the same semantics as before [1480e73]_.
  - ``UserPassAuthenticator.cached`` was renamed to ``CachedUserPassAuthenticator.apply`` [1326046]_.
  - ``PathMatcher.apply`` now takes a ``Path`` prefix instead of a ``String`` [3ff3471]_.
+ - ``PathMatcher.Segments`` doesn't match trailing slashes anymore. Implicit infrastructure for ``PathMatcher.?``
+   was changed [8ee49d7]_.
+ - ``pathEnd`` and `pathEndOrSingleSlash` were introduced to replace the former ``path("")``
+   (see `PathMatcher infrastructure`_) [f0cbf25]_.
+
 
 .. [4d787dc] `remove superfluous RequestContext::complete overloads <http://github.com/spray/spray/commit/4d787dc>`_
 .. [1480e73] `improve PathMatcher infrastructure <http://github.com/spray/spray/commit/1480e73>`_
@@ -195,7 +232,8 @@ spray-routing
 .. [ee7fe47] `redefine PathMatchers.Empty as PathMatchers.Neutral with explicit type annotation, fixes #339 <http://github.com/spray/spray/commit/ee7fe47>`_
 .. [1326046] `move UserPassAuthenticator.cached to CachedUserPassAuthenticator.apply, fixes #352 <http://github.com/spray/spray/commit/1326046>`_
 .. [3ff3471] `change PathMatcher.apply, add PathMatcher.provide method, cosmetic improvements <http://github.com/spray/spray/commit/3ff3471>`_
-
+.. [8ee49d7] `add PathMatcher::repeated modifier, closes #636 <http://github.com/spray/spray/commit/8ee49d7>`_
+.. [f0cbf25] `add pathEnd and pathEndOrSingleSlash directive, closes #628 <http://github.com/spray/spray/commit/f0cbf25>`_
 
 spray-httpx
 ~~~~~~~~~~~
