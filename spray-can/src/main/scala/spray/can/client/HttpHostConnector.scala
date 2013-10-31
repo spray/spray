@@ -76,9 +76,11 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
         slotStates(sender) match {
           case SlotState.Connected(reqs) if reqs.size == rescheduledRequestCount ⇒
             SlotState.Unconnected // "normal" case when a connection was closed
+          case SlotState.Idle ⇒ SlotState.Unconnected
           case SlotState.Connected(reqs) if reqs.size > rescheduledRequestCount ⇒
             SlotState.Connected(reqs drop rescheduledRequestCount) // we've already scheduled new requests onto this connection
-          case x ⇒ throw new IllegalStateException("Unexpected slot state: " + x)
+
+          case SlotState.Unconnected ⇒ throw new IllegalStateException("Unexpected slot state: Unconnected")
         }
       updateSlotState(sender, newState)
       dispatchStrategy.onConnectionStateChange()
