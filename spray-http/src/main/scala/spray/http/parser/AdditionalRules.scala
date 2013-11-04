@@ -30,7 +30,7 @@ private[parser] trait AdditionalRules {
 
   def Challenge = rule {
     AuthScheme ~ zeroOrMore(AuthParam, separator = ListSep) ~~> { (scheme, params) ⇒
-      val (realms, otherParams) = params.partition(_._1 == "realm")
+      val (realms, otherParams) = params.partition(_._1 equalsIgnoreCase "realm")
       HttpChallenge(scheme, realms.headOption.map(_._2).getOrElse(""), otherParams.toMap)
     }
   }
