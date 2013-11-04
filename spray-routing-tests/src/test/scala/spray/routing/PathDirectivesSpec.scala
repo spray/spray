@@ -203,7 +203,7 @@ class PathDirectivesSpec extends RoutingSpec {
     "accept [/foo/] and clear the unmatchedPath" in test("")
   }
 
-  """pathPrefix(IntNumber ~ ("|" ~ IntNumber).repeated)""" in {
+  """pathPrefix(IntNumber.repeat(separator = "|"))""" in {
     val test = testFor(pathPrefix(IntNumber.repeat(separator = "|")) { echoCaptureAndUnmatchedPath })
     "accept [/1|2|3rest]" in test("List(1, 2, 3):rest")
     "accept [/rest]" in test("List():rest")
