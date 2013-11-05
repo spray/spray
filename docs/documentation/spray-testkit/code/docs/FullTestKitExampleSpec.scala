@@ -11,7 +11,7 @@ class FullTestKitExampleSpec extends Specification with Specs2RouteTest with Htt
 
   val smallRoute =
     get {
-      path("") {
+      pathSingleSlash {
         complete {
           <html>
             <body>

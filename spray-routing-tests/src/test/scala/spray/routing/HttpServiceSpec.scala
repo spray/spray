@@ -29,7 +29,7 @@ class HttpServiceSpec extends Specification {
 
   class RootService(subRouteActor: ActorRef) extends HttpServiceActor {
     def receive = runRoute {
-      path("") {
+      pathSingleSlash {
         complete("yeah")
       } ~
         pathPrefix("sub") {

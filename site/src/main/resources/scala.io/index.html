@@ -389,7 +389,7 @@ class MyServiceActor extends HttpServiceActor {
 					<pre style="font-size: 40%"><code data-trim>
 lazy val route = {
   encodeResponse(Gzip) {
-    path("") {
+    pathSingleSlash {
       get {
         redirect("/doc")
       }
@@ -423,7 +423,7 @@ lazy val route = {
           path("accounts") {
             post {
               authorize(user.isAdmin) {
-                content(as[AccountDetails]) { details =>
+                entity(as[AccountDetails]) { details =>
                   complete {
                     (accountService ? NewAccount(details)).mapTo[OpResult]
                   }
