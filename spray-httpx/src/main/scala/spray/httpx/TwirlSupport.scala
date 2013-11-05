@@ -33,7 +33,7 @@ trait TwirlSupport {
     twirlMarshaller[Txt](ContentTypes.`text/plain`)
 
   implicit val twirlXmlMarshaller =
-    twirlMarshaller[Xml](`text/xml`, `text/html`, `application/xhtml+xml`)
+    twirlMarshaller[Xml](`text/xml`)
 
   protected def twirlMarshaller[T](marshalTo: ContentType*): Marshaller[T] =
     Marshaller.delegate[T, String](marshalTo: _*)(_.toString)

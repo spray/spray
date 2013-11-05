@@ -31,6 +31,8 @@ import spray.util._
 trait PathMatcher[L <: HList] extends (Path ⇒ PathMatcher.Matching[L]) { self ⇒
   import PathMatcher._
 
+  def / : PathMatcher[L] = this ~ PathMatchers.Slash
+
   def /[R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]): PathMatcher[prepender.Out] =
     this ~ PathMatchers.Slash ~ other
 

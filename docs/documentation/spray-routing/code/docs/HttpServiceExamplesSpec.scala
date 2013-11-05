@@ -87,7 +87,7 @@ class HttpServiceExamplesSpec extends Specification with NoTimeConversions {
       } ~
       // extract URI path element as Int
       pathPrefix("order" / IntNumber) { orderId =>
-        path("") {
+        pathEnd {
           // method tunneling via query param
           (put | parameter('method ! "put")) {
             // form extraction from multipart or www-url-encoded forms
