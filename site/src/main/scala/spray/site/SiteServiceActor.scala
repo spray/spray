@@ -19,7 +19,6 @@ package spray.site
 import akka.event.Logging._
 import shapeless._
 import spray.routing.directives.{ DirectoryListing, LogEntry }
-import spray.httpx.encoding.Gzip
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.TwirlSupport._
 import spray.http._
@@ -64,36 +63,43 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
               getFromResourceDirectory("sphinx/json/_images")
             } ~
             pathPrefix("scala.io") {
-              path("") {
+              pathEnd {
+                redirect("/scala.io/", MovedPermanently)
+              } ~
+              pathSingleSlash {
                 getFromResource("scala.io/index.html")
               } ~
               getFromResourceDirectory("scala.io")
             } ~
             logRequest(showRequest _) {
-              path("") {
+              pathSingleSlash {
                 complete(page(home()))
               } ~
               pathPrefix("documentation" / Segment / "api") { version =>
-                val dir = "api/"+version+"/"
-                rawPathPrefix(Slash ~ PathEnd)(getFromResource(dir+"index.html")) ~
-                getFromResourceDirectory(dir) ~
-                path("")(redirect("/documentation/"+version+"/api/", MovedPermanently))
+                val dir = s"api/$version/"
+                pathEnd {
+                  redirect(s"/documentation/$version/api/", MovedPermanently)
+                } ~
+                pathSingleSlash {
+                  getFromResource(dir + "index.html")
+                } ~
+                getFromResourceDirectory(dir)
               } ~
               pathSuffixTest(Slash) {
-                path("home") {
+                path("home" /) {
                   redirect("/", MovedPermanently)
                 } ~
-                path("index") {
+                path("index" /) {
                   complete(page(index()))
                 } ~
                 pathPrefixTest("blog") {
-                  path("blog") {
+                  path("blog" /) {
                     complete(page(blogIndex(Main.blog.root.children), Main.blog.root))
                   } ~
-                  path("blog" / "feed") {
+                  path("blog" / "feed" /) {
                     complete(xml.blogAtomFeed())
                   } ~
-                  path("blog" / "category" / Segment) { tag =>
+                  path("blog" / "category" / Segment /) { tag =>
                     Main.blog.posts(tag) match {
                       case Nil => complete(NotFound, page(error404()))
                       case posts => complete(page(blogIndex(posts, tag), Main.blog.root))
