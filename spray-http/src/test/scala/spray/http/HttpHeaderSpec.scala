@@ -110,6 +110,9 @@ class HttpHeaderSpec extends Specification {
     "Authorization" in {
       "Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" =!=
         Authorization(BasicHttpCredentials("Aladdin", "open sesame"))
+      "Authorization: bAsIc QWxhZGRpbjpvcGVuIHNlc2FtZQ==" =!=
+        Authorization(BasicHttpCredentials("Aladdin", "open sesame")).renderedTo(
+          "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==")
       """Authorization: Fancy yes="n:o", nonce=42""" =!=
         Authorization(GenericHttpCredentials("Fancy", Map("yes" -> "n:o", "nonce" -> "42"))).renderedTo(
           """Fancy yes="n:o",nonce=42""")
@@ -265,6 +268,8 @@ class HttpHeaderSpec extends Specification {
     "WWW-Authenticate" in {
       "WWW-Authenticate: Basic realm=WallyWorld" =!=
         `WWW-Authenticate`(HttpChallenge("Basic", "WallyWorld"))
+      "WWW-Authenticate: BaSiC rEaLm=WallyWorld" =!=
+        `WWW-Authenticate`(HttpChallenge("BaSiC", "WallyWorld")).renderedTo("BaSiC realm=WallyWorld")
       "WWW-Authenticate: Basic realm=\"foo<bar\"" =!= `WWW-Authenticate`(HttpChallenge("Basic", "foo<bar"))
       """WWW-Authenticate: Digest
                            realm="testrealm@host.com",
