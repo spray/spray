@@ -58,18 +58,11 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
             complete(NotFound) // fail early in order to prevent error response logging
           } ~
           logRequestResponse(showErrorResponses _) {
+            talkCharts("scala.io") ~
+            talkCharts("wjax") ~
             getFromResourceDirectory("theme") ~
             pathPrefix("_images") {
               getFromResourceDirectory("sphinx/json/_images")
-            } ~
-            pathPrefix("scala.io") {
-              pathEnd {
-                redirect("/scala.io/", MovedPermanently)
-              } ~
-              pathSingleSlash {
-                getFromResource("scala.io/index.html")
-              } ~
-              getFromResourceDirectory("scala.io")
             } ~
             logRequest(showRequest _) {
               pathSingleSlash {
@@ -160,4 +153,14 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
           file.getName.startsWith(".") || file.getName.startsWith("archetype-catalog")))
     }(DirectoryListing.DefaultMarshaller)
 
+  def talkCharts(talk: String) =
+    pathPrefix(talk) {
+      pathEnd {
+        redirect(s"/$talk/", MovedPermanently)
+      } ~
+        pathSingleSlash {
+          getFromResource(talk + "/index.html")
+        } ~
+        getFromResourceDirectory(talk)
+    }
 }

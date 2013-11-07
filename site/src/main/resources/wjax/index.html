@@ -4,9 +4,9 @@
 	<head>
 		<meta charset="utf-8">
 
-		<title>spray: REST on Akka</title>
+		<title>Akka &amp; spray</title>
 
-		<meta name="description" content="spray: REST on Akka">
+		<meta name="description" content="Actors, IO and HTTP">
 		<meta name="author" content="Mathias Doenitz">
 
 		<meta name="apple-mobile-web-app-capable" content="yes" />
@@ -31,49 +31,253 @@
 		<div class="reveal">
 			<div class="slides">
 				<section>
-				  <img id="logo" style="margin-bottom: 50px;" width="80%" src="lib/logo.svg" alt="spray">
-					<h3>REST on Akka</h3>
-					<img id="scalaio-logo" style="width:15%; opacity:0.7" src="lib/logo-scalaio.svg" alt="scala.io">
-					<p>Paris 2013-10-24</p>
+          <p style="top: -30px; position: relative">
+            <img style="margin: 0 30px 30px 0; width: 35%" src="lib/akka-logo.svg" alt="akka">
+            <span style="top: -60px; position: relative">&amp;</span>
+            <img style="margin: 0 0 30px 30px; width: 35%" src="lib/spray-logo.svg" alt="spray">
+          </p>
+					<h3>Actors, IO and HTTP</h3>
+          <p>
+					  <img id="wjax-logo" style="width:16%; opacity:1; margin-right: 30px; vertical-align: middle" src="lib/wjax-logo.svg" alt="W-JAX 13">
+            <span style="font-size: 0.8em">2013-11-07@munich</span>
+          </p>
 					<p>
 						<small>Mathias Doenitz &nbsp;
 							<a href="mailto:mathias(at)spray(dot)io"><i class="fa fa-envelope"></i></a> /
 							<a href="https://github.com/sirthias"><i class="fa fa-github-square"></i></a> /
 							<a href="http://twitter.com/sirthias"><i class="fa fa-twitter-square"></i></a><br/><br/>
-							This presentation: <a href="http://spray.io/scala.io/">http://spray.io/scala.io/</a>
+							This presentation: <a href="http://spray.io/wjax/">http://spray.io/wjax/</a>
 						</small>
 					</p>
 				</section>
 
 				<section>
-					<h2>What is spray?</h2>
-					<ul>
-						<li>embeddable HTTP stack for your<br/>
-							Akka (Scala) applications</li>
- 						<li>focus: HTTP integration layers<br/>
- 						  rather than web applications</li>
- 					  <li>server- and client-side</li>
-					</ul>	
+					<h2>Imagine this task</h2>
+          <p>You are to build a business application</p>
+          <img class="fragment" style="width:70%" src="lib/application-and-clients0.svg" alt="application">
+          <img class="fragment" style="position: absolute; width:70%; margin-left: -70%" src="lib/application-and-clients1.svg" alt="application">
+          <img class="fragment" style="position: absolute; width:70%; margin-left: -70%" src="lib/application-and-clients2.svg" alt="application">
+				  <img class="fragment" style="position: absolute; width:70%; margin-left: -70%" src="lib/application-and-clients3.svg" alt="application">
 				</section>
 
 				<section>
-					<h2>But, why?</h2>
-					<p class="fragment">Isn't HTTP on the JVM a "solved" problem?</p>
-					<p class="fragment">Can't we just use <a href="http://netty.io">Netty</a>?<br/>
-						(or <a href="http://en.wikipedia.org/wiki/Java_Servlet">Servlets</a>,
-						 or <a href="http://restlet.org/">Restlet</a>,
-						 or <a href="http://undertow.io/">Undertow</a>, ...)</p>
-				  <aside class="notes">
-				  	or AsyncHTTPClient
-				  </aside>
+					<h2>This is your hardware</h2>
+					<img class="fragment" style="width:70%" src="lib/hardware0.svg" alt="application">
+          <img class="fragment" style="position: absolute; width:70%; margin-left: -70%; z-index:-1" src="lib/hardware1.svg" alt="application">
+          <img class="fragment" style="position: absolute; width:70%; margin-left: -70%" src="lib/hardware2.svg" alt="application">
 				</section>
 
+        <section>
+          <h2>Challenges</h2>
+          <ul>
+            <li>How to scale gradually?
+              <ul>
+                <li>vertically (up, across cores of one machine)</li>
+                <li>horizontally (out, across many machines)</li>
+              </ul>
+            </li>
+            <li>How to react to
+              <ul>
+                <li>hardware failures?</li>
+                <li>software failures?</li>
+                <li>network failures?</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>How do you do it?</h2>
+          <ul>
+            <li class="fragment">What language(s) do you use?</li>
+            <li class="fragment">What tools/libraries do you use?</li>
+            <li class="fragment">More generally:<br/>What programming paradigm?</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>The scenario is real!</h2>
+          <div class="fragment">
+            <img style="margin-top: -1em" src="lib/moore.svg" alt="35 years of CPU trends">
+            <div style="position: absolute; margin: -59% 0 0 12%; background-color: #002b36">
+              <span>CPU trends over 35 years</span><br/>
+              <small>Source: <a href="http://www.lanl.gov/orgs/hpc/salishan/salishan2011/3moore.pdf">Chuck Moore</a></small>
+            </div>
+          </div>
+          <div class="fragment" style="position: absolute; margin: -40% 0 0 28%; padding: 0.4em; border: 1px solid #eee8d5; background-color: #002b36">
+            <a href="http://www.gotw.ca/publications/concurrency-ddj.htm">"The free lunch is over!"</a>
+          </div>
+        </section>
+
+        <section>
+          <h2>The new opponent: Amdahl's Law</h2>
+          <img class="fragment" style="width: 70%; margin-top: -1em" src="lib/amdahl.svg" alt="Amdahl's Law">
+          <div class="fragment" style="position: absolute; margin: -43% 0 0 32%; padding: 0.4em; color: #002b36; background-color: #eee8d5; font-weight: bold">
+            Parallelisation is key!
+          </div>
+        </section>
+
+        <section>
+          <h2>Our old tools don't cut it</h2>
+          <ul>
+            <li class="fragment">Threads (programmed directly)
+              <ul>
+                <li>high memory overhead</li>
+                <li>starting/stopping is expensive</li>
+                <li>inter-thread communication entirely left to the user</li>
+              </ul>
+            </li>
+            <li class="fragment">Locks/Mutexes/Semaphores/`synchronized`/`volatile`
+              <ul>
+                <li>too little sync: race conditions, wrong results</li>
+                <li>too much sync: deadlocks, poor performance</li>
+                <li>very hard to use correctly</li>
+              </ul>
+            </li>
+            <h3 class="fragment" style="position: absolute; margin: -30% 0 0 20%; padding: 0.4em; border-top: 2px solid white; border-bottom: 2px solid white; background-color: #002b36; -webkit-transform:rotate(30deg); -moz-transform:rotate(30deg)">We need something better!</h3>
+          </ul>
+        </section>
+
+        <section>
+          <h2>The Core Problem</h2>
+          <img class="fragment" style="width:60%" src="lib/state0.svg" alt="Shared Mutable State">
+          <img class="fragment" style="position: absolute; width:60%; margin-left: -60%" src="lib/state1.svg" alt="Shared Mutable State">
+          <img class="fragment" style="position: absolute; width:60%; margin-left: -60%" src="lib/state2.svg" alt="Shared Mutable State">
+          <img class="fragment" style="position: absolute; width:60%; margin-left: -60%" src="lib/state0.svg" alt="Shared Mutable State">
+          <img class="fragment" style="position: absolute; width:60%; margin-left: -60%" src="lib/state3.svg" alt="Shared Mutable State">
+          <img class="fragment" style="position: absolute; width:60%; margin-left: -60%" src="lib/state4.svg" alt="Shared Mutable State">
+        </section>
+
+        <section>
+          <h2>Akka</h2>
+          <p>
+            "A toolkit and runtime for building<br/>
+            highly concurrent, distributed, and fault-tolerant<br/>
+            event-driven applications on the JVM"
+          </p>
+          <small>Source: <a href="http://akka.io">http://akka.io</a></small>
+        </section>
+
+        <section>
+          <h2>Akka's Promise</h2>
+          <p>
+            "Build powerful concurrent &amp; distributed<br/>applications more easily"
+          </p>
+          <small>Source: <a href="http://akka.io">http://akka.io</a></small>
+        </section>
+
+        <section>
+          <h2>Core abstraction: Actor</h2>
+          <ul>
+            <li>a lightweight isolated "process"</li>
+            <li>contains state and "behavior"</li>
+            <li>communicates only via async &amp; immutable messages<br/>(share nothing)</li>
+            <li>has a mailbox (message queue)</li>
+            <li>is supervised by its parent (for managing failure)</li>
+            <li>is location transparent (distributable)</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>An Actor in Scala</h2>
+          <pre style="width: 65%"><code data-trim>
+class CountingActor extends Actor {
+  var counter = 0
+  def receive = {
+    case "ping"  ⇒ println("received ping")
+    case "count" ⇒ counter += 1
+    case "get"   ⇒ sender ! counter
+  }
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Actors vs. Objects</h2>
+          <ul>
+            <li class="no-bullet">An actor <em>is</em> an object, but</li>
+            <li>you can't peek inside it</li>
+            <li>you don't call methods (but send messages)</li>
+            <li>you don't get return values (but receive messages)</li>
+            <li>is internally thread-safe</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Actor Benefits</h2>
+          <ul>
+            <li><a href="https://twitter.com/taidevcouk/status/382212913458475009">"An island of sanity in a sea of concurrency"</a>
+              <ul>
+                <li>processes one message at a time</li>
+                <li>runs purely sequential easy-to-understand logic</li>
+              </ul>
+            </li>
+            <li>very lightweight (~400 bytes)</li>
+            <li>can be constructed and torn down very quickly</li>
+            <li>leaves scheduling complexities to runtime</li>
+            <li>promotes high-granularity modulization</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>A different programming paradigm</h2>
+          <ul>
+            <li class="no-bullet">well-suited for building <em>reactive</em> systems that are</li>
+            <li>event-driven</li>
+            <li>scalable</li>
+            <li>resilient</li>
+            <li>responsive</li>
+            <li class="no-bullet"><i class="fa fa-reply fa-rotate-180"></i>&nbsp; <a href="http://www.reactivemanifesto.org/">http://www.reactivemanifesto.org/</a></li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Akka: more than just actors</h2>
+          <ul>
+            <li>Scala- and Java APIs across the board</li>
+            <li><em>akka-actor</em>: actors</li>
+            <li><em>akka-cluster</em>: fault-tolerant, decentralized<br/>peer-to-peer cluster membership service</li>
+            <li><em>akka-io</em>: low-level network IO (TCP and UDP)</li>
+            <li><em>akka-persistence</em>: event-sourcing (coming soon)</li>
+            <li><em>akka-http</em>: HTTP/REST (soon, today: <a href="http://spray.io">http://spray.io</a>)</li>
+          </ul>
+        </section>
+
 				<section>
-				  <h2>Yes, we can</h2>
+          <img style="margin-bottom: 50px;" width="80%" src="lib/spray-logo.svg" alt="spray"><br/>
+          <small><a href="http://spray.io">http://spray.io</a></small>
+        </section>
+
+        <section>
+          <h2>What is spray?</h2>
+          <ul>
+            <li>embeddable HTTP stack for your<br/>
+              Akka (Scala) applications</li>
+            <li>focus: HTTP integration layers<br/>
+              rather than web applications</li>
+            <li>server- and client-side</li>
+          </ul> 
+        </section>
+
+        <section>
+          <h2>But, why?</h2>
+          <p class="fragment">Isn't HTTP on the JVM a "solved" problem?</p>
+          <p class="fragment">Can't we just use <a href="http://netty.io">Netty</a>?<br/>
+            (or <a href="http://en.wikipedia.org/wiki/Java_Servlet">Servlets</a>,
+             or <a href="http://restlet.org/">Restlet</a>,
+             or <a href="http://undertow.io/">Undertow</a>, ...)</p>
+          <aside class="notes">
+            or AsyncHTTPClient
+          </aside>
+        </section>
+
+        <section>
+          <h2>Yes, we can</h2>
           <p>(it's being done all the time)</p>
           <br/>
-					<h2 class="fragment">But: Do we want to?</h2>
-				</section>
+          <h2 class="fragment">But: Do we want to?</h2>
+        </section>
+
 
 				<section>
 				  <h2>Not really!</h2>
@@ -219,7 +423,7 @@ case class RawHeader(name: String, value: String)
 
 				<section>
 				  <h2>Low-level HTTP layer</h2>
-				  <ul>
+				  <ul class="fragment">
 						<li>directly sits on top of the new Akka IO</li>
 						<li>performs TCP <i class="fa fa-resize-horizontal"></i> HTTP "translation"</li>
 						<li>cleanly separated layer of actors<br/>
@@ -327,7 +531,7 @@ class PingPongService extends Actor {
 
 				<section>
 				  <h2>spray-routing</h2>
-				  <ul>
+				  <ul class="fragment">
 						<li>internal DSL for the direct interface layer to the application</li>
 						<li>type-safe, yet flexible (thanks to <a href="https://github.com/milessabin/shapeless">shapeless)</a></li>
 						<li>much more than just routing: behavior definition</li>
@@ -338,7 +542,13 @@ class PingPongService extends Actor {
 
 				<section>
 				  <h2>API Layer: How it fits in</h2>
-				  <img width="100%" src="lib/diagram3.svg" alt="API layer">
+          <img class="fragment" style="width:80%" src="lib/api0.svg" alt="application">
+          <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="lib/api1.svg" alt="API layer">
+          <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="lib/api2.svg" alt="API layer">
+          <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="lib/api3.svg" alt="API layer">
+          <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="lib/api4.svg" alt="API layer">
+          <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="lib/api5.svg" alt="API layer">
+          <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="lib/api6.svg" alt="API layer">
 				</section>
 
 				<section>
@@ -376,7 +586,7 @@ class MyServiceActor extends HttpServiceActor {
 				</section>
 
 				<section>
-				  <h2>Predefined Directives (RC1)</h2>
+				  <h2>Predefined Directives (RC2)</h2>
 				  <p style="font-size: 60%">alwaysCache, anyParam, anyParams, authenticate, authorize, autoChunk, cache, cachingProhibited, cancelAllRejections, cancelRejection, clientIP, complete, compressResponse, compressResponseIfRequested, cookie, decodeRequest, decompressRequest, delete, deleteCookie, detach, dynamic, dynamicIf, encodeResponse, entity, extract, failWith, formField, formFields, get, getFromBrowseableDirectories, getFromBrowseableDirectory, getFromDirectory, getFromFile, getFromResource, getFromResourceDirectory, handleExceptions, handleRejections, handleWith, head, headerValue, headerValueByName, headerValuePF, hextract, host, hostName, hprovide, jsonpWithParameter, listDirectoryContents, logRequest, logRequestResponse, logResponse, mapHttpResponse, mapHttpResponseEntity, mapHttpResponseHeaders, mapHttpResponsePart, mapInnerRoute, mapRejections, mapRequest, mapRequestContext, mapRouteResponse, mapRouteResponsePF, method, noop, onComplete, onFailure, onSuccess, optionalCookie, optionalHeaderValue, optionalHeaderValueByName, optionalHeaderValuePF, options, overrideMethodWithParameter, parameter, parameterMap, parameterMultiMap, parameters, parameterSeq, pass, patch, path, pathPrefix, pathPrefixTest, pathSuffix, pathSuffixTest, post, produce, provide, put, rawPath, rawPathPrefix, rawPathPrefixTest, redirect, reject, rejectEmptyResponse, requestEncodedWith, requestEntityEmpty, requestEntityPresent, respondWithHeader, respondWithHeaders, respondWithLastModifiedHeader, respondWithMediaType, respondWithSingletonHeader, respondWithSingletonHeaders, respondWithStatus, responseEncodingAccepted, rewriteUnmatchedPath, routeRouteResponse, scheme, schemeName, setCookie, unmatchedPath, validate</p>
 				</section>
 
@@ -385,7 +595,7 @@ class MyServiceActor extends HttpServiceActor {
 					<pre style="font-size: 40%"><code data-trim>
 lazy val route = {
   encodeResponse(Gzip) {
-    pathSingleSlash {
+    path("") {
       get {
         redirect("/doc")
       }
@@ -419,7 +629,7 @@ lazy val route = {
           path("accounts") {
             post {
               authorize(user.isAdmin) {
-                entity(as[AccountDetails]) { details =>
+                content(as[AccountDetails]) { details =>
                   complete {
                     (accountService ? NewAccount(details)).mapTo[OpResult]
                   }
@@ -464,16 +674,16 @@ lazy val route = {
 						<li>Don’t let API layer leak into application</li>
 						<li>Use (Un)marshalling infrastructure</li>
 						<li>Think about error handling/reporting<br/>right from the start</li>
-						<li>Use sbt-revolver for fast dev turn-around</li>
+						<li>Use <a href="https://github.com/spray/sbt-revolver‎">sbt-revolver</a> for fast dev turn-around</li>
 					</ul>
 				</section>
 
 				<section>
 				  <h2>There is more...</h2>
 				  <ul>
-						<li>spray-servlet</li>
+						<li><a href="http://spray.io/documentation/1.2-RC2/spray-servlet/">spray-servlet</a></li>
 						<li>Request/response streaming</li>
-						<li>Testing routes</li>
+						<li><a href="http://spray.io/documentation/1.2-RC2/spray-testkit/">Testing routes</a></li>
 						<li>client-side APIs</li>
 						<li>JSON support</li>
 						<li>...</li>
@@ -483,9 +693,9 @@ lazy val route = {
 				<section>
 				  <h2>What's next?</h2>
 				  <ul>
-						<li>RC1 for spray 1.0 / 1.1 / 1.2 just released</li>
-						<li>after the final: <em>spray</em> becomes <em>akka-http</em></li>
-						<li>Play will gradually move onto <em>akka-http</em></li>
+						<li>RC3 for spray 1.0 / 1.1 / 1.2</li>
+						<li>after the final: <a href="http://typesafe.com/blog/typesafe-gets-sprayed"><em>spray</em> becomes <em>akka-http</em></a></li>
+						<li><a href="http://www.playframework.com">Play</a> will gradually move onto <em>akka-http</em></li>
 						<li>Improvements, features, rounding off
 							<ul>
 								<li>websockets</li>
@@ -498,12 +708,16 @@ lazy val route = {
 				<section>
 				  <h2>Getting started</h2>
 				  <ul>
-						<li>Main site &amp; documentation:<br/>
-							<a href="http://spray.io">http://spray.io</a></li>
-						<li>Mailing list:<br/>
-							<a href="http://groups.google.com/group/spray-user"> http://groups.google.com/group/spray-user</a></li>
+						<li>Main sites &amp; documentation:<br/>
+              <a href="http://akka.io">http://akka.io</a><br/>
+							<a href="http://spray.io">http://spray.io</a>
+            </li>
+						<li>Mailing lists:<br/>
+              <a href="http://groups.google.com/group/akka-user"> http://groups.google.com/group/akka-user</a><br/>
+							<a href="http://groups.google.com/group/spray-user"> http://groups.google.com/group/spray-user</a>
+            </li>
 						<li>Twitter: <br/>
-							<a href="https://twitter.com/sprayio">@sprayio</a></li>
+							<a href="https://twitter.com/akkateam">@akkateam</a>, <a href="https://twitter.com/sprayio">@sprayio</a></li>
 					</ul>
 				</section>
 
@@ -530,7 +744,7 @@ lazy val route = {
 				history: true,
 				center: true,
 
-				theme: 'sirthias',
+				theme: Reveal.getQueryHash().theme || 'sirthias', // available themes are in /css/theme
 				transition: Reveal.getQueryHash().transition || 'fade', // default/cube/page/concave/zoom/linear/fade/none
 
 				transitionSpeed: 'fast',
