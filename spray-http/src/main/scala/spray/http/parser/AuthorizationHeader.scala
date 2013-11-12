@@ -38,7 +38,7 @@ private[parser] trait AuthorizationHeader {
   }
 
   def BasicCredentialDef = rule {
-    ignoreCase("Basic ") ~ BasicCookie ~> (BasicHttpCredentials(_))
+    ignoreCase("Basic") ~ LWS ~ BasicCookie ~> (BasicHttpCredentials(_))
   }
 
   def BasicCookie = rule {
@@ -46,7 +46,11 @@ private[parser] trait AuthorizationHeader {
   }
 
   def OAuth2BearerTokenDef = rule {
-    ignoreCase("Bearer ") ~ Token ~~> (OAuth2BearerToken(_))
+    ignoreCase("Bearer") ~ LWS ~ B64token ~> OAuth2BearerToken
+  }
+
+  def B64token = rule {
+    oneOrMore(AlphaNum | anyOf("-._~+/")) ~ zeroOrMore("=")
   }
 
   def GenericHttpCredentialsDef = rule(
