@@ -49,7 +49,7 @@ private sealed trait OpenRequest {
   def handleMessageChunk(chunk: MessageChunk)
   def handleChunkedMessageEnd(part: ChunkedMessageEnd)
   def handleSentAckAndReturnNextUnconfirmed(ev: AckEventWithReceiver): OpenRequest
-  def handleClosed(ev: Http.ConnectionClosed): Set[ActorRef]
+  def closedEventHandlers: Set[ActorRef]
 
   def isWaitingForChunkHandler: Boolean
 }
@@ -196,18 +196,14 @@ private trait OpenRequestComponent { component ⇒
       if (pendingSentAcks == 0) nextInChain else this
     }
 
-    def handleClosed(ev: Http.ConnectionClosed): Set[ActorRef] = {
-      val handler =
-        state match {
-          case ReceivingRequestChunks(chunkHandler)   ⇒ chunkHandler
-          case WaitingForResponse(handler, _)         ⇒ handler
-          case StreamingResponseChunks(lastSender)    ⇒ lastSender
-          case WaitingForFinalResponseAck(lastSender) ⇒ lastSender
-          case _                                      ⇒ context.handler
-        }
-      if (nextInChain.isEmpty) closeAfterResponseCompletion = true
-      nextInChain.handleClosed(ev) + handler
-    }
+    def closedEventHandlers: Set[ActorRef] =
+      nextInChain.closedEventHandlers + (state match {
+        case ReceivingRequestChunks(chunkHandler)   ⇒ chunkHandler
+        case WaitingForResponse(handler, _)         ⇒ handler
+        case StreamingResponseChunks(lastSender)    ⇒ lastSender
+        case WaitingForFinalResponseAck(lastSender) ⇒ lastSender
+        case _                                      ⇒ context.handler
+      })
 
     /***** PRIVATE *****/
 
@@ -262,7 +258,7 @@ private trait OpenRequestComponent { component ⇒
     def handleSentAckAndReturnNextUnconfirmed(ev: AckEventWithReceiver) =
       throw new IllegalStateException("Received unmatched send confirmation: " + ev.ack)
 
-    def handleClosed(ev: Http.ConnectionClosed): Set[ActorRef] = Set.empty
+    def closedEventHandlers: Set[ActorRef] = Set.empty
     def isWaitingForChunkHandler: Boolean = false
   }
 

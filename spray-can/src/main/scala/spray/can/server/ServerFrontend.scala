@@ -144,12 +144,10 @@ private object ServerFrontend {
             case ev: Http.ConnectionClosed ⇒
               def sendClosed(receiver: ActorRef) = downstreamCommandPL(Pipeline.Tell(receiver, ev, context.self))
 
-              val interestedParties = firstUnconfirmed.handleClosed(ev) + context.handler
+              val interestedParties = firstUnconfirmed.closedEventHandlers + context.handler
               interestedParties.foreach(sendClosed)
 
-              if (ev ne Http.PeerClosed) eventPL(ev) // will stop this actor
-              else if (firstUnconfirmed.isEmpty) downstreamCommandPL(Tcp.Close) // idle connection, close actively
-            // else if (ev == PeerClosed) last in chain will close the connection eventually
+              eventPL(ev)
 
             case TickGenerator.Tick ⇒
               if (requestTimeout.isFinite())
