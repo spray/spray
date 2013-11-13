@@ -159,16 +159,12 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   def withEffectiveUri(securedConnection: Boolean, defaultHostHeader: Host = Host.empty): HttpRequest = {
     val hostHeader = header[Host]
     if (uri.isRelative) {
+      def fail(detail: String) =
+        sys.error("Cannot establish effective request URI of " + this + ", request has a relative URI and " + detail)
       val Host(host, port) = hostHeader match {
-        case None ⇒
-          if (defaultHostHeader.isEmpty)
-            sys.error("Cannot establish effective request URI, request has a relative URI and is missing a `Host` header")
-          else defaultHostHeader
-        case Some(x) if x.isEmpty ⇒
-          if (defaultHostHeader.isEmpty)
-            sys.error("Cannot establish effective request URI, request has a relative URI and an empty `Host` header")
-          else defaultHostHeader
-        case Some(x) ⇒ x
+        case None                 ⇒ if (defaultHostHeader.isEmpty) fail("is missing a `Host` header") else defaultHostHeader
+        case Some(x) if x.isEmpty ⇒ if (defaultHostHeader.isEmpty) fail("an empty `Host` header") else defaultHostHeader
+        case Some(x)              ⇒ x
       }
       copy(uri = uri.toEffectiveHttpRequestUri(Uri.Host(host), port, securedConnection))
     } else // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.4
