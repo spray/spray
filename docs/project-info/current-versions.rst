@@ -32,6 +32,7 @@ Currently the first release candidate for *spray* 1.0/1.1/1.2 is available, plea
 
 - | *spray* |1.2| is built against Scala 2.10.3 and Akka 2.2.3.
   | It's sources live in the `release/1.2`_ branch of the *spray* repository.
+  | (Please note that Akka 2.2.3 or later is *required*, earlier Akka versions will *not* work!)
 
 For information about where to find the *spray* artifacts please check out the :ref:`maven-repo` chapter.
 
