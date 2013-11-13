@@ -80,7 +80,7 @@ class FormFieldDirectivesSpec extends RoutingSpec {
     "extract an uploaded FormFile from multipart form fields" in {
       Get("/", multipartFormWithFile) ~> {
         formFields('file.as[FormFile]) { file ⇒
-          complete(s"type ${file.entity.contentType.mediaRange} length ${file.entity.data.length} filename ${file.name.get}")
+          complete(s"type ${file.entity.contentType.mediaType} length ${file.entity.data.length} filename ${file.name.get}")
         }
       } ~> check { responseAs[String] === "type text/xml length 13 filename age.xml" }
     }

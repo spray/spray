@@ -154,13 +154,13 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
         errorMsg = "Request is missing required `Host` header")
       "when an HTTP/1.0 request has no Host header and no default-host-header is configured" in errorTest(
         request = "GET / HTTP/1.0",
-        errorMsg = "Cannot establish effective request URI, request has a relative URI and is missing a `Host` header")
+        errorMsg = "request has a relative URI and is missing a `Host` header")
       "when an HTTP/1.1 request has an empty Host header and no default-host-header is configured" in errorTest(
         request = "GET / HTTP/1.1\r\nHost:",
-        errorMsg = "Cannot establish effective request URI, request has a relative URI and an empty `Host` header")
+        errorMsg = "request has a relative URI and an empty `Host` header")
       "when an HTTP/1.0 request has an empty Host header and no default-host-header is configured" in errorTest(
         request = "GET / HTTP/1.0\r\nHost:",
-        errorMsg = "Cannot establish effective request URI, request has a relative URI and an empty `Host` header")
+        errorMsg = "request has a relative URI and an empty `Host` header")
       "when the request has an ill-formed URI" in errorTest(
         request = "GET http://host:naaa HTTP/1.1",
         errorMsg =

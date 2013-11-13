@@ -20,7 +20,7 @@ import java.util.Arrays.copyOf
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import org.parboiled.scala.rules.Rule1
 import scala.annotation.tailrec
-import akka.util.CompactByteString
+import akka.util.ByteString
 import spray.http.parser.HttpParser
 import spray.util.SingletonException
 import spray.http._
@@ -108,7 +108,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
    * line ending from a line fold.
    * If the header is invalid a respective `ParsingException` is thrown.
    */
-  @tailrec def parseHeaderLine(input: CompactByteString, lineStart: Int = 0)(cursor: Int = lineStart, nodeIx: Int = 0): Int = {
+  @tailrec def parseHeaderLine(input: ByteString, lineStart: Int = 0)(cursor: Int = lineStart, nodeIx: Int = 0): Int = {
     def startValueBranch(rootValueIx: Int, valueParser: HeaderValueParser) = {
       val (header, endIx) = valueParser(input, cursor, warnOnIllegalHeader)
       if (valueParser.maxValueCount > 0)
@@ -149,7 +149,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
     }
   }
 
-  private def parseRawHeader(input: CompactByteString, lineStart: Int, cursor: Int, nodeIx: Int): Int = {
+  private def parseRawHeader(input: ByteString, lineStart: Int, cursor: Int, nodeIx: Int): Int = {
     val colonIx = scanHeaderNameAndReturnIndexOfColon(input, lineStart, lineStart + maxHeaderNameLength)(cursor)
     val headerName = asciiString(input, lineStart, colonIx)
     try {
@@ -164,7 +164,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
     }
   }
 
-  @tailrec private def parseHeaderValue(input: CompactByteString, valueStart: Int, branch: ValueBranch)(cursor: Int = valueStart, nodeIx: Int = branch.branchRootNodeIx): Int = {
+  @tailrec private def parseHeaderValue(input: ByteString, valueStart: Int, branch: ValueBranch)(cursor: Int = valueStart, nodeIx: Int = branch.branchRootNodeIx): Int = {
     def parseAndInsertHeader() = {
       val (header, endIx) = branch.parser(input, valueStart, warnOnIllegalHeader)
       if (branch.spaceLeft)
@@ -203,7 +203,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
    * - the input does not contain illegal characters
    * - the input is not a prefix of an already stored value, i.e. the input must be properly terminated (CRLF or colon)
    */
-  @tailrec def insert(input: CompactByteString, value: AnyRef)(cursor: Int = 0, endIx: Int = input.length, nodeIx: Int = 0, colonIx: Int = 0): Unit = {
+  @tailrec def insert(input: ByteString, value: AnyRef)(cursor: Int = 0, endIx: Int = input.length, nodeIx: Int = 0, colonIx: Int = 0): Unit = {
     val char =
       if (cursor < colonIx) toLowerCase(input(cursor).toChar)
       else if (cursor < endIx) input(cursor).toChar
@@ -246,7 +246,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
    * Inserts a value into the cache trie as new nodes.
    * CAUTION: this method must only be called if the trie data have already been "unshared"!
    */
-  @tailrec def insertRemainingCharsAsNewNodes(input: CompactByteString, value: AnyRef)(cursor: Int = 0, endIx: Int = input.length, valueIx: Int = newValueIndex, colonIx: Int = 0): Unit = {
+  @tailrec def insertRemainingCharsAsNewNodes(input: ByteString, value: AnyRef)(cursor: Int = 0, endIx: Int = input.length, valueIx: Int = newValueIndex, colonIx: Int = 0): Unit = {
     val newNodeIx = newNodeIndex
     if (cursor < endIx) {
       val c = input(cursor).toChar
@@ -418,10 +418,10 @@ private object HttpHeaderParser {
           items(pivot) match {
             case valueParser: HeaderValueParser ⇒
               val insertName = valueParser.headerName.toLowerCase + ':'
-              if (parser.isEmpty) parser.insertRemainingCharsAsNewNodes(CompactByteString(insertName), valueParser)()
-              else parser.insert(CompactByteString(insertName), valueParser)()
+              if (parser.isEmpty) parser.insertRemainingCharsAsNewNodes(ByteString(insertName), valueParser)()
+              else parser.insert(ByteString(insertName), valueParser)()
             case header: String ⇒
-              parser.parseHeaderLine(CompactByteString(header + "\r\nx"))()
+              parser.parseHeaderLine(ByteString(header + "\r\nx"))()
           }
           insertInGoodOrder(items)(startIx, pivot)
           insertInGoodOrder(items)(pivot + 1, endIx)
@@ -429,20 +429,20 @@ private object HttpHeaderParser {
       insertInGoodOrder(valueParsers.sortBy(_.headerName))()
       insertInGoodOrder(specializedHeaderValueParsers)()
       insertInGoodOrder(predefinedHeaders.sorted)()
-      parser.insert(CompactByteString("\r\n"), EmptyHeader)()
+      parser.insert(ByteString("\r\n"), EmptyHeader)()
     }
     parser
   }
 
   abstract class HeaderValueParser(val headerName: String, val maxValueCount: Int) {
-    def apply(input: CompactByteString, valueStart: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int)
+    def apply(input: ByteString, valueStart: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int)
     override def toString: String = s"HeaderValueParser[$headerName]"
   }
 
   def modelledHeaderValueParser(headerName: String, parserRule: Rule1[HttpHeader], maxHeaderValueLength: Int,
                                 maxValueCount: Int) =
     new HeaderValueParser(headerName, maxValueCount) {
-      def apply(input: CompactByteString, valueStart: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = {
+      def apply(input: ByteString, valueStart: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = {
         val (headerValue, endIx) = scanHeaderValue(input, valueStart, valueStart + maxHeaderValueLength)()
         val trimmedHeaderValue = headerValue.trim
         val header = HttpParser.parse(parserRule, trimmedHeaderValue) match {
@@ -457,13 +457,13 @@ private object HttpHeaderParser {
 
   def rawHeaderValueParser(headerName: String, maxHeaderValueLength: Int, maxValueCount: Int) =
     new HeaderValueParser(headerName, maxValueCount) {
-      def apply(input: CompactByteString, valueStart: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = {
+      def apply(input: ByteString, valueStart: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = {
         val (headerValue, endIx) = scanHeaderValue(input, valueStart, valueStart + maxHeaderValueLength)()
         RawHeader(headerName, headerValue.trim) -> endIx
       }
     }
 
-  @tailrec private def scanHeaderNameAndReturnIndexOfColon(input: CompactByteString, start: Int,
+  @tailrec private def scanHeaderNameAndReturnIndexOfColon(input: ByteString, start: Int,
                                                            maxHeaderNameEndIx: Int)(ix: Int = start): Int =
     if (ix < maxHeaderNameEndIx)
       byteChar(input, ix) match {
@@ -473,7 +473,7 @@ private object HttpHeaderParser {
       }
     else fail(s"HTTP header name exceeds the configured limit of ${maxHeaderNameEndIx - start} characters")
 
-  @tailrec private def scanHeaderValue(input: CompactByteString, start: Int, maxHeaderValueEndIx: Int)(sb: JStringBuilder = null, ix: Int = start): (String, Int) = {
+  @tailrec private def scanHeaderValue(input: ByteString, start: Int, maxHeaderValueEndIx: Int)(sb: JStringBuilder = null, ix: Int = start): (String, Int) = {
     def spaceAppended = (if (sb != null) sb else new JStringBuilder(asciiString(input, start, ix))).append(' ')
     if (ix < maxHeaderValueEndIx)
       byteChar(input, ix) match {

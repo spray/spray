@@ -30,9 +30,14 @@ private[parser] trait AcceptHeader {
     MediaRangeDef ~ zeroOrMore(";" ~ Parameter) ~~> { (main, sub, params) ⇒
       if (sub == "*") {
         val mainLower = main.toLowerCase
-        if (params.isEmpty) MediaRanges.getForKey(mainLower) getOrElse MediaRange.custom(mainLower)
-        else MediaRange.custom(mainLower, params.toMap)
-      } else getMediaType(main, sub, params.toMap)
+        MediaRanges.getForKey(mainLower) match {
+          case Some(registered) ⇒ if (params.isEmpty) registered else registered.withParameters(params.toMap)
+          case None             ⇒ MediaRange.custom(mainLower, params.toMap)
+        }
+      } else {
+        val (p, q) = MediaRange.splitOffQValue(params.toMap)
+        MediaRange(getMediaType(main, sub, p), q)
+      }
     }
   }
 

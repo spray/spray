@@ -19,7 +19,7 @@ package spray.can.parsing
 import org.specs2.mutable.Specification
 import com.typesafe.config.{ ConfigFactory, Config }
 import scala.annotation.tailrec
-import akka.util.CompactByteString
+import akka.util.ByteString
 import akka.actor.ActorSystem
 import spray.util._
 import spray.http._
@@ -375,7 +375,7 @@ class RequestParserSpec extends Specification {
 
   def rawParse(parser: Parser)(rawRequest: String*): Seq[Any] = {
     def closeSymbol(close: Boolean) = if (close) 'close else 'dontClose
-    @tailrec def rec(current: Result, remainingData: List[CompactByteString], result: Seq[Any] = Seq.empty): Seq[Any] =
+    @tailrec def rec(current: Result, remainingData: List[ByteString], result: Seq[Any] = Seq.empty): Seq[Any] =
       current match {
         case Result.Emit(HttpRequest(m, u, h, e, p), c, continue) ⇒
           rec(continue(), remainingData, result ++ Seq(m, u, p, h, e.asString, closeSymbol(c)))
@@ -391,7 +391,7 @@ class RequestParserSpec extends Specification {
         case x                                 ⇒ Seq(x)
       }
 
-    val data: List[CompactByteString] = rawRequest.map(CompactByteString.apply)(collection.breakOut)
+    val data: List[ByteString] = rawRequest.map(ByteString.apply)(collection.breakOut)
     rec(parser(data.head), data.tail)
   }
 

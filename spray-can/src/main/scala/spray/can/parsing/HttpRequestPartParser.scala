@@ -18,7 +18,7 @@ package spray.can.parsing
 
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import scala.annotation.tailrec
-import akka.util.CompactByteString
+import akka.util.ByteString
 import spray.http._
 import HttpMethods._
 import StatusCodes._
@@ -35,7 +35,7 @@ private[can] class HttpRequestPartParser(_settings: ParserSettings, rawRequestUr
   def copyWith(warnOnIllegalHeader: ErrorInfo ⇒ Unit): HttpRequestPartParser =
     new HttpRequestPartParser(settings, rawRequestUriHeader)(headerParser.copyWith(warnOnIllegalHeader))
 
-  def parseMessage(input: CompactByteString, offset: Int): Result = {
+  def parseMessage(input: ByteString, offset: Int): Result = {
     var cursor = parseMethod(input, offset)
     cursor = parseRequestTarget(input, cursor)
     cursor = parseProtocol(input, cursor)
@@ -44,7 +44,7 @@ private[can] class HttpRequestPartParser(_settings: ParserSettings, rawRequestUr
     else badProtocol
   }
 
-  def parseMethod(input: CompactByteString, cursor: Int): Int = {
+  def parseMethod(input: ByteString, cursor: Int): Int = {
     @tailrec def parseCustomMethod(ix: Int = 0, sb: JStringBuilder = new JStringBuilder(16)): Int =
       if (ix < 16) { // hard-coded maximum custom method length
         byteChar(input, cursor + ix) match {
@@ -83,7 +83,7 @@ private[can] class HttpRequestPartParser(_settings: ParserSettings, rawRequestUr
     }
   }
 
-  def parseRequestTarget(input: CompactByteString, cursor: Int): Int = {
+  def parseRequestTarget(input: ByteString, cursor: Int): Int = {
     val uriStart = cursor
     val uriEndLimit = cursor + settings.maxUriLength
 
@@ -107,7 +107,7 @@ private[can] class HttpRequestPartParser(_settings: ParserSettings, rawRequestUr
   def badProtocol = throw new ParsingException(HTTPVersionNotSupported)
 
   // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-3.3
-  def parseEntity(headers: List[HttpHeader], input: CompactByteString, bodyStart: Int, clh: Option[`Content-Length`],
+  def parseEntity(headers: List[HttpHeader], input: ByteString, bodyStart: Int, clh: Option[`Content-Length`],
                   cth: Option[`Content-Type`], teh: Option[`Transfer-Encoding`], hostHeaderPresent: Boolean,
                   closeAfterResponseCompletion: Boolean): Result =
     if (hostHeaderPresent || protocol == HttpProtocols.`HTTP/1.0`) {

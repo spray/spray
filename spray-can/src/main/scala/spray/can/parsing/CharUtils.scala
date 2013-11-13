@@ -17,7 +17,7 @@
 package spray.can.parsing
 
 import scala.collection.immutable.NumericRange
-import akka.util.CompactByteString
+import akka.util.ByteString
 import scala.annotation.tailrec
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
 
@@ -69,10 +69,10 @@ private object CharUtils {
     case x                              ⇒ x.toString
   }
 
-  def byteChar(input: CompactByteString, ix: Int): Char =
+  def byteChar(input: ByteString, ix: Int): Char =
     if (ix < input.length) input(ix).toChar else throw NotEnoughDataException
 
-  def asciiString(input: CompactByteString, start: Int, end: Int): String = {
+  def asciiString(input: ByteString, start: Int, end: Int): String = {
     @tailrec def build(ix: Int = start, sb: JStringBuilder = new JStringBuilder(end - start)): String =
       if (ix == end) sb.toString else build(ix + 1, sb.append(input(ix).toChar))
     if (start == end) "" else build()

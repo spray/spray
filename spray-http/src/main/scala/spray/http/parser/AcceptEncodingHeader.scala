@@ -19,24 +19,27 @@ package parser
 
 import org.parboiled.scala._
 import BasicRules._
-import HttpEncodings._
 
 private[parser] trait AcceptEncodingHeader {
   this: Parser with ProtocolParameterRules ⇒
 
   def `*Accept-Encoding` = rule(
-    (oneOrMore(EncodingRangeDecl, separator = ListSep) | push(Seq(HttpEncodings.identity))) ~ EOI
+    (oneOrMore(EncodingRangeDecl, separator = ListSep) | push(Seq(HttpEncodingRange(HttpEncodings.identity)))) ~ EOI
       ~~> (HttpHeaders.`Accept-Encoding`(_)))
 
-  def EncodingRangeDecl = rule(
-    EncodingRangeDef ~ optional(EncodingQuality))
-
-  def EncodingRangeDef = rule(
-    "*" ~ push(`*`)
-      | ContentCoding ~~> (x ⇒ getForKey(x.toLowerCase) getOrElse (HttpEncoding.custom(x))))
-
-  def EncodingQuality = rule {
-    ";" ~ "q" ~ "=" ~ QValue // TODO: support encoding quality
+  def EncodingRangeDecl = rule {
+    EncodingRangeDef ~ optional(EncodingQuality) ~~> { (range, optQ) ⇒
+      optQ match {
+        case None    ⇒ range
+        case Some(q) ⇒ range withQValue q
+      }
+    }
   }
 
+  def EncodingRangeDef = rule("*" ~ push(HttpEncodingRange.`*`) | ContentCoding ~~> getEncoding)
+
+  def EncodingQuality = rule(";" ~ "q" ~ "=" ~ QValue)
+
+  private val getEncoding: String ⇒ HttpEncodingRange =
+    name ⇒ HttpEncodingRange(HttpEncodings.getForKey(name.toLowerCase) getOrElse HttpEncoding.custom(name))
 }

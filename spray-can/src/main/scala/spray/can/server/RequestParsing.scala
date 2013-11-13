@@ -19,7 +19,7 @@ package spray.can.server
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import akka.io.Tcp
-import akka.util.{ CompactByteString, ByteString }
+import akka.util.ByteString
 import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.Http
 import spray.can.parsing._
@@ -83,7 +83,7 @@ private[can] object RequestParsing {
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case Tcp.Received(data: CompactByteString) ⇒
+            case Tcp.Received(data) ⇒
               try handleParsingResult(parser(data))
               catch {
                 case e: ExceptionWithErrorInfo ⇒ handleError(StatusCodes.BadRequest, e.info)

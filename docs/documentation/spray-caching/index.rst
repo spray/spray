@@ -39,12 +39,15 @@ Afterwards just ``import spray.caching._`` to bring all relevant identifiers int
 The `Cache` Interface
 ---------------------
 
-All *spray-caching* cache implementations implement the Cache_ trait, which allow you to interact with the cache
-in through six methods:
+All *spray-caching* cache implementations implement the Cache_ trait, which allows you to interact with the cache
+through six methods:
 
 .. rst-class:: wide
 
-- ``def apply(key: Any)(expr: => V): Future[V]`` wraps an "expensive" expression with caching support.
+- ``def apply(key: Any)(expr: => V): Future[V]`` wraps an "expensive" expression with caching support. Note, that
+  the generation expression is never run inside a ``Future`` with this overload. Instead, either, the cache already
+  contains an entry for the key in which case the existing result is returned, or the generating expression is
+  synchronously run to produce the value.
 
 - ``def apply(key: Any)(future: => Future[V]): Future[V]`` is similar, but allows the expression to produce
   the future itself.
