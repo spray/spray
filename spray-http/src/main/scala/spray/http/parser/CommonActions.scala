@@ -36,15 +36,16 @@ private[parser] trait CommonActions {
         case custom        ⇒ multipart(custom, parameters)
       }
       case mainLower ⇒
-        val registered = if (parameters.isEmpty) MediaTypes.getForKey((mainLower, subType.toLowerCase)) else None
-        registered getOrElse MediaType.custom(mainType, subType, parameters = parameters, allowArbitrarySubtypes = true)
+        MediaTypes.getForKey((mainLower, subType.toLowerCase)) match {
+          case Some(registered) ⇒ if (parameters.isEmpty) registered else registered.withParameters(parameters)
+          case None             ⇒ MediaType.custom(mainType, subType, parameters = parameters, allowArbitrarySubtypes = true)
+        }
     }
   }
 
-  val getCharset: String ⇒ HttpCharset = { charsetName ⇒
+  def getCharset(name: String): HttpCharset =
     HttpCharsets
-      .getForKey(charsetName.toLowerCase)
-      .orElse(HttpCharset.custom(charsetName))
-      .getOrElse(throw new ParsingException("Unsupported charset: " + charsetName))
-  }
+      .getForKey(name.toLowerCase)
+      .orElse(HttpCharset.custom(name))
+      .getOrElse(throw new ParsingException("Unsupported charset: " + name))
 }

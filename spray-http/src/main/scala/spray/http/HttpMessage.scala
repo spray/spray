@@ -183,53 +183,79 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
       range ← mediaRanges
     } yield range).sortBy(-_.qValue)
 
-  def acceptedCharsetRanges: List[HttpCharsetRange] = {
-    // TODO: sort by preference
-    for (`Accept-Charset`(charsetRanges) ← headers; range ← charsetRanges) yield range
-  }
+  def acceptedCharsetRanges: List[HttpCharsetRange] =
+    (for {
+      `Accept-Charset`(charsetRanges) ← headers
+      range ← charsetRanges
+    } yield range).sortBy(-_.qValue)
 
-  def acceptedEncodingRanges: List[HttpEncodingRange] = {
-    // TODO: sort by preference
-    for (`Accept-Encoding`(encodingRanges) ← headers; range ← encodingRanges) yield range
-  }
+  def acceptedEncodingRanges: List[HttpEncodingRange] =
+    (for {
+      `Accept-Encoding`(encodingRanges) ← headers
+      range ← encodingRanges
+    } yield range).sortBy(-_.qValue)
 
   def cookies: List[HttpCookie] = for (`Cookie`(cookies) ← headers; cookie ← cookies) yield cookie
 
   /**
    * Determines whether the given media-type is accepted by the client.
    */
-  def isMediaTypeAccepted(mediaType: MediaType) = {
-    // according to the HTTP spec a client has to accept all mime types if no Accept header is sent with the request
-    // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
-    val ranges = acceptedMediaRanges
-    ranges.isEmpty || ranges.exists(r ⇒ isMediaTypeMatched(r, mediaType))
-  }
+  def isMediaTypeAccepted(mediaType: MediaType, ranges: List[MediaRange] = acceptedMediaRanges): Boolean =
+    qValueForMediaType(mediaType, ranges) > 0f
 
-  private def isMediaTypeMatched(mediaRange: MediaRange, mediaType: MediaType) =
-    // according to the HTTP spec a media range with a q-Value of 0 is not acceptable for the client
-    // http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.9
-    mediaRange.qValue > 0.0f && mediaRange.matches(mediaType)
+  /**
+   * Returns the q-value that the client (implicitly or explicitly) attaches to the given media-type.
+   */
+  def qValueForMediaType(mediaType: MediaType, ranges: List[MediaRange] = acceptedMediaRanges): Float =
+    ranges match {
+      case Nil ⇒ 1.0f // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
+      case x ⇒
+        @tailrec def rec(r: List[MediaRange] = x): Float = r match {
+          case Nil          ⇒ 0f
+          case head :: tail ⇒ if (head.matches(mediaType)) head.qValue else rec(tail)
+        }
+        rec()
+    }
 
   /**
    * Determines whether the given charset is accepted by the client.
    */
-  def isCharsetAccepted(charset: HttpCharset): Boolean = isCharsetAccepted(charset, acceptedCharsetRanges)
+  def isCharsetAccepted(charset: HttpCharset, ranges: List[HttpCharsetRange] = acceptedCharsetRanges): Boolean =
+    qValueForCharset(charset, ranges) > 0f
 
-  private def isCharsetAccepted(charset: HttpCharset, ranges: List[HttpCharsetRange]): Boolean =
-    // according to the HTTP spec a client has to accept all charsets if no Accept-Charset header is sent with the request
-    // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.2
-    ranges.isEmpty || ranges.exists(_.matches(charset))
+  /**
+   * Returns the q-value that the client (implicitly or explicitly) attaches to the given charset.
+   */
+  def qValueForCharset(charset: HttpCharset, ranges: List[HttpCharsetRange] = acceptedCharsetRanges): Float =
+    ranges match {
+      case Nil ⇒ 1.0f // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.2
+      case x ⇒
+        @tailrec def rec(r: List[HttpCharsetRange] = x): Float = r match {
+          case Nil          ⇒ if (charset == `ISO-8859-1`) 1f else 0f
+          case head :: tail ⇒ if (head.matches(charset)) head.qValue else rec(tail)
+        }
+        rec()
+    }
 
   /**
    * Determines whether the given encoding is accepted by the client.
    */
-  def isEncodingAccepted(encoding: HttpEncoding) = {
-    // according to the HTTP spec the server MAY assume that the client will accept any content coding if no
-    // Accept-Encoding header is sent with the request (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3)
-    // this is what we do here
-    val ranges = acceptedEncodingRanges
-    ranges.isEmpty || ranges.exists(_.matches(encoding))
-  }
+  def isEncodingAccepted(encoding: HttpEncoding, ranges: List[HttpEncodingRange] = acceptedEncodingRanges): Boolean =
+    qValueForEncoding(encoding, ranges) > 0f
+
+  /**
+   * Returns the q-value that the client (implicitly or explicitly) attaches to the given encoding.
+   */
+  def qValueForEncoding(encoding: HttpEncoding, ranges: List[HttpEncodingRange] = acceptedEncodingRanges): Float =
+    ranges match {
+      case Nil ⇒ 1.0f // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3
+      case x ⇒
+        @tailrec def rec(r: List[HttpEncodingRange] = x): Float = r match {
+          case Nil          ⇒ 0f
+          case head :: tail ⇒ if (head.matches(encoding)) head.qValue else rec(tail)
+        }
+        rec()
+    }
 
   /**
    * Determines whether one of the given content-types is accepted by the client.
@@ -237,30 +263,32 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
    * that, if a ContentType instance is returned within the option, it will contain a defined charset.
    */
   def acceptableContentType(contentTypes: Seq[ContentType]): Option[ContentType] = {
-    val charsetRanges = acceptedCharsetRanges
-    def hasAcceptedCharset(ct: ContentType) =
-      ct.noCharsetDefined || isCharsetAccepted(ct.definedCharset.get, charsetRanges)
-    val contentType = acceptedMediaRanges match {
-      // according to the HTTP spec a client has to accept all mime types if no Accept header is sent with the request
-      // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
-      case Nil ⇒ contentTypes find hasAcceptedCharset
-      case mediaRanges ⇒ mediaRanges.view.flatMap { mediaRange ⇒
-        contentTypes find { ct ⇒
-          isMediaTypeMatched(mediaRange, ct.mediaType) && hasAcceptedCharset(ct)
+    val mediaRanges = acceptedMediaRanges // cache for performance
+    val charsetRanges = acceptedCharsetRanges // cache for performance
+
+    @tailrec def findBest(ix: Int = 0, result: ContentType = null, maxQ: Float = 0f): Option[ContentType] =
+      if (ix < contentTypes.size) {
+        val ct = contentTypes(ix)
+        val q = qValueForMediaType(ct.mediaType, mediaRanges)
+        if (q > maxQ && (ct.noCharsetDefined || isCharsetAccepted(ct.charset, charsetRanges))) findBest(ix + 1, ct, q)
+        else findBest(ix + 1, result, maxQ)
+      } else Option(result)
+
+    findBest() match {
+      case x @ Some(ct) if ct.isCharsetDefined ⇒ x
+      case Some(ct) ⇒
+        // logic for choosing the charset adapted from http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.2
+        def withCharset(cs: HttpCharset) = Some(ContentType(ct.mediaType, cs))
+        if (qValueForCharset(`UTF-8`, charsetRanges) == 1f) withCharset(`UTF-8`)
+        else charsetRanges match { // ranges are sorted by descending q-value
+          case (HttpCharsetRange.One(cs, qValue)) :: _ ⇒
+            if (qValue == 1f) withCharset(cs)
+            else if (qValueForCharset(`ISO-8859-1`, charsetRanges) == 1f) withCharset(`ISO-8859-1`)
+            else if (qValue > 0f) withCharset(cs)
+            else None
+          case _ ⇒ None
         }
-      }.headOption
-    }
-    contentType map { ct ⇒
-      if (ct.isCharsetDefined) ct
-      else {
-        val acceptedCharset =
-          if (isCharsetAccepted(`UTF-8`, charsetRanges)) `UTF-8`
-          else charsetRanges match {
-            case (cs: HttpCharset) :: _ ⇒ cs
-            case _                      ⇒ throw new IllegalStateException // a HttpCharsetRange that is not `*` ?
-          }
-        ContentType(ct.mediaType, acceptedCharset)
-      }
+      case None ⇒ None
     }
   }
 

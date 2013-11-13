@@ -32,7 +32,7 @@ private[parser] trait AcceptLanguageHeader {
   }
 
   def LanguageQuality = rule {
-    ";" ~ "q" ~ "=" ~ QValue // TODO: support language quality
+    ";" ~ "q" ~ "=" ~ oneOrMore(Digit | ".") // TODO: support language quality
   }
 
 }
