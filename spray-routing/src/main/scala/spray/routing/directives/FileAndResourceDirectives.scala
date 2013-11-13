@@ -147,16 +147,23 @@ trait FileAndResourceDirectives {
                                                   refFactory: ActorRefFactory, log: LoggingContext): Route =
     (get & detach()) {
       unmatchedPath { path ⇒
-        val dirs = directories flatMap { dir ⇒
-          fileSystemPath(withTrailingSlash(dir), path) match {
-            case "" ⇒ None
-            case fileName ⇒
-              val file = new File(fileName)
-              if (file.isDirectory && file.canRead) Some(file) else None
+        requestUri { fullUri ⇒
+          val fullPath = fullUri.path
+          val matchedLength = fullPath.toString.lastIndexOf(path.toString)
+          require(matchedLength >= 0)
+          val pathPrefix = fullPath.toString.substring(0, matchedLength)
+          val pathString = withTrailingSlash(fileSystemPath("/", path, '/'))
+          val dirs = directories flatMap { dir ⇒
+            fileSystemPath(withTrailingSlash(dir), path) match {
+              case "" ⇒ None
+              case fileName ⇒
+                val file = new File(fileName)
+                if (file.isDirectory && file.canRead) Some(file) else None
+            }
           }
+          if (dirs.isEmpty) reject
+          else complete(DirectoryListing(pathPrefix + pathString, isRoot = pathString == "/", dirs.flatMap(_.listFiles)))
         }
-        if (dirs.isEmpty) reject
-        else complete(DirectoryListing(withTrailingSlash(fileSystemPath("/", path, '/')), dirs.flatMap(_.listFiles)))
       }
     }
 
@@ -242,7 +249,7 @@ object ContentTypeResolver {
     }
 }
 
-case class DirectoryListing(path: String, files: Seq[File])
+case class DirectoryListing(path: String, isRoot: Boolean, files: Seq[File])
 
 object DirectoryListing {
 
@@ -264,7 +271,7 @@ object DirectoryListing {
 
   implicit def DefaultMarshaller(implicit settings: RoutingSettings): Marshaller[DirectoryListing] =
     Marshaller.delegate[DirectoryListing, String](MediaTypes.`text/html`) { listing ⇒
-      val DirectoryListing(path, files) = listing
+      val DirectoryListing(path, isRoot, files) = listing
       val filesAndNames = files.map(file ⇒ file -> file.getName).sortBy(_._2)
       val deduped = filesAndNames.zipWithIndex.flatMap {
         case (fan @ (file, name), ix) ⇒
@@ -275,7 +282,7 @@ object DirectoryListing {
       val maxNameLen = math.max(maxNameLength(directoryFilesAndNames) + 1, maxNameLength(fileFilesAndNames))
       val sb = new java.lang.StringBuilder
       sb.append(html(0)).append(path).append(html(1)).append(path).append(html(2))
-      if (path != "/") {
+      if (!isRoot) {
         val secondToLastSlash = path.lastIndexOf('/', path.lastIndexOf('/', path.length - 1) - 1)
         sb.append("<a href=\"%s/\">../</a>\n" format path.substring(0, secondToLastSlash))
       }
@@ -292,7 +299,7 @@ object DirectoryListing {
       }
       for ((file, name) ← directoryFilesAndNames) renderDirectory(file, name)
       for ((file, name) ← fileFilesAndNames) renderFile(file, name)
-      if (path == "/" && files.isEmpty) sb.append("(no files)\n")
+      if (isRoot && files.isEmpty) sb.append("(no files)\n")
       sb.append(html(3))
       if (settings.renderVanityFooter) sb.append(html(4)).append(DateTime.now.toIsoLikeDateTimeString).append(html(5))
       sb.append(html(6)).toString
