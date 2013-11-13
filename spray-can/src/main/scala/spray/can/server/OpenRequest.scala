@@ -197,7 +197,6 @@ private trait OpenRequestComponent { component ⇒
     }
 
     def handleClosed(ev: Http.ConnectionClosed): Set[ActorRef] = {
-
       val handler =
         state match {
           case ReceivingRequestChunks(chunkHandler)   ⇒ chunkHandler

@@ -37,20 +37,21 @@ private object ClientFrontend {
           var requestTimeout = initialRequestTimeout
           var closeCommanders = Set.empty[ActorRef]
 
-          def lastRequestComplete = openRequests.isEmpty || openRequests.last.state.isComplete
+          def lastRequestComplete = openRequests.isEmpty || openRequests.last.state != AwaitingChunkEnd
 
           val commandPipeline: CPL = {
             case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequest, ack)) if closeCommanders.isEmpty ⇒
               if (lastRequestComplete) {
                 render(x, x, ack)
-                openRequests = openRequests enqueue new RequestRecord(x, context.sender, state = Complete(Timestamp.now))
+                val state = if (openRequests.isEmpty) AwaitingResponseStart(Timestamp.now) else AwaitingPreviousResponseEnd
+                openRequests = openRequests enqueue new RequestRecord(x, context.sender, state)
               } else log.warning("Received new HttpRequest before previous chunking request was " +
                 "finished, ignoring...")
 
             case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedRequestStart, ack)) if closeCommanders.isEmpty ⇒
               if (lastRequestComplete) {
                 render(x, x.request, ack)
-                openRequests = openRequests enqueue new RequestRecord(x, context.sender, state = WaitingForChunkedEnd)
+                openRequests = openRequests enqueue new RequestRecord(x, context.sender, state = AwaitingChunkEnd)
               } else log.warning("Received new ChunkedRequestStart before previous chunking " +
                 "request was finished, ignoring...")
 
@@ -62,7 +63,7 @@ private object ClientFrontend {
             case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedMessageEnd, ack)) if closeCommanders.isEmpty ⇒
               if (!lastRequestComplete) {
                 render(x, openRequests.last.request.message, ack)
-                openRequests.last.state = Complete(Timestamp.now) // only start timer once the request is completed
+                openRequests.last.state = AwaitingResponseStart(Timestamp.now) // only start timer once the request is completed
               } else log.warning("Received ChunkedMessageEnd outside of chunking request " +
                 "context, ignoring...")
 
@@ -83,6 +84,12 @@ private object ClientFrontend {
               if (!openRequests.isEmpty) {
                 val currentRecord = openRequests.head
                 openRequests = openRequests.tail
+                if (openRequests.nonEmpty)
+                  openRequests.head.state = openRequests.head.state match {
+                    case AwaitingChunkEnd            ⇒ AwaitingChunkEnd
+                    case AwaitingPreviousResponseEnd ⇒ AwaitingResponseStart(Timestamp.now)
+                    case _: AwaitingResponseStart    ⇒ throw new IllegalStateException
+                  }
                 dispatch(currentRecord.sender, x)
               } else {
                 log.warning("Received unmatched {}, closing connection due to protocol error", x)
@@ -91,6 +98,7 @@ private object ClientFrontend {
 
             case Http.MessageEvent(x: HttpMessagePart) ⇒
               if (!openRequests.isEmpty) {
+                if (x.isInstanceOf[HttpMessageStart]) openRequests.head.state = AwaitingChunkEnd
                 dispatch(openRequests.head.sender, x)
               } else {
                 log.warning("Received unmatched {}, closing connection due to protocol error", x)
@@ -131,7 +139,8 @@ private object ClientFrontend {
             if (!openRequests.isEmpty && requestTimeout.isFinite) {
               val rec = openRequests.head
               if (rec.state.isOverdue(requestTimeout)) {
-                log.warning("Request timed out after {}, closing connection", requestTimeout)
+                val r = rec.request.message.asInstanceOf[HttpRequest]
+                log.warning("{} request to '{}' timed out after {}, closing connection", r.method, r.uri, requestTimeout)
                 dispatch(rec.sender, Timedout(rec.request))
                 commandPL(Http.Close)
               }
@@ -143,17 +152,13 @@ private object ClientFrontend {
     }
   }
 
-  sealed trait RequestState {
-    def isComplete: Boolean
-    def isOverdue(timeout: Duration): Boolean
-  }
-  case object WaitingForChunkedEnd extends RequestState {
-    def isComplete: Boolean = false
+  private sealed abstract class RequestState {
     def isOverdue(timeout: Duration): Boolean = false
   }
-  case class Complete(timestamp: Timestamp) extends RequestState {
-    def isComplete: Boolean = true
-    def isOverdue(timeout: Duration): Boolean = (timestamp + timeout).isPast
+  private case object AwaitingChunkEnd extends RequestState
+  private case object AwaitingPreviousResponseEnd extends RequestState
+  private case class AwaitingResponseStart(timestamp: Timestamp) extends RequestState {
+    override def isOverdue(timeout: Duration) = (timestamp + timeout).isPast
   }
   private class RequestRecord(val request: HttpRequestPart with HttpMessageStart, val sender: ActorRef, var state: RequestState)
 
