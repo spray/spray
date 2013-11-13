@@ -20,7 +20,7 @@ import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import scala.collection.immutable.Queue
 import akka.io.Tcp
-import akka.util.CompactByteString
+import akka.util.ByteString
 import spray.can.rendering.RequestPartRenderingContext
 import spray.can.Http
 import spray.can.parsing._
@@ -81,16 +81,16 @@ private object ResponseParsing {
           }
 
           val eventPipeline: EPL = {
-            case Tcp.Received(data: CompactByteString) ⇒ processReceivedData(data)
+            case Tcp.Received(data) ⇒ processReceivedData(data)
 
             case ev @ Http.PeerClosed ⇒
-              processReceivedData(CompactByteString.empty)
+              processReceivedData(ByteString.empty)
               eventPL(ev)
 
             case ev ⇒ eventPL(ev)
           }
 
-          def processReceivedData(data: CompactByteString): Unit =
+          def processReceivedData(data: ByteString): Unit =
             try handleParsingResult(parser(data))
             catch {
               case NonFatal(e) ⇒

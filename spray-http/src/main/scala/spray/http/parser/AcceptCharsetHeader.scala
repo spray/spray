@@ -19,7 +19,6 @@ package parser
 
 import org.parboiled.scala._
 import BasicRules._
-import HttpCharsets._
 
 private[parser] trait AcceptCharsetHeader {
   this: Parser with ProtocolParameterRules with CommonActions ⇒
@@ -27,14 +26,16 @@ private[parser] trait AcceptCharsetHeader {
   def `*Accept-Charset` = rule(
     oneOrMore(CharsetRangeDecl, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Accept-Charset`(_)))
 
-  def CharsetRangeDecl = rule(
-    CharsetRangeDef ~ optional(CharsetQuality))
-
-  def CharsetRangeDef = rule(
-    "*" ~ push(`*`) | Charset ~~> getCharset)
-
-  def CharsetQuality = rule {
-    ";" ~ "q" ~ "=" ~ QValue // TODO: support charset quality
+  def CharsetRangeDecl = rule {
+    CharsetRangeDef ~ optional(CharsetQuality) ~~> { (range, optQ) ⇒
+      optQ match {
+        case None    ⇒ range
+        case Some(q) ⇒ range withQValue q
+      }
+    }
   }
 
+  def CharsetRangeDef = rule("*" ~ push(HttpCharsetRange.`*`) | Charset ~~> (s ⇒ HttpCharsetRange(getCharset(s))))
+
+  def CharsetQuality = rule(";" ~ "q" ~ "=" ~ QValue)
 }

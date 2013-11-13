@@ -1,11 +1,17 @@
 Other Resources
 ===============
 
-"*spray*: REST on Akka" talk from `scala.io`__ 2013
-  | Slides: `/scala.io`__
+"*Akka* & *spray*: Actors, IO and HTTP" talk from `wjax 2013`__
+  | Slides: `/wjax/`__
+
+__ http://jax.de/wjax2013/
+__ /wjax/
+
+*spray*: REST on Akka" talk from `scala.io`__ 2013
+  | Slides: `/scala.io/`__
 
 __ http://scala.io
-__ /scala.io
+__ /scala.io/
 
 "*spray*: REST on Akka" talk from the Northeast Scala Symposium 2012
   | Video: http://www.youtube.com/watch?v=fUuLJmWB__E

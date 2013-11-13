@@ -15,16 +15,12 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 		<link rel="stylesheet" href="css/reveal.min.css">
-		<link rel="stylesheet" href="css/theme/default.css" id="theme">
+		<link rel="stylesheet" href="css/theme/sirthias.css" id="theme">
 		<link rel="stylesheet" href="lib/font-awesome/css/font-awesome.min.css">
+        <link rel="stylesheet" href="css/print/pdf.css" type="text/css" media="print">
 
 		<!-- For syntax highlighting -->
 		<link rel="stylesheet" href="lib/css/zenburn.css">
-
-		<!-- If the query includes 'print-pdf', use the PDF print sheet -->
-		<script>
-			document.write( '<link rel="stylesheet" href="css/print/' + ( window.location.search.match( /print-pdf/gi ) ? 'pdf' : 'paper' ) + '.css" type="text/css" media="print">' );
-		</script>
 
 		<!--[if lt IE 9]>
 		<script src="lib/js/html5shiv.js"></script>
@@ -44,7 +40,7 @@
 							<a href="mailto:mathias(at)spray(dot)io"><i class="fa fa-envelope"></i></a> /
 							<a href="https://github.com/sirthias"><i class="fa fa-github-square"></i></a> /
 							<a href="http://twitter.com/sirthias"><i class="fa fa-twitter-square"></i></a><br/><br/>
-							This presentation: <a href="http://spray.io/scala.io">http://spray.io/scala.io/</a>
+							This presentation: <a href="http://spray.io/scala.io/">http://spray.io/scala.io/</a>
 						</small>
 					</p>
 				</section>
@@ -333,7 +329,7 @@ class PingPongService extends Actor {
 				  <h2>spray-routing</h2>
 				  <ul>
 						<li>internal DSL for the direct interface layer to the application</li>
-						<li>type-safe, yet flexible (thanks to <a href="">shapeless)</a></li>
+						<li>type-safe, yet flexible (thanks to <a href="https://github.com/milessabin/shapeless">shapeless)</a></li>
 						<li>much more than just routing: behavior definition</li>
 						<li>small and simple building blocks: directives</li>
 						<li>highly composable</li>
@@ -389,7 +385,7 @@ class MyServiceActor extends HttpServiceActor {
 					<pre style="font-size: 40%"><code data-trim>
 lazy val route = {
   encodeResponse(Gzip) {
-    path("") {
+    pathSingleSlash {
       get {
         redirect("/doc")
       }
@@ -423,7 +419,7 @@ lazy val route = {
           path("accounts") {
             post {
               authorize(user.isAdmin) {
-                content(as[AccountDetails]) { details =>
+                entity(as[AccountDetails]) { details =>
                   complete {
                     (accountService ? NewAccount(details)).mapTo[OpResult]
                   }
@@ -534,7 +530,7 @@ lazy val route = {
 				history: true,
 				center: true,
 
-				theme: Reveal.getQueryHash().theme || 'sirthias', // available themes are in /css/theme
+				theme: 'sirthias',
 				transition: Reveal.getQueryHash().transition || 'fade', // default/cube/page/concave/zoom/linear/fade/none
 
 				transitionSpeed: 'fast',
@@ -542,11 +538,7 @@ lazy val route = {
 				// Optional libraries used to extend on reveal.js
 				dependencies: [
 					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
-					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
-					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
-					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
-					{ src: 'plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
-					{ src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
 				]
 			});
 

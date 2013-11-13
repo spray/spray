@@ -45,3 +45,10 @@ package object http {
     HttpResponse(status = 200)
   }
 }
+
+package http {
+  trait WithQValue[T] {
+    def withQValue(qValue: Double): T = withQValue(qValue.toFloat)
+    def withQValue(qValue: Float): T
+  }
+}

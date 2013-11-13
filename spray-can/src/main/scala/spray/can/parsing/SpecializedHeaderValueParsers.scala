@@ -17,7 +17,7 @@
 package spray.can.parsing
 
 import scala.annotation.tailrec
-import akka.util.CompactByteString
+import akka.util.ByteString
 import spray.http._
 import HttpHeaders._
 import CharUtils._
@@ -29,7 +29,7 @@ private object SpecializedHeaderValueParsers {
   def specializedHeaderValueParsers = Seq(ContentLengthParser)
 
   object ContentLengthParser extends HeaderValueParser("Content-Length", maxValueCount = 1) {
-    def apply(input: CompactByteString, valueStart: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = {
+    def apply(input: ByteString, valueStart: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = {
       @tailrec def recurse(ix: Int = valueStart, result: Long = 0): (HttpHeader, Int) = {
         val c = byteChar(input, ix)
         if (isDigit(c) && result >= 0) recurse(ix + 1, result * 10 + c - '0')

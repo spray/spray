@@ -53,8 +53,13 @@ class HttpHeaderSpec extends Specification {
     }
 
     "Accept-Charset" in {
-      "Accept-Charset: utf8; q=0.5, *" =!=
-        `Accept-Charset`(`UTF-8`, HttpCharsets.`*`).renderedTo("UTF-8, *")
+      "Accept-Charset: *" =!= `Accept-Charset`(HttpCharsetRange.`*`)
+      "Accept-Charset: UTF-8" =!= `Accept-Charset`(`UTF-8`)
+      "Accept-Charset: utf16;q=1" =!= `Accept-Charset`(`UTF-16`).renderedTo("UTF-16")
+      "Accept-Charset: utf-8; q=0.5, *" =!= `Accept-Charset`(`UTF-8` withQValue 0.5, HttpCharsetRange.`*`).renderedTo("UTF-8;q=0.5, *")
+      "Accept-Charset: latin1, UTf-16; q=0, *;q=0.8" =!=
+        `Accept-Charset`(`ISO-8859-1`, `UTF-16` withQValue 0, HttpCharsetRange.`*` withQValue 0.8).renderedTo(
+          "ISO-8859-1, UTF-16;q=0.0, *;q=0.8")
     }
 
     "Access-Control-Allow-Credentials" in {
@@ -94,8 +99,8 @@ class HttpHeaderSpec extends Specification {
     "Accept-Encoding" in {
       "Accept-Encoding: compress, gzip, fancy" =!=
         `Accept-Encoding`(compress, gzip, HttpEncoding.custom("fancy"))
-      "Accept-Encoding: gzip;q=1.0, identity; q=0.5, *;q=0" =!=
-        `Accept-Encoding`(gzip, identity, HttpEncodings.`*`).renderedTo("gzip, identity, *")
+      `Accept-Encoding`(gzip, identity withQValue 0.5, HttpEncodingRange.`*` withQValue 0)
+        .renderedTo("gzip, identity;q=0.5, *;q=0.0")
       "Accept-Encoding: " =!= `Accept-Encoding`(identity).renderedTo("identity")
     }
 
@@ -110,6 +115,9 @@ class HttpHeaderSpec extends Specification {
     "Authorization" in {
       "Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" =!=
         Authorization(BasicHttpCredentials("Aladdin", "open sesame"))
+      "Authorization: bAsIc QWxhZGRpbjpvcGVuIHNlc2FtZQ==" =!=
+        Authorization(BasicHttpCredentials("Aladdin", "open sesame")).renderedTo(
+          "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==")
       """Authorization: Fancy yes="n:o", nonce=42""" =!=
         Authorization(GenericHttpCredentials("Fancy", Map("yes" -> "n:o", "nonce" -> "42"))).renderedTo(
           """Fancy yes="n:o",nonce=42""")
@@ -119,8 +127,8 @@ class HttpHeaderSpec extends Specification {
         Authorization(BasicHttpCredentials("Bob", ""))
       """Authorization: Digest name=Bob""" =!=
         Authorization(GenericHttpCredentials("Digest", Map("name" -> "Bob")))
-      """Authorization: Bearer mF_9.B5f-4.1JqM""" =!=
-        Authorization(OAuth2BearerToken("mF_9.B5f-4.1JqM"))
+      """Authorization: Bearer mF_9.B5f-4.1JqM/""" =!=
+        Authorization(OAuth2BearerToken("mF_9.B5f-4.1JqM/"))
       "Authorization: NoParamScheme" =!=
         Authorization(GenericHttpCredentials("NoParamScheme", Map.empty[String, String]))
       "Authorization: OAuth sf_v1a-stg;V5DrRS1KfA=" =!=
@@ -265,6 +273,8 @@ class HttpHeaderSpec extends Specification {
     "WWW-Authenticate" in {
       "WWW-Authenticate: Basic realm=WallyWorld" =!=
         `WWW-Authenticate`(HttpChallenge("Basic", "WallyWorld"))
+      "WWW-Authenticate: BaSiC rEaLm=WallyWorld" =!=
+        `WWW-Authenticate`(HttpChallenge("BaSiC", "WallyWorld")).renderedTo("BaSiC realm=WallyWorld")
       "WWW-Authenticate: Basic realm=\"foo<bar\"" =!= `WWW-Authenticate`(HttpChallenge("Basic", "foo<bar"))
       """WWW-Authenticate: Digest
                            realm="testrealm@host.com",
