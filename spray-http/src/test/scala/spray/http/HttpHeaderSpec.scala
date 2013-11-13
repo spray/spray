@@ -53,8 +53,13 @@ class HttpHeaderSpec extends Specification {
     }
 
     "Accept-Charset" in {
-      "Accept-Charset: utf8; q=0.5, *" =!=
-        `Accept-Charset`(`UTF-8`, HttpCharsets.`*`).renderedTo("UTF-8, *")
+      "Accept-Charset: *" =!= `Accept-Charset`(HttpCharsetRange.`*`)
+      "Accept-Charset: UTF-8" =!= `Accept-Charset`(`UTF-8`)
+      "Accept-Charset: utf16;q=1" =!= `Accept-Charset`(`UTF-16`).renderedTo("UTF-16")
+      "Accept-Charset: utf-8; q=0.5, *" =!= `Accept-Charset`(`UTF-8` withQValue 0.5, HttpCharsetRange.`*`).renderedTo("UTF-8;q=0.5, *")
+      "Accept-Charset: latin1, UTf-16; q=0, *;q=0.8" =!=
+        `Accept-Charset`(`ISO-8859-1`, `UTF-16` withQValue 0, HttpCharsetRange.`*` withQValue 0.8).renderedTo(
+          "ISO-8859-1, UTF-16;q=0.0, *;q=0.8")
     }
 
     "Access-Control-Allow-Credentials" in {
@@ -94,8 +99,8 @@ class HttpHeaderSpec extends Specification {
     "Accept-Encoding" in {
       "Accept-Encoding: compress, gzip, fancy" =!=
         `Accept-Encoding`(compress, gzip, HttpEncoding.custom("fancy"))
-      "Accept-Encoding: gzip;q=1.0, identity; q=0.5, *;q=0" =!=
-        `Accept-Encoding`(gzip, identity, HttpEncodings.`*`).renderedTo("gzip, identity, *")
+      `Accept-Encoding`(gzip, identity withQValue 0.5, HttpEncodingRange.`*` withQValue 0)
+        .renderedTo("gzip, identity;q=0.5, *;q=0.0")
       "Accept-Encoding: " =!= `Accept-Encoding`(identity).renderedTo("identity")
     }
 

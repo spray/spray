@@ -66,9 +66,39 @@ class ContentNegotiationSpec extends Specification {
         accept(`text/plain` withCharset `UTF-8`) must reject
       }
 
+      "Accept-Charset: UTF-16, UTF-8" ! test { accept ⇒
+        accept(`text/plain`) must select(`text/plain`, `UTF-8`)
+        accept(`text/plain` withCharset `UTF-16`) must select(`text/plain`, `UTF-16`)
+      }
+
+      "Accept-Charset: UTF-8;q=.2, UTF-16" ! test { accept ⇒
+        accept(`text/plain`) must select(`text/plain`, `UTF-16`)
+        accept(`text/plain` withCharset `UTF-8`) must select(`text/plain`, `UTF-8`)
+      }
+
+      "Accept-Charset: UTF-8;q=.2" ! test { accept ⇒
+        accept(`text/plain`) must select(`text/plain`, `ISO-8859-1`)
+        accept(`text/plain` withCharset `UTF-8`) must select(`text/plain`, `UTF-8`)
+      }
+
+      "Accept-Charset: latin1;q=.1, UTF-8;q=.2" ! test { accept ⇒
+        accept(`text/plain`) must select(`text/plain`, `UTF-8`)
+        accept(`text/plain` withCharset `UTF-8`) must select(`text/plain`, `UTF-8`)
+      }
+
       "Accept-Charset: *" ! test { accept ⇒
         accept(`text/plain`) must select(`text/plain`, `UTF-8`)
         accept(`text/plain` withCharset `UTF-16`) must select(`text/plain`, `UTF-16`)
+      }
+
+      "Accept-Charset: *;q=0" ! test { accept ⇒
+        accept(`text/plain`) must reject
+        accept(`text/plain` withCharset `UTF-16`) must reject
+      }
+
+      "Accept-Charset: us;q=0.1,*;q=0" ! test { accept ⇒
+        accept(`text/plain`) must select(`text/plain`, `US-ASCII`)
+        accept(`text/plain` withCharset `UTF-8`) must reject
       }
 
       "Accept: text/xml, text/html;q=.5" ! test { accept ⇒
