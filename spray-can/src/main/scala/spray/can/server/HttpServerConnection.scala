@@ -217,6 +217,7 @@ private object HttpServerConnection {
       RequestParsing(settings) >>
       ResponseRendering(settings) >>
       (reapingCycle.isFinite && idleTimeout.isFinite) ? ConnectionTimeouts(idleTimeout) >>
+      PreventHalfClosedConnections(sslEncryption) >>
       sslEncryption ? SslTlsSupport(maxEncryptionChunkSize, parserSettings.sslSessionInfoHeader) >>
       (reapingCycle.isFinite && (idleTimeout.isFinite || requestTimeout.isFinite)) ? TickGenerator(reapingCycle) >>
       autoBackPressureEnabled ? BackPressureHandling(backpressureSettings.get.noAckRate, backpressureSettings.get.readingLowWatermark)

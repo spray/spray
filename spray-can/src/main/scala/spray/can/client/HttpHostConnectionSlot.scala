@@ -62,6 +62,8 @@ private class HttpHostConnectionSlot(host: String, port: Int,
           case ctx: RequestContext  ⇒ context.parent ! ctx
           case _: Http.CloseCommand ⇒ context.stop(self)
         }
+
+      case _: Timedout ⇒ // we can drop this here, as we are already back in the unconnected state
     }
   }
 
@@ -88,6 +90,8 @@ private class HttpHostConnectionSlot(host: String, port: Int,
         context.parent ! Disconnected(openRequests.size)
         context.become(unconnected)
       } else context.stop(self)
+
+    case _: Timedout ⇒ // drop, we'll see a CommandFailed next
   }
 
   def connected(httpConnection: ActorRef, openRequests: Queue[RequestContext],

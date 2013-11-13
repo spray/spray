@@ -228,6 +228,60 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |""".stripMargin
       }
     }
+    "properly render a simple directory with a path prefix" in {
+      Get("/files/") ~> pathPrefix("files")(listDirectoryContents(base + "/someDir")) ~> check {
+        eraseDateTime(responseAs[String]) ===
+          """<html>
+            |<head><title>Index of /files/</title></head>
+            |<body>
+            |<h1>Index of /files/</h1>
+            |<hr>
+            |<pre>
+            |<a href="/files/sub/">sub/</a>             xxxx-xx-xx xx:xx:xx
+            |<a href="/files/fileA.txt">fileA.txt</a>        xxxx-xx-xx xx:xx:xx            3  B
+            |<a href="/files/fileB.xml">fileB.xml</a>        xxxx-xx-xx xx:xx:xx            0  B
+            |</pre>
+            |<hr>
+            |</body>
+            |</html>
+            |""".stripMargin
+      }
+    }
+    "properly render a sub directory with a path prefix" in {
+      Get("/files/sub/") ~> pathPrefix("files")(listDirectoryContents(base + "/someDir")) ~> check {
+        eraseDateTime(responseAs[String]) ===
+          """<html>
+            |<head><title>Index of /files/sub/</title></head>
+            |<body>
+            |<h1>Index of /files/sub/</h1>
+            |<hr>
+            |<pre>
+            |<a href="/files/">../</a>
+            |<a href="/files/sub/file.html">file.html</a>        xxxx-xx-xx xx:xx:xx            0  B
+            |</pre>
+            |<hr>
+            |</body>
+            |</html>
+            |""".stripMargin
+      }
+    }
+    "properly render an empty top-level directory with a path prefix" in {
+      Get("/files/") ~> pathPrefix("files")(listDirectoryContents(base + "/subDirectory/emptySub")) ~> check {
+        eraseDateTime(responseAs[String]) ===
+          """<html>
+            |<head><title>Index of /files/</title></head>
+            |<body>
+            |<h1>Index of /files/</h1>
+            |<hr>
+            |<pre>
+            |(no files)
+            |</pre>
+            |<hr>
+            |</body>
+            |</html>
+            |""".stripMargin
+      }
+    }
     "reject requests to file resources" in {
       Get() ~> listDirectoryContents(base + "subDirectory/empty.pdf") ~> check { handled must beFalse }
     }

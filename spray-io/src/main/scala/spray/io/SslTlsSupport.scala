@@ -83,13 +83,13 @@ object SslTlsSupport {
                 if (tracing) log.debug("Received {} inbound bytes in defaultState", data.size)
                 enqueueInboundBytes(data)
                 decrypt()
-                if (encryptedBytesPending) {
-                  sendEncryptedBytes()
+                if (encryptedBytesPending || isOutboundDone) {
+                  sendEncryptedBytes() // might send an empty Tcp.Write, but always triggers a pending ACK
                   become {
                     if (isOutboundDone) finishingClose(closedEvent)
                     else waitingForAck(remainingOutgoingData, closedEvent)
                   }
-                } else verify(!isOutboundDone)
+                }
               case Tcp.PeerClosed     ⇒ receivedUnexpectedPeerClosed()
               case x: Tcp.ErrorClosed ⇒ eventPL(x) // is there anything we need to close in this case?
               case x @ (_: Tcp.ConnectionClosed | WriteChunkAck) ⇒
@@ -208,10 +208,8 @@ object SslTlsSupport {
 
           def receivedUnexpectedPeerClosed(): Unit = {
             log.debug("Received unexpected Tcp.PeerClosed, invalidating SSL session")
-            try {
-              engine.closeInbound() // invalidates SSL session and should throw SSLException
-              throw new IllegalStateException("No SSLException after unexpected Tcp.PeerClosed")
-            } catch { case e: SSLException ⇒ } // ignore warning about truncation attack
+            try engine.closeInbound() // invalidates SSL session and should throw SSLException
+            catch { case e: SSLException ⇒ } // ignore warning about truncation attack
             become(finishingClose(Some(Tcp.ErrorClosed("Peer closed SSL connection prematurely")), Tcp.Close))
           }
 
@@ -342,7 +340,7 @@ object SslTlsSupport {
 
           def isOutboundDone: Boolean =
             if (engine.isInboundDone) {
-              // our pumping logic should make sure that we immediately outbound close and flush
+              // our pumping logic should make sure that we immediately outbound close
               // after having detected an inbound close
               verify(engine.isOutboundDone)
               true

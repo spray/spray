@@ -1,3 +1,43 @@
+Version 1.0-RC3 (2013-11-13)
+----------------------------
+
+- spray-can:
+
+  + fixed IllegalStateException ("Unexpected slot state: Idle") in host-level API (#652)
+  + fixed client-side request-timeout not cancelled after receiving `ChunkedResponseStart` (#670)
+  + fixed negative 'openConnections' in StatsSupport (#666)
+  + fixed possible excessive memory use when parsing incoming chunked messages (#662)
+  + fixed server sometimes sending events to wrong receivers
+  + improved "Cannot establish effective request URI" error message
+
+- spray-http:
+
+  + fixed OAuth2 bearer token parser problem (#671)
+  + added q-value support to `HttpCharset` and `HttpEncoding`
+  + improved content negotiation logic (#677)
+  + made auth scheme and "realm" parameter parsing case-insensitive (#668)
+  + smaller fixes
+
+- spray-httpx:
+
+  + fixed `TwirlSupport` XML marshalling
+  + added `DelegatingToResponseMarshallingContext` and `withEntityMapped`/`withResponseMapped` helpers
+
+- spray-io:
+
+  + fixed IllegalStateExceptions in SslTlsSupport (#667)
+
+- spray-routing:
+
+  + fixed `HttpService::runRoute` not handling `ConnectionClosed` events (#675)
+  + fixed `listDirectoryContents` producing incorrect links when under pathPrefix (#684)
+  + added parameterless `/` modifier for `PathMatcher`
+
+- spray-util:
+
+  + fixed `SimpleStash` to also stash message senders
+
+
 Version 1.0-RC2 (2013-10-30)
 ----------------------------
 

@@ -130,10 +130,10 @@ private[parser] trait ProtocolParameterRules {
 
   /* 3.9 Quality Values */
 
-  def QValue = rule(
-    // more loose than the spec which only allows 1 to max. 3 digits/zeros
-    ch('0') ~ optional(ch('.') ~ zeroOrMore(Digit)) ~ OptWS
-      | ch('1') ~ optional(ch('.') ~ zeroOrMore(ch('0'))) ~ OptWS)
+  def QValue = rule( // a bit more loose than the spec
+    (ch('0') ~ optional(ch('.') ~ zeroOrMore(Digit))
+      | ch('.') ~ oneOrMore(Digit)
+      | ch('1') ~ optional(ch('.') ~ zeroOrMore(ch('0')))) ~> (_.toFloat) ~ OptWS)
 
   /* 3.10 Language Tags */
 

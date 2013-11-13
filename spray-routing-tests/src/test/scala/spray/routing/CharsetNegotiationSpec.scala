@@ -32,7 +32,7 @@ class CharsetNegotiationSpec extends RoutingSpec {
       }
     }
     "encode text content using UTF-8 if the Accept-Charset header contains '*'" in {
-      Get() ~> `Accept-Charset`(`ISO-8859-1`, `*`) ~> Hällo ~> check {
+      Get() ~> `Accept-Charset`(`ISO-8859-1`, HttpCharsetRange.`*`) ~> Hällo ~> check {
         contentType === ContentType(`text/plain`, `UTF-8`)
         responseAs[String] === "Hällö"
       }

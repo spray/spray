@@ -1,7 +1,7 @@
 package spray.util
 
 import scala.collection.immutable.Queue
-import akka.actor.Actor
+import akka.actor.{ ActorRef, Actor }
 
 /**
  * A simplistic Stash implementation that doesn't need a special mailbox and doesn't
@@ -10,11 +10,11 @@ import akka.actor.Actor
  *
  * It also doesn't provide any reasonable Actor restart behavior.
  */
-private[spray] trait SimpleStash { self: Actor ⇒
-  private[this] var buffered = Queue.empty[Any]
-  def stash(x: Any): Unit = buffered = buffered.enqueue(x)
+private[spray] trait SimpleStash { _: Actor ⇒
+  private[this] var buffered = Queue.empty[(ActorRef, Any)]
+  def stash(x: Any): Unit = buffered = buffered.enqueue(sender -> x)
   def unstashAll() = {
-    buffered.foreach(self !)
-    buffered = Queue.empty[Any]
+    buffered foreach { case (sender, msg) ⇒ self.tell(msg, sender) }
+    buffered = Queue.empty
   }
 }

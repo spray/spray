@@ -130,7 +130,7 @@ private[can] class HttpResponsePartParser(_settings: ParserSettings)(_headerPars
     case ByteString.empty ⇒
       emit(ChunkedMessageEnd, closeAfterResponseCompletion = true) { Result.IgnoreAllFurtherInput }
     case more ⇒
-      emit(MessageChunk(HttpData(more)), closeAfterResponseCompletion = true)(autoChunkToCloseBody)
+      emit(MessageChunk(HttpData(more.compact)), closeAfterResponseCompletion = true)(autoChunkToCloseBody)
   }
 
   def message(headers: List[HttpHeader], entity: HttpEntity) = HttpResponse(statusCode, entity, headers, protocol)

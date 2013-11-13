@@ -189,11 +189,11 @@ private[parsing] abstract class HttpMessagePartParser(val settings: ParserSettin
     val chunkSize = math.min(remainingBytes, input.size - offset).toInt // safe conversion because input.size returns an Int
     if (chunkSize > 0) {
       val chunkEnd = offset + chunkSize
-      val chunk = MessageChunk(HttpData(input.slice(offset, chunkEnd)))
+      val chunk = MessageChunk(HttpData(input.slice(offset, chunkEnd).compact))
       emit(chunk, closeAfterResponseCompletion) {
         if (chunkSize == remainingBytes) // last chunk
           emit(ChunkedMessageEnd, closeAfterResponseCompletion) {
-            parseMessageSafe(input.drop(chunkEnd).compact)
+            parseMessageSafe(input.drop(chunkEnd))
           }
         else parseBodyWithAutoChunking(input, chunkEnd, remainingBytes - chunkSize, closeAfterResponseCompletion)
       }
@@ -205,11 +205,8 @@ private[parsing] abstract class HttpMessagePartParser(val settings: ParserSettin
       case Some(x) ⇒ x.contentType
       case None    ⇒ ContentTypes.`application/octet-stream`
     }
-    HttpEntity(contentType, HttpData(body))
+    HttpEntity(contentType, HttpData(body.compact))
   }
-
-  def drop(input: ByteString, n: Int): ByteString =
-    if (input.length == n) ByteString.empty else input.drop(n).compact
 
   def needMoreData(input: ByteString, offset: Int)(next: (ByteString, Int) ⇒ Result): Result =
     if (offset == input.length) Result.NeedMoreData(next(_, 0))

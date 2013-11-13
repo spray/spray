@@ -54,9 +54,17 @@ trait HttpServiceBase extends Directives {
         // by default we register ourselves as the handler for a new connection
         ac.sender ! Tcp.Register(ac.self)
 
+      case x: Tcp.ConnectionClosed        ⇒ onConnectionClosed(x)
+
       case Timedout(request: HttpRequest) ⇒ runRoute(timeoutRoute)(eh, rh, ac, rs, log)(request)
     }
   }
+
+  /**
+   * Called by the `runRoute` behavior when a `ConnectionClosed` event is received.
+   * Override with custom logic if required (by default the method does nothing).
+   */
+  def onConnectionClosed(ev: Tcp.ConnectionClosed): Unit = ()
 
   /**
    * "Seals" a route by wrapping it with exception handling and rejection conversion.

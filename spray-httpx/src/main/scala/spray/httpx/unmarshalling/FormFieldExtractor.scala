@@ -73,12 +73,12 @@ class MultipartFormField(val name: String, val rawValue: Option[BodyPart]) exten
       ffc.urlEncodedFieldConverter match {
         case Some(conv) ⇒
           rawValue match {
-            case Some(BodyPart(HttpEntity.NonEmpty(tpe, data), _)) if tpe.mediaRange.matches(MediaTypes.`text/plain`) ⇒
+            case Some(BodyPart(HttpEntity.NonEmpty(ContentType(tpe, _), data), _)) if MediaRange(tpe).matches(MediaTypes.`text/plain`) ⇒
               conv(Some(data.asString))
             case None | Some(BodyPart(HttpEntity.Empty, _)) ⇒ conv(None)
             case Some(BodyPart(HttpEntity.NonEmpty(tpe, _), _)) ⇒
               Left(UnsupportedContentType("Field '" + name + "' can only be read from " +
-                "'application/x-www-form-urlencoded' form content but was '" + tpe.mediaRange + '\''))
+                "'application/x-www-form-urlencoded' form content but was '" + tpe.mediaType + '\''))
           }
         case None ⇒ fail(name, "application/x-www-form-urlencoded")
       }

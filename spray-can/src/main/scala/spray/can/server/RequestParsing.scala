@@ -83,7 +83,7 @@ private[can] object RequestParsing {
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case Tcp.Received(data: ByteString) ⇒
+            case Tcp.Received(data) ⇒
               try handleParsingResult(parser(data))
               catch {
                 case e: ExceptionWithErrorInfo ⇒ handleError(StatusCodes.BadRequest, e.info)

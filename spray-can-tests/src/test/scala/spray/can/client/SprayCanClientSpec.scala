@@ -17,7 +17,9 @@
 package spray.can.client
 
 import org.specs2.mutable.Specification
+import org.specs2.time.NoTimeConversions
 import com.typesafe.config.{ ConfigValueFactory, ConfigFactory, Config }
+import akka.util.duration._
 import akka.actor.{ ActorRef, Status, ActorSystem }
 import akka.io.IO
 import akka.testkit.TestProbe
@@ -31,7 +33,7 @@ import spray.testkit._
 import HttpHeaders._
 import StatusCodes._
 
-class SprayCanClientSpec extends Specification {
+class SprayCanClientSpec extends Specification with NoTimeConversions {
 
   val testConf: Config = ConfigFactory.parseString("""
     akka.event-handlers = ["akka.testkit.TestEventListener"]
@@ -103,6 +105,22 @@ class SprayCanClientSpec extends Specification {
       server.expectMsg(Http.PeerClosed)
       unbind()
     }
+
+    "not produce a request timeout if the initial chunk of a streamed response arrives on time" in new TestSetup {
+      val clientConnection = newClientConnect()
+      val request = Get("/abc") ~> Host(hostname, port)
+      val client = send(clientConnection, request)
+      val server = acceptConnection()
+      server.expectMsgType[HttpRequest].uri.path.toString === "/abc"
+      server.reply(ChunkedResponseStart(HttpResponse(entity = "ok-abc")))
+      client.expectMsgType[ChunkedResponseStart]
+      client.expectMsg(MessageChunk("ok-abc"))
+      client.expectNoMsg(1000.millis) // configured timeout is 500ms
+      client.send(clientConnection, Http.Close)
+      client.expectMsg(Http.Closed)
+      server.expectMsg(Http.PeerClosed)
+      unbind()
+    }
   }
 
   "The host-level client infrastructure" should {
@@ -145,6 +163,7 @@ class SprayCanClientSpec extends Specification {
       acceptConnection().expectMsgType[HttpRequest].headers.find(_.name == "X-Custom-Header") === Some(defaultHeader)
       send(hostConnector, Get("/pqr") ~> RawHeader("X-Custom-Header", "Customized!"))
       acceptConnection().expectMsgType[HttpRequest].headers.find(_.name == "X-Custom-Header").get.value === "Customized!"
+      closeHostConnector(hostConnector)
     }
 
     "accept absolute URIs and render them unchanged" in new TestSetup {
@@ -188,7 +207,7 @@ class SprayCanClientSpec extends Specification {
       val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
       probe.sender === hostConnector
       probe.reply(Get("/"))
-      probe.expectMsgType[Any]
+      probe.expectMsgType[Status.Failure].cause.getMessage == "Connection actively closed"
 
       customProviderUsed === true
 

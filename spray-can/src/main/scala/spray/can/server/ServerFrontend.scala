@@ -121,7 +121,7 @@ private object ServerFrontend {
                 }
                 else throw new UnsupportedOperationException("fastPath is not yet supported with pipelining enabled")
 
-              } else openNewRequest(request, closeAfterResponseCompletion, WaitingForResponse(context.sender))
+              } else openNewRequest(request, closeAfterResponseCompletion, WaitingForResponse(context.handler))
 
             case HttpMessageStartEvent(ChunkedRequestStart(request), closeAfterResponseCompletion) ⇒
               commandPL(Tcp.SuspendReading) // suspend reading until the handler is registered
@@ -142,14 +142,12 @@ private object ServerFrontend {
               commandPL(Tcp.Abort)
 
             case ev: Http.ConnectionClosed ⇒
-              def sendClosed(receiver: ActorRef) = downstreamCommandPL(Pipeline.Tell(receiver, ev, context.handler))
+              def sendClosed(receiver: ActorRef) = downstreamCommandPL(Pipeline.Tell(receiver, ev, context.self))
 
-              val interestedParties = firstUnconfirmed.handleClosed(ev) + context.handler
+              val interestedParties = firstUnconfirmed.closedEventHandlers + context.handler
               interestedParties.foreach(sendClosed)
 
-              if (ev ne Http.PeerClosed) eventPL(ev) // will stop this actor
-              else if (firstUnconfirmed.isEmpty) downstreamCommandPL(Tcp.Close) // idle connection, close actively
-            // else if (ev == PeerClosed) last in chain will close the connection eventually
+              eventPL(ev)
 
             case TickGenerator.Tick ⇒
               if (requestTimeout.isFinite())

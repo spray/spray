@@ -81,7 +81,7 @@ private object ResponseParsing {
           }
 
           val eventPipeline: EPL = {
-            case Tcp.Received(data: ByteString) ⇒ processReceivedData(data)
+            case Tcp.Received(data) ⇒ processReceivedData(data)
 
             case ev @ Http.PeerClosed ⇒
               processReceivedData(ByteString.empty)
