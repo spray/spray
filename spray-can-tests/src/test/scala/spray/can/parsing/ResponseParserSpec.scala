@@ -20,7 +20,7 @@ import com.typesafe.config.{ ConfigFactory, Config }
 import org.specs2.mutable.Specification
 import scala.annotation.tailrec
 import akka.actor.ActorSystem
-import akka.util.CompactByteString
+import akka.util.ByteString
 import spray.util._
 import spray.http._
 import HttpHeaders._
@@ -236,7 +236,7 @@ class ResponseParserSpec extends Specification {
 
   def rawParse(parser: Parser)(rawResponse: String*): Seq[Any] = {
     def closeSymbol(close: Boolean) = if (close) 'close else 'dontClose
-    @tailrec def rec(current: Result, remainingData: List[CompactByteString], result: Seq[Any] = Seq.empty): Seq[Any] =
+    @tailrec def rec(current: Result, remainingData: List[ByteString], result: Seq[Any] = Seq.empty): Seq[Any] =
       current match {
         case Result.Emit(HttpResponse(s, e, h, p), c, continue) ⇒
           rec(continue(), remainingData, result ++ Seq(s, e.asString, h, p, closeSymbol(c)))
@@ -252,7 +252,7 @@ class ResponseParserSpec extends Specification {
         case x                                     ⇒ result :+ x
       }
 
-    val data: List[CompactByteString] = rawResponse.map(CompactByteString.apply)(collection.breakOut)
+    val data: List[ByteString] = rawResponse.map(ByteString.apply)(collection.breakOut)
     rec(parser(data.head), data.tail)
   }
 
