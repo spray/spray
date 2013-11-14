@@ -17,7 +17,7 @@
 package spray.can.parsing
 
 import scala.annotation.tailrec
-import akka.util.{ ByteString, CompactByteString }
+import akka.util.ByteString
 import spray.http._
 import HttpHeaders._
 import CharUtils._
@@ -35,7 +35,7 @@ private[can] class HttpResponsePartParser(_settings: ParserSettings)(_headerPars
   def setRequestMethodForNextResponse(method: HttpMethod): Unit =
     requestMethodForCurrentResponse = method
 
-  def parseMessage(input: CompactByteString, offset: Int): Result =
+  def parseMessage(input: ByteString, offset: Int): Result =
     if (input.isEmpty || offset == input.size || (requestMethodForCurrentResponse ne NoMethod)) {
       var cursor = parseProtocol(input, offset)
       if (byteChar(input, cursor) == ' ') {
@@ -47,7 +47,7 @@ private[can] class HttpResponsePartParser(_settings: ParserSettings)(_headerPars
 
   def badProtocol = throw new ParsingException("The server-side HTTP version is not supported")
 
-  def parseStatusCode(input: CompactByteString, cursor: Int): Int = {
+  def parseStatusCode(input: ByteString, cursor: Int): Int = {
     def badStatusCode = throw new ParsingException("Illegal response status code")
     def intValue(offset: Int): Int = {
       val c = byteChar(input, cursor + offset)
@@ -65,7 +65,7 @@ private[can] class HttpResponsePartParser(_settings: ParserSettings)(_headerPars
     } else badStatusCode
   }
 
-  @tailrec private def parseReason(input: CompactByteString, startIx: Int)(cursor: Int = startIx): Int =
+  @tailrec private def parseReason(input: ByteString, startIx: Int)(cursor: Int = startIx): Int =
     if (cursor - startIx <= settings.maxResponseReasonLength)
       if (byteChar(input, cursor) == '\r' && byteChar(input, cursor + 1) == '\n') cursor + 2
       else parseReason(input, startIx)(cursor + 1)
@@ -73,7 +73,7 @@ private[can] class HttpResponsePartParser(_settings: ParserSettings)(_headerPars
       settings.maxResponseReasonLength + " characters")
 
   // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-3.3
-  def parseEntity(headers: List[HttpHeader], input: CompactByteString, bodyStart: Int, clh: Option[`Content-Length`],
+  def parseEntity(headers: List[HttpHeader], input: ByteString, bodyStart: Int, clh: Option[`Content-Length`],
                   cth: Option[`Content-Type`], teh: Option[`Transfer-Encoding`], hostHeaderPresent: Boolean,
                   closeAfterResponseCompletion: Boolean): Result =
     if (statusCode.allowsEntity && (requestMethodForCurrentResponse ne HttpMethods.HEAD)) {
@@ -111,7 +111,7 @@ private[can] class HttpResponsePartParser(_settings: ParserSettings)(_headerPars
     if (currentBodySize <= settings.maxContentLength)
       if (currentBodySize < settings.autoChunkingThreshold)
         Result.NeedMoreData {
-          case CompactByteString.empty ⇒
+          case ByteString.empty ⇒
             emit(message(headers, entity(cth, input drop bodyStart)), closeAfterResponseCompletion = true) {
               Result.IgnoreAllFurtherInput
             }
@@ -127,10 +127,10 @@ private[can] class HttpResponsePartParser(_settings: ParserSettings)(_headerPars
 
   // could be a val but we save the allocation in the most common case of not having an auto-chunked to-close body
   def autoChunkToCloseBody: Result = Result.NeedMoreData {
-    case CompactByteString.empty ⇒
+    case ByteString.empty ⇒
       emit(ChunkedMessageEnd, closeAfterResponseCompletion = true) { Result.IgnoreAllFurtherInput }
     case more ⇒
-      emit(MessageChunk(HttpData(more)), closeAfterResponseCompletion = true)(autoChunkToCloseBody)
+      emit(MessageChunk(HttpData(more.compact)), closeAfterResponseCompletion = true)(autoChunkToCloseBody)
   }
 
   def message(headers: List[HttpHeader], entity: HttpEntity) = HttpResponse(statusCode, entity, headers, protocol)

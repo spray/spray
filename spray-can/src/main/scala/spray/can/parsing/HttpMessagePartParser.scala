@@ -17,7 +17,7 @@
 package spray.can.parsing
 
 import scala.annotation.tailrec
-import akka.util.{ ByteString, CompactByteString }
+import akka.util.ByteString
 import spray.http._
 import StatusCodes._
 import HttpHeaders._
@@ -28,18 +28,18 @@ private[parsing] abstract class HttpMessagePartParser(val settings: ParserSettin
                                                       val headerParser: HttpHeaderParser) extends Parser {
   protected var protocol: HttpProtocol = `HTTP/1.1`
 
-  def apply(input: CompactByteString): Result = parseMessageSafe(input)
+  def apply(input: ByteString): Result = parseMessageSafe(input)
 
-  def parseMessageSafe(input: CompactByteString, offset: Int = 0): Result =
+  def parseMessageSafe(input: ByteString, offset: Int = 0): Result =
     try parseMessage(input, offset)
     catch {
       case NotEnoughDataException ⇒ needMoreData(input, offset)(parseMessageSafe)
       case e: ParsingException    ⇒ fail(e.status, e.info)
     }
 
-  def parseMessage(input: CompactByteString, offset: Int): Result
+  def parseMessage(input: ByteString, offset: Int): Result
 
-  def parseProtocol(input: CompactByteString, cursor: Int): Int = {
+  def parseProtocol(input: ByteString, cursor: Int): Int = {
     def c(ix: Int) = byteChar(input, cursor + ix)
     if (c(0) == 'H' && c(1) == 'T' && c(2) == 'T' && c(3) == 'P' && c(4) == '/' && c(5) == '1' && c(6) == '.') {
       protocol = c(7) match {
@@ -53,7 +53,7 @@ private[parsing] abstract class HttpMessagePartParser(val settings: ParserSettin
 
   def badProtocol: Nothing
 
-  @tailrec final def parseHeaderLines(input: CompactByteString, lineStart: Int, headers: List[HttpHeader] = Nil,
+  @tailrec final def parseHeaderLines(input: ByteString, lineStart: Int, headers: List[HttpHeader] = Nil,
                                       headerCount: Int = 0, ch: Option[Connection] = None,
                                       clh: Option[`Content-Length`] = None, cth: Option[`Content-Type`] = None,
                                       teh: Option[`Transfer-Encoding`] = None, e100: Boolean = false,
@@ -102,12 +102,12 @@ private[parsing] abstract class HttpMessagePartParser(val settings: ParserSettin
   }
 
   // work-around for compiler bug complaining about non-tail-recursion if we inline this method
-  def parseHeaderLinesAux(input: CompactByteString, lineStart: Int, headers: List[HttpHeader], headerCount: Int,
+  def parseHeaderLinesAux(input: ByteString, lineStart: Int, headers: List[HttpHeader], headerCount: Int,
                           ch: Option[Connection], clh: Option[`Content-Length`], cth: Option[`Content-Type`],
                           teh: Option[`Transfer-Encoding`], e100: Boolean, hh: Boolean): Result =
     parseHeaderLines(input, lineStart, headers, headerCount, ch, clh, cth, teh, e100, hh)
 
-  def parseEntity(headers: List[HttpHeader], input: CompactByteString, bodyStart: Int, clh: Option[`Content-Length`],
+  def parseEntity(headers: List[HttpHeader], input: ByteString, bodyStart: Int, clh: Option[`Content-Length`],
                   cth: Option[`Content-Type`], teh: Option[`Transfer-Encoding`], hostHeaderPresent: Boolean,
                   closeAfterResponseCompletion: Boolean): Result
 
@@ -123,12 +123,12 @@ private[parsing] abstract class HttpMessagePartParser(val settings: ParserSettin
       val offset = bodyStart + length.toInt
       val msg = message(headers, entity(cth, input.slice(bodyStart, offset)))
       emit(msg, closeAfterResponseCompletion) {
-        if (input.isCompact) parseMessageSafe(input.compact, offset)
-        else parseMessageSafe(input.drop(offset).compact)
+        if (input.isCompact) parseMessageSafe(input, offset)
+        else parseMessageSafe(input.drop(offset))
       }
     } else needMoreData(input, bodyStart)(parseFixedLengthBody(headers, _, _, length, cth, closeAfterResponseCompletion))
 
-  def parseChunk(input: CompactByteString, offset: Int, closeAfterResponseCompletion: Boolean): Result = {
+  def parseChunk(input: ByteString, offset: Int, closeAfterResponseCompletion: Boolean): Result = {
     @tailrec def parseTrailer(extension: String, lineStart: Int, headers: List[HttpHeader] = Nil,
                               headerCount: Int = 0): Result = {
       val lineEnd = headerParser.parseHeaderLine(input, lineStart)()
@@ -190,12 +190,12 @@ private[parsing] abstract class HttpMessagePartParser(val settings: ParserSettin
     val chunkSize = math.min(remainingBytes, input.size - offset).toInt // safe conversion because input.size returns an Int
     if (chunkSize > 0) {
       val chunkEnd = offset + chunkSize
-      val chunk = MessageChunk(HttpData(input.slice(offset, chunkEnd)))
+      val chunk = MessageChunk(HttpData(input.slice(offset, chunkEnd).compact))
       emit(chunk, closeAfterResponseCompletion) {
         if (chunkSize == remainingBytes) // last chunk
           emit(ChunkedMessageEnd, closeAfterResponseCompletion) {
-            if (input.isCompact) parseMessageSafe(input.compact, chunkEnd)
-            else parseMessageSafe(input.drop(chunkEnd).compact)
+            if (input.isCompact) parseMessageSafe(input, chunkEnd)
+            else parseMessageSafe(input.drop(chunkEnd))
           }
         else parseBodyWithAutoChunking(input, chunkEnd, remainingBytes - chunkSize, closeAfterResponseCompletion)
       }
@@ -207,15 +207,8 @@ private[parsing] abstract class HttpMessagePartParser(val settings: ParserSettin
       case Some(x) ⇒ x.contentType
       case None    ⇒ ContentTypes.`application/octet-stream`
     }
-    HttpEntity(contentType, HttpData(body))
+    HttpEntity(contentType, HttpData(body.compact))
   }
-
-  def drop(input: ByteString, n: Int): CompactByteString =
-    if (input.length == n) CompactByteString.empty else input.drop(n).compact
-
-  def needMoreData(input: CompactByteString, offset: Int)(next: (CompactByteString, Int) ⇒ Result): Result =
-    if (offset == input.length) Result.NeedMoreData(next(_, 0))
-    else Result.NeedMoreData(more ⇒ next((input ++ more).compact, offset))
 
   def needMoreData(input: ByteString, offset: Int)(next: (ByteString, Int) ⇒ Result): Result =
     if (offset == input.length) Result.NeedMoreData(next(_, 0))

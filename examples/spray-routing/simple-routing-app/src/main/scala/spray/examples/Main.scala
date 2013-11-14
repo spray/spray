@@ -11,7 +11,7 @@ object Main extends App with SimpleRoutingApp {
 
   startServer("localhost", port = 8080) {
     get {
-      path("") {
+      pathSingleSlash {
         redirect("/hello", StatusCodes.Found)
       } ~
       path("hello") {

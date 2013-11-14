@@ -16,12 +16,12 @@
 
 package spray.can
 
-import akka.util.CompactByteString
+import akka.util.ByteString
 import spray.util.SingletonException
 import spray.http._
 
 package object parsing {
-  private[can]type Parser = CompactByteString ⇒ Result
+  private[can]type Parser = ByteString ⇒ Result
 }
 
 package parsing {
@@ -32,7 +32,7 @@ package parsing {
     case class Emit(part: HttpMessagePart, closeAfterResponseCompletion: Boolean, continue: () ⇒ Result) extends Result
     case class Expect100Continue(continue: () ⇒ Result) extends Result
     case class ParsingError(status: StatusCode, info: ErrorInfo) extends Result
-    case object IgnoreAllFurtherInput extends Result with Parser { def apply(data: CompactByteString) = this }
+    case object IgnoreAllFurtherInput extends Result with Parser { def apply(data: ByteString) = this }
   }
 
   class ParsingException(val status: StatusCode, val info: ErrorInfo) extends RuntimeException(info.formatPretty) {

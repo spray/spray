@@ -20,7 +20,7 @@ import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import com.typesafe.config.{ ConfigFactory, Config }
 import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
-import akka.util.CompactByteString
+import akka.util.ByteString
 import spray.util.Utils._
 import spray.http.HttpHeaders._
 import spray.http.HttpHeader
@@ -259,10 +259,10 @@ class HttpHeaderParserSpec extends Specification {
       warnOnIllegalHeader = info ⇒ system.log.warning(info.formatPretty),
       unprimed = !primed)
     def insert(line: String, value: AnyRef): Unit =
-      if (parser.isEmpty) parser.insertRemainingCharsAsNewNodes(CompactByteString(line), value)()
-      else parser.insert(CompactByteString(line), value)()
+      if (parser.isEmpty) parser.insertRemainingCharsAsNewNodes(ByteString(line), value)()
+      else parser.insert(ByteString(line), value)()
 
-    def parseLine(line: String) = parser.parseHeaderLine(CompactByteString(line))() -> parser.resultHeader
+    def parseLine(line: String) = parser.parseHeaderLine(ByteString(line))() -> parser.resultHeader
 
     def parseAndCache(lineA: String)(lineB: String = lineA): HttpHeader = {
       val (ixA, headerA) = parseLine(lineA)

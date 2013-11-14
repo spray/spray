@@ -88,7 +88,7 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
       } ~
       // extract URI path element as Int
       pathPrefix("order" / IntNumber) { orderId =>
-        path("") {
+        pathEnd {
           // method tunneling via query param
           (put | parameter('method ! "put")) {
             // form extraction from multipart or www-url-encoded forms

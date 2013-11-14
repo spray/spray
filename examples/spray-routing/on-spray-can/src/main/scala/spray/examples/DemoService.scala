@@ -39,7 +39,7 @@ trait DemoService extends HttpService {
 
   val demoRoute = {
     get {
-      path("") {
+      pathSingleSlash {
         complete(index)
       } ~
       path("ping") {
