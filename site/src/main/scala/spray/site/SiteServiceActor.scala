@@ -108,6 +108,13 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
                 pathPrefixTest("documentation" / !IntNumber ~ !PathEnd ~ Rest) { subUri =>
                   redirect("/documentation/" + Main.settings.mainVersion + '/' + subUri, MovedPermanently)
                 } ~
+                requestUri { uri =>
+                  val path = uri.path.toString
+                  "-RC[12]/".r.findFirstIn(path) match {
+                    case Some(found) => redirect(uri.withPath(Uri.Path(path.replace(found, "-RC3/"))), MovedPermanently)
+                    case None => reject
+                  }
+                } ~
                 sphinxNode { node =>
                   complete(page(document(node), node))
                 }
