@@ -49,7 +49,9 @@ trait DemoService extends HttpService {
       path("stream1") {
         // we detach in order to move the blocking code inside the simpleStringStream into a future
         detach() {
-          complete(simpleStringStream)
+          respondWithMediaType(`text/html`) { // normally Strings are rendered to text/plain, we simply override here
+            complete(simpleStringStream)
+          }
         }
       } ~
       path("stream2") {
