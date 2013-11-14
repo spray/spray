@@ -53,6 +53,9 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
         host(_.endsWith("parboiled.org")) {
           redirect("https://github.com/sirthias/parboiled/wiki", Found)
         } ~
+        host(_.endsWith("pegdown.org")) {
+          redirect("https://github.com/sirthias/pegdown", Found)
+        } ~
         host("spray.io", "localhost", "127.0.0.1") {
           path("favicon.ico") {
             complete(NotFound) // fail early in order to prevent error response logging
@@ -104,6 +107,13 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
                 } ~
                 pathPrefixTest("documentation" / !IntNumber ~ !PathEnd ~ Rest) { subUri =>
                   redirect("/documentation/" + Main.settings.mainVersion + '/' + subUri, MovedPermanently)
+                } ~
+                requestUri { uri =>
+                  val path = uri.path.toString
+                  "-RC[12]/".r.findFirstIn(path) match {
+                    case Some(found) => redirect(uri.withPath(Uri.Path(path.replace(found, "-RC3/"))), MovedPermanently)
+                    case None => reject
+                  }
                 } ~
                 sphinxNode { node =>
                   complete(page(document(node), node))
