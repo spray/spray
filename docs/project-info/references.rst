@@ -66,8 +66,12 @@ to be listed here (along with a backlink) please provide us with the following d
   by the community and the *spray* team's responsiveness.
 
 `telfish.com <http://www.telfish.com>`_
-  We are using *spray-can*, *spray-server* and *spray-json* for our customer-facing query API for more than a year now
+  We are using *spray-can*, *spray-server* and *spray-json* for our customer-facing query API for more than 2 years now
   and are very happy with it. Our API code is robust, fast and easy to maintain.
+
+`Animatron LLC <http://www.animatron.com>`_
+  *spray* powers our internal REST services used to communicate components of our rendering engines and back-end servers.
+  We faced some challenges but got excellent support from the development team. Keep the good work!
 
 `Zuberance <http://www.zuberance.com>`_
   We developed a new product completely on top of Scala/Akka/spray and are just finishing up beta.
