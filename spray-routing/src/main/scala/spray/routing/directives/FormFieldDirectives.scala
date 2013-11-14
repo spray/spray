@@ -94,8 +94,8 @@ object FieldDefMagnet2 extends ToNameReceptaclePimps {
 
   /************ tuple support ******************/
 
-  implicit def forTuple[T <: Product, L <: HList, Out](implicit hla: HListerAux[T, L], fdma: FieldDefMagnetAux[L, Out]) =
-    FieldDefMagnetAux[T, Out](tuple ⇒ fdma(hla(tuple)))
+  implicit def forTuple[T <: Product, L <: HList, Out0](implicit hla: HListerAux[T, L], fdma: FieldDefMagnetAux[L, Out0]) =
+    FieldDefMagnetAux[T, Out0](tuple ⇒ fdma(hla(tuple)))
 
   /************ HList support ******************/
 
