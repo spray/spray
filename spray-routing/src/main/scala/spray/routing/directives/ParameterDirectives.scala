@@ -133,8 +133,8 @@ object ParamDefMagnet2 {
 
   /************ tuple support ******************/
 
-  implicit def forTuple[T <: Product, L <: HList, Out](implicit hla: HListerAux[T, L], pdma: ParamDefMagnetAux[L, Out]) =
-    ParamDefMagnetAux[T, Out](tuple ⇒ pdma(hla(tuple)))
+  implicit def forTuple[T <: Product, L <: HList, Out0](implicit hla: HListerAux[T, L], pdma: ParamDefMagnetAux[L, Out0]) =
+    ParamDefMagnetAux[T, Out0](tuple ⇒ pdma(hla(tuple)))
 
   /************ HList support ******************/
 
