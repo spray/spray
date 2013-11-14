@@ -53,6 +53,9 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
         host(_.endsWith("parboiled.org")) {
           redirect("https://github.com/sirthias/parboiled/wiki", Found)
         } ~
+        host(_.endsWith("pegdown.org")) {
+          redirect("https://github.com/sirthias/pegdown", Found)
+        } ~
         host("spray.io", "localhost", "127.0.0.1") {
           path("favicon.ico") {
             complete(NotFound) // fail early in order to prevent error response logging
