@@ -126,7 +126,7 @@ object SslTlsSupport {
                 if (tracing) log.debug("Received WriteChunkAck in waitingForAck")
                 if (encryptedBytesPending) sendEncryptedBytes()
                 else {
-                  if (bytesLeft(pendingOutboundBytes))
+                  if (pendingOutboundBytes.hasRemaining)
                     become(defaultState(remainingOutgoingData, closedEvent)) // we need to wait for incoming inbound data
                   else if (remainingOutgoingData.isEmpty)
                     startClosingOrReturnToDefaultState()
@@ -254,12 +254,12 @@ object SslTlsSupport {
               tempBuf.clear()
               val result = engine.wrap(pendingOutboundBytes, tempBuf)
               tempBuf.flip()
-              if (bytesLeft(tempBuf)) pendingEncryptedBytes ++= ByteString(tempBuf)
+              if (tempBuf.hasRemaining) pendingEncryptedBytes ++= ByteString(tempBuf)
               result.getStatus match {
                 case OK ⇒ result.getHandshakeStatus match {
                   case status @ (NOT_HANDSHAKING | FINISHED) ⇒
                     if (status == FINISHED) publishSSLSessionEstablished()
-                    if (bytesLeft(pendingOutboundBytes)) apply(tempBuf)
+                    if (pendingOutboundBytes.hasRemaining) apply(tempBuf)
                     else decrypt(tempBuf)
                   case NEED_WRAP   ⇒ apply(tempBuf)
                   case NEED_UNWRAP ⇒ decrypt(tempBuf)
@@ -278,7 +278,7 @@ object SslTlsSupport {
               tempBuf.clear()
               val result = engine.unwrap(pendingInboundBytes, tempBuf)
               tempBuf.flip()
-              if (bytesLeft(tempBuf)) {
+              if (tempBuf.hasRemaining) {
                 if (tracing) log.debug("Dispatching {} decrypted bytes: {}", tempBuf.remaining, tempBuf.duplicate.drainToString)
                 eventPL(Tcp.Received(ByteString(tempBuf)))
               }
@@ -286,7 +286,7 @@ object SslTlsSupport {
                 case OK ⇒ result.getHandshakeStatus match {
                   case status @ (NOT_HANDSHAKING | FINISHED) ⇒
                     if (status == FINISHED) publishSSLSessionEstablished()
-                    if (bytesLeft(pendingInboundBytes)) apply(tempBuf)
+                    if (pendingInboundBytes.hasRemaining) apply(tempBuf)
                     else encrypt(tempBuf)
                   case NEED_UNWRAP ⇒ apply(tempBuf)
                   case NEED_WRAP   ⇒ encrypt(tempBuf)
@@ -310,18 +310,16 @@ object SslTlsSupport {
             commandPL(Tcp.Write(result, WriteChunkAck))
           }
 
-          def bytesLeft(buffer: ByteBuffer) = buffer.remaining > 0
-
           def encryptedBytesPending = pendingEncryptedBytes.length > 0 // why doesn't ByteStringBuilder have an `isEmpty`?
 
           def setPendingOutboundBytes(buffer: ByteBuffer): Unit = {
-            verify(!bytesLeft(pendingOutboundBytes))
+            verify(!pendingOutboundBytes.hasRemaining)
             pendingOutboundBytes = buffer
           }
 
           def enqueueInboundBytes(data: ByteString): Unit =
             pendingInboundBytes =
-              if (bytesLeft(pendingInboundBytes)) {
+              if (pendingInboundBytes.hasRemaining) {
                 val buffer = ByteBuffer.allocate(pendingInboundBytes.remaining + data.size)
                 buffer.put(pendingInboundBytes)
                 data.copyToBuffer(buffer)
