@@ -200,8 +200,11 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       // only start chunking after the handshake
       clientConn.handler ! StartChunking
       val text = "bar" * 500
-      serverConn.writeLn(text)
+      object MyAck extends Tcp.Event
+      serverConn.command(Tcp.Write(ByteString(text + '\n'), MyAck))
       clientConn.expectReceivedString(text + "\n")
+      serverConn.events.expectMsg(MyAck)
+      serverConn.events.expectNoMsg()
 
       val baselineSessionCounts = sessionCounts()
       clientConn.command(Tcp.Close)
