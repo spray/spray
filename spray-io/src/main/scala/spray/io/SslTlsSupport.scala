@@ -135,12 +135,7 @@ object SslTlsSupport {
                     val WriteChunk(_, write) #:: tail = remainingOutgoingData
                     if (write.wantsAck) eventPL(write.ack)
                     if (tail.isEmpty) startClosingOrReturnToDefaultState()
-                    else {
-                      setPendingOutboundBytes(tail.head.buffer)
-                      encrypt()
-                      sendEncryptedBytes()
-                      become(waitingForAck(tail, closedEvent))
-                    }
+                    else startEncrypting(tail, sendNow = true, closedEvent)
                   }
                 }
               case Tcp.PeerClosed          ⇒ receivedUnexpectedPeerClosed()
@@ -187,14 +182,25 @@ object SslTlsSupport {
             if (closedEvent.isEmpty) {
               if (remainingOutgoingData.isEmpty) {
                 val chunkStream = writeChunkStream(write)
-                if (chunkStream.nonEmpty) {
-                  setPendingOutboundBytes(chunkStream.head.buffer)
-                  encrypt()
-                  if (sendNow) sendEncryptedBytes()
-                  become(waitingForAck(chunkStream))
-                } // else ignore
+                if (chunkStream.nonEmpty) startEncrypting(chunkStream, sendNow)
+                // else ignore
               } else failWrite(write, "there is already another write in progress")
             } else failWrite(write, "the SSL connection is already closing")
+
+          def startEncrypting(chunkStream: Stream[WriteChunk],
+                              sendNow: Boolean,
+                              closedEvent: Option[Tcp.ConnectionClosed] = None): Unit =
+            if (chunkStream.head.buffer.hasRemaining) {
+              setPendingOutboundBytes(chunkStream.head.buffer)
+              encrypt()
+              if (sendNow) sendEncryptedBytes()
+              become(waitingForAck(chunkStream, closedEvent))
+            } else {
+              // shortcut for empty writes possibly containing acks (created by user or `writeChunkStream` below)
+              become(waitingForAck(chunkStream, closedEvent))
+              // must come after the 'become', otherwise an infinite loop might be triggered
+              if (sendNow) eventPipeline(WriteChunkAck)
+            }
 
           def startClosing(closedEvent: Tcp.ConnectionClosed): Unit = {
             engine.closeOutbound()
@@ -360,8 +366,13 @@ object SslTlsSupport {
       def writeChunkStream(cmd: Tcp.WriteCommand): Stream[WriteChunk] = {
         def chunkStream(httpData: HttpData, write: Tcp.SimpleWriteCommand): Stream[WriteChunk] =
           if (httpData.isEmpty) Stream.cons(WriteChunk(EmptyByteBuffer, write), Stream.empty)
-          else httpData.toChunkStream(maxEncryptionChunkSize) map { data ⇒
-            WriteChunk(ByteBuffer.wrap(data.toByteArray), write)
+          else {
+            val result = httpData.toChunkStream(maxEncryptionChunkSize) map { data ⇒
+              WriteChunk(ByteBuffer.wrap(data.toByteArray), Tcp.Write.empty)
+            }
+
+            if (write.wantsAck) result append Stream(WriteChunk(EmptyByteBuffer, write))
+            else result
           }
         cmd match {
           case w @ Tcp.Write.empty                     ⇒ Stream.empty
