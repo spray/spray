@@ -8,7 +8,7 @@ import java.nio.channels.{ SelectionKey, SocketChannel }
 import scala.util.control.NonFatal
 import scala.collection.immutable
 import scala.concurrent.duration._
-import akka.actor.{ ReceiveTimeout, ActorRef }
+import akka.actor.{ Terminated, ReceiveTimeout, ActorRef }
 import akka.io.Inet.SocketOption
 import akka.io.TcpConnection.CloseInformation
 import akka.io.SelectionHandler._
@@ -58,6 +58,8 @@ private[io] class TcpOutgoingConnection(_tcp: TcpExt,
           context.become(connecting(registration, commander, options, tcp.Settings.FinishConnectRetries))
         }
       }
+
+    case Terminated(`commander`) ⇒ onCommanderTerminated()
   }
 
   def connecting(registration: ChannelRegistration, commander: ActorRef,
@@ -86,5 +88,12 @@ private[io] class TcpOutgoingConnection(_tcp: TcpExt,
       if (timeout.isDefined) context.setReceiveTimeout(Duration.Undefined) // Clear the timeout
       log.debug("Connect timeout expired, could not establish connection to {}", remoteAddress)
       stop()
+
+    case Terminated(`commander`) ⇒ onCommanderTerminated()
+  }
+
+  def onCommanderTerminated(): Unit = {
+    log.debug("`commander` was terminated. Stopping...")
+    stopWith(CloseInformation(Set.empty, connect.failureMessage))
   }
 }
