@@ -1,26 +1,32 @@
 Other Resources
 ===============
 
+"*spray*: REST on Akka" `Typesafe webinar`__
+  | Slides: `/webinar/`__
+
+__ http://www.typesafe.com/blog/Webinar
+__ /webinar/
+
 "*Akka* & *spray*: Actors, IO and HTTP" talk from `wjax 2013`__
   | Slides: `/wjax/`__
 
 __ http://jax.de/wjax2013/
 __ /wjax/
 
-*spray*: REST on Akka" talk from `scala.io`__ 2013
+"*spray*: REST on Akka" talk from `scala.io`__ 2013
   | Slides: `/scala.io/`__
 
 __ http://scala.io
 __ /scala.io/
 
-"*spray*: REST on Akka" talk from the Northeast Scala Symposium 2012
-  | Video: http://www.youtube.com/watch?v=fUuLJmWB__E
-  | Slides: http://www.slideshare.net/sirthias/spray-rest-on-akka
+"The Scala Types" podcast: "Mathias Doenitz on *spray*"
+  | Part 1: http://scalatypes.com/episode-27-mathias-doenitz-on-spray-part-1
+  | Part 2: http://scalatypes.com/episode-28-mathias-doenitz-on-spray-part-2
 
 "*spray*: REST on Akka" talk from the Scala Days 2012
   | Video: http://skillsmatter.com/podcast/scala/spray-rest-on-akka
   | Slides: http://www.slideshare.net/sirthias/spray-rest-on-akka-12616908
 
-"The Scala Types" podcast: "Mathias Doenitz on *spray*"
-  | Part 1: http://scalatypes.com/episode-27-mathias-doenitz-on-spray-part-1
-  | Part 2: http://scalatypes.com/episode-28-mathias-doenitz-on-spray-part-2
+"*spray*: REST on Akka" talk from the Northeast Scala Symposium 2012
+  | Video: http://www.youtube.com/watch?v=fUuLJmWB__E
+  | Slides: http://www.slideshare.net/sirthias/spray-rest-on-akka

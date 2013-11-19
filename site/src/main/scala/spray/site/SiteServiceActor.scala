@@ -63,6 +63,7 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
           logRequestResponse(showErrorResponses _) {
             talkCharts("scala.io") ~
             talkCharts("wjax") ~
+            talkCharts("webinar") ~
             getFromResourceDirectory("theme") ~
             pathPrefix("_images") {
               getFromResourceDirectory("sphinx/json/_images")
@@ -169,8 +170,8 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
         redirect(s"/$talk/", MovedPermanently)
       } ~
         pathSingleSlash {
-          getFromResource(talk + "/index.html")
+          getFromResource(s"talks/$talk/index.html")
         } ~
-        getFromResourceDirectory(talk)
+        getFromResourceDirectory("talks/" + talk)
     }
 }
