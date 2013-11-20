@@ -418,7 +418,11 @@ object ServerSSLEngineProvider extends SSLEngineProviderCompanion(clientMode = f
   type Self = ServerSSLEngineProvider
   implicit def fromFunc(f: PipelineContext ⇒ Option[SSLEngine]): Self =
     new ServerSSLEngineProvider {
-      def apply(plc: PipelineContext) = f(plc)
+      def apply(plc: PipelineContext) = {
+        val engine = f(plc)
+        require(engine.forall(!_.getUseClientMode), "SSLEngine created by ServerSSLEngineProvider must set useClientMode = false")
+        engine
+      }
     }
 }
 
@@ -427,7 +431,11 @@ object ClientSSLEngineProvider extends SSLEngineProviderCompanion(clientMode = t
   type Self = ClientSSLEngineProvider
   implicit def fromFunc(f: PipelineContext ⇒ Option[SSLEngine]): Self =
     new ClientSSLEngineProvider {
-      def apply(plc: PipelineContext) = f(plc)
+      def apply(plc: PipelineContext) = {
+        val engine = f(plc)
+        require(engine.exists(_.getUseClientMode), "SSLEngine created by ClientSSLEngineProvider must set useClientMode = true")
+        engine
+      }
     }
 }
 
