@@ -80,4 +80,21 @@ class SecurityDirectivesSpec extends RoutingSpec {
         check { responseAs[String] === "42" }
     }
   }
+
+  "the 'authenticate(<Future>)' directive" should {
+    case object AuthenticationRejection extends Rejection
+
+    var i = 0
+    def nextInt() = { i += 1; i }
+    def myAuthenticator: Future[Authentication[Int]] = Promise.successful(Right(nextInt()))
+
+    val route = authenticate(myAuthenticator) { echoComplete }
+
+    "pass on the authenticator extraction if the filter conditions is met" in {
+      Get() ~> Host("spray.io") ~> route ~>
+        check { responseAs[String] === "1" }
+      Get() ~> Host("spray.io") ~> route ~>
+        check { responseAs[String] === "2" }
+    }
+  }
 }

@@ -55,7 +55,7 @@ object FutureDirectives extends FutureDirectives
 trait OnCompleteFutureMagnet[T] extends Directive1[Either[Throwable, T]]
 
 object OnCompleteFutureMagnet {
-  implicit def apply[T](future: Future[T])(implicit ec: ExecutionContext) =
+  implicit def apply[T](future: ⇒ Future[T])(implicit ec: ExecutionContext) =
     new OnCompleteFutureMagnet[T] {
       def happly(f: (Either[Throwable, T] :: HNil) ⇒ Route) = ctx ⇒
         try future.onComplete(t ⇒ f(t :: HNil)(ctx))
@@ -69,7 +69,7 @@ trait OnSuccessFutureMagnet {
 }
 
 object OnSuccessFutureMagnet {
-  implicit def apply[T](future: Future[T])(implicit hl: HListable[T], ec: ExecutionContext) =
+  implicit def apply[T](future: ⇒ Future[T])(implicit hl: HListable[T], ec: ExecutionContext) =
     new Directive[hl.Out] with OnSuccessFutureMagnet {
       type Out = hl.Out
       def get = this
@@ -85,7 +85,7 @@ object OnSuccessFutureMagnet {
 trait OnFailureFutureMagnet extends Directive1[Throwable]
 
 object OnFailureFutureMagnet {
-  implicit def apply[T](future: Future[T])(implicit m: ToResponseMarshaller[T], ec: ExecutionContext) =
+  implicit def apply[T](future: ⇒ Future[T])(implicit m: ToResponseMarshaller[T], ec: ExecutionContext) =
     new OnFailureFutureMagnet {
       def happly(f: (Throwable :: HNil) ⇒ Route) = ctx ⇒ future.onComplete {
         case Right(t) ⇒ ctx.complete(t)
