@@ -26,8 +26,14 @@ class FutureDirectivesSpec extends RoutingSpec {
 
   "The `onComplete` directive" should {
     "properly unwrap a Future in the success case" in {
-      Get() ~> onComplete(Future.successful("yes")) { echoComplete } ~> check {
-        responseAs[String] === "Success(yes)"
+      var i = 0
+      def nextNumber() = { i += 1; i }
+      val route = onComplete(Future.successful(nextNumber())) { echoComplete }
+      Get() ~> route ~> check {
+        responseAs[String] === "Success(1)"
+      }
+      Get() ~> route ~> check {
+        responseAs[String] === "Success(2)"
       }
     }
     "properly unwrap a Future in the failure case" in {

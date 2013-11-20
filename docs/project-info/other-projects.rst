@@ -7,4 +7,4 @@ S4 - Spray Slick Scala Start
   | https://github.com/jacobus/s4
 
 *spray* template for heroku
-  | https://github.com/ontoadaptive/spray-template-heroku
+  | https://github.com/matanster/spray-heroku

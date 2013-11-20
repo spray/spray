@@ -1,3 +1,22 @@
+Version 1.1-RC4 (2013-11-20)
+----------------------------
+
+- spray-can:
+
+  + fixed occasional DeathPactException in HttpHostConnector (#699)
+
+- spray-io:
+
+  + fixed SslTlsSupport sending out multiple acks in some cases (#689)
+  + fixed noisy DeathPactException when connection attempt fails (#692)
+  + added verification of correct clientMode of SSLEngines created by `*SSLEngineProvider.fromFunc` (#657)
+
+- spray-routing:
+
+  + made `FutureDirectives` and `authenticate(Future)` parameters call-by-name (#694)
+  + applied small change as a workaround for http://youtrack.jetbrains.com/issue/SCL-6214
+
+
 Version 1.1-RC3 (2013-11-13)
 ----------------------------
 
