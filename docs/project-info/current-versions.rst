@@ -36,9 +36,9 @@ Currently the first release candidate for *spray* 1.0/1.1/1.2 is available, plea
 
 For information about where to find the *spray* artifacts please check out the :ref:`maven-repo` chapter.
 
-.. |1.0| replace:: **1.0-RC3**
-.. |1.1| replace:: **1.1-RC3**
-.. |1.2| replace:: **1.2-RC3**
+.. |1.0| replace:: **1.0-RC4**
+.. |1.1| replace:: **1.1-RC4**
+.. |1.2| replace:: **1.2-RC4**
 
 
 Nightly Builds
