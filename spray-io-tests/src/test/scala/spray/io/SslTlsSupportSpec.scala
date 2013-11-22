@@ -349,6 +349,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
 
     class ConnectionActor[T <: (PipelineContext ⇒ Option[SSLEngine])](events: ActorRef, connection: ActorRef,
                                                                       connected: Tcp.Connected)(implicit engineProvider: T) extends ConnectionHandler {
+      context.watch(connection)
       val pipeline = frontend >> SslTlsSupport(128, publishSslSessionInfo, sslTraceLogging)
       def receive = running(connection, pipeline, createSslTlsContext[T](connected))
       def frontend: PipelineStage = new PipelineStage {
