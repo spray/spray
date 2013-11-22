@@ -57,7 +57,7 @@ trait EncodingDirectives {
   /**
    * Wraps its inner Route with encoding support using the given Encoder.
    */
-  def encodeResponse(magnet: EncodeResponseMagnet) = {
+  def encodeResponse(magnet: EncodeResponseMagnet): Directive0 = {
     import magnet._
     def applyEncoder = mapRequestContext { ctx ⇒
       @volatile var compressor: Compressor = null

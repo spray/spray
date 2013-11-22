@@ -41,13 +41,13 @@ trait ParameterDirectives extends ToNameReceptaclePimps {
    * Rejects the request if the query parameter matcher(s) defined by the definition(s) don't match.
    * Otherwise the parameter value(s) are extracted and passed to the inner route.
    */
-  def parameter(pdm: ParamDefMagnet): pdm.Out = pdm()
+  /* directive */ def parameter(pdm: ParamDefMagnet): pdm.Out = pdm()
 
   /**
    * Rejects the request if the query parameter matcher(s) defined by the definition(s) don't match.
    * Otherwise the parameter value(s) are extracted and passed to the inner route.
    */
-  def parameters(pdm: ParamDefMagnet): pdm.Out = pdm()
+  /* directive */ def parameters(pdm: ParamDefMagnet): pdm.Out = pdm()
 
 }
 
