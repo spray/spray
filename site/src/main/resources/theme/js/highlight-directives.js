@@ -32,11 +32,21 @@ $(function() {
         function directiveLinkTarget(directive) {
             return '/documentation/'+version+'/spray-routing/'+directive.group+'/'+directive.name+'/';
         }
+        function nextCharIs(e, ch) {
+            if (e.nextSibling) {
+                var next = e.nextSibling;
+                var text = next.textContent;
+                if (next.textContent.indexOf(ch) === 0) return true;
+                else if (next.textContent === " ") return nextCharIs(next, ch);
+            }
+            return false;
+        }
         init();
 
         $('.highlight-scala .n').each(function(i, e) {
             // crude heuristic to exclude false positives in "ctx.request.method" or "ctx.complete"
-            if (e.previousSibling && e.previousSibling.textContent === ".") return;
+            if ((e.previousSibling && e.previousSibling.textContent === ".") ||
+                nextCharIs(e, ":") || nextCharIs(e, "=")) return;
             var ele = $(e);
             var name = ele.text();
             var directive = findDirective(name);

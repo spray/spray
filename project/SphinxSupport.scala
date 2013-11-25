@@ -64,7 +64,7 @@ object SphinxSupport {
   }
 
   // a pattern for a directive definition of this kind: "def abc(): Directive ="
-  val DirectiveDefinition = """(?ms:(?:def|val)\s+(\w+)(?=[:(\[])[^=]*?[:⇒]\s*(?:Directive|\w*Route)[^=\n]*=)""".r
+  val DirectiveDefinition = """(?ms:(?:def|val)\s+(\w+)(?=[:(\[])[^=]*?[:⇒]\s*(?:Directive|\w*Route)[^=\n)]*=)""".r
   // a pattern for directives explicitly marked like this: "/* directive */ def abc() ="
   val ExplicitDirectiveDefinition = """(?ms:/\* directive \*/\s*(?:def|val)\s+(\w+)(?=[:(\[]))""".r
 
