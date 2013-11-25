@@ -90,8 +90,6 @@ object SphinxSupport {
         regexp.findAllIn(source).matchData.map(_.group(1)).toSeq.filterNot(x => x.startsWith("_") || x == "apply")
 
       val directives = Seq(DirectiveDefinition, ExplicitDirectiveDefinition).flatMap(find).distinct
-
-      directives.foreach(println)
       DirectivesGroup(name, directives)
     }
     def directivesGroupName(name: String): String =
