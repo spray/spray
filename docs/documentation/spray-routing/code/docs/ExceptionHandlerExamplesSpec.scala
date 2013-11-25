@@ -13,9 +13,11 @@ object MyHandler {
 
   implicit def myExceptionHandler(implicit log: LoggingContext) =
     ExceptionHandler {
-      case e: ArithmeticException => ctx =>
-        log.warning("Request {} could not be handled normally", ctx.request)
-        ctx.complete(InternalServerError, "Bad numbers, bad result!!!")
+      case e: ArithmeticException =>
+        requestUri { uri =>
+          log.warning("Request to {} could not be handled normally", uri)
+          complete(InternalServerError, "Bad numbers, bad result!!!")
+        }
     }
 
   class MyService extends HttpServiceActor {

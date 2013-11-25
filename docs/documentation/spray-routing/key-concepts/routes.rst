@@ -67,7 +67,7 @@ There are three basic operations we need for building more complex routes from s
 - Route chaining, which tries a second route if a given first one was rejected
 
 The last point is achieved with the simple operator ``~``, which is available to all routes via a "pimp", i.e. an
-implicit "extension". The first two points are provided by so-called :ref:`Directives`, of which a large number is
+implicit extension. The first two points are provided by so-called :ref:`Directives`, of which a large number is
 already predefined by *spray-routing* and which you can also easily create yourself.
 :ref:`Directives` deliver most of *spray-routings* power and flexibility.
 
