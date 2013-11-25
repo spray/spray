@@ -25,6 +25,7 @@ trait MethodDirectives {
   import BasicDirectives._
   import MiscDirectives._
   import RouteDirectives._
+  import ParameterDirectives._
 
   /**
    * A route filter that rejects all non-DELETE requests.
@@ -81,18 +82,15 @@ trait MethodDirectives {
    *  - Use in combination with JSONP (JSONP only supports GET)
    *  - Supporting older browsers that lack support for certain HTTP methods. E.g. IE8 does not support PATCH
    */
-  def overrideMethodWithParameter(paramName: String): Directive0 = {
-    import ParameterDirectives._
-    parameter(paramName?).flatMap {
-      case Some(method) ⇒ {
+  def overrideMethodWithParameter(paramName: String): Directive0 =
+    parameter(paramName?) flatMap {
+      case Some(method) ⇒
         getForKey(method.toUpperCase) match {
           case Some(m) ⇒ mapRequest(_.copy(method = m))
           case _       ⇒ complete(StatusCodes.NotImplemented)
         }
-      }
       case _ ⇒ noop
     }
-  }
 }
 
 object MethodDirectives extends MethodDirectives {
