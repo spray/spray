@@ -1,6 +1,6 @@
 $(function() {
     // disabled for old milestone versions (containing 'M' in the version)
-    var versionRE = new RegExp('/documentation/([^/M]*)/.*')
+    var versionRE = new RegExp('/documentation/([^/M]*)/spray-routing/.*')
     var match = versionRE.exec(document.location.pathname);
 
     if (match) {
