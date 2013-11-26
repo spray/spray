@@ -43,7 +43,7 @@ $(function() {
         }
         init();
 
-        $('.highlight-scala .n').each(function(i, e) {
+        $('.highlight-scala .n, .literal .pre').each(function(i, e) {
             // crude heuristic to exclude false positives in "ctx.request.method" or "ctx.complete"
             if ((e.previousSibling && e.previousSibling.textContent === ".") ||
                 nextCharIs(e, ":") || nextCharIs(e, "=")) return;
