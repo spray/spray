@@ -40,10 +40,10 @@ trait DebuggingDirectives {
 
 object DebuggingDirectives extends DebuggingDirectives
 
-case class LoggingMagnet[T](f: T)
+case class LoggingMagnet[T](f: T) // # logging-magnet
 
 object LoggingMagnet {
-  implicit def forMessageFromMarker[T](marker: String)(implicit log: LoggingContext) =
+  implicit def forMessageFromMarker[T](marker: String)(implicit log: LoggingContext) = // # message-magnets
     forMessageFromMarkerAndLevel[T](marker -> DebugLevel)
 
   implicit def forMessageFromMarkerAndLevel[T](markerAndLevel: (String, LogLevel))(implicit log: LoggingContext) = // # message-magnets
@@ -52,13 +52,13 @@ object LoggingMagnet {
       Message ⇒ LogEntry(Message, marker, level)
     }
 
-  implicit def forMessageFromShow[T](show: T ⇒ String)(implicit log: LoggingContext) =
+  implicit def forMessageFromShow[T](show: T ⇒ String)(implicit log: LoggingContext) = // # message-magnets
     forMessageFromFullShow[T](msg ⇒ LogEntry(show(msg), DebugLevel))
 
-  implicit def forMessageFromFullShow[T](show: T ⇒ LogEntry)(implicit log: LoggingContext): LoggingMagnet[T ⇒ Unit] =
+  implicit def forMessageFromFullShow[T](show: T ⇒ LogEntry)(implicit log: LoggingContext): LoggingMagnet[T ⇒ Unit] = // # message-magnets
     LoggingMagnet(show(_).logTo(log))
 
-  implicit def forRequestResponseFromMarker(marker: String)(implicit log: LoggingContext) =
+  implicit def forRequestResponseFromMarker(marker: String)(implicit log: LoggingContext) = // # request-response-magnets
     forRequestResponseFromMarkerAndLevel(marker -> DebugLevel)
 
   implicit def forRequestResponseFromMarkerAndLevel(markerAndLevel: (String, LogLevel))(implicit log: LoggingContext) = // # request-response-magnets
@@ -68,7 +68,7 @@ object LoggingMagnet {
         LogEntry("Response for\n  Request : " + request + "\n  Response: " + response, marker, level))
     }
 
-  implicit def forRequestResponseFromHttpResponsePartShow(show: HttpRequest ⇒ HttpResponsePart ⇒ Option[LogEntry])(implicit log: LoggingContext): LoggingMagnet[HttpRequest ⇒ Any ⇒ Unit] =
+  implicit def forRequestResponseFromHttpResponsePartShow(show: HttpRequest ⇒ HttpResponsePart ⇒ Option[LogEntry])(implicit log: LoggingContext): LoggingMagnet[HttpRequest ⇒ Any ⇒ Unit] = // # request-response-magnets
     LoggingMagnet { request ⇒
       val showResponse = show(request);
       {
@@ -77,7 +77,7 @@ object LoggingMagnet {
       }
     }
 
-  implicit def forRequestResponseFromFullShow(show: HttpRequest ⇒ Any ⇒ Option[LogEntry])(implicit log: LoggingContext): LoggingMagnet[HttpRequest ⇒ Any ⇒ Unit] =
+  implicit def forRequestResponseFromFullShow(show: HttpRequest ⇒ Any ⇒ Option[LogEntry])(implicit log: LoggingContext): LoggingMagnet[HttpRequest ⇒ Any ⇒ Unit] = // # request-response-magnets
     LoggingMagnet { request ⇒
       val showResponse = show(request)
       response ⇒ showResponse(response).foreach(_.logTo(log))
