@@ -3,4 +3,4 @@
 pass
 ====
 
-(todo)
+An alias for the :ref:`-noop-` directive.
