@@ -86,6 +86,7 @@ These types of rejection cancellations are resolved *before* a ``RejectionHandle
 So, for the example above the ``RejectionHandler`` will be presented with only a single-element rejection list,
 containing nothing but the ``UnsupportedRequestEncodingRejection``.
 
+.. _empty rejections:
 
 Empty Rejections
 ----------------

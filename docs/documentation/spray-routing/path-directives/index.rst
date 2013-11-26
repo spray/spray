@@ -16,3 +16,5 @@ PathDirectives
    pathSuffixTest
    rawPathPrefix
    rawPathPrefixTest
+
+   pathmatcher-dsl
