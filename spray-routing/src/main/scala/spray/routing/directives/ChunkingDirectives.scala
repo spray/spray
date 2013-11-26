@@ -71,6 +71,6 @@ object ChunkSizeMagnet {
     val size = aView(maxChunkSize)
     new Default(size, size)
   }
-  implicit def fromPair[A, B](pair: (A, B))(implicit factory: ActorRefFactory, aView: A ⇒ Long, bView: B ⇒ Long): ChunkSizeMagnet =
-    new Default(aView(pair._1), bView(pair._2))
+  implicit def fromThresholdAndChunkSize[A, B](thresholdAndChunkSize: (A, B))(implicit factory: ActorRefFactory, aView: A ⇒ Long, bView: B ⇒ Long): ChunkSizeMagnet =
+    new Default(aView(thresholdAndChunkSize._1), bView(thresholdAndChunkSize._2))
 }
