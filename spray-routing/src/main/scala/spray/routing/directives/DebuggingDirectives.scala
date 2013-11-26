@@ -46,9 +46,9 @@ object LoggingMagnet {
   implicit def forMessageFromMarker[T](marker: String)(implicit log: LoggingContext) =
     forMessageFromMarkerAndLevel[T](marker -> DebugLevel)
 
-  implicit def forMessageFromMarkerAndLevel[T](tuple: (String, LogLevel))(implicit log: LoggingContext) =
+  implicit def forMessageFromMarkerAndLevel[T](markerAndLevel: (String, LogLevel))(implicit log: LoggingContext) = // # message-magnets
     forMessageFromFullShow[T] {
-      val (marker, level) = tuple
+      val (marker, level) = markerAndLevel
       Message ⇒ LogEntry(Message, marker, level)
     }
 
@@ -61,9 +61,9 @@ object LoggingMagnet {
   implicit def forRequestResponseFromMarker(marker: String)(implicit log: LoggingContext) =
     forRequestResponseFromMarkerAndLevel(marker -> DebugLevel)
 
-  implicit def forRequestResponseFromMarkerAndLevel(tuple: (String, LogLevel))(implicit log: LoggingContext) =
+  implicit def forRequestResponseFromMarkerAndLevel(markerAndLevel: (String, LogLevel))(implicit log: LoggingContext) = // # request-response-magnets
     forRequestResponseFromFullShow {
-      val (marker, level) = tuple
+      val (marker, level) = markerAndLevel
       request ⇒ response ⇒ Some(
         LogEntry("Response for\n  Request : " + request + "\n  Response: " + response, marker, level))
     }
