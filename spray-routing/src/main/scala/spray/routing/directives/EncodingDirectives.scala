@@ -28,31 +28,7 @@ trait EncodingDirectives {
   import MiscDirectives._
   import RouteDirectives._
 
-  /**
-   * Wraps its inner Route with decoding support using the given Decoder.
-   */
-  def decodeRequest(decoder: Decoder): Directive0 = {
-    def applyDecoder = mapInnerRoute { inner ⇒
-      ctx ⇒
-        tryToEither(decoder.decode(ctx.request)) match {
-          case Right(decodedRequest) ⇒ inner(ctx.copy(request = decodedRequest))
-          case Left(error)           ⇒ ctx.reject(CorruptRequestEncodingRejection(error.getMessage.nullAsEmpty))
-        }
-    }
-    requestEntityEmpty | (
-      requestEncodedWith(decoder.encoding) &
-      applyDecoder &
-      cancelAllRejections(ofTypes(classOf[UnsupportedRequestEncodingRejection], classOf[CorruptRequestEncodingRejection])))
-  }
-
-  /**
-   * Rejects the request with an UnsupportedRequestEncodingRejection if its encoding doesn't match the given one.
-   */
-  def requestEncodedWith(encoding: HttpEncoding): Directive0 =
-    extract(_.request.encoding).flatMap {
-      case `encoding` ⇒ pass
-      case _          ⇒ reject(UnsupportedRequestEncodingRejection(encoding))
-    }
+  // encoding
 
   /**
    * Wraps its inner Route with encoding support using the given Encoder.
@@ -110,6 +86,34 @@ trait EncodingDirectives {
     import magnet._
     compressResponse(NoEncoding, Gzip, Deflate)
   }
+
+  // decoding
+
+  /**
+   * Wraps its inner Route with decoding support using the given Decoder.
+   */
+  def decodeRequest(decoder: Decoder): Directive0 = {
+    def applyDecoder = mapInnerRoute { inner ⇒
+      ctx ⇒
+        tryToEither(decoder.decode(ctx.request)) match {
+          case Right(decodedRequest) ⇒ inner(ctx.copy(request = decodedRequest))
+          case Left(error)           ⇒ ctx.reject(CorruptRequestEncodingRejection(error.getMessage.nullAsEmpty))
+        }
+    }
+    requestEntityEmpty | (
+      requestEncodedWith(decoder.encoding) &
+      applyDecoder &
+      cancelAllRejections(ofTypes(classOf[UnsupportedRequestEncodingRejection], classOf[CorruptRequestEncodingRejection])))
+  }
+
+  /**
+   * Rejects the request with an UnsupportedRequestEncodingRejection if its encoding doesn't match the given one.
+   */
+  def requestEncodedWith(encoding: HttpEncoding): Directive0 =
+    extract(_.request.encoding).flatMap {
+      case `encoding` ⇒ pass
+      case _          ⇒ reject(UnsupportedRequestEncodingRejection(encoding))
+    }
 
   /**
    * Decompresses the incoming request if it is GZip or Deflate encoded.
