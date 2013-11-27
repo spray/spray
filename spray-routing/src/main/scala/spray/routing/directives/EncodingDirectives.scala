@@ -106,7 +106,7 @@ trait EncodingDirectives {
    * Wraps its inner Route with response compression if and only if the client
    * specifically requests compression with an `Accept-Encoding` header.
    */
-  def compressResponseIfRequested(magnet: CompressResponseMagnet): Directive0 = {
+  def compressResponseIfRequested(magnet: RefFactoryMagnet): Directive0 = {
     import magnet._
     compressResponse(NoEncoding, Gzip, Deflate)
   }
