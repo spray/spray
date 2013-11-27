@@ -13,6 +13,8 @@ MiscDirectives
    rejectEmptyResponse
    requestEntityEmpty
    requestEntityPresent
+   requestInstance
+   requestUri
    rewriteUnmatchedPath
    unmatchedPath
    validate

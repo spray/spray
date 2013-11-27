@@ -80,7 +80,7 @@ Version 1.1-RC2 (2013-10-30)
 - spray-io:
 
   + fixed broken inbound bytes buffering in SslTlsSupport (#633)
-  + removed too tight assertions, replaced remaining `assert`s (#631)
+  + removed too tight assertions, replaced remaining asserts (#631)
 
 - spray-routing:
 

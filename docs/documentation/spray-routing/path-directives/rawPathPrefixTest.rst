@@ -1,7 +1,7 @@
-.. _-pathPrefixTest-:
+.. _-rawPathPrefixTest-:
 
-pathPrefixTest
-==============
+rawPathPrefixTest
+=================
 
 Checks whether the unmatched path of the ``RequestContext`` has a prefix matched by the given ``PathMatcher``.
 Potentially extracts one or more values (depending on the type of the argument) but doesn't consume its match from
@@ -12,7 +12,7 @@ Signature
 ---------
 
 .. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/PathDirectives.scala
-   :snippet: pathPrefixTest
+   :snippet: rawPathPrefixTest
 
 
 Description
@@ -24,15 +24,15 @@ is even in the case that the directive successfully matched and the request is p
 
 For more info on how to create a ``PathMatcher`` see :ref:`pathmatcher-dsl`.
 
-As opposed to its :ref:`-rawPathPrefixTest-` counterpart ``pathPrefixTest`` automatically adds a leading slash to its
-``PathMatcher`` argument, you therefore don't have to start your matching expression with an explicit slash.
+As opposed to its :ref:`-pathPrefixTest-` counterpart ``rawPathPrefixTest`` does *not* automatically add a leading slash
+to its ``PathMatcher`` argument. Rather its ``PathMatcher`` argument is applied to the unmatched path as is.
 
-Depending on the type of its ``PathMatcher`` argument the ``pathPrefixTest`` directive extracts zero or more values from
-the URI. If the match fails the request is rejected with an :ref:`empty rejection set <empty rejections>`.
+Depending on the type of its ``PathMatcher`` argument the ``rawPathPrefixTest`` directive extracts zero or more values
+from the URI. If the match fails the request is rejected with an :ref:`empty rejection set <empty rejections>`.
 
 
 Example
 -------
 
 .. includecode:: ../code/docs/directives/PathDirectivesExamplesSpec.scala
-   :snippet: pathPrefixTest-
+   :snippet: rawPathPrefixTest-

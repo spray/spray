@@ -44,11 +44,11 @@ When to use which decompression directive?
 There are two different directives for performing request decompressing with slightly different behavior:
 
 :ref:`-decodeRequest-`
-  Attempts to decompress the request using the one given decoder, rejects the request with an
+  Attempts to decompress the request using **the one given decoder**, rejects the request with an
   ``UnsupportedRequestEncodingRejection`` if the request is not encoded with the given encoder.
 
 :ref:`-decompressRequest-`
-  Decompresses the request if it is encoded with one of the given encoders.
+  Decompresses the request if it is encoded with **one of the given encoders**.
   If the request's encoding doesn't match one of the given encoders it is rejected.
 
 

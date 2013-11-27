@@ -18,6 +18,8 @@ Directive                              Description
 :ref:`-authorize-`                     Applies a given authorization check to the request and rejects if it doesn't pass
 :ref:`-autoChunk-`                     Converts non-rejected responses from its inner Route to chunked responses using a
                                        given chunk size
+:ref:`-autoChunkFileBytes-`            Converts non-rejected responses from its inner Route to chunked responses using a
+                                       given chunk size, if the response entity contains HttpData.FileBytes
 :ref:`-cache-`                         Wraps its inner Route with caching support using a given cache instance
 :ref:`-cachingProhibited-`             Rejects the request if it doesn't contain a ``Cache-Control`` header with
                                        ``no-cache`` or ``max-age=0``
@@ -124,9 +126,15 @@ Directive                              Description
 :ref:`-patch-`                         Rejects all non-PATCH requests
 :ref:`-path-`                          Extracts zero+ values from the ``unmatchedPath`` of the ``RequestContext``
                                        according to a given ``PathMatcher``, rejects if no match
+:ref:`-pathEnd-`                       Only passes on the request to its inner route if the request path has been
+                                       matched completely, rejects otherwise
+:ref:`-pathEndOrSingleSlash-`          Only passes on the request to its inner route if the request path has been matched
+                                       completely or only consists of exactly one remaining slash, rejects otherwise
 :ref:`-pathPrefix-`                    Same as :ref:`-path-`, but also matches (and consumes) prefixes of the unmatched
                                        path (rather than only the complete unmatched path at once)
 :ref:`-pathPrefixTest-`                Like :ref:`-pathPrefix-` but without "consumption" of the matched path (prefix).
+:ref:`-pathSingleSlash-`               Only passes on the request to its inner route if the request path consists of
+                                       exactly one remaining slash
 :ref:`-pathSuffix-`                    Like as :ref:`-pathPrefix-`, but for suffixes rather than prefixed of the
                                        unmatched path
 :ref:`-pathSuffixTest-`                Like :ref:`-pathSuffix-` but without "consumption" of the matched path (suffix).
@@ -135,12 +143,18 @@ Directive                              Description
                                        completing the request with an instance of a custom type
 :ref:`-provide-`                       Injects a single value into a directive, which provides it as an extraction
 :ref:`-put-`                           Rejects all non-PUT requests
+:ref:`-rawPathPrefix-`                 Applies a given ``PathMatcher`` directly to the unmatched path of the
+                                       ``RequestContext``, i.e. without implicitly consuming a leading slash
+:ref:`-rawPathPrefixTest-`             Checks whether the unmatchedPath of the ``RequestContext`` has a prefix matched
+                                       by a ``PathMatcher``
 :ref:`-redirect-`                      Completes the request with redirection response of the given type to a given URI
 :ref:`-reject-`                        Rejects the request with a given set of rejections
 :ref:`-rejectEmptyResponse-`           Converts responses with an empty entity into a rejection
 :ref:`-requestEncodedWith-`            Rejects the request if its encoding doesn't match a given one
 :ref:`-requestEntityEmpty-`            Rejects the request if its entity is not empty
 :ref:`-requestEntityPresent-`          Rejects the request if its entity is empty
+:ref:`-requestInstance-`               Extracts the complete request
+:ref:`-requestUri-`                    Extracts the complete request URI
 :ref:`-respondWithHeader-`             Adds a given response header to all ``HttpResponse`` replies from its inner
                                        Route
 :ref:`-respondWithHeaders-`            Same as :ref:`-respondWithHeader-`, but for several headers at once

@@ -20,5 +20,5 @@ Just use this minimal example application as a starting point:
 
 This very concise way of bootstrapping a *spray-routing* application works nicely as long as you don't have any special
 requirements with regard to the actor which is running your route structure. Once you need more control over it, e.g.
-because you want to be able to use it as the receiver (or sender) of custom messages, you'll have to "fall back" to
+because you want to be able to use it as the receiver (or sender) of custom messages, you'll have to fall back to
 creating your service actor "manually". The :ref:`Complete Examples` demonstrate how to do that.
