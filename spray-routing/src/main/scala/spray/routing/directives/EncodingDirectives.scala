@@ -136,9 +136,9 @@ object EncodingDirectives extends EncodingDirectives
 class EncodeResponseMagnet(val encoder: Encoder, val autoChunkThreshold: Long = 128 * 1024,
                            val autoChunkSize: Int = 128 * 1024)(implicit val refFactory: ActorRefFactory)
 object EncodeResponseMagnet {
-  implicit def fromEncoder(encoder: Encoder)(implicit factory: ActorRefFactory): EncodeResponseMagnet =
+  implicit def fromEncoder(encoder: Encoder)(implicit factory: ActorRefFactory): EncodeResponseMagnet = // # EncodeResponseMagnet
     new EncodeResponseMagnet(encoder)
-  implicit def fromEncoderThresholdAndChunkSize(t: (Encoder, Long, Int))(implicit factory: ActorRefFactory): EncodeResponseMagnet =
+  implicit def fromEncoderThresholdAndChunkSize(t: (Encoder, Long, Int))(implicit factory: ActorRefFactory): EncodeResponseMagnet = // # EncodeResponseMagnet
     new EncodeResponseMagnet(t._1, t._2, t._3)
 }
 

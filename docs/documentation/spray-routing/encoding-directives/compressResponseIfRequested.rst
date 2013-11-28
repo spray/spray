@@ -3,8 +3,8 @@
 compressResponseIfRequested
 ===========================
 
-Only compresses the response when specifically requested by the
-``Accept-Encoding`` request header (i.e. the default is "no compression").
+Only compresses the response when specifically requested by the ``Accept-Encoding`` request header
+(i.e. the default is "no compression").
 
 Signature
 ---------
@@ -15,7 +15,8 @@ Signature
 Description
 -----------
 
-The ``compressResponseIfRequested`` directive will behave as follows:
+The ``compressResponseIfRequested`` directive is an alias for ``compressResponse(NoEncoding, Gzip, Deflate)`` and will
+behave as follows:
 
 ========================================= ===============================
 ``Accept-Encoding`` header                resulting response
@@ -27,11 +28,10 @@ The ``compressResponseIfRequested`` directive will behave as follows:
 no ``Accept-Encoding`` header present     uncompressed
 ========================================= ===============================
 
-For an overview of the different ``compressResponse`` directives and which one to use when,
-see :ref:`WhenToUseWhichCompressResponseDirective`.
+For an overview of the different ``compressResponse`` directives see :ref:`WhenToUseWhichCompressResponseDirective`.
 
 Example
 -------
 
-.. includecode:: /../spray-routing-tests/src/test/scala/spray/routing/EncodingDirectivesSpec.scala
-   :snippet: compressResponseIfRequested-example
+.. includecode:: ../code/docs/directives/EncodingDirectivesExamplesSpec.scala
+   :snippet: compressResponseIfRequested
