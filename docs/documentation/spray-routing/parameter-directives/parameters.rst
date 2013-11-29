@@ -28,13 +28,16 @@ as required or optional or to filter requests where a parameter has a certain va
 ``"amount".as[Int]``
     extract value of parameter "amount" as ``Int``, you need a matching ``Deserializer`` in scope for that to work
     (see also :ref:`unmarshalling`)
+``"amount".as(deserializer)``
+    extract value of parameter "amount" with an explicit ``Deserializer``
 
 You can use :ref:`case-class-extraction` to group several extracted values together into a case-class
 instance.
 
 Requests missing a required parameter or parameter value will be rejected with an appropriate rejection.
 
-There's also a singular version, :ref:`-parameter-`.
+There's also a singular version, :ref:`-parameter-`. Form fields can be handled in a similar way, see ``formFields``. If
+you want unified handling for both query parameters and form fields, see ``anyParams``.
 
 Examples
 --------
@@ -67,4 +70,4 @@ Deserialized parameter
 ++++++++++++++++++++++
 
 .. includecode:: ../code/docs/directives/ParameterDirectivesExamplesSpec.scala
-   :snippet: required-value
+   :snippet: mapped-value
