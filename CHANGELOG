@@ -1,3 +1,20 @@
+Version 1.1.0 (2013-11-29)
+--------------------------
+
+- spray-http: added some more helpers around form data and `BodyPart` construction
+
+- spray-io:
+
+  + fixed `Terminated` dead letters from IO layer (#704)
+  + fixed `Tcp.SO.reuseAddress` not being applied for outgoing connections (#712)
+
+- spray-routing:
+
+  + fixed problem with `compressResponseIfRequested` allowing unused parameters
+
+- spray-testkit: added `NoAutoHtmlLinkFragments` helper trait
+
+
 Version 1.1-RC4 (2013-11-20)
 ----------------------------
 
