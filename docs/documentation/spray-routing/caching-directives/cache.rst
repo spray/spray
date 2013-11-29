@@ -9,13 +9,12 @@ the in-scope keyer function.
 Signature
 ---------
 
-.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/CachingDirectives.scala
-   :snippet: cache
+::
 
-The ``CacheSpecMagnet`` constructor:[1]_
+    def cache(cache: Cache[CachingDirectives.RouteResponse])
+             (implicit keyer: CacheKeyer, factory: ActorRefFactory): Directive0
 
-.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/CachingDirectives.scala
-   :snippet: CacheSpecMagnet
+The signature shown is simplified, the real signature uses magnets. [1]_
 
 The ``routeCache`` constructor for caches:
 

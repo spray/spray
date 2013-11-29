@@ -8,18 +8,15 @@ Logs the request.
 Signature
 ---------
 
-.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/DebuggingDirectives.scala
-   :snippet: logRequest
+::
 
-``LoggingMagnet`` definition:
+    def logRequest(marker: String)(implicit log: LoggingContext): Directive0
+    def logRequest(marker: String, level: LogLevel)(implicit log: LoggingContext): Directive0
+    def logRequest(show: HttpRequest => String)(implicit log: LoggingContext): Directive0
+    def logRequest(show: HttpRequest => LogEntry)(implicit log: LoggingContext): Directive0
+    def logRequest(magnet: LoggingMagnet[HttpRequest => Unit])(implicit log: LoggingContext): Directive0
 
-.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/DebuggingDirectives.scala
-   :snippet: logging-magnet
-
-Implicit ``LoggingMagnet`` constructors:[1]_
-
-.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/DebuggingDirectives.scala
-   :snippet: message-magnets
+The signature shown is simplified, the real signature uses magnets. [1]_
 
 .. [1] See `The Magnet Pattern`_ for an explanation of magnet-based overloading.
 .. _`The Magnet Pattern`: /blog/2012-12-13-the-magnet-pattern/
