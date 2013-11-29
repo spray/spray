@@ -28,7 +28,7 @@ inner route following this rules:
 
    * For all matching requests the prefix string matching the regex is extracted and passed to the inner route.
    * If the regex contains a capturing group only the string matched by this group is extracted.
-   * If the regex contains more than one capturing group an IllegalArgumentException is thrown.
+   * If the regex contains more than one capturing group an ``IllegalArgumentException`` is thrown.
 
 
 Example

@@ -28,31 +28,7 @@ trait EncodingDirectives {
   import MiscDirectives._
   import RouteDirectives._
 
-  /**
-   * Wraps its inner Route with decoding support using the given Decoder.
-   */
-  def decodeRequest(decoder: Decoder): Directive0 = {
-    def applyDecoder = mapInnerRoute { inner ⇒
-      ctx ⇒
-        tryToEither(decoder.decode(ctx.request)) match {
-          case Right(decodedRequest) ⇒ inner(ctx.copy(request = decodedRequest))
-          case Left(error)           ⇒ ctx.reject(CorruptRequestEncodingRejection(error.getMessage.nullAsEmpty))
-        }
-    }
-    requestEntityEmpty | (
-      requestEncodedWith(decoder.encoding) &
-      applyDecoder &
-      cancelAllRejections(ofTypes(classOf[UnsupportedRequestEncodingRejection], classOf[CorruptRequestEncodingRejection])))
-  }
-
-  /**
-   * Rejects the request with an UnsupportedRequestEncodingRejection if its encoding doesn't match the given one.
-   */
-  def requestEncodedWith(encoding: HttpEncoding): Directive0 =
-    extract(_.request.encoding).flatMap {
-      case `encoding` ⇒ pass
-      case _          ⇒ reject(UnsupportedRequestEncodingRejection(encoding))
-    }
+  // encoding
 
   /**
    * Wraps its inner Route with encoding support using the given Encoder.
@@ -106,10 +82,38 @@ trait EncodingDirectives {
    * Wraps its inner Route with response compression if and only if the client
    * specifically requests compression with an `Accept-Encoding` header.
    */
-  def compressResponseIfRequested(magnet: CompressResponseMagnet): Directive0 = {
+  def compressResponseIfRequested(magnet: RefFactoryMagnet): Directive0 = {
     import magnet._
     compressResponse(NoEncoding, Gzip, Deflate)
   }
+
+  // decoding
+
+  /**
+   * Wraps its inner Route with decoding support using the given Decoder.
+   */
+  def decodeRequest(decoder: Decoder): Directive0 = {
+    def applyDecoder = mapInnerRoute { inner ⇒
+      ctx ⇒
+        tryToEither(decoder.decode(ctx.request)) match {
+          case Right(decodedRequest) ⇒ inner(ctx.copy(request = decodedRequest))
+          case Left(error)           ⇒ ctx.reject(CorruptRequestEncodingRejection(error.getMessage.nullAsEmpty))
+        }
+    }
+    requestEntityEmpty | (
+      requestEncodedWith(decoder.encoding) &
+      applyDecoder &
+      cancelAllRejections(ofTypes(classOf[UnsupportedRequestEncodingRejection], classOf[CorruptRequestEncodingRejection])))
+  }
+
+  /**
+   * Rejects the request with an UnsupportedRequestEncodingRejection if its encoding doesn't match the given one.
+   */
+  def requestEncodedWith(encoding: HttpEncoding): Directive0 =
+    extract(_.request.encoding).flatMap {
+      case `encoding` ⇒ pass
+      case _          ⇒ reject(UnsupportedRequestEncodingRejection(encoding))
+    }
 
   /**
    * Decompresses the incoming request if it is GZip or Deflate encoded.
@@ -132,9 +136,9 @@ object EncodingDirectives extends EncodingDirectives
 class EncodeResponseMagnet(val encoder: Encoder, val autoChunkThreshold: Long = 128 * 1024,
                            val autoChunkSize: Int = 128 * 1024)(implicit val refFactory: ActorRefFactory)
 object EncodeResponseMagnet {
-  implicit def fromEncoder(encoder: Encoder)(implicit factory: ActorRefFactory): EncodeResponseMagnet =
+  implicit def fromEncoder(encoder: Encoder)(implicit factory: ActorRefFactory): EncodeResponseMagnet = // # EncodeResponseMagnet
     new EncodeResponseMagnet(encoder)
-  implicit def fromEncoderThresholdAndChunkSize(t: (Encoder, Long, Int))(implicit factory: ActorRefFactory): EncodeResponseMagnet =
+  implicit def fromEncoderThresholdAndChunkSize(t: (Encoder, Long, Int))(implicit factory: ActorRefFactory): EncodeResponseMagnet = // # EncodeResponseMagnet
     new EncodeResponseMagnet(t._1, t._2, t._3)
 }
 

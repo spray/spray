@@ -71,6 +71,7 @@ implicit extension. The first two points are provided by so-called :ref:`Directi
 already predefined by *spray-routing* and which you can also easily create yourself.
 :ref:`Directives` deliver most of *spray-routings* power and flexibility.
 
+.. _The Routing Tree:
 
 The Routing Tree
 ----------------

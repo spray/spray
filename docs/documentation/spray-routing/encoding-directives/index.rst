@@ -23,18 +23,19 @@ There are three different directives for performing response compressing with sl
 
 :ref:`-encodeResponse-`
   Always compresses the response with the one given encoding, rejects the request with an
-  ``UnacceptedResponseEncodingRejection`` if the client doesn't accept the given encoding.
+  ``UnacceptedResponseEncodingRejection`` if the client doesn't accept the given encoding. The other
+  compression directives are built upon this one. See its description for an overview how they
+  relate exactly.
 
 :ref:`-compressResponse-`
-  Uses the first of a given number of encodings that the client accepts.
-  If none are accepted the request is rejected.
+  Uses the first of a given number of encodings that the client accepts. If none are accepted the request
+  is rejected.
 
 :ref:`-compressResponseIfRequested-`
   Only compresses the response when specifically requested by the
   ``Accept-Encoding`` request header (i.e. the default is "no compression").
 
 See the individual directives for more detailed usage examples.
-
 
 .. _WhenToUseWhichDecompressRequestDirective:
 
