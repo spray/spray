@@ -9,7 +9,7 @@ import com.typesafe.sbt.osgi.SbtOsgi
 import SbtOsgi._
 
 object BuildSettings {
-  val VERSION = "1.2-RC4"
+  val VERSION = "1.2.0"
 
   lazy val basicSettings = seq(
     version               := NightlyBuildSupport.buildVersion(VERSION),
