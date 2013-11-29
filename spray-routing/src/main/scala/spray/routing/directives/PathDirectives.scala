@@ -72,8 +72,8 @@ trait PathDirectives extends PathMatchers with ImplicitPathMatcherConstruction {
    * Rejects the request if the unmatchedPath of the [[spray.RequestContext]] does not have a suffix
    * matched the given PathMatcher. If matched the value extracted by the PathMatcher is extracted
    * and the matched parts of the path are consumed.
-   * Note that, if the given PathMatcher is a compound one consisting of several concatenated sub-matchers,
-   * the order of the sub-matchers in the concatenation has to be reversed!
+   * Note that, for efficiency reasons, the given PathMatcher must match the desired suffix in reversed-segment
+   * order, i.e. `pathSuffix("baz" / "bar")` would match `/foo/bar/baz`!
    */
   def pathSuffix[L <: HList](pm: PathMatcher[L]): Directive[L] =
     extract(ctx ⇒ pm(ctx.unmatchedPath.reverse)).flatMap {
@@ -85,6 +85,8 @@ trait PathDirectives extends PathMatchers with ImplicitPathMatcherConstruction {
    * Checks whether the unmatchedPath of the [[spray.RequestContext]] has a suffix matched by the
    * given PathMatcher. However, as opposed to the pathSuffix directive the matched path is not
    * actually "consumed".
+   * Note that, for efficiency reasons, the given PathMatcher must match the desired suffix in reversed-segment
+   * order, i.e. `pathSuffixTest("baz" / "bar")` would match `/foo/bar/baz`!
    */
   def pathSuffixTest[L <: HList](pm: PathMatcher[L]): Directive[L] =
     extract(ctx ⇒ pm(ctx.unmatchedPath.reverse)).flatMap {

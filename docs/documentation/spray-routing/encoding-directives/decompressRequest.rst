@@ -3,9 +3,8 @@
 decompressRequest
 =================
 
-Decompresses the request if it is encoded with one of the given encoders.
-If the request's encoding doesn't match one of the given encoders it is rejected with an
-``UnsupportedRequestEncodingRejection``.
+Decompresses the request if it is can be decoded with one of the given decoders. Otherwise,
+the request is rejected with an ``UnsupportedRequestEncodingRejection(supportedEncoding)``.
 
 Signature
 ---------
@@ -15,6 +14,9 @@ Signature
 
 Description
 -----------
+
+The ``decompressRequest`` directive allows either to specify a list of decoders or none at all. If
+no ``Decoder`` is specified ``Gzip``, ``Deflate``, or ``NoEncoding`` will be tried.
 
 The ``decompressRequest`` directive will behave as follows:
 
@@ -33,5 +35,12 @@ see :ref:`WhenToUseWhichDecompressRequestDirective`.
 Example
 -------
 
-.. includecode:: /../spray-routing-tests/src/test/scala/spray/routing/EncodingDirectivesSpec.scala
-   :snippet: decompressRequest-example
+This example shows the behavior of ``decompressRequest()`` without any decoders specified:
+
+.. includecode:: ../code/docs/directives/EncodingDirectivesExamplesSpec.scala
+   :snippet: decompressRequest-0
+
+This example shows the behaviour of ``decompressRequest(Gzip, NoEncoding)``:
+
+.. includecode:: ../code/docs/directives/EncodingDirectivesExamplesSpec.scala
+   :snippet: decompressRequest-1

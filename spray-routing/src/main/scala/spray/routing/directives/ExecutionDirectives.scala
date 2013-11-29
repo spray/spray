@@ -66,7 +66,7 @@ trait ExecutionDirectives {
    * Also Note that this directive differs from most other directives in that it cannot be combined with other routes
    * via the usual `&` and `|` operators.
    */
-  def dynamic = ExecutionDirectives._dynamic
+  /* directive */ def dynamic: ByNameDirective0 = ExecutionDirectives._dynamic
 
   /**
    * A directive that evaluates its inner Route for every request anew, if the given enabled flag is true.
@@ -77,10 +77,7 @@ trait ExecutionDirectives {
    * Also Note that this directive differs from most other directives in that it cannot be combined with other routes
    * via the usual `&` and `|` operators.
    */
-  case class dynamicIf(enabled: Boolean) {
-    def apply(inner: ⇒ Route): Route =
-      if (enabled) Route(ctx ⇒ inner(ctx)) else inner
-  }
+  /* directive */ def dynamicIf(enabled: Boolean): ByNameDirective0 = ByNameDirective0(enabled)
 
   /**
    * Executes its inner Route in a `Future`.
@@ -96,6 +93,10 @@ trait ExecutionDirectives {
 
 object ExecutionDirectives extends ExecutionDirectives {
   private val _dynamic = dynamicIf(enabled = true)
+}
+case class ByNameDirective0(enabled: Boolean) {
+  def apply(inner: ⇒ Route): Route =
+    if (enabled) Route(ctx ⇒ inner(ctx)) else inner
 }
 
 class DetachMagnet()(implicit val ec: ExecutionContext)

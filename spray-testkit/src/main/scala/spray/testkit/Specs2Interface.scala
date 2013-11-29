@@ -17,7 +17,7 @@
 package spray.testkit
 
 import org.specs2.execute.{ Failure, FailureException }
-import org.specs2.specification.{ SpecificationStructure, Fragments, Step }
+import org.specs2.specification.{ FragmentsBuilder, SpecificationStructure, Fragments, Step }
 
 trait Specs2Interface extends TestFrameworkInterface with SpecificationStructure {
 
@@ -28,4 +28,9 @@ trait Specs2Interface extends TestFrameworkInterface with SpecificationStructure
   }
 
   override def map(fs: ⇒ Fragments) = super.map(fs).add(Step(cleanUp()))
+}
+
+trait NoAutoHtmlLinkFragments extends FragmentsBuilder {
+  override def stringToHtmlLinkFragments2(s: String): HtmlLinkFragments2 = super.stringToHtmlLinkFragments2(s)
+  override def stringToHtmlLinkFragments(s: String): HtmlLinkFragments = super.stringToHtmlLinkFragments(s)
 }

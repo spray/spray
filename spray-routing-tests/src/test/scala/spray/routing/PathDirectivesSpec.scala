@@ -17,8 +17,9 @@
 package spray.routing
 
 import org.specs2.matcher.MatchResult
+import spray.testkit.NoAutoHtmlLinkFragments
 
-class PathDirectivesSpec extends RoutingSpec {
+class PathDirectivesSpec extends RoutingSpec with NoAutoHtmlLinkFragments {
   val echoUnmatchedPath = unmatchedPath { echoComplete }
   def echoCaptureAndUnmatchedPath[T]: T ⇒ Route =
     capture ⇒ ctx ⇒ ctx.complete(capture.toString + ":" + ctx.unmatchedPath)
@@ -155,6 +156,12 @@ class PathDirectivesSpec extends RoutingSpec {
     "accept [/orders/123/edit]" in test("123:/orders/")
     "accept [/orders/123/ed]" in test()
     "accept [/edit]" in test()
+  }
+
+  """pathSuffix("foo" / "bar" ~ "baz")""" should {
+    val test = testFor(pathSuffix("foo" / "bar" ~ "baz") { echoUnmatchedPath })
+    "accept [/orders/barbaz/foo]" in test("/orders/")
+    "accept [/orders/bazbar/foo]" in test()
   }
 
   "pathSuffixTest(Slash)" should {

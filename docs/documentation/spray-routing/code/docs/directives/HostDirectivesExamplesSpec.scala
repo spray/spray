@@ -76,7 +76,7 @@ class HostDirectivesExamplesSpec extends DirectivesSpec {
       host("server-([0-9]).company.(com|net|org)".r) { target =>
         complete("Will never complete :'(")
       }
-    } must throwA[IllegalArgumentException]
+    } must throwAn[IllegalArgumentException]
   }
 
 }

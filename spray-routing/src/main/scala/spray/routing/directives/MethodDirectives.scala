@@ -25,6 +25,7 @@ trait MethodDirectives {
   import BasicDirectives._
   import MiscDirectives._
   import RouteDirectives._
+  import ParameterDirectives._
 
   /**
    * A route filter that rejects all non-DELETE requests.
@@ -65,10 +66,10 @@ trait MethodDirectives {
   /**
    * Rejects all requests whose HTTP method does not match the given one.
    */
-  def method(method: HttpMethod): Directive0 =
+  def method(httpMethod: HttpMethod): Directive0 =
     extract(_.request.method).flatMap[HNil] {
-      case `method` ⇒ pass
-      case _        ⇒ reject(MethodRejection(method))
+      case `httpMethod` ⇒ pass
+      case _            ⇒ reject(MethodRejection(httpMethod))
     } & cancelAllRejections(ofType[MethodRejection])
   //#
 
@@ -81,23 +82,19 @@ trait MethodDirectives {
    *  - Use in combination with JSONP (JSONP only supports GET)
    *  - Supporting older browsers that lack support for certain HTTP methods. E.g. IE8 does not support PATCH
    */
-  def overrideMethodWithParameter(paramName: String): Directive0 = {
-    import ParameterDirectives._
-    parameter(paramName?).flatMap {
-      case Some(method) ⇒ {
+  def overrideMethodWithParameter(paramName: String): Directive0 =
+    parameter(paramName?) flatMap {
+      case Some(method) ⇒
         getForKey(method.toUpperCase) match {
           case Some(m) ⇒ mapRequest(_.copy(method = m))
           case _       ⇒ complete(StatusCodes.NotImplemented)
         }
-      }
       case _ ⇒ noop
     }
-  }
 }
 
 object MethodDirectives extends MethodDirectives {
   // format: OFF
-  //# source-quote
   private val _delete : Directive0 = method(DELETE)
   private val _get    : Directive0 = method(GET)
   private val _head   : Directive0 = method(HEAD)
@@ -105,6 +102,5 @@ object MethodDirectives extends MethodDirectives {
   private val _patch  : Directive0 = method(PATCH)
   private val _post   : Directive0 = method(POST)
   private val _put    : Directive0 = method(PUT)
-  //#
   // format: ON
 }

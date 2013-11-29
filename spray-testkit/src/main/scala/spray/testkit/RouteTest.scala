@@ -20,7 +20,6 @@ import com.typesafe.config.{ ConfigFactory, Config }
 import scala.util.DynamicVariable
 import org.scalatest.Suite
 import akka.actor.ActorSystem
-import akka.util.NonFatal
 import spray.routing.directives.ExecutionDirectives
 import spray.routing._
 import spray.httpx.unmarshalling._

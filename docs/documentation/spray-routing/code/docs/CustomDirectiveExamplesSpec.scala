@@ -14,13 +14,13 @@ class CustomDirectiveExamplesSpec extends Specification with Specs2RouteTest {
     val twoIntParameters: Directive[Int :: Int :: HNil] =
       parameters('a.as[Int], 'b.as[Int])
 
-    val myDirective: Directive[String :: HNil] =
+    val myDirective: Directive1[String] =
       twoIntParameters.hmap {
         case a :: b :: HNil => (a + b).toString
       }
 
     // test `myDirective` using the testkit DSL
-    Get("/?a=2&b=5") ~> myDirective(complete(_)) ~> check {
+    Get("/?a=2&b=5") ~> myDirective(x => complete(x)) ~> check {
       responseAs[String] === "7"
     }
   }
@@ -30,9 +30,9 @@ class CustomDirectiveExamplesSpec extends Specification with Specs2RouteTest {
     import spray.routing._
     import Directives._
 
-    val intParameter: Directive[Int :: HNil] = parameter('a.as[Int])
+    val intParameter: Directive1[Int] = parameter('a.as[Int])
 
-    val myDirective: Directive[Int :: HNil] =
+    val myDirective: Directive1[Int] =
       intParameter.flatMap {
         case a if a > 0 => provide(2 * a)
         case _ => reject
