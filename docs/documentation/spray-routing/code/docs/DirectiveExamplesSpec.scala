@@ -86,10 +86,10 @@ class DirectiveExamplesSpec extends Specification with Specs2RouteTest {
 
   "example-8" in {
     val orderGetOrPut = path("order" / IntNumber) & (get | put)
-    val method = extract(_.request.method)
+    val requestMethod = extract(_.request.method)
     val route =
       orderGetOrPut { id =>
-        method { m =>
+        requestMethod { m =>
           complete("Received " + m + " request for order " + id)
         }
       }
@@ -98,9 +98,9 @@ class DirectiveExamplesSpec extends Specification with Specs2RouteTest {
 
   "example-9" in {
     val orderGetOrPut = path("order" / IntNumber) & (get | put)
-    val method = extract(_.request.method)
+    val requestMethod = extract(_.request.method)
     val route =
-      (orderGetOrPut & method) { (id, m) =>
+      (orderGetOrPut & requestMethod) { (id, m) =>
         complete("Received " + m + " request for order " + id)
       }
     verify(route) // hide

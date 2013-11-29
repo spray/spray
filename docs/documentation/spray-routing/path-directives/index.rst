@@ -7,7 +7,14 @@ PathDirectives
    :maxdepth: 1
 
    path
+   pathEnd
+   pathEndOrSingleSlash
    pathPrefix
    pathPrefixTest
+   pathSingleSlash
    pathSuffix
    pathSuffixTest
+   rawPathPrefix
+   rawPathPrefixTest
+
+   pathmatcher-dsl

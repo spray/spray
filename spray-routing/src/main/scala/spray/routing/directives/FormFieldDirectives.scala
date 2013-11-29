@@ -26,13 +26,13 @@ trait FormFieldDirectives extends ToNameReceptaclePimps {
    * Rejects the request if the form field parameter matcher(s) defined by the definition(s) don't match.
    * Otherwise the field content(s) are extracted and passed to the inner route.
    */
-  def formField(fdm: FieldDefMagnet): fdm.Out = fdm()
+  /* directive */ def formField(fdm: FieldDefMagnet): fdm.Out = fdm()
 
   /**
    * Rejects the request if the form field parameter matcher(s) defined by the definition(s) don't match.
    * Otherwise the field content(s) are extracted and passed to the inner route.
    */
-  def formFields(fdm: FieldDefMagnet): fdm.Out = fdm()
+  /* directive */ def formFields(fdm: FieldDefMagnet): fdm.Out = fdm()
 
 }
 

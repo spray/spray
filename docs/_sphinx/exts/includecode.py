@@ -82,6 +82,11 @@ class IncludeCode(Directive):
                 # match signature line from `def <snippet>` but without trailing `=`
                 start = line.find("def")
                 if start == -1: start = line.find("val")
+
+                # include `implicit` if definition is prefixed with it
+                implicitstart = line.find("implicit")
+                if implicitstart != -1 and implicitstart < start: start = implicitstart
+
                 end = line.rfind("=")
                 res.append(line[start:end] + '\n')
 

@@ -2,6 +2,7 @@ Other Resources
 ===============
 
 "*spray*: REST on Akka" `Typesafe webinar`__
+  | Video: http://www.youtube.com/watch?v=7MqD7_YvZ8Q
   | Slides: `/webinar/`__
 
 __ http://www.typesafe.com/blog/Webinar

@@ -31,10 +31,14 @@ trait ConnectionHandler extends Actor with ActorLogging {
     case cmd ⇒ log.warning("command pipeline: dropped {}", cmd)
   }
 
-  def baseEventPipeline: Pipeline[Event] = {
+  def baseEventPipeline(tcpConnection: ActorRef): Pipeline[Event] = {
     case x: Tcp.ConnectionClosed ⇒
-      log.debug("Stopping connection actor, connection was {}", x)
-      context.stop(self)
+      log.debug("Connection was {}, awaiting TcpConnection termination...", x)
+      context.become {
+        case Terminated(`tcpConnection`) ⇒
+          log.debug("TcpConnection terminated, stopping")
+          context.stop(self)
+      }
 
     case _: Droppable ⇒ // don't warn
     case ev           ⇒ log.warning("event pipeline: dropped {}", ev)
@@ -49,15 +53,18 @@ trait ConnectionHandler extends Actor with ActorLogging {
 
   def running[C <: PipelineContext](tcpConnection: ActorRef, pipelineStage: RawPipelineStage[C],
                                     pipelineContext: C): Receive = {
-    val stage = pipelineStage(pipelineContext, baseCommandPipeline(tcpConnection), baseEventPipeline)
+    val stage = pipelineStage(pipelineContext, baseCommandPipeline(tcpConnection), baseEventPipeline(tcpConnection))
     running(tcpConnection, stage)
   }
 
   def running(tcpConnection: ActorRef, pipelines: Pipelines): Receive = {
-    case x: Command                  ⇒ pipelines.commandPipeline(x)
-    case x: Event                    ⇒ pipelines.eventPipeline(x)
-    case Terminated(`tcpConnection`) ⇒ pipelines.eventPipeline(Tcp.ErrorClosed("TcpConnection actor died"))
-    case Terminated(actor)           ⇒ pipelines.eventPipeline(Pipeline.ActorDeath(actor))
+    case x: Command ⇒ pipelines.commandPipeline(x)
+    case x: Event   ⇒ pipelines.eventPipeline(x)
+    case x @ Terminated(`tcpConnection`) ⇒
+      pipelines.eventPipeline(Tcp.ErrorClosed("TcpConnection actor died"))
+      log.debug("TcpConnection actor died, stopping")
+      context.stop(self)
+    case Terminated(actor) ⇒ pipelines.eventPipeline(Pipeline.ActorDeath(actor))
   }
 }
 

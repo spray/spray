@@ -3,8 +3,8 @@
 onSuccess
 =========
 
-"Unwraps" a ``Future[T]`` and run its inner route after future completion with the future's
-value as an extraction of type ``T``.
+Evaluates its parameter of type ``Future[T]``, and once the ``Future`` has been completed successfully,
+extracts its result as a value of type ``T`` and passes it to the inner route.
 
 Signature
 ---------
@@ -21,6 +21,7 @@ fails its failure throwable is bubbled up to the nearest ``ExceptionHandler``.
 
 It is necessary to bring a ``ExecutionContext`` into implicit scope for this directive to work.
 
+To handle the ``Failure`` case manually as well, use ``onComplete``, instead.
 
 Example
 -------

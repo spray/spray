@@ -6,5 +6,5 @@ AnyParamDirectives
 .. toctree::
    :maxdepth: 1
 
-   anyparam
-   anyparams
+   anyParam
+   anyParams

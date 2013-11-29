@@ -111,8 +111,8 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
                 } ~
                 requestUri { uri =>
                   val path = uri.path.toString
-                  "-RC[12]/".r.findFirstIn(path) match {
-                    case Some(found) => redirect(uri.withPath(Uri.Path(path.replace(found, "-RC3/"))), MovedPermanently)
+                  "-RC[123]/".r.findFirstIn(path) match {
+                    case Some(found) => redirect(uri.withPath(Uri.Path(path.replace(found, "-RC4/"))), MovedPermanently)
                     case None => reject
                   }
                 } ~
