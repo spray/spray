@@ -13,14 +13,13 @@ This version targets Scala 2.9.x and Akka 1.3.x and is therefore not recommended
 Its documentation doesn't live here but in the (old) `github wiki`_.
 
 
-1.0/1.1/1.2
------------
+1.0.0 / 1.1.0 / 1.2.0
+---------------------
 
-Since the Scala universe has shifted from Scala 2.9 to Scala 2.10 the next *spray* release is a triple release,
-targeting both Scala and three Akka versions at the same time.
+The current and stable *spray* release is a triple release,
+targeting Scala 2.9 and Scala 2.10 as well as three Akka versions at the same time.
 
-Currently the first release candidate for *spray* 1.0/1.1/1.2 is available, please choose |1.0|, |1.1| or
-|1.2| depending on what Scala/Akka version you are targeting.
+Please choose |1.0|, |1.1| or |1.2| depending on what Scala/Akka version you are targeting:
 
 .. rst-class:: wide
 
@@ -36,9 +35,9 @@ Currently the first release candidate for *spray* 1.0/1.1/1.2 is available, plea
 
 For information about where to find the *spray* artifacts please check out the :ref:`maven-repo` chapter.
 
-.. |1.0| replace:: **1.0-RC4**
-.. |1.1| replace:: **1.1-RC4**
-.. |1.2| replace:: **1.2-RC4**
+.. |1.0| replace:: **1.0.0**
+.. |1.1| replace:: **1.1.0**
+.. |1.2| replace:: **1.2.0**
 
 
 Nightly Builds
