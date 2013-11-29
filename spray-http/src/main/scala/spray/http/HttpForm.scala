@@ -40,16 +40,23 @@ object FormData {
  * All parts must contain a Content-Disposition header with a type form-data
  * and a name parameter that is unique
  */
-case class MultipartFormData(fields: Seq[BodyPart]) extends HttpForm {
+case class MultipartFormData(fields: Seq[BodyPart]) extends HttpForm {   // TODO: `fields: BodyPart*` is probably better
   type FieldType = BodyPart
   def get(partName: String): Option[BodyPart] = fields.find(_.name.exists(_ == partName))
 }
 
 object MultipartFormData {
   val Empty = MultipartFormData(Seq.empty)
-  def apply(fields: Map[String, BodyPart]): MultipartFormData = this(fields.map {
-    case (key, value) ⇒ value.copy(headers = `Content-Disposition`("form-data", Map("name" -> key)) +: value.headers)
-  }.toSeq)
+  def apply(fields: Map[String, BodyPart]): MultipartFormData = this{
+    fields.map {
+      case (key, value) ⇒ value.copy(headers = `Content-Disposition`("form-data", Map("name" -> key)) +: value.headers)
+    }(collection.breakOut)
+  }
 }
 
 case class FormFile(name: Option[String], entity: HttpEntity.NonEmpty)
+
+object FormFile {
+  def apply(name: String, entity: HttpEntity.NonEmpty): FormFile =
+    apply(Some(name), entity)
+}
