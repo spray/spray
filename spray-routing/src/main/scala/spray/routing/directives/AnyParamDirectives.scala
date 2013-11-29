@@ -26,7 +26,7 @@ trait AnyParamDirectives {
    *
    * Rejects the request if both form field and query parameter matcher(s) defined by the definition(s) don't match.
    */
-  def anyParam(apdm: AnyParamDefMagnet): apdm.Out = apdm()
+  /* directive */ def anyParam(apdm: AnyParamDefMagnet): apdm.Out = apdm()
 
   /**
    * Extracts a parameter either from a form field or from query parameters (in that order), and passes the value(s)
@@ -34,7 +34,7 @@ trait AnyParamDirectives {
    *
    * Rejects the request if both form field and query parameter matcher(s) defined by the definition(s) don't match.
    */
-  def anyParams(apdm: AnyParamDefMagnet): apdm.Out = apdm()
+  /* directive */ def anyParams(apdm: AnyParamDefMagnet): apdm.Out = apdm()
 }
 
 object AnyParamDirectives extends AnyParamDirectives

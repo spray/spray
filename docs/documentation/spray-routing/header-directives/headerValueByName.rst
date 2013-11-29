@@ -22,4 +22,4 @@ Example
 -------
 
 .. includecode:: ../code/docs/directives/HeaderDirectivesExamplesSpec.scala
-   :snippet: example-1
+   :snippet: headerValueByName-0

@@ -44,7 +44,7 @@ trait PathMatcher[L <: HList] extends (Path ⇒ PathMatcher.Matching[L]) { self 
   def ~[R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]): PathMatcher[prepender.Out] =
     transform(_.andThen((restL, valuesL) ⇒ other(restL).map(prepender(valuesL, _))))
 
-  def unary_!(): PathMatcher[HNil] =
+  def unary_!(): PathMatcher0 =
     new PathMatcher[HNil] {
       def apply(path: Path) = if (self(path) eq Unmatched) Matched(path, HNil) else Unmatched
     }
@@ -98,14 +98,16 @@ object PathMatcher extends ImplicitPathMatcherConstruction {
     def orElse[R <: HList](other: ⇒ Matching[R]) = other
   }
 
+  /**
+   * Creates a PathMatcher that always matches, consumes nothing and extracts the given HList of values.
+   */
   def provide[L <: HList](extractions: L): PathMatcher[L] =
     new PathMatcher[L] {
       def apply(path: Path) = Matched(path, extractions)
     }
 
   /**
-   * Creates a PathMatcher that consumes (a prefix of) the first path segment
-   * (if the path begins with a segment) and extracts the given list of extractions.
+   * Creates a PathMatcher that matches and consumes the given path prefix and extracts the given list of extractions.
    * If the given prefix is empty the returned PathMatcher matches always and consumes nothing.
    */
   def apply[L <: HList](prefix: Path, extractions: L): PathMatcher[L] =
@@ -197,7 +199,7 @@ trait ImplicitPathMatcherConstruction {
     PathMatcher(segment :: Path.Empty, HNil)
 
   implicit def stringOptionNameReceptacle2PathMatcher(nr: NameReceptacle[Option[String]]): PathMatcher0 =
-    PathMatcher(nr.name)?
+    PathMatcher(nr.name).?
 
   /**
    * Creates a PathMatcher that consumes (a prefix of) the first path segment
@@ -276,7 +278,7 @@ trait PathMatchers {
 
   /**
    * A PathMatcher that matches and extracts the complete remaining,
-   * unmatched part of the requests URI path as an (encoded!) String.
+   * unmatched part of the request's URI path as an (encoded!) String.
    * If you need access to the remaining unencoded elements of the path
    * use the `RestPath` matcher!
    */
@@ -286,7 +288,7 @@ trait PathMatchers {
 
   /**
    * A PathMatcher that matches and extracts the complete remaining,
-   * unmatched part of the requests URI path.
+   * unmatched part of the request's URI path.
    */
   object RestPath extends PathMatcher1[Path] {
     def apply(path: Path) = Matched(Path.Empty, path :: HNil)
@@ -371,8 +373,8 @@ trait PathMatchers {
    * A PathMatcher that matches and extracts a Double value. The matched string representation is the pure decimal,
    * optionally signed form of a double value, i.e. without exponent.
    */
-  val DoubleNumber = PathMatcher("""[+-]?\d*\.?\d*""".r)
-    .flatMap { string ⇒
+  val DoubleNumber: PathMatcher1[Double] =
+    PathMatcher("""[+-]?\d*\.?\d*""".r) flatMap { string ⇒
       try Some(java.lang.Double.parseDouble(string))
       catch { case _: NumberFormatException ⇒ None }
     }
@@ -380,8 +382,8 @@ trait PathMatchers {
   /**
    * A PathMatcher that matches and extracts a java.util.UUID instance.
    */
-  val JavaUUID = PathMatcher("""[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}""".r)
-    .flatMap { string ⇒
+  val JavaUUID: PathMatcher1[UUID] =
+    PathMatcher("""[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}""".r) flatMap { string ⇒
       try Some(UUID.fromString(string))
       catch { case _: IllegalArgumentException ⇒ None }
     }
@@ -390,7 +392,7 @@ trait PathMatchers {
    * A PathMatcher that always matches, doesn't consume anything and extracts nothing.
    * Serves mainly as a neutral element in PathMatcher composition.
    */
-  val Neutral: PathMatcher[HNil] = PathMatcher.provide(HNil)
+  val Neutral: PathMatcher0 = PathMatcher.provide(HNil)
 
   /**
    * A PathMatcher that matches if the unmatched path starts with a path segment.
@@ -408,7 +410,7 @@ trait PathMatchers {
    * This can also be no segments resulting in the empty list.
    * If the path has a trailing slash this slash will *not* be matched.
    */
-  val Segments = Segment.repeat(separator = Slash)
+  val Segments: PathMatcher1[List[String]] = Segment.repeat(separator = Slash)
 
   @deprecated("Use `Segment` instead", "1.0-M8/1.1-M8")
   def PathElement = Segment

@@ -8,7 +8,7 @@ that allows a second route to get a go at a request if the first route "rejected
 used by *spray-routing* for maintaining a more functional overall architecture and in order to be able to properly
 handle all kinds of error scenarios.
 
-When a filtering directive, like the ``get`` directive, cannot let the request pass through to its inner Route because
+When a filtering directive, like the :ref:`-get-` directive, cannot let the request pass through to its inner Route because
 the filter condition is not satisfied (e.g. because the incoming request is not a GET request) the directive doesn't
 immediately complete the request with an error response. Doing so would make it impossible for other routes chained in
 after the failing filter to get a chance to handle the request.
@@ -17,10 +17,10 @@ Rather, failing filters "reject" the request in the same way as by explicitly ca
 After having been rejected by a route the request will continue to flow through the routing structure and possibly find
 another route that can complete it. If there are more rejections all of them will be picked up and collected.
 
-If the request cannot be completed by (a branch of) the route structure an enclosing ``handleRejections`` directive
+If the request cannot be completed by (a branch of) the route structure an enclosing :ref:`-handleRejections-` directive
 can be used to convert a set of rejections into an ``HttpResponse`` (which, in most cases, will be an error response).
-The ``runRoute`` wrapper defined the ``HttpService`` trait internally wraps its argument route with the
-``handleRejections`` directive in order to "catch" and handle any rejection.
+:ref:`runRoute` defined by the :ref:`HttpService` trait internally wraps its argument route with the
+:ref:`-handleRejections-` directive in order to "catch" and handle any rejection.
 
 
 Predefined Rejections
@@ -41,7 +41,7 @@ __ https://github.com/spray/spray/blob/release/1.2/spray-routing/src/main/scala/
 RejectionHandler
 ----------------
 
-The ``handleRejections`` directive delegates the actual job of converting a list of rejections to its argument, a
+The :ref:`-handleRejections-` directive delegates the actual job of converting a list of rejections to its argument, a
 RejectionHandler__, which is defined like this::
 
     trait RejectionHandler extends PartialFunction[List[Rejection], Route]
@@ -50,10 +50,10 @@ __ https://github.com/spray/spray/blob/release/1.2/spray-routing/src/main/scala/
 
 Since a ``RejectionHandler`` is a partial function it can choose, which rejections it would like to handle and
 which not. Unhandled rejections will simply continue to flow through the route structure. The top-most
-``RejectionHandler`` applied by the ``HttpService.runRoute`` wrapper will handle *all* rejections that reach it.
+``RejectionHandler`` applied by :ref:`runRoute` will handle *all* rejections that reach it.
 
 So, if you'd like to customize the way certain rejections are handled simply bring a custom ``RejectionHandler`` into
-implicit scope of the ``runRoute`` wrapper or pass it to an explicit ``handleRejections`` directive that you
+implicit scope of :ref:`runRoute` or pass it to an explicit :ref:`-handleRejections-` directive that you
 have put somewhere into your route structure.
 
 Here is an example:
@@ -86,6 +86,7 @@ These types of rejection cancellations are resolved *before* a ``RejectionHandle
 So, for the example above the ``RejectionHandler`` will be presented with only a single-element rejection list,
 containing nothing but the ``UnsupportedRequestEncodingRejection``.
 
+.. _empty rejections:
 
 Empty Rejections
 ----------------

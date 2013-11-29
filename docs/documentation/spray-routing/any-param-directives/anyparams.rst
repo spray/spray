@@ -1,6 +1,0 @@
-.. _-anyParams-:
-
-anyParams
-=========
-
-(todo)

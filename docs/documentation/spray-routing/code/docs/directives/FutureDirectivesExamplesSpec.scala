@@ -4,11 +4,12 @@ import spray.http.StatusCodes._
 import scala.concurrent.Future
 import scala.util.{Try, Success, Failure}
 import spray.util.LoggingContext
-import spray.routing.ExceptionHandler
+import spray.routing.{PathMatchers, ExceptionHandler}
 import akka.actor.{Actor, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import java.util.concurrent.TimeUnit
+import spray.routing.directives.NameReceptacle
 
 class FutureDirectivesExamplesSpec extends DirectivesSpec {
   object TestException extends Throwable
@@ -19,64 +20,31 @@ class FutureDirectivesExamplesSpec extends DirectivesSpec {
         ctx.complete(InternalServerError, "Unsuccessful future!")
     }
 
-  def handleResponse(response: Try[String]) = response match {
-    case Success(value) => complete(value)
-    case Failure(ex)    => failWith(ex)
-  }
-
   val resourceActor = system.actorOf(Props(new Actor {
     def receive = { case _ => sender ! "resource" }
   }))
   implicit val responseTimeout = Timeout(2, TimeUnit.SECONDS)
 
-  "single-execution" in {
-    val route =
-      onSuccess((resourceActor ? "GetResource").mapTo[String]) { resource =>
-        // inner routes will always use the resource computed at creation time.
-        complete(resource)
-      }
-
-    Get("/") ~> route ~> check {
-      status === OK
-      responseAs[String] === "resource"
-    }
-  }
-
-  "per-request-execution" in {
-    val route =
-      dynamic {
-        onSuccess((resourceActor ? "GetResource").mapTo[String]) { resources =>
-          // inner routes will get a fresh resource on every execution.
-          complete(resources)
-        }
-      }
-
-    Get("/") ~> route ~> check {
-      status === OK
-      responseAs[String] === "resource"
-    }
-  }
-
   "example-1" in {
+    def divide(a: Int, b: Int): Future[Int] = Future {
+      a / b
+    }
+
     val route =
-      path("success") {
-        onComplete(Future { "Ok" }) {
-          handleResponse
-        }
-      } ~
-      path("failure") {
-        onComplete(Future.failed[String](TestException)) {
-          handleResponse
+      path("divide" / IntNumber / IntNumber) { (a, b) =>
+        onComplete(divide(a, b)) {
+          case Success(value) => complete(s"The result was $value")
+          case Failure(ex)    => complete(InternalServerError, s"An error occurred: ${ex.getMessage}")
         }
       }
 
-    Get("/success") ~> route ~> check {
-      responseAs[String] === "Ok"
+    Get("/divide/10/2") ~> route ~> check {
+      responseAs[String] === "The result was 5"
     }
 
-    Get("/failure") ~> sealRoute(route) ~> check {
+    Get("/divide/10/0") ~> sealRoute(route) ~> check {
       status === InternalServerError
-      responseAs[String] === "Unsuccessful future!"
+      responseAs[String] === "An error occurred: / by zero"
     }
   }
 

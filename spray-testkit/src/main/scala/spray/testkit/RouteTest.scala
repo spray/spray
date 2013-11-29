@@ -18,7 +18,6 @@ package spray.testkit
 
 import com.typesafe.config.{ ConfigFactory, Config }
 import scala.util.DynamicVariable
-import scala.util.control.NonFatal
 import scala.reflect.ClassTag
 import org.scalatest.Suite
 import akka.actor.ActorSystem
