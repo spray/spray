@@ -40,7 +40,7 @@ object FormData {
  * All parts must contain a Content-Disposition header with a type form-data
  * and a name parameter that is unique
  */
-case class MultipartFormData(fields: Seq[BodyPart]) extends HttpForm {   // TODO: `fields: BodyPart*` is probably better
+case class MultipartFormData(fields: Seq[BodyPart]) extends HttpForm { // TODO: `fields: BodyPart*` is probably better
   type FieldType = BodyPart
   def get(partName: String): Option[BodyPart] = fields.find(_.name.exists(_ == partName))
 }
