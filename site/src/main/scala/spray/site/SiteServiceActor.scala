@@ -64,6 +64,7 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
             talkCharts("scala.io") ~
             talkCharts("wjax") ~
             talkCharts("webinar") ~
+            path("webinar" / "video" /) { redirect("http://www.youtube.com/watch?v=7MqD7_YvZ8Q", Found) } ~
             getFromResourceDirectory("theme") ~
             pathPrefix("_images") {
               getFromResourceDirectory("sphinx/json/_images")
@@ -111,8 +112,8 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
                 } ~
                 requestUri { uri =>
                   val path = uri.path.toString
-                  "-RC[123]/".r.findFirstIn(path) match {
-                    case Some(found) => redirect(uri.withPath(Uri.Path(path.replace(found, "-RC4/"))), MovedPermanently)
+                  "-RC[1234]/".r.findFirstIn(path) match {
+                    case Some(found) => redirect(uri.withPath(Uri.Path(path.replace(found, ".0/"))), MovedPermanently)
                     case None => reject
                   }
                 } ~
