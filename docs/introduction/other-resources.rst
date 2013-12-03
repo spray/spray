@@ -1,6 +1,11 @@
 Other Resources
 ===============
 
+Live-coding session at `Scala eXchange 2013`__
+  | Recording: http://skillsmatter.com/podcast/scala/mathias-doenitz
+
+__ http://skillsmatter.com/event/scala/scala-exchange-2013
+
 "*spray*: REST on Akka" `Typesafe webinar`__
   | Video: http://www.youtube.com/watch?v=7MqD7_YvZ8Q
   | Slides: `/webinar/`__
