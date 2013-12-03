@@ -8,8 +8,16 @@ Executes the inner route inside a future.
 Signature
 ---------
 
-.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/ExecutionDirectives.scala
-   :snippet: detach
+::
+
+    def detach()(implicit ec: ExecutionContext): Directive0
+    def detach()(implicit refFactory: ActorRefFactory): Directive0
+    def detach(ec: ExecutionContext): Directive0
+
+The signature shown is simplified, the real signature uses magnets. [1]_
+
+.. [1] See `The Magnet Pattern`_ for an explanation of magnet-based overloading.
+.. _`The Magnet Pattern`: /blog/2012-12-13-the-magnet-pattern/
 
 Description
 -----------
