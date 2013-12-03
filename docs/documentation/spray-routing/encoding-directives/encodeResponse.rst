@@ -9,13 +9,13 @@ Tries to encode the response with the specified ``Encoder`` or rejects the reque
 Signature
 ---------
 
-.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/EncodingDirectives.scala
-   :snippet: encodeResponse
+::
 
-``EncodeResponseMagnet`` constructors:[1]_
+    def encoderResponse(encoder: Encoder)(implicit refFactory: ActorRefFactory): Directive0
+    def encoderResponse(encoder: Encoder, threshold: Long, maxChunkSize: Long)
+                       (implicit refFactory: ActorRefFactory): Directive0
 
-.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/EncodingDirectives.scala
-   :snippet: EncodeResponseMagnet
+The signature shown is simplified, the real signature uses magnets. [1]_
 
 .. [1] See `The Magnet Pattern`_ for an explanation of magnet-based overloading.
 .. _`The Magnet Pattern`: /blog/2012-12-13-the-magnet-pattern/

@@ -9,8 +9,15 @@ extracts its result as a value of type ``T`` and passes it to the inner route.
 Signature
 ---------
 
-.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/FutureDirectives.scala
-   :snippet: onSuccess
+::
+
+    def onSuccess(future: ⇒ Future[T])(ec: ExecutionContext): Directive1[T]
+    def onSuccess(future: ⇒ Future[L <: HList])(ec: ExecutionContext): Directive[L]
+
+The signature shown is simplified, the real signature uses magnets. [1]_
+
+.. [1] See `The Magnet Pattern`_ for an explanation of magnet-based overloading.
+.. _`The Magnet Pattern`: /blog/2012-12-13-the-magnet-pattern/
 
 Description
 -----------
