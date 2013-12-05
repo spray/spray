@@ -167,10 +167,20 @@ private class HttpHostConnectionSlot(host: String, port: Int,
   }
 
   def redirectMethod(req: HttpRequest, res: HttpResponse) = (req.method, res.status.intValue) match {
-    case (GET | HEAD, 301 | 302 | 303 | 307) ⇒ Some(req.method)
-    case (_, 302 | 303)                      ⇒ Some(GET)
-    case (_, 308)                            ⇒ Some(req.method)
-    case _                                   ⇒ None //request should not be followed
+    case (GET | HEAD, 301 | 302 | 303) ⇒ Some(req.method)
+    case (_, 302 | 303) ⇒
+      // 302 is treated in accordance with the notes in RFC 2616 and
+      // https://tools.ietf.org/html/draft-ietf-httpbis-p2-semantics-25#section-6.4.3
+      //   "Note: For historic reasons, a user agent MAY change the request method from
+      //          POST to GET for the subsequent request."
+      Some(GET)
+    case (_, 307 | 308) ⇒
+      // in RFC 2616 forbidden for other requests than GET | HEAD
+      // in the latest httpbis draft, not explicitly disallowed any more
+      // https://tools.ietf.org/html/draft-ietf-httpbis-p2-semantics-25#section-6.4.7
+      // We choose the more relaxed httpbis condition for now.
+      Some(req.method)
+    case _ ⇒ None //request should not be followed
   }
   def responseIfComplete(res: HttpResponsePart): Option[HttpResponse] =
     res match {
