@@ -205,6 +205,7 @@ case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPa
    * Completes the request with redirection response of the given type to the given URI.
    */
   def redirect(uri: Uri, redirectionType: Redirection): Unit =
+    //# redirect-implementation
     complete {
       HttpResponse(
         status = redirectionType,
@@ -214,6 +215,7 @@ case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPa
           case template ⇒ HttpEntity(`text/html`, template format uri)
         })
     }
+  //#
 
   /**
    * Completes the request with status "200 Ok" and the response entity created by marshalling the given object using

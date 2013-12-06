@@ -88,6 +88,11 @@ class IncludeCode(Directive):
                 if implicitstart != -1 and implicitstart < start: start = implicitstart
 
                 end = line.rfind("=")
+                if end == -1: current_snippets = "matching_signature"
+                res.append(line[start:end] + '\n')
+            elif current_snippets == "matching_signature":
+                end = line.rfind("=")
+                if end != -1: current_snippets = ""
                 res.append(line[start:end] + '\n')
 
         text = ''.join(res)

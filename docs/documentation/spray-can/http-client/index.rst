@@ -168,13 +168,15 @@ response will be returned as is.
 
 .. rst-class:: table table-striped
 
-======================== ======================= ========================== ==============
+======================== ======================= ========================== =================
 Request Method           Response Status Code    Redirection Method         Specification
-======================== ======================= ========================== ==============
-GET / HEAD               301 / 302 / 303 / 307   Original request method    `RFC 2616`_
+======================== ======================= ========================== =================
+GET / HEAD               301 / 302 / 303         Original request method    `RFC 2616`_
 Any (except GET / HEAD)  302 / 303               GET                        `RFC 2616`_
-Any                      308                     Original request method    `Draft Spec`_
-======================== ======================= ========================== ==============
+Any                      307                     Original request method    `HttpBis Draft`_
+Any                      308                     Original request method    `308 Draft`_
+======================== ======================= ========================== =================
 
 .. _RFC 2616: http://tools.ietf.org/html/rfc2616#section-10.3
-.. _Draft Spec: http://tools.ietf.org/html/draft-reschke-http-status-308-07#section-3
+.. _HttpBis Draft: https://tools.ietf.org/html/draft-ietf-httpbis-p2-semantics-25#section-6.4.7
+.. _308 Draft: http://tools.ietf.org/html/draft-reschke-http-status-308-07#section-3
