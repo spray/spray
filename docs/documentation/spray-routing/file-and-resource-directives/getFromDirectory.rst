@@ -22,3 +22,5 @@ be read the route rejects the request.
 
 To serve a single file use ``getFromFile``. To serve browsable directory listings use ``getFromBrowseableDirectories``.
 To serve files from a classpath directory use ``getFromResourceDirectory`` instead.
+
+Note that it's not required to wrap this directive with ``get`` as this directive will only respond to ``GET`` requests.
