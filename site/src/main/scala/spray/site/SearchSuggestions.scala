@@ -22,20 +22,27 @@ object DirectivesGroup {
 trait SearchSuggestions { self: Directives ⇒
   import spray.httpx.SprayJsonSupport._
 
-  implicit def suggestionsFormat = new RootJsonFormat[Suggestions] {
-    def write(obj: Suggestions): JsValue =
-      JsArray(
-        obj.prefix.toJson,
-        obj.results.map(_.result).toJson,
-        obj.results.map(_.description).toJson,
-        obj.results.map(_.url).toJson)
-    def read(json: JsValue): SearchSuggestions.this.type#Suggestions = ???
+  object SuggestionFormats {
+    implicit val openSearchSuggestionsFormat = new RootJsonFormat[Suggestions] {
+      def write(obj: Suggestions): JsValue =
+        JsArray(
+          obj.prefix.toJson,
+          obj.results.map(_.result).toJson,
+          obj.results.map(_.description).toJson,
+          obj.results.map(_.url).toJson)
+      def read(json: JsValue): SearchSuggestions.this.type#Suggestions = ???
+    }
+    implicit val typeAheadSuggestionsFormat = new RootJsonFormat[Suggestions] {
+      implicit val suggestionResultFormat = jsonFormat(SuggestionResult, "value", "name", "url", "extra")
+
+      def write(obj: Suggestions): JsValue = obj.results.toJson
+      def read(json: JsValue): SearchSuggestions.this.type#Suggestions = ???
+    }
   }
 
   // format: OFF
   def searchRoute(host: String) =
     pathPrefix("search") {
-      searchRouteFor(host, "directives", "spray.io 1.2.0 directive", "Search and suggest spray.io directives")(suggestDirectives) ~
       searchRouteFor(host, "documentation", "spray.io 1.2.0 documentation", "Search and suggest spray.io documentation pages")(suggestDocumentationPage)
     }
 
@@ -45,7 +52,7 @@ trait SearchSuggestions { self: Directives ⇒
         parameter('terms) { terms ⇒
           suggest(terms).results.headOption match {
             case Some(result) ⇒ redirect(result.url, StatusCodes.SeeOther)
-            case None         ⇒ complete(StatusCodes.NotFound, s"$name '$terms' not found")
+            case None         ⇒ reject
           }
         }
       } ~
@@ -56,30 +63,43 @@ trait SearchSuggestions { self: Directives ⇒
       } ~
       path("suggest") {
         parameter('terms) { terms ⇒
+          import SuggestionFormats.openSearchSuggestionsFormat
+          complete(suggest(terms))
+        }
+      } ~
+      path("typeahead") {
+        parameter('terms) { terms =>
+          import SuggestionFormats.typeAheadSuggestionsFormat
           complete(suggest(terms))
         }
       }
     }
   // format: ON
 
-  def suggestor[T](data: Seq[T])(searchBy: T ⇒ String, asSuggestion: T ⇒ SuggestionResult): String ⇒ Suggestions =
-    prefix ⇒ {
+  val FullPath = """([^:]+):? (.*)""".r
+  def suggestor(data: Seq[ContentNode])(asSuggestion: ContentNode ⇒ SuggestionResult): String ⇒ Suggestions =
+    terms ⇒ {
+      val (parent, prefix) = terms match {
+        case FullPath(parent, prefix) ⇒ (parent, prefix)
+        case _                        ⇒ ("", terms)
+      }
       val lowerPrefix = prefix.toLowerCase
 
+      def matchParent(node: ContentNode): Boolean = parent == "" || node.parent.name.contains(parent)
       def matchScore(value: String): Int =
         if (value == prefix) 0 // most important: exact matches
         else if (value.toLowerCase == lowerPrefix) 1
         else math.max(1, value.length - prefix.length) + 10
 
       val suggs =
-        data.filter(d ⇒ searchBy(d).toLowerCase.contains(lowerPrefix))
-          .sortBy(d ⇒ matchScore(searchBy(d)))
+        data.filter(node ⇒ node.name.toLowerCase.contains(lowerPrefix) && matchParent(node))
+          .sortBy(node ⇒ matchScore(node.name))
           .map(asSuggestion)
       Suggestions(prefix, suggs)
     }
 
   case class Suggestions(prefix: String, results: Seq[SuggestionResult])
-  case class SuggestionResult(result: String, description: String, url: String)
+  case class SuggestionResult(result: String, description: String, url: String, extra: Map[String, String] = Map.empty)
 
   def descriptor(shortName: String, description: String, host: String, path: String) = {
     def url(path: String) = s"http://$host/search/$path"
@@ -93,29 +113,14 @@ trait SearchSuggestions { self: Directives ⇒
     </OpenSearchDescription>
   }
 
-  case class Directive(name: String, group: String, url: String) {
-    def asSuggestion = SuggestionResult(name, s"$name of $group directives", url)
+  val documentationPages = allNodesBelow(Main.root.find("documentation/1.2.0/").get)
+
+  def allNodesBelow(branch: ContentNode): Seq[ContentNode] =
+    if (branch.isLeaf) Seq(branch)
+    else branch.children.flatMap(allNodesBelow) :+ branch
+
+  def nodeAsSuggestion(node: ContentNode): SuggestionResult = {
+    SuggestionResult(node.parent.name + ": " + node.name /* must be unique */ , node.name, "/" + node.uri, Map("parent" -> node.parent.name))
   }
-
-  val directives = {
-    val content = FileUtils.readAllTextFromResource("theme/js/directives-map.js")
-    val json = content.dropWhile(_ != '=').drop(2).dropRight(5) + "]"
-
-    for {
-      group ← JsonParser(json).convertTo[Seq[DirectivesGroup]]
-      directive ← group.directives
-    } yield Directive(directive, group.name, s"/documentation/1.2.0/spray-routing/${group.name}-directives/$directive/")
-  }
-
-  val documentationPages: Seq[ContentNode] = {
-    val root = Main.root.find("documentation/1.2.0/").get
-    def rec(branch: ContentNode): Seq[ContentNode] =
-      if (branch.isLeaf) Seq(branch)
-      else branch.children.flatMap(rec) :+ branch
-
-    rec(root)
-  }
-
-  val suggestDirectives = suggestor(directives)(_.name, _.asSuggestion)
-  val suggestDocumentationPage = suggestor(documentationPages)(_.name, cn ⇒ SuggestionResult(cn.name, cn.title, "/" + cn.uri))
+  val suggestDocumentationPage = suggestor(documentationPages)(nodeAsSuggestion)
 }

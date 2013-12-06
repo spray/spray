@@ -54,4 +54,16 @@ $(function() {
                 ele.wrap('<a href="'+directiveLinkTarget(directive)+'"/>');
         });
     }
+
+    $('.typeahead')
+        .typeahead({
+            name: "documentation",
+            remote: "/search/documentation/typeahead?terms=%QUERY",
+            engine: Hogan,
+            limit: 10,
+            template: "<div>{{extra.parent}}:&nbsp;<strong>{{name}}</strong></div>"
+        })
+        .bind("typeahead:selected", function(event, datum) {
+            window.location = datum.url;
+        });
 });
