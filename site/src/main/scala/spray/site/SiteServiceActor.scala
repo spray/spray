@@ -26,7 +26,7 @@ import spray.routing._
 import html._
 import StatusCodes._
 
-class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
+class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with SearchSuggestions {
 
   // format: OFF
   def receive = runRoute {
@@ -64,6 +64,7 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
             talkCharts("scala.io") ~
             talkCharts("wjax") ~
             talkCharts("webinar") ~
+            searchRoute("spray.io") ~
             path("webinar" / "video" /) { redirect("http://www.youtube.com/watch?v=7MqD7_YvZ8Q", Found) } ~
             getFromResourceDirectory("theme") ~
             pathPrefix("_images") {

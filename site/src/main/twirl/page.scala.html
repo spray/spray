@@ -15,12 +15,15 @@
     <link href="/css/skin_blue.css" rel="stylesheet"/>
     <link href="/css/spray.css" rel="stylesheet"/>
     <link href="/css/pygments.css" rel="stylesheet"/>
+    <link href="/css/typeahead.css" rel="stylesheet"/>
 
     @node.doc.meta.styleList.map { style =>
       <link href="@style" rel="stylesheet"/>
     }
 
     <link rel="shortcut icon" href="/favicon.png" />
+    <link rel="search" type="application/opensearchdescription+xml" title="spray.io 1.2.0 documentation" href="/search/documentation/descriptor" />
+    <link rel="search" type="application/opensearchdescription+xml" title="spray.io 1.2.0 directives" href="/search/directives/descriptor" />
 
     @if(node.uri.startsWith("blog")) {
     <link href="/blog/feed/" type="application/atom+xml" rel="alternate" title="Blog Atom Feed" />
@@ -33,6 +36,8 @@
     <script type="text/javascript">(function(H){H.className=H.className.replace(/\bno-js\b/,'js')})(document.documentElement)</script>
 
     <script type="text/javascript" src="/js/mentor.min.js"></script>
+    <script type="text/javascript" src="/js/typeahead.min.js"></script>
+    <script type="text/javascript" src="/js/hogan.js"></script>
     <script type="text/javascript" src="/js/directives-map.js"></script>
     <script type="text/javascript" src="/js/highlight-directives.js"></script>
     @node.doc.meta.scriptList.map { script =>
