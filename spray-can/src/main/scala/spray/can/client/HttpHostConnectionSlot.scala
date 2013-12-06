@@ -97,20 +97,6 @@ private class HttpHostConnectionSlot(host: String, port: Int,
   def connected(httpConnection: ActorRef, openRequests: Queue[RequestContext],
                 closeAfterResponseEnd: Boolean = false): Receive = {
     case part: HttpResponsePart if openRequests.nonEmpty ⇒
-      val ctx = openRequests.head
-      part match {
-        case res: HttpResponse ⇒
-          val redirectWithMethod = redirectMethod(ctx.request, res)
-          if (ctx.redirectsLeft > 0 && redirectWithMethod.nonEmpty) {
-            res.header[Location] match {
-              case Some(location) ⇒ redirect(location, redirectWithMethod.head, ctx)
-              case _              ⇒ dispatchToCommander(ctx, part)
-            }
-          } else {
-            dispatchToCommander(ctx, part)
-          }
-        case _ ⇒ dispatchToCommander(ctx, part)
-      }
       def handleResponseCompletion(closeAfterResponseEnd: Boolean): Unit = {
         context.parent ! RequestCompleted
         context.become {
@@ -120,6 +106,9 @@ private class HttpHostConnectionSlot(host: String, port: Int,
           else connected(httpConnection, openRequests.tail)
         }
       }
+
+      val ctx = openRequests.head
+
       part match {
         case x: HttpResponse ⇒ handleResponseCompletion(x.connectionCloseExpected)
         case ChunkedResponseStart(x: HttpResponse) ⇒
@@ -127,6 +116,15 @@ private class HttpHostConnectionSlot(host: String, port: Int,
         case _: MessageChunk      ⇒ // nothing to do
         case _: ChunkedMessageEnd ⇒ handleResponseCompletion(closeAfterResponseEnd)
       }
+
+      val maybeRedirect =
+        for {
+          response ← responseIfComplete(part) if ctx.redirectsLeft > 0
+          method ← redirectMethod(ctx.request, response)
+          location ← response.header[Location]
+        } yield () ⇒ redirect(location, method, ctx)
+
+      maybeRedirect.getOrElse(() ⇒ dispatchToCommander(ctx, part)).apply()
 
     case x: HttpResponsePart ⇒
       log.warning("Received unexpected response for non-existing request: {}, dropping", x)
@@ -169,11 +167,26 @@ private class HttpHostConnectionSlot(host: String, port: Int,
   }
 
   def redirectMethod(req: HttpRequest, res: HttpResponse) = (req.method, res.status.intValue) match {
-    case (GET | HEAD, 301 | 302 | 303 | 307) ⇒ Some(req.method)
-    case (_, 302 | 303)                      ⇒ Some(GET)
-    case (_, 308)                            ⇒ Some(req.method)
-    case _                                   ⇒ None //request should not be followed
+    case (GET | HEAD, 301 | 302 | 303) ⇒ Some(req.method)
+    case (_, 302 | 303) ⇒
+      // 302 is treated in accordance with the notes in RFC 2616 and
+      // https://tools.ietf.org/html/draft-ietf-httpbis-p2-semantics-25#section-6.4.3
+      //   "Note: For historic reasons, a user agent MAY change the request method from
+      //          POST to GET for the subsequent request."
+      Some(GET)
+    case (_, 307 | 308) ⇒
+      // in RFC 2616 forbidden for other requests than GET | HEAD
+      // in the latest httpbis draft, not explicitly disallowed any more
+      // https://tools.ietf.org/html/draft-ietf-httpbis-p2-semantics-25#section-6.4.7
+      // We choose the more relaxed httpbis condition for now.
+      Some(req.method)
+    case _ ⇒ None //request should not be followed
   }
+  def responseIfComplete(res: HttpResponsePart): Option[HttpResponse] =
+    res match {
+      case r: HttpResponse ⇒ Some(r)
+      case _               ⇒ None
+    }
 
   def redirect(location: Location, method: HttpMethod, ctx: RequestContext) {
     val baseUri = ctx.request.uri.toEffectiveHttpRequestUri(Uri.Host(host), port, sslEncryption)
