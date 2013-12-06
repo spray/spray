@@ -26,8 +26,8 @@ __ http://scala.io
 __ /scala.io/
 
 Jan 2013: "The Scala Types" podcast: "Mathias Doenitz on *spray*"
-  | Part 1: https://dl.dropboxusercontent.com/u/4493646/scalatypes%20podcast%20-%20on%20spray%20-%20part-1.mp3
-  | Part 2: https://dl.dropboxusercontent.com/u/4493646/scalatypes%20podcast%20-%20on%20spray%20-%20part-2.mp3
+  | Part 1: http://bit.ly/scalatypes-podcast-on-spray-part-1
+  | Part 2: http://bit.ly/scalatypes-podcast-on-spray-part-2
 
 Apr 2012: "*spray*: REST on Akka" talk from the Scala Days 2012
   | Video: http://skillsmatter.com/podcast/scala/spray-rest-on-akka
