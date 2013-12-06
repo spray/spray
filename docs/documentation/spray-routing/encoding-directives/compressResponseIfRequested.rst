@@ -3,19 +3,26 @@
 compressResponseIfRequested
 ===========================
 
-Only compresses the response when specifically requested by the
-``Accept-Encoding`` request header (i.e. the default is "no compression").
+Only compresses the response when specifically requested by the ``Accept-Encoding`` request header
+(i.e. the default is "no compression").
 
 Signature
 ---------
 
-.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/EncodingDirectives.scala
-   :snippet: compressResponseIfRequested
+::
+
+    def compressResponseIfRequested()(implicit refFactory: ActorRefFactory): Directive0
+
+The signature shown is simplified, the real signature uses magnets. [1]_
+
+.. [1] See `The Magnet Pattern`_ for an explanation of magnet-based overloading.
+.. _`The Magnet Pattern`: /blog/2012-12-13-the-magnet-pattern/
 
 Description
 -----------
 
-The ``compressResponseIfRequested`` directive will behave as follows:
+The ``compressResponseIfRequested`` directive is an alias for ``compressResponse(NoEncoding, Gzip, Deflate)`` and will
+behave as follows:
 
 ========================================= ===============================
 ``Accept-Encoding`` header                resulting response
@@ -27,11 +34,10 @@ The ``compressResponseIfRequested`` directive will behave as follows:
 no ``Accept-Encoding`` header present     uncompressed
 ========================================= ===============================
 
-For an overview of the different ``compressResponse`` directives and which one to use when,
-see :ref:`WhenToUseWhichCompressResponseDirective`.
+For an overview of the different ``compressResponse`` directives see :ref:`WhenToUseWhichCompressResponseDirective`.
 
 Example
 -------
 
-.. includecode:: /../spray-routing-tests/src/test/scala/spray/routing/EncodingDirectivesSpec.scala
-   :snippet: compressResponseIfRequested-example
+.. includecode:: ../code/docs/directives/EncodingDirectivesExamplesSpec.scala
+   :snippet: compressResponseIfRequested

@@ -1,7 +1,7 @@
 Understanding the DSL Structure
 ===============================
 
-*spray-routings* rather compact route building DSL with its extensive use of function literals can be somewhat tricky,
+*spray-routing's* rather compact route building DSL with its extensive use of function literals can initially appear tricky,
 especially for users without a lot of Scala experience, so in this chapter we are explaining the mechanics in some more
 detail.
 
@@ -86,7 +86,7 @@ Let's take a look at this example::
       println("MARK 1")
       get {
         println("MARK 2")
-        path("abc" / PathElement) { x =>
+        path("abc" / Segment) { x =>
           println("MARK 3")   //
           complete {          // code "inside"
             println("MARK 4") // of the
@@ -113,7 +113,7 @@ MARK 4
 Why is the "MARK 3" statement executed for every request, even though it doesn't live at the leaf level?
 Because it lives "underneath an extraction". All branches of the route structure that lie inside of a function literal
 for an extraction can only be created when the extracted values have been determined. Since the value of the
-``PathElement`` in the example above can only be known after a request has come in and its path has been parsed the
+``Segment`` in the example above can only be known after a request has come in and its path has been parsed the
 branch of the route structure "inside" of the extraction can only be built at request-handling time.
 
 So essentially the sequence of events in the example above is as follows:
@@ -123,9 +123,9 @@ So essentially the sequence of events in the example above is as follows:
    directive.
 
 2. When a GET request with a matching URI comes in it flows through the outer route structure up until the point the
-   ``path`` directive has extracted the value of the ``PathElement`` placeholder.
+   ``path`` directive has extracted the value of the ``Segment`` placeholder.
 
-3. The extraction function literal is executed, with the extracted ``PathElement`` value as argument. This function
+3. The extraction function literal is executed, with the extracted ``Segment`` value as argument. This function
    creates the underlying route structure inside of the extraction.
 
 4. After the inner route structure has been created the request is injected into it. So the inner route structure
@@ -148,7 +148,7 @@ application.
 Let's compare two route structures that are almost equivalent with regard to how they respond to requests::
 
     val routeA =
-      path("abc" / PathElement) { x =>
+      path("abc" / Segment) { x =>
         get {
           complete(responseFor(x))
         }
@@ -156,7 +156,7 @@ Let's compare two route structures that are almost equivalent with regard to how
 
     val routeB =
       get {
-        path("abc" / PathElement) { x =>
+        path("abc" / Segment) { x =>
           complete(responseFor(x))
         }
       }

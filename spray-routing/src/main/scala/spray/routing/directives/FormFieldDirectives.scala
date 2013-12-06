@@ -26,13 +26,13 @@ trait FormFieldDirectives extends ToNameReceptaclePimps {
    * Rejects the request if the form field parameter matcher(s) defined by the definition(s) don't match.
    * Otherwise the field content(s) are extracted and passed to the inner route.
    */
-  def formField(fdm: FieldDefMagnet): fdm.Out = fdm()
+  /* directive */ def formField(fdm: FieldDefMagnet): fdm.Out = fdm()
 
   /**
    * Rejects the request if the form field parameter matcher(s) defined by the definition(s) don't match.
    * Otherwise the field content(s) are extracted and passed to the inner route.
    */
-  def formFields(fdm: FieldDefMagnet): fdm.Out = fdm()
+  /* directive */ def formFields(fdm: FieldDefMagnet): fdm.Out = fdm()
 
 }
 
@@ -94,8 +94,8 @@ object FieldDefMagnet2 extends ToNameReceptaclePimps {
 
   /************ tuple support ******************/
 
-  implicit def forTuple[T <: Product, L <: HList, Out](implicit hla: HListerAux[T, L], fdma: FieldDefMagnetAux[L, Out]) =
-    FieldDefMagnetAux[T, Out](tuple ⇒ fdma(hla(tuple)))
+  implicit def forTuple[T <: Product, L <: HList, Out0](implicit hla: HListerAux[T, L], fdma: FieldDefMagnetAux[L, Out0]) =
+    FieldDefMagnetAux[T, Out0](tuple ⇒ fdma(hla(tuple)))
 
   /************ HList support ******************/
 

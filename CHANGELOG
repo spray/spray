@@ -1,3 +1,38 @@
+Version 1.2.0 (2013-11-29)
+--------------------------
+
+- spray-http: added some more helpers around form data and `BodyPart` construction
+
+- spray-io:
+
+  + fixed `Terminated` dead letters from IO layer (#704)
+  + fixed `Tcp.SO.reuseAddress` not being applied for outgoing connections (#712)
+
+- spray-routing:
+
+  + fixed problem with `compressResponseIfRequested` allowing unused parameters
+
+- spray-testkit: added `NoAutoHtmlLinkFragments` helper trait
+
+
+Version 1.2-RC4 (2013-11-20)
+----------------------------
+
+- spray-can:
+
+  + fixed occasional DeathPactException in HttpHostConnector (#699)
+
+- spray-io:
+
+  + fixed SslTlsSupport sending out multiple acks in some cases (#689)
+  + added verification of correct clientMode of SSLEngines created by `*SSLEngineProvider.fromFunc` (#657)
+
+- spray-routing:
+
+  + made `FutureDirectives` and `authenticate(Future)` parameters call-by-name (#694)
+  + applied small change as a workaround for http://youtrack.jetbrains.com/issue/SCL-6214
+
+
 Version 1.2-RC3 (2013-11-13)
 ----------------------------
 
@@ -60,7 +95,7 @@ Version 1.2-RC2 (2013-10-30)
 - spray-io:
 
   + fixed broken inbound bytes buffering in SslTlsSupport (#633)
-  + removed too tight assertions, replaced remaining `assert`s (#631)
+  + removed too tight assertions, replaced remaining asserts (#631)
 
 - spray-routing:
 

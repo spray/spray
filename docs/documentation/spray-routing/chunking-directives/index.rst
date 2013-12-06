@@ -7,3 +7,4 @@ ChunkingDirectives
    :maxdepth: 1
 
    autoChunk
+   autoChunkFileBytes

@@ -3,20 +3,31 @@
 compressResponse
 ================
 
-Uses the first of a given number of encodings that the client accepts.
-If none are accepted the request is rejected with an ``UnacceptedResponseEncodingRejection``.
-By default, if no encoders are specified, the tried list is ``Gzip``, ``Deflate`` and ``NoEncoding``.
+Uses the first of a given number of encodings that the client accepts. If none are accepted the request
+is rejected with an ``UnacceptedResponseEncodingRejection``.
 
 Signature
 ---------
 
-.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/EncodingDirectives.scala
-   :snippet: compressResponse
+::
+
+    def compressResponse()(implicit refFactory: ActorRefFactory): Directive0
+    def compressResponse(e1: Encoder)(implicit refFactory: ActorRefFactory): Directive0
+    def compressResponse(e1: Encoder, e2: Encoder)(implicit refFactory: ActorRefFactory): Directive0
+    def compressResponse(e1: Encoder, e2: Encoder, e3: Encoder)(implicit refFactory: ActorRefFactory): Directive0
+
+The signature shown is simplified, the real signature uses magnets. [1]_
+
+.. [1] See `The Magnet Pattern`_ for an explanation of magnet-based overloading.
+.. _`The Magnet Pattern`: /blog/2012-12-13-the-magnet-pattern/
 
 Description
 -----------
 
-The ``compressResponse`` directive will behave as follows:
+The ``compressResponse`` directive allows to specify zero to three encoders to try in the specified order.
+If none are specified the tried list is ``Gzip``, ``Deflate``, and then ``NoEncoding``.
+
+The ``compressResponse()`` directive (without an explicit list of encoders given) will therefore behave as follows:
 
 ========================================= ===============================
 ``Accept-Encoding`` header                resulting response
@@ -28,11 +39,17 @@ The ``compressResponse`` directive will behave as follows:
 no ``Accept-Encoding`` header present     compressed with ``Gzip``
 ========================================= ===============================
 
-For an overview of the different ``compressResponse`` directives and which one to use when,
-see :ref:`WhenToUseWhichCompressResponseDirective`.
+For an overview of the different ``compressResponse`` directives see :ref:`WhenToUseWhichCompressResponseDirective`.
 
 Example
 -------
 
-.. includecode:: /../spray-routing-tests/src/test/scala/spray/routing/EncodingDirectivesSpec.scala
-   :snippet: compressResponse-example
+This example shows the behavior of ``compressResponse`` without any encoders specified:
+
+.. includecode:: ../code/docs/directives/EncodingDirectivesExamplesSpec.scala
+   :snippet: compressResponse-1
+
+This example shows the behaviour of ``compressResponse(Gzip)``:
+
+.. includecode:: ../code/docs/directives/EncodingDirectivesExamplesSpec.scala
+   :snippet: compressResponse-1

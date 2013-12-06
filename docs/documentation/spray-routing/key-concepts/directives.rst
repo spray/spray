@@ -41,6 +41,7 @@ pass on this copy to its inner Route. Typically this is good for two things:
 * Transforming the ``HttpRequest`` instance
 * "Hooking in" another response transformation function into the responder chain.
 
+.. _The Responder Chain:
 
 The Responder Chain
 -------------------

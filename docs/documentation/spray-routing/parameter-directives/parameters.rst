@@ -8,8 +8,17 @@ The parameters directive filters on the existence of several query parameters an
 Signature
 ---------
 
-.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/ParameterDirectives.scala
-   :snippet: parameters
+::
+
+    def parameters(param: <ParamDef[T]>): Directive1[T]
+    def parameters(params: <ParamDef[T_i]>*): Directive[T_0 :: ... T_i ... :: HNil]
+    def parameters(params: <ParamDef[T_0]> :: ... <ParamDef[T_i]> ... :: HNil): Directive[T_0 :: ... T_i ... :: HNil]
+
+The signature shown is simplified and written in pseudo-syntax, the real signature uses magnets. [1]_ The type
+``<ParamDef>`` doesn't really exist but consists of the syntactic variants as shown in the description and the examples.
+
+.. [1] See `The Magnet Pattern`_ for an explanation of magnet-based overloading.
+.. _`The Magnet Pattern`: /blog/2012-12-13-the-magnet-pattern/
 
 Description
 -----------
@@ -28,13 +37,16 @@ as required or optional or to filter requests where a parameter has a certain va
 ``"amount".as[Int]``
     extract value of parameter "amount" as ``Int``, you need a matching ``Deserializer`` in scope for that to work
     (see also :ref:`unmarshalling`)
+``"amount".as(deserializer)``
+    extract value of parameter "amount" with an explicit ``Deserializer``
 
 You can use :ref:`case-class-extraction` to group several extracted values together into a case-class
 instance.
 
 Requests missing a required parameter or parameter value will be rejected with an appropriate rejection.
 
-There's also a singular version, :ref:`-parameter-`.
+There's also a singular version, :ref:`-parameter-`. Form fields can be handled in a similar way, see ``formFields``. If
+you want unified handling for both query parameters and form fields, see ``anyParams``.
 
 Examples
 --------
@@ -67,4 +79,4 @@ Deserialized parameter
 ++++++++++++++++++++++
 
 .. includecode:: ../code/docs/directives/ParameterDirectivesExamplesSpec.scala
-   :snippet: required-value
+   :snippet: mapped-value
