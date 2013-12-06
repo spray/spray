@@ -17,8 +17,7 @@
 package spray.routing
 package directives
 
-import scala.concurrent.{ ExecutionContext, Future }
-import spray.httpx.marshalling.{ ToResponseMarshaller, ToResponseMarshallable }
+import spray.httpx.marshalling.ToResponseMarshallable
 import spray.http._
 import StatusCodes._
 

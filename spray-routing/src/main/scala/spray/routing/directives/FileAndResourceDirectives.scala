@@ -26,6 +26,7 @@ import spray.util._
 import spray.http._
 import HttpHeaders._
 
+/* format: OFF */
 trait FileAndResourceDirectives {
   import ChunkingDirectives._
   import ExecutionDirectives._
@@ -40,8 +41,8 @@ trait FileAndResourceDirectives {
    * running detached in a `Future`, so it doesn't block the current thread (but potentially
    * some other thread !). If the file cannot be found or read the request is rejected.
    */
-  def getFromFile(fileName: String)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
-                                    refFactory: ActorRefFactory): Route =
+  def getFromFile(fileName: String)
+                 (implicit settings: RoutingSettings, resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route =
     getFromFile(new File(fileName))
 
   /**
@@ -49,8 +50,8 @@ trait FileAndResourceDirectives {
    * running detached in a `Future`, so it doesn't block the current thread (but potentially
    * some other thread !). If the file cannot be found or read the request is rejected.
    */
-  def getFromFile(file: File)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
-                              refFactory: ActorRefFactory): Route =
+  def getFromFile(file: File)
+                 (implicit settings: RoutingSettings, resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route =
     getFromFile(file, resolver(file.getName))
 
   /**
@@ -58,8 +59,8 @@ trait FileAndResourceDirectives {
    * running detached in a `Future`, so it doesn't block the current thread (but potentially
    * some other thread !). If the file cannot be found or read the request is rejected.
    */
-  def getFromFile(file: File, contentType: ContentType)(implicit settings: RoutingSettings,
-                                                        refFactory: ActorRefFactory): Route =
+  def getFromFile(file: File, contentType: ContentType)
+                 (implicit settings: RoutingSettings, refFactory: ActorRefFactory): Route =
     get {
       detach() {
         if (file.isFile && file.canRead) {
@@ -84,7 +85,8 @@ trait FileAndResourceDirectives {
    * some other thread !).
    * If the file cannot be found or read the Route rejects the request.
    */
-  def getFromResource(resourceName: String)(implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route =
+  def getFromResource(resourceName: String)
+                     (implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route =
     getFromResource(resourceName, resolver(resourceName))
 
   /**
@@ -93,7 +95,8 @@ trait FileAndResourceDirectives {
    * some other thread !).
    * If the file cannot be found or read the Route rejects the request.
    */
-  def getFromResource(resourceName: String, contentType: ContentType)(implicit refFactory: ActorRefFactory): Route =
+  def getFromResource(resourceName: String, contentType: ContentType)
+                     (implicit refFactory: ActorRefFactory): Route =
     if (!resourceName.endsWith("/"))
       get {
         detach() {
@@ -128,8 +131,9 @@ trait FileAndResourceDirectives {
    * The actual I/O operation is running detached in a `Future`, so it doesn't block the
    * current thread. If the file cannot be read the Route rejects the request.
    */
-  def getFromDirectory(directoryName: String)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
-                                              refFactory: ActorRefFactory, log: LoggingContext): Route = {
+  def getFromDirectory(directoryName: String)
+                      (implicit settings: RoutingSettings, resolver: ContentTypeResolver,
+                       refFactory: ActorRefFactory, log: LoggingContext): Route = {
     val base = withTrailingSlash(directoryName)
     unmatchedPath { path ⇒
       fileSystemPath(base, path) match {
@@ -143,8 +147,9 @@ trait FileAndResourceDirectives {
    * Completes GET requests with a unified listing of the contents of all given directories.
    * The actual rendering of the directory contents is performed by the in-scope `Marshaller[DirectoryListing]`.
    */
-  def listDirectoryContents(directories: String*)(implicit renderer: Marshaller[DirectoryListing],
-                                                  refFactory: ActorRefFactory, log: LoggingContext): Route =
+  def listDirectoryContents(directories: String*)
+                           (implicit renderer: Marshaller[DirectoryListing], refFactory: ActorRefFactory,
+                            log: LoggingContext): Route =
     (get & detach()) {
       unmatchedPath { path ⇒
         requestUri { fullUri ⇒
@@ -170,18 +175,18 @@ trait FileAndResourceDirectives {
   /**
    * Same as `getFromBrowseableDirectories` with only one directory.
    */
-  def getFromBrowseableDirectory(directory: String)(implicit renderer: Marshaller[DirectoryListing], settings: RoutingSettings,
-                                                    resolver: ContentTypeResolver, refFactory: ActorRefFactory,
-                                                    log: LoggingContext): Route =
+  def getFromBrowseableDirectory(directory: String)
+                                (implicit renderer: Marshaller[DirectoryListing], settings: RoutingSettings,
+                                 resolver: ContentTypeResolver, refFactory: ActorRefFactory, log: LoggingContext): Route =
     getFromBrowseableDirectories(directory)
 
   /**
    * Serves the content of the given directories as a file system browser, i.e. files are sent and directories
    * served as browsable listings.
    */
-  def getFromBrowseableDirectories(directories: String*)(implicit renderer: Marshaller[DirectoryListing], settings: RoutingSettings,
-                                                         resolver: ContentTypeResolver, refFactory: ActorRefFactory,
-                                                         log: LoggingContext): Route = {
+  def getFromBrowseableDirectories(directories: String*)
+                                  (implicit renderer: Marshaller[DirectoryListing], settings: RoutingSettings,
+                                   resolver: ContentTypeResolver, refFactory: ActorRefFactory, log: LoggingContext): Route = {
     import RouteConcatenation._
     directories.map(getFromDirectory).reduceLeft(_ ~ _) ~ listDirectoryContents(directories: _*)
   }
@@ -190,8 +195,8 @@ trait FileAndResourceDirectives {
    * Same as "getFromDirectory" except that the file is not fetched from the file system but rather from a
    * "resource directory".
    */
-  def getFromResourceDirectory(directoryName: String)(implicit resolver: ContentTypeResolver,
-                                                      refFactory: ActorRefFactory, log: LoggingContext): Route = {
+  def getFromResourceDirectory(directoryName: String)
+                              (implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory, log: LoggingContext): Route = {
     val base = if (directoryName.isEmpty) "" else withTrailingSlash(directoryName)
     unmatchedPath { path ⇒
       fileSystemPath(base, path, separator = '/') match {
@@ -201,6 +206,8 @@ trait FileAndResourceDirectives {
     }
   }
 }
+
+/* format: ON */
 
 object FileAndResourceDirectives extends FileAndResourceDirectives {
   private def withTrailingSlash(path: String): String = if (path endsWith "/") path else path + '/'
