@@ -277,7 +277,7 @@ object HttpHeaders {
     protected def companion = Location
   }
 
-  object Origin extends ModeledCompanion
+  object Origin extends ModeledCompanion // TODO: turn argument into repeated parameter for more convenience
   case class Origin(originList: Seq[HttpOrigin]) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ originList
     protected def companion = Origin
