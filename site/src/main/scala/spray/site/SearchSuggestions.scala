@@ -2,10 +2,8 @@ package spray.site
 
 import spray.http.{ StatusCodes, MediaType }
 import spray.routing.{ Route, Directives }
-import org.parboiled.common.FileUtils
 import spray.json._
 import spray.json.DefaultJsonProtocol._
-import scala.annotation.tailrec
 
 case class DirectivesGroup(name: String, directives: Seq[String])
 object DirectivesGroup {
@@ -30,13 +28,12 @@ trait SearchSuggestions { self: Directives ⇒
           obj.results.map(_.result).toJson,
           obj.results.map(_.description).toJson,
           obj.results.map(_.url).toJson)
-      def read(json: JsValue): SearchSuggestions.this.type#Suggestions = ???
+      def read(json: JsValue) = ???
     }
     implicit val typeAheadSuggestionsFormat = new RootJsonFormat[Suggestions] {
       implicit val suggestionResultFormat = jsonFormat(SuggestionResult, "value", "name", "url", "extra")
-
       def write(obj: Suggestions): JsValue = obj.results.toJson
-      def read(json: JsValue): SearchSuggestions.this.type#Suggestions = ???
+      def read(json: JsValue) = ???
     }
   }
 
