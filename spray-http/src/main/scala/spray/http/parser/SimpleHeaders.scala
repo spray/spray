@@ -29,6 +29,9 @@ import ProtectedHeaderCreation.enable
 private[parser] trait SimpleHeaders {
   this: Parser with ProtocolParameterRules with AdditionalRules ⇒
 
+  def `*Allow` = rule(
+    zeroOrMore(HttpParser.HttpMethodDef, separator = ListSep) ~ EOI ~~> (Allow(_: _*)))
+
   def `*Connection` = rule(
     oneOrMore(Token, separator = ListSep) ~ EOI ~~> (HttpHeaders.Connection(_)))
 
