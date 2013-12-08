@@ -90,11 +90,13 @@ class RejectionHandlerSpec extends RoutingSpec {
       }
     }
     "respond with MethodNotAllowed for requests resulting in MethodRejections" in {
+      import HttpMethods._
       Post("/", "/test") ~> wrap {
         get { complete("yes") } ~
           put { complete("yes") }
       } ~> check {
         status === MethodNotAllowed
+        headers === Allow(GET, PUT) :: Nil
         responseAs[String] === "HTTP method not allowed, supported methods: GET, PUT"
       }
     }
