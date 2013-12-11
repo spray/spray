@@ -24,6 +24,7 @@ class SprayJsonSupportExamplesSpec extends Specification {
   "example-1" in {
     import MyJsonProtocol._
     import spray.httpx.SprayJsonSupport._
+    import spray.util._
 
     val bob = Person("Bob", "Parr", 32)
     val body = HttpEntity(
@@ -33,7 +34,7 @@ class SprayJsonSupportExamplesSpec extends Specification {
            |  "name": "Bob",
            |  "firstName": "Parr",
            |  "age": 32
-           |}""".stripMargin
+           |}""".stripMarginWithNewline("\n")
     )
 
     marshal(bob) === Right(body)

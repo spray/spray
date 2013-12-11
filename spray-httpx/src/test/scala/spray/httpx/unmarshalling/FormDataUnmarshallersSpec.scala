@@ -54,17 +54,17 @@ class FormDataUnmarshallersSpec extends Specification {
       HttpEntity(`multipart/mixed` withBoundary "12345",
         """|--12345
            |
-           |first part, with a trailing EOL
+           |first part, with a trailing newline
            |
            |--12345
            |Content-Type: application/octet-stream
            |Content-Transfer-Encoding: binary
            |
            |filecontent
-           |--12345--""".stripMargin).as[MultipartContent] === Right {
+           |--12345--""".stripMarginWithNewline("\r\n")).as[MultipartContent] === Right {
           MultipartContent(
             Seq(
-              BodyPart(HttpEntity(ContentTypes.`text/plain(UTF-8)`, "first part, with a trailing EOL" + EOL)),
+              BodyPart(HttpEntity(ContentTypes.`text/plain(UTF-8)`, "first part, with a trailing newline\r\n")),
               BodyPart(
                 HttpEntity(`application/octet-stream`, "filecontent"),
                 List(

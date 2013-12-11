@@ -26,9 +26,9 @@ import MediaRanges._
 import HttpCharsets._
 import HttpEncodings._
 import HttpMethods._
+import spray.util._
 
 class HttpHeaderSpec extends Specification {
-  val EOL = System.getProperty("line.separator")
   val `application/vnd.spray` = MediaTypes.register(MediaType.custom("application/vnd.spray"))
 
   "The HTTP header model must correctly parse and render the following headers" >> {
@@ -280,7 +280,7 @@ class HttpHeaderSpec extends Specification {
                            realm="testrealm@host.com",
                            qop="auth,auth-int",
                            nonce=dcd98b7102dd2f0e8b11d0f600bfb0c093,
-                           opaque=5ccc069c403ebaf9f0171e9517f40e41""".replace(EOL, "\r\n") =!=
+                           opaque=5ccc069c403ebaf9f0171e9517f40e41""".stripMarginWithNewline("\r\n") =!=
         `WWW-Authenticate`(HttpChallenge("Digest", "testrealm@host.com", Map("qop" -> "auth,auth-int",
           "nonce" -> "dcd98b7102dd2f0e8b11d0f600bfb0c093", "opaque" -> "5ccc069c403ebaf9f0171e9517f40e41"))).renderedTo(
           "Digest realm=\"testrealm@host.com\",qop=\"auth,auth-int\",nonce=dcd98b7102dd2f0e8b11d0f600bfb0c093,opaque=5ccc069c403ebaf9f0171e9517f40e41")
