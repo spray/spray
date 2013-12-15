@@ -1,12 +1,10 @@
 package docs
 
 import org.specs2.mutable.Specification
-import scala.concurrent.Future
-import akka.actor.ActorSystem
-import akka.util.Timeout
 import spray.testkit.Specs2Utils._
+import org.specs2.time.NoTimeConversions
 
-class HttpClientExamplesSpec extends Specification {
+class HttpClientExamplesSpec extends Specification with NoTimeConversions {
 
   "sslengine-config" in compileOnly {
     import spray.io.ClientSSLEngineProvider
@@ -19,13 +17,21 @@ class HttpClientExamplesSpec extends Specification {
   }
 
   "request-level-example" in compileOnly {
-    import akka.io.IO
+    import scala.concurrent.Future
+    import scala.concurrent.duration._
+
+    import akka.actor.ActorSystem
+    import akka.util.Timeout
     import akka.pattern.ask
+    import akka.io.IO
+
     import spray.can.Http
     import spray.http._
     import HttpMethods._
-    implicit val system: ActorSystem =null // hide
-    implicit val timeout: Timeout = null // hide
+
+    implicit val system: ActorSystem = ActorSystem()
+    implicit val timeout: Timeout = Timeout(15.seconds)
+    import system.dispatcher // implicit execution context
 
     val response: Future[HttpResponse] =
       (IO(Http) ? HttpRequest(GET, Uri("http://spray.io"))).mapTo[HttpResponse]
