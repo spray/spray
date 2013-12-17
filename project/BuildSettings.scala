@@ -52,7 +52,7 @@ object BuildSettings {
       SbtPgp.useGpg := true,
       publishTo <<= version { version =>
         Some {
-          if (version.contains("-")) { // || true
+          if (version.contains("-") || true) { // sonatype publishing currently disabled
             "spray nexus" at {
               // public uri is repo.spray.io, we use an SSH tunnel to the nexus here
               "http://localhost:42424/content/repositories/" + {
