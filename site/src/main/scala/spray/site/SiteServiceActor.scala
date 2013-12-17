@@ -53,6 +53,9 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
         host(_.endsWith("parboiled.org")) {
           redirect("https://github.com/sirthias/parboiled/wiki", Found)
         } ~
+        host(_.endsWith("parboiled2.org")) {
+          redirect("https://github.com/sirthias/parboiled2", Found)
+        } ~
         host(_.endsWith("pegdown.org")) {
           redirect("https://github.com/sirthias/pegdown", Found)
         } ~
