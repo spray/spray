@@ -17,10 +17,10 @@
 package spray.routing
 
 import java.io.File
-import com.typesafe.config.ConfigFactory
 import org.parboiled.common.FileUtils
 import scala.util.Properties
 import spray.http._
+import spray.util._
 import MediaTypes._
 import HttpHeaders._
 import HttpCharsets._
@@ -115,7 +115,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     "return the resource content with the MediaType matching the file extension" in {
       val verify = check {
         mediaType === `application/pdf`
-        body.asString === "123\n"
+        body.asString === "123"
       }
       "example 1" in { Get("empty.pdf") ~> getFromResourceDirectory("subDirectory") ~> verify }
       "example 2" in { Get("empty.pdf") ~> getFromResourceDirectory("subDirectory/") ~> verify }
@@ -134,7 +134,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
 
     "properly render a simple directory" in {
       Get() ~> listDirectoryContents(base + "/someDir") ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /</title></head>
             |<body>
@@ -148,12 +148,13 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "properly render a sub directory" in {
       Get("/sub/") ~> listDirectoryContents(base + "/someDir") ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /sub/</title></head>
             |<body>
@@ -166,12 +167,13 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "properly render the union of several directories" in {
       Get() ~> listDirectoryContents(base + "/someDir", base + "/subDirectory") ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /</title></head>
             |<body>
@@ -180,20 +182,21 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<pre>
             |<a href="/emptySub/">emptySub/</a>        xxxx-xx-xx xx:xx:xx
             |<a href="/sub/">sub/</a>             xxxx-xx-xx xx:xx:xx
-            |<a href="/empty.pdf">empty.pdf</a>        xxxx-xx-xx xx:xx:xx            4  B
+            |<a href="/empty.pdf">empty.pdf</a>        xxxx-xx-xx xx:xx:xx            3  B
             |<a href="/fileA.txt">fileA.txt</a>        xxxx-xx-xx xx:xx:xx            3  B
             |<a href="/fileB.xml">fileB.xml</a>        xxxx-xx-xx xx:xx:xx            0  B
             |</pre>
             |<hr>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "properly render an empty sub directory with vanity footer" in {
       val settings = 0 // shadow implicit
       Get("/emptySub/") ~> listDirectoryContents(base + "/subDirectory") ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /emptySub/</title></head>
             |<body>
@@ -208,12 +211,13 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |</div>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "properly render an empty top-level directory" in {
       Get() ~> listDirectoryContents(base + "/subDirectory/emptySub") ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /</title></head>
             |<body>
@@ -225,12 +229,13 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "properly render a simple directory with a path prefix" in {
       Get("/files/") ~> pathPrefix("files")(listDirectoryContents(base + "/someDir")) ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /files/</title></head>
             |<body>
@@ -244,12 +249,13 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "properly render a sub directory with a path prefix" in {
       Get("/files/sub/") ~> pathPrefix("files")(listDirectoryContents(base + "/someDir")) ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /files/sub/</title></head>
             |<body>
@@ -262,12 +268,13 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "properly render an empty top-level directory with a path prefix" in {
       Get("/files/") ~> pathPrefix("files")(listDirectoryContents(base + "/subDirectory/emptySub")) ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /files/</title></head>
             |<body>
@@ -279,11 +286,14 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "reject requests to file resources" in {
       Get() ~> listDirectoryContents(base + "subDirectory/empty.pdf") ~> check { handled must beFalse }
     }
   }
+
+  def prep(s: String) = s.stripMarginWithNewline("")
 }

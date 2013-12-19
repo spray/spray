@@ -21,8 +21,8 @@ import java.net.InetSocketAddress
 import org.specs2.mutable.Specification
 import org.specs2.specification.Scope
 import akka.event.NoLogging
-import spray.util.EOL
 import spray.http._
+import spray.util._
 import HttpHeaders._
 import HttpMethods._
 import MediaTypes._
@@ -202,7 +202,7 @@ class RequestRendererSpec extends Specification {
 
   class TestSetup(val userAgent: Option[`User-Agent`] = Some(`User-Agent`("spray-can/1.0.0")), val chunklessStreaming: Boolean = false)
       extends RequestRenderingComponent with Scope {
-    def beRenderedTo(content: String) = beEqualTo(content.stripMargin.replace(EOL, "\r\n")) ^^ (render _)
+    def beRenderedTo(content: String) = beEqualTo(content.stripMarginWithNewline("\r\n")) ^^ (render _)
 
     def render(part: HttpRequestPart): String = {
       val r = new ByteStringRendering(256)

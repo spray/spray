@@ -113,14 +113,14 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
             headers = List(RawHeader("Age", "30"), Connection("Keep-Alive")),
             entity = "Small f*ck up overhere!")) === result {
             """HTTP/1.1 200 OK
-            |Server: spray-can/1.0.0
-            |Date: Thu, 25 Aug 2011 09:10:29 GMT
-            |Age: 30
-            |Content-Type: text/plain; charset=UTF-8
-            |Connection: Keep-Alive
-            |Content-Length: 23
-            |
-            |"""
+              |Server: spray-can/1.0.0
+              |Date: Thu, 25 Aug 2011 09:10:29 GMT
+              |Age: 30
+              |Content-Type: text/plain; charset=UTF-8
+              |Connection: Keep-Alive
+              |Content-Length: 23
+              |
+              |"""
           } -> false
       }
 
@@ -129,12 +129,12 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           response = ChunkedResponseStart(HttpResponse(200, headers = List(RawHeader("Age", "30")))),
           requestConnectionHeader = Some("close")) === result {
             """HTTP/1.1 200 OK
-            |Server: spray-can/1.0.0
-            |Date: Thu, 25 Aug 2011 09:10:29 GMT
-            |Age: 30
-            |Transfer-Encoding: chunked
-            |
-            |"""
+              |Server: spray-can/1.0.0
+              |Date: Thu, 25 Aug 2011 09:10:29 GMT
+              |Age: 30
+              |Transfer-Encoding: chunked
+              |
+              |"""
           } -> false
       }
 
@@ -231,11 +231,23 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
                 response = HttpResponse(200, headers = resCH.map(h ⇒ List(HttpHeaders.Connection(h))) getOrElse Nil),
                 requestProtocol = reqProto,
                 requestConnectionHeader = reqCH) === result {
-                  "HTTP/1.1 200 OK\n" +
-                    "Server: spray-can/1.0.0\n" +
-                    "Date: Thu, 25 Aug 2011 09:10:29 GMT\n" +
-                    renCH.map("Connection: " + _ + "\n").getOrElse("") +
-                    "Content-Length: 0\n\n"
+                  renCH match {
+                    case Some(connection) ⇒
+                      s"""HTTP/1.1 200 OK
+                         |Server: spray-can/1.0.0
+                         |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                         |Connection: $connection
+                         |Content-Length: 0
+                         |
+                         |"""
+                    case None ⇒
+                      """HTTP/1.1 200 OK
+                        |Server: spray-can/1.0.0
+                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                        |Content-Length: 0
+                        |
+                        |"""
+                  }
                 } -> close
           }
       }
@@ -263,7 +275,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
       rendering.get.utf8String -> closeAfterWrite
     }
 
-    def result(content: String) = content.stripMargin.replace(EOL, "\r\n")
+    def result(content: String) = content.stripMarginWithNewline("\r\n")
 
     override def dateTime(now: Long) = DateTime(2011, 8, 25, 9, 10, 29) // provide a stable date for testing
   }

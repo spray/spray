@@ -27,6 +27,7 @@ import akka.actor.{ Terminated, ActorRef, ActorSystem }
 import akka.io.IO
 import akka.testkit.TestProbe
 import spray.can.Http
+import spray.util._
 import spray.util.Utils.temporaryServerHostnameAndPort
 import spray.httpx.RequestBuilding._
 import spray.http._
@@ -142,12 +143,12 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
         new TestSetup {
           val socket = openClientSocket()
           val serverHandler = acceptConnection()
-          val writer = write(socket, request + "\r\n\r\n")
-          val (text, reader) = readAll(socket)()
+          write(socket, request + "\r\n\r\n")
+          val (text, _) = readAll(socket)()
           socket.close()
           serverHandler.expectMsg(Http.ConfirmedClosed)
           text must startWith("HTTP/1.1 400 Bad Request")
-          text.takeRight(errorMsg.length) === errorMsg
+          text must endWith(errorMsg)
         }
       "when an HTTP/1.1 request has no Host header" in errorTest(
         request = "GET / HTTP/1.1",
@@ -167,14 +168,14 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
           """Illegal request-target, unexpected end-of-input at position 16:\u0020
             |http://host:naaa
             |                ^
-            |""".stripMargin)
+            |""".stripMarginWithNewline("\n")) // UriParser Exceptions are rendered with \n
       "when the request has an URI with a fragment" in errorTest(
         request = "GET /path?query#fragment HTTP/1.1",
         errorMsg =
           """Illegal request-target, unexpected character '#' at position 11:\u0020
             |/path?query#fragment
             |           ^
-            |""".stripMargin)
+            |""".stripMarginWithNewline("\n")) // UriParser Exceptions are rendered with \n
       "when the request has an absolute URI without authority part and a non-empty host header" in errorTest(
         request = "GET http:/foo HTTP/1.1\r\nHost: spray.io",
         errorMsg = "'Host' header value doesn't match request target authority")

@@ -17,7 +17,7 @@
 package spray.routing
 
 import akka.event.LoggingAdapter
-import spray.util.EOL
+import spray.util._
 
 class DebuggingDirectivesSpec extends RoutingSpec {
   sequential
@@ -66,7 +66,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
         debugMsg === """|3: Response for
                         |  Request : HttpRequest(GET,http://example.com/hello,List(),Empty,HTTP/1.1)
                         |  Response: HttpResponse(200 OK,Empty,List(),HTTP/1.1)
-                        |""".stripMargin.replace(EOL, "\n")
+                        |""".stripMarginWithNewline("\n")
       }
     }
   }
