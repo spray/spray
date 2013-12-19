@@ -99,7 +99,8 @@ class HttpHeaderSpec extends Specification {
     "Accept-Encoding" in {
       "Accept-Encoding: compress, gzip, fancy" =!=
         `Accept-Encoding`(compress, gzip, HttpEncoding.custom("fancy"))
-      `Accept-Encoding`(gzip, identity withQValue 0.5, HttpEncodingRange.`*` withQValue 0)
+      "Accept-Encoding: gzip, identity;q=0.5, *;q=0.0" =!=
+        `Accept-Encoding`(gzip, identity withQValue 0.5, HttpEncodingRange.`*` withQValue 0)
         .renderedTo("gzip, identity;q=0.5, *;q=0.0")
       "Accept-Encoding: " =!= `Accept-Encoding`(identity).renderedTo("identity")
     }
