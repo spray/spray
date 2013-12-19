@@ -112,6 +112,11 @@ class HttpHeaderSpec extends Specification {
       "Accept-Language: es-419, es" =!= `Accept-Language`(Language("es", "419"), Language("es"))
     }
 
+    "Allow" in {
+      "Allow: " =!= Allow()
+      "Allow: GET, PUT" =!= Allow(GET, PUT)
+    }
+
     "Authorization" in {
       "Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" =!=
         Authorization(BasicHttpCredentials("Aladdin", "open sesame"))

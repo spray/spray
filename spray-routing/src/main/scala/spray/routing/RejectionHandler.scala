@@ -62,9 +62,8 @@ object RejectionHandler {
       complete(BadRequest, "The request content was malformed:\n" + msg)
 
     case rejections @ (MethodRejection(_) :: _) ⇒
-      // TODO: add Allow header (required by the spec)
       val methods = rejections.collect { case MethodRejection(method) ⇒ method }
-      complete(MethodNotAllowed, "HTTP method not allowed, supported methods: " + methods.mkString(", "))
+      complete(MethodNotAllowed, List(Allow(methods: _*)), "HTTP method not allowed, supported methods: " + methods.mkString(", "))
 
     case rejections @ (SchemeRejection(_) :: _) ⇒
       val schemes = rejections.collect { case SchemeRejection(scheme) ⇒ scheme }
