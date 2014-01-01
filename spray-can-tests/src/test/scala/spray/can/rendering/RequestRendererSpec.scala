@@ -42,6 +42,16 @@ class RequestRendererSpec extends Specification {
         }
       }
 
+      "GET request with a URI that requires encoding" in new TestSetup() {
+        HttpRequest(GET, "/abc<def") must beRenderedTo {
+          """|GET /abc%3Cdef HTTP/1.1
+            |Host: test.com:8080
+            |User-Agent: spray-can/1.0.0
+            |
+            |"""
+        }
+      }
+
       "POST request, a few headers (incl. a custom Host header) and no body" in new TestSetup() {
         HttpRequest(POST, "/abc/xyz", List(
           RawHeader("X-Fancy", "naa"),
