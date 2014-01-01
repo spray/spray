@@ -92,9 +92,14 @@ private[can] trait RequestRenderingComponent {
             }
         }
 
-      import request._
-      uri.renderWithoutFragment(r ~~ request.method ~~ ' ', UTF8) ~~ ' ' ~~ protocol ~~ CrLf
-      renderHeaders(headers)
+      def renderRequestLine(): Unit = {
+        r ~~ request.method ~~ ' '
+        request.uri.renderWithoutFragment(r, UTF8)
+        r ~~ ' ' ~~ request.protocol ~~ CrLf
+      }
+
+      renderRequestLine()
+      renderHeaders(request.headers)
     }
 
     def chunkless = chunklessStreaming || (ctx.requestProtocol eq HttpProtocols.`HTTP/1.0`)
