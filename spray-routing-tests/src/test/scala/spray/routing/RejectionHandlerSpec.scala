@@ -85,8 +85,7 @@ class RejectionHandlerSpec extends RoutingSpec {
         entity(as[NodeSeq]) { _ ⇒ completeOk }
       } ~> check {
         status === BadRequest
-        responseAs[String] === "The request content was malformed:\n" +
-          "XML document structures must start and end within the same entity."
+        responseAs[String] must startWith("The request content was malformed:")
       }
     }
     "respond with MethodNotAllowed for requests resulting in MethodRejections" in {
