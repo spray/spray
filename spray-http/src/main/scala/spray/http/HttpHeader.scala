@@ -237,6 +237,9 @@ object HttpHeaders {
 
   object Cookie extends ModeledCompanion {
     def apply(first: HttpCookie, more: HttpCookie*): Cookie = apply(first +: more)
+    implicit val cookieRenderer: Renderer[HttpCookie] = new Renderer[HttpCookie] {
+      def render[R <: Rendering](r: R, c: HttpCookie): r.type = r ~~ c.name ~~ '=' ~~ c.content
+    }
     implicit val cookiesRenderer: Renderer[Seq[HttpCookie]] =
       Renderer.seqRenderer(separator = "; ") // cache
   }

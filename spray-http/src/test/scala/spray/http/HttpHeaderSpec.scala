@@ -99,7 +99,8 @@ class HttpHeaderSpec extends Specification {
     "Accept-Encoding" in {
       "Accept-Encoding: compress, gzip, fancy" =!=
         `Accept-Encoding`(compress, gzip, HttpEncoding.custom("fancy"))
-      `Accept-Encoding`(gzip, identity withQValue 0.5, HttpEncodingRange.`*` withQValue 0)
+      "Accept-Encoding: gzip, identity;q=0.5, *;q=0.0" =!=
+        `Accept-Encoding`(gzip, identity withQValue 0.5, HttpEncodingRange.`*` withQValue 0)
         .renderedTo("gzip, identity;q=0.5, *;q=0.0")
       "Accept-Encoding: " =!= `Accept-Encoding`(identity).renderedTo("identity")
     }
@@ -187,11 +188,18 @@ class HttpHeaderSpec extends Specification {
     }
 
     "Cookie" in {
-      "Cookie: SID=31d4d96e407aad42" =!= `Cookie`(HttpCookie("SID", "31d4d96e407aad42"))
-      "Cookie: SID=31d4d96e407aad42; lang=en>US" =!= `Cookie`(HttpCookie("SID", "31d4d96e407aad42"), HttpCookie("lang", "en>US"))
-      "Cookie: a=1;b=2" =!= `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
-      "Cookie: a=1 ;b=2" =!= `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
-      "Cookie: a=1; b=2" =!= `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
+      "Cookie: SID=31d4d96e407aad42" =!= Cookie(HttpCookie("SID", "31d4d96e407aad42"))
+      "Cookie: SID=31d4d96e407aad42; lang=en>US" =!= Cookie(HttpCookie("SID", "31d4d96e407aad42"), HttpCookie("lang", "en>US"))
+      "Cookie: a=1;b=2" =!= Cookie(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
+      "Cookie: a=1 ;b=2" =!= Cookie(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
+      "Cookie: a=1; b=2" =!= Cookie(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
+      Cookie(HttpCookie("SID", "31d4d96e407aad42",
+        domain = Some("example.com"),
+        expires = Some(DateTime(2021, 6, 9, 10, 18, 14)),
+        path = Some("/hello"),
+        httpOnly = true,
+        extension = Some("fancyPants"),
+        secure = true)).toString === "Cookie: SID=31d4d96e407aad42"
     }
 
     "Date" in {
