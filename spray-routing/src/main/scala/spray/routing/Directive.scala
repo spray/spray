@@ -87,9 +87,12 @@ abstract class Directive[L <: HList] { self ⇒
     }
 
   def hrequire(predicate: L ⇒ Boolean, rejections: Rejection*): Directive0 =
-    new Directive0 {
-      def happly(f: HNil ⇒ Route) =
-        self.happly { values ⇒ ctx ⇒ if (predicate(values)) f(HNil)(ctx) else ctx.reject(rejections: _*) }
+    hfilter(predicate, rejections: _*).hflatMap(_ ⇒ Directive.Empty)
+
+  def hfilter(predicate: L ⇒ Boolean, rejections: Rejection*): Directive[L] =
+    new Directive[L] {
+      def happly(f: L ⇒ Route) =
+        self.happly { values ⇒ ctx ⇒ if (predicate(values)) f(values)(ctx) else ctx.reject(rejections: _*) }
     }
 
   def recover[R >: L <: HList](recovery: List[Rejection] ⇒ Directive[R]): Directive[R] =
@@ -131,6 +134,9 @@ object Directive {
       underlying.hflatMap { case value :: HNil ⇒ f(value) }
 
     def require(predicate: T ⇒ Boolean, rejections: Rejection*): Directive0 =
-      underlying.hrequire({ case value :: HNil ⇒ predicate(value) }, rejections: _*)
+      underlying.filter(predicate, rejections: _*).hflatMap(_ ⇒ Empty)
+
+    def filter(predicate: T ⇒ Boolean, rejections: Rejection*): Directive1[T] =
+      underlying.hfilter({ case value :: HNil ⇒ predicate(value) }, rejections: _*)
   }
 }
