@@ -60,6 +60,9 @@ object AnyParamDefMagnet {
   implicit def forNDefR[T <: NameDefaultReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
   implicit def forNDesDefR[T <: NameDeserializerDefaultReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
 
+  implicit def forRVR[T <: RequiredValueReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
+  implicit def forRVDR[T <: RequiredValueDeserializerReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
+
   implicit def forTuple[T <: Product](value: T)(implicit apdm21: AnyParamDefMagnet2[T]) =
     new AnyParamDefMagnet {
       type Out = apdm21.Out

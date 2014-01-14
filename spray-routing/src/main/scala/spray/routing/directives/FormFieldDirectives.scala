@@ -92,6 +92,20 @@ object FieldDefMagnet2 extends ToNameReceptaclePimps {
   implicit def forNR[T](implicit ev1: UM[HttpForm], ev2: FFC[T]) =
     extractField[NameReceptacle[T], T](nr ⇒ filter(nr))
 
+  /************ required formField support ******************/
+
+  private def requiredFilter[A](paramName: String, requiredValue: A)(implicit ev1: UM[HttpForm], ffc: FFC[A]) =
+    filter(NameReceptacle[A](paramName))
+      .require(_ == requiredValue, MalformedFormFieldRejection(paramName, s"Form field '$paramName' had wrong value."))
+  implicit def forRVR[T](implicit ev1: UM[HttpForm], ev2: FFC[T]) =
+    FieldDefMagnetAux[RequiredValueReceptacle[T], Directive0] { rvr ⇒
+      requiredFilter(rvr.name, rvr.requiredValue)
+    }
+  implicit def forRVDR[T](implicit ev1: UM[HttpForm], ev2: FBPOU[T] = null) =
+    FieldDefMagnetAux[RequiredValueDeserializerReceptacle[T], Directive0] { rvr ⇒
+      requiredFilter(rvr.name, rvr.requiredValue)(ev1, FFC.fromFSOD(rvr.deserializer))
+    }
+
   /************ tuple support ******************/
 
   implicit def forTuple[T <: Product, L <: HList, Out0](implicit hla: HListerAux[T, L], fdma: FieldDefMagnetAux[L, Out0]) =
