@@ -155,7 +155,7 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
     class MyHttpService extends Actor {
       def receive = {
         case HttpRequest(GET, Uri.Path("/ping"), _, _, _) =>
-          sender ! HttpResponse(entity = "PONG")
+          sender() ! HttpResponse(entity = "PONG")
       }
     }
   }

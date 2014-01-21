@@ -80,7 +80,7 @@ class SprayCanClientSpec extends Specification with NoTimeConversions {
       chunkHandler.expectMsg(MessageChunk("123"))
       chunkHandler.expectMsg(MessageChunk("456"))
       chunkHandler.expectMsg(ChunkedMessageEnd)
-      val firstRequestSender = server.sender
+      val firstRequestSender = server.sender()
       server.expectMsgType[HttpRequest].uri.path.toString === "/def"
       server.reply(HttpResponse(entity = "ok-def")) // reply to the second request first
       server.send(firstRequestSender, HttpResponse(entity = "ok-abc"))
@@ -204,7 +204,7 @@ class SprayCanClientSpec extends Specification with NoTimeConversions {
       val probe = TestProbe()
       probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, sslEncryption = true))
       val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
-      probe.sender === hostConnector
+      probe.sender() === hostConnector
       probe.reply(Get("/"))
       probe.expectMsgType[Status.Failure].cause.getMessage == "Connection actively closed"
 
@@ -470,14 +470,14 @@ class SprayCanClientSpec extends Specification with NoTimeConversions {
       val commander = TestProbe()
       commander.send(IO(Http), Http.Bind(bindHandler.ref, hostname, port))
       commander.expectMsgType[Http.Bound]
-      commander.sender
+      commander.sender()
     }
 
     def newClientConnect(): ActorRef = {
       val probe = TestProbe()
       probe.send(IO(Http), Http.Connect(hostname, port))
       probe.expectMsgType[Http.Connected]
-      probe.sender
+      probe.sender()
     }
 
     def acceptConnection(): TestProbe = {
@@ -503,7 +503,7 @@ class SprayCanClientSpec extends Specification with NoTimeConversions {
       val probe = TestProbe()
       probe.send(IO(Http), Http.HostConnectorSetup(hostname, port))
       val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
-      probe.sender === hostConnector
+      probe.sender() === hostConnector
       probe.reply(request)
       probe -> hostConnector
     }
@@ -536,7 +536,7 @@ class SprayCanClientSpec extends Specification with NoTimeConversions {
         .withFallback(ConfigFactory.load()))
       probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, settings = Some(settings), connectionType = connectionType))
       val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
-      probe.sender === hostConnector
+      probe.sender() === hostConnector
       probe -> hostConnector
     }
   }

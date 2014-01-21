@@ -49,7 +49,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
       } catch {
         case NonFatal(e) ⇒
           log.error("Illegal request: {}", e.getMessage)
-          sender ! Status.Failure(e)
+          sender() ! Status.Failure(e)
       }
 
     // 3xx Redirect
@@ -64,20 +64,20 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
 
     case setup: HostConnectorSetup ⇒
       val connector = connectorFor(setup)
-      sender.tell(Http.HostConnectorInfo(connector, setup), connector)
+      sender().tell(Http.HostConnectorInfo(connector, setup), connector)
 
     case connect: Http.Connect ⇒
       settingsGroupFor(ClientConnectionSettings(connect.settings)).forward(connect)
 
     case bind: Http.Bind ⇒
-      val commander = sender
+      val commander = sender()
       listeners :+= context.watch {
         context.actorOf(
           props = Props(newHttpListener(commander, bind, httpSettings)) withDispatcher ListenerDispatcher,
           name = "listener-" + listenerCounter.next())
       }
 
-    case cmd: Http.CloseAll ⇒ shutdownSettingsGroups(cmd, Set(sender))
+    case cmd: Http.CloseAll ⇒ shutdownSettingsGroups(cmd, Set(sender()))
   }
 
   def newHttpListener(commander: ActorRef, bind: Http.Bind, httpSettings: HttpExt#Settings) =
@@ -94,7 +94,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
       behavior.applyOrElse(ev, (_: Terminated) ⇒ ())
 
     case HttpHostConnector.DemandIdleShutdown ⇒
-      val hostConnector = sender
+      val hostConnector = sender()
       var sendPoisonPill = true
       connectors = connectors filter {
         case (x: ProxyConnectorSetup, proxiedConnector) if x.proxyConnector == hostConnector ⇒
@@ -115,10 +115,10 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
 
   def closingSettingsGroups(cmd: Http.CloseAll, running: Set[ActorRef], commanders: Set[ActorRef]): Receive =
     withTerminationManagement {
-      case _: Http.CloseAll ⇒ context.become(closingSettingsGroups(cmd, running, commanders + sender))
+      case _: Http.CloseAll ⇒ context.become(closingSettingsGroups(cmd, running, commanders + sender()))
 
       case Http.ClosedAll ⇒
-        val stillRunning = running - sender
+        val stillRunning = running - sender()
         if (stillRunning.isEmpty) shutdownConnectors(cmd, commanders)
         else context.become(closingSettingsGroups(cmd, stillRunning, commanders))
 
@@ -133,10 +133,10 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
 
   def closingConnectors(running: Set[ActorRef], commanders: Set[ActorRef]): Receive =
     withTerminationManagement {
-      case cmd: Http.CloseCommand ⇒ context.become(closingConnectors(running, commanders + sender))
+      case cmd: Http.CloseCommand ⇒ context.become(closingConnectors(running, commanders + sender()))
 
       case Http.ClosedAll ⇒
-        val stillRunning = running - sender
+        val stillRunning = running - sender()
         if (stillRunning.isEmpty) shutdownListeners(commanders)
         else context.become(closingConnectors(stillRunning, commanders))
 
@@ -151,10 +151,10 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
 
   def unbinding(running: Set[ActorRef], commanders: Set[ActorRef]): Receive =
     withTerminationManagement {
-      case cmd: Http.CloseCommand ⇒ context.become(unbinding(running, commanders + sender))
+      case cmd: Http.CloseCommand ⇒ context.become(unbinding(running, commanders + sender()))
 
       case Http.Unbound ⇒
-        val stillRunning = running - sender
+        val stillRunning = running - sender()
         if (stillRunning.isEmpty) {
           commanders foreach (_ ! Http.ClosedAll)
           context.become(receive)

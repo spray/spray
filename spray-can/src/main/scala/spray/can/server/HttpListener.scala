@@ -53,7 +53,7 @@ private[can] class HttpListener(bindCommander: ActorRef,
       log.info("Bound to {}", endpoint)
       bindCommander ! x
       context.setReceiveTimeout(Duration.Undefined)
-      context.become(connected(sender))
+      context.become(connected(sender()))
 
     case Tcp.CommandFailed(_: Tcp.Bind) ⇒
       log.warning("Bind to {} failed", endpoint)
@@ -68,11 +68,11 @@ private[can] class HttpListener(bindCommander: ActorRef,
     case Http.Unbind(_) ⇒ // no children possible, so no reason to note the timeout
       log.info("Bind to {} aborted", endpoint)
       bindCommander ! Http.CommandFailed(bind)
-      context.become(bindingAborted(Set(sender)))
+      context.become(bindingAborted(Set(sender())))
   }
   /** Waiting for the bind to execute to close it down instantly afterwards */
   def bindingAborted(unbindCommanders: Set[ActorRef]): Receive = {
-    case _: Tcp.Bound ⇒ unbind(sender, unbindCommanders, Duration.Zero)
+    case _: Tcp.Bound ⇒ unbind(sender(), unbindCommanders, Duration.Zero)
     case Tcp.CommandFailed(_: Tcp.Bind) ⇒
       unbindCommanders foreach (_ ! Http.Unbound)
       context.stop(self)
@@ -81,21 +81,21 @@ private[can] class HttpListener(bindCommander: ActorRef,
       unbindCommanders foreach (_ ! Http.Unbound)
       context.stop(self)
 
-    case Http.Unbind(_) ⇒ context.become(bindingAborted(unbindCommanders + sender))
+    case Http.Unbind(_) ⇒ context.become(bindingAborted(unbindCommanders + sender()))
   }
 
   def connected(tcpListener: ActorRef): Receive = {
     case Tcp.Connected(remoteAddress, localAddress) ⇒
-      val conn = sender
+      val conn = sender()
       context.actorOf(
         props = Props(new HttpServerConnection(conn, listener, pipelineStage, remoteAddress, localAddress, settings))
           .withDispatcher(httpSettings.ConnectionDispatcher),
         name = connectionCounter.next().toString)
 
-    case Http.GetStats            ⇒ statsHolder foreach { holder ⇒ sender ! holder.toStats }
+    case Http.GetStats            ⇒ statsHolder foreach { holder ⇒ sender() ! holder.toStats }
     case Http.ClearStats          ⇒ statsHolder foreach { _.clear() }
 
-    case Http.Unbind(timeout)     ⇒ unbind(tcpListener, Set(sender), timeout)
+    case Http.Unbind(timeout)     ⇒ unbind(tcpListener, Set(sender()), timeout)
 
     case _: Http.ConnectionClosed ⇒
     // ignore, we receive this event when the user didn't register the handler within the registration timeout period
@@ -125,7 +125,7 @@ private[can] class HttpListener(bindCommander: ActorRef,
 
     case Http.Unbind(timeout) ⇒
       // a latter Unbind overrides a previous timeout
-      context.become(unbinding(commanders + sender, timeout))
+      context.become(unbinding(commanders + sender(), timeout))
   }
   /** Wait for a last grace period to expire before shutting us (and our children down) */
   def gracePeriod(timeout: Timestamp): Receive = {

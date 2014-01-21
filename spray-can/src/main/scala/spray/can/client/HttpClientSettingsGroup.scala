@@ -26,7 +26,7 @@ private[can] class HttpClientSettingsGroup(settings: ClientConnectionSettings,
 
   def receive = {
     case connect: Http.Connect ⇒
-      val commander = sender
+      val commander = sender()
       context.actorOf(
         props = Props(new HttpClientConnection(commander, connect, pipelineStage, settings))
           .withDispatcher(httpSettings.ConnectionDispatcher),
@@ -35,20 +35,20 @@ private[can] class HttpClientSettingsGroup(settings: ClientConnectionSettings,
     case Http.CloseAll(cmd) ⇒
       val children = context.children.toSet
       if (children.isEmpty) {
-        sender ! Http.ClosedAll
+        sender() ! Http.ClosedAll
         context.stop(self)
       } else {
         children foreach { _ ! cmd }
-        context.become(closing(children, Set(sender)))
+        context.become(closing(children, Set(sender())))
       }
   }
 
   def closing(children: Set[ActorRef], commanders: Set[ActorRef]): Receive = {
     case _: Http.CloseAll ⇒
-      context.become(closing(children, commanders + sender))
+      context.become(closing(children, commanders + sender()))
 
     case _: Http.ConnectionClosed ⇒
-      val stillRunning = children - sender
+      val stillRunning = children - sender()
       if (stillRunning.isEmpty) {
         commanders foreach (_ ! Http.ClosedAll)
         context.stop(self)

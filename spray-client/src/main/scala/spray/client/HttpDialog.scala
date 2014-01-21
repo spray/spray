@@ -45,7 +45,7 @@ object HttpDialog {
           def receive = {
             case _: Http.Connected ⇒
               trigger.success(())
-              context.become(connected(context.watch(sender)))
+              context.become(connected(context.watch(sender())))
             case _: Http.CommandFailed ⇒
               trigger.failure(new RuntimeException("Could not connect to " + connect.remoteAddress))
               context.stop(self)

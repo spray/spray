@@ -69,14 +69,14 @@ private class HttpHostConnectionSlot(host: String, port: Int,
 
   def connecting(openRequests: Queue[RequestContext], aborted: Option[Http.CloseCommand] = None): Receive = {
     case _: Http.Connected if aborted.isDefined ⇒
-      sender ! aborted.get
+      sender() ! aborted.get
       openRequests foreach clear("Connection actively closed", retry = RetryNever)
-      context.become(terminating(context.watch(sender)))
+      context.become(terminating(context.watch(sender())))
 
     case _: Http.Connected ⇒
       log.debug("Connection to {}:{} established, dispatching {} pending requests", host, port, openRequests.size)
-      openRequests foreach dispatchToServer(sender)
-      context.become(connected(context.watch(sender), openRequests))
+      openRequests foreach dispatchToServer(sender())
+      context.become(connected(context.watch(sender()), openRequests))
 
     case ctx: RequestContext    ⇒ context.become(connecting(openRequests.enqueue(ctx)))
 

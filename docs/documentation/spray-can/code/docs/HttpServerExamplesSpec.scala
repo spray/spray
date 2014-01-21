@@ -12,7 +12,7 @@ class HttpServerExamplesSpec extends Specification {
     //# simple-reply
     def receive = {
       case HttpRequest(GET, Uri.Path("/ping"), _, _, _) =>
-        sender ! HttpResponse(entity = "PONG")
+        sender() ! HttpResponse(entity = "PONG")
     }
     //#
   }
@@ -33,7 +33,7 @@ class HttpServerExamplesSpec extends Specification {
     //# acked-reply
     def receive = {
       case HttpRequest(GET, Uri.Path("/ping"), _, _, _) =>
-        sender ! HttpResponse(entity = "PONG").withAck("ok")
+        sender() ! HttpResponse(entity = "PONG").withAck("ok")
 
       case "ok" => println("Response was sent successfully")
     }

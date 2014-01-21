@@ -44,8 +44,8 @@ class HttpDialogSpec extends Specification with NoTimeConversions {
       Props {
         new Actor {
           def receive = {
-            case x: Http.Connected        ⇒ sender ! Http.Register(self)
-            case x: HttpRequest           ⇒ sender ! HttpResponse(entity = x.uri.path.toString)
+            case x: Http.Connected        ⇒ sender() ! Http.Register(self)
+            case x: HttpRequest           ⇒ sender() ! HttpResponse(entity = x.uri.path.toString)
             case _: Http.ConnectionClosed ⇒ // ignore
           }
         }

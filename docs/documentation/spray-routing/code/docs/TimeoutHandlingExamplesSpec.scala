@@ -21,7 +21,7 @@ class TimeoutHandlingExamplesSpec extends Specification with Specs2RouteTest {
 
     def handleTimeouts: Receive = {
       case Timedout(x: HttpRequest) =>
-        sender ! HttpResponse(StatusCodes.InternalServerError, "Too late")
+        sender() ! HttpResponse(StatusCodes.InternalServerError, "Too late")
     }
   }
   //#

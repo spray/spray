@@ -18,26 +18,26 @@ class DemoService extends Actor with ActorLogging {
 
   def receive = {
     // when a new connection comes in we register ourselves as the connection handler
-    case _: Http.Connected => sender ! Http.Register(self)
+    case _: Http.Connected => sender() ! Http.Register(self)
 
     case HttpRequest(GET, Uri.Path("/"), _, _, _) =>
-      sender ! index
+      sender() ! index
 
     case HttpRequest(GET, Uri.Path("/ping"), _, _, _) =>
-      sender ! HttpResponse(entity = "PONG!")
+      sender() ! HttpResponse(entity = "PONG!")
 
     case HttpRequest(GET, Uri.Path("/stream"), _, _, _) =>
-      val peer = sender // since the Props creator is executed asyncly we need to save the sender ref
+      val peer = sender() // since the Props creator is executed asyncly we need to save the sender ref
       context actorOf Props(new Streamer(peer, 25))
 
     case HttpRequest(GET, Uri.Path("/server-stats"), _, _, _) =>
-      val client = sender
+      val client = sender()
       context.actorFor("/user/IO-HTTP/listener-0") ? Http.GetStats onSuccess {
         case x: Stats => client ! statsPresentation(x)
       }
 
     case HttpRequest(GET, Uri.Path("/crash"), _, _, _) =>
-      sender ! HttpResponse(entity = "About to throw an exception in the request handling actor, " +
+      sender() ! HttpResponse(entity = "About to throw an exception in the request handling actor, " +
         "which triggers an actor restart")
       sys.error("BOOM!")
 
@@ -45,26 +45,26 @@ class DemoService extends Actor with ActorLogging {
       log.info("Dropping request, triggering a timeout")
 
     case HttpRequest(GET, Uri.Path("/stop"), _, _, _) =>
-      sender ! HttpResponse(entity = "Shutting down in 1 second ...")
-      sender ! Http.Close
+      sender() ! HttpResponse(entity = "Shutting down in 1 second ...")
+      sender() ! Http.Close
       context.system.scheduler.scheduleOnce(1.second) { context.system.shutdown() }
 
     case r@HttpRequest(POST, Uri.Path("/file-upload"), headers, entity: HttpEntity.NonEmpty, protocol) =>
       // emulate chunked behavior for POST requests to this path
-      r.asPartStream().foreach(self.tell(_, sender))
+      r.asPartStream().foreach(self.tell(_, sender()))
 
     case s@ChunkedRequestStart(HttpRequest(POST, Uri.Path("/file-upload"), _, _, _)) =>
-      val client = sender
+      val client = sender()
       val handler = context.actorOf(Props(new FileUploadHandler(client, s)))
-      sender ! RegisterChunkHandler(handler)
+      sender() ! RegisterChunkHandler(handler)
 
-    case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
+    case _: HttpRequest => sender() ! HttpResponse(status = 404, entity = "Unknown resource!")
 
     case Timedout(HttpRequest(_, Uri.Path("/timeout/timeout"), _, _, _)) =>
       log.info("Dropping Timeout message")
 
     case Timedout(HttpRequest(method, uri, _, _, _)) =>
-      sender ! HttpResponse(
+      sender() ! HttpResponse(
         status = 500,
         entity = "The " + method + " request to '" + uri + "' has timed out..."
       )

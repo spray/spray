@@ -27,9 +27,9 @@ class BenchmarkService extends Actor {
 
   def receive = {
     // when a new connection comes in we register ourselves as the connection handler
-    case _: Http.Connected => sender ! Http.Register(self, fastPath = fastPath)
+    case _: Http.Connected => sender() ! Http.Register(self, fastPath = fastPath)
 
-    case HttpRequest(GET, Uri.Path("/"), _, _, _) => sender ! HttpResponse(
+    case HttpRequest(GET, Uri.Path("/"), _, _, _) => sender() ! HttpResponse(
       entity = HttpEntity(MediaTypes.`text/html`,
         <html>
           <body>
@@ -47,14 +47,14 @@ class BenchmarkService extends Actor {
       )
     )
 
-    case HttpRequest(GET, Uri.Path("/ping"), _, _, _) => sender ! HttpResponse(entity = "PONG!")
+    case HttpRequest(GET, Uri.Path("/ping"), _, _, _) => sender() ! HttpResponse(entity = "PONG!")
 
-    case HttpRequest(GET, Uri.Path("/json"), _, _, _) => sender ! HttpResponse(entity = jsonResponseEntity)
+    case HttpRequest(GET, Uri.Path("/json"), _, _, _) => sender() ! HttpResponse(entity = jsonResponseEntity)
 
     case HttpRequest(GET, Uri.Path("/stop"), _, _, _) =>
-      sender ! HttpResponse(entity = "Shutting down in 1 second ...")
+      sender() ! HttpResponse(entity = "Shutting down in 1 second ...")
       context.system.scheduler.scheduleOnce(1.second) { context.system.shutdown() }
 
-    case _: HttpRequest => sender ! HttpResponse(NotFound, entity = "Unknown resource!")
+    case _: HttpRequest => sender() ! HttpResponse(NotFound, entity = "Unknown resource!")
   }
 }

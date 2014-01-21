@@ -54,20 +54,20 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
         var dropNext = true
         val random = new Random(38)
         def receive = {
-          case _: Http.Connected ⇒ sender ! Http.Register(self)
+          case _: Http.Connected ⇒ sender() ! Http.Register(self)
           case HttpRequest(_, Uri.Path("/compressedResponse"), _, _, _) ⇒
-            sender ! Gzip.encode(HttpResponse(entity = "content"))
+            sender() ! Gzip.encode(HttpResponse(entity = "content"))
           case x: HttpRequest if x.uri.path.toString.startsWith("/drop1of2") && dropNext ⇒
             log.info("Dropping " + x)
             dropNext = random.nextBoolean()
           case x: HttpRequest if x.uri.path.toString.startsWith("/closeConnection") ⇒
-            sender ! HttpResponse(entity = "now closing", headers = List(HttpHeaders.Connection("close")))
+            sender() ! HttpResponse(entity = "now closing", headers = List(HttpHeaders.Connection("close")))
           case x @ HttpRequest(method, uri, _, entity, _) ⇒
             log.debug("Responding to " + x)
             dropNext = random.nextBoolean()
             val mirroredHeaders = x.header[HttpHeaders.`User-Agent`].toList
-            sender ! HttpResponse(entity = method + "|" + uri.path + (if (entity.isEmpty) "" else "|" + entity.asString), headers = mirroredHeaders)
-          case Timedout(request)         ⇒ sender ! HttpResponse(entity = "TIMEOUT")
+            sender() ! HttpResponse(entity = method + "|" + uri.path + (if (entity.isEmpty) "" else "|" + entity.asString), headers = mirroredHeaders)
+          case Timedout(request)         ⇒ sender() ! HttpResponse(entity = "TIMEOUT")
           case ev: Http.ConnectionClosed ⇒ log.debug("Received " + ev)
         }
       }), "handler")

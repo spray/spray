@@ -44,12 +44,12 @@ class RedirectionIntegrationSpec extends Specification with NoTimeConversions {
       Props {
         new Actor {
           def receive = {
-            case x: Http.Connected ⇒ sender ! Http.Register(self)
-            case x: HttpRequest if x.uri.path.toString == "/redirect-rel" ⇒ sender ! redirectRel("/foo")
-            case x: HttpRequest if x.uri.path.toString == "/redirect-abs" ⇒ sender ! redirectAbs(interfaceB, portB, "/foo")
-            case x: HttpRequest if x.uri.path.toString == "/base/redirect-rel-dot" ⇒ sender ! redirectRel("./foo/../bar")
-            case x: HttpRequest if x.uri.path.toString == "/redirect-inf" ⇒ sender ! redirectRel("/redirect-inf")
-            case x: HttpRequest ⇒ sender ! HttpResponse(entity = "service-a" + x.uri.path.toString)
+            case x: Http.Connected ⇒ sender() ! Http.Register(self)
+            case x: HttpRequest if x.uri.path.toString == "/redirect-rel" ⇒ sender() ! redirectRel("/foo")
+            case x: HttpRequest if x.uri.path.toString == "/redirect-abs" ⇒ sender() ! redirectAbs(interfaceB, portB, "/foo")
+            case x: HttpRequest if x.uri.path.toString == "/base/redirect-rel-dot" ⇒ sender() ! redirectRel("./foo/../bar")
+            case x: HttpRequest if x.uri.path.toString == "/redirect-inf" ⇒ sender() ! redirectRel("/redirect-inf")
+            case x: HttpRequest ⇒ sender() ! HttpResponse(entity = "service-a" + x.uri.path.toString)
             case _: Http.ConnectionClosed ⇒ // ignore
           }
         }
@@ -61,8 +61,8 @@ class RedirectionIntegrationSpec extends Specification with NoTimeConversions {
       Props {
         new Actor {
           def receive = {
-            case x: Http.Connected        ⇒ sender ! Http.Register(self)
-            case x: HttpRequest           ⇒ sender ! HttpResponse(entity = "service-b" + x.uri.path.toString)
+            case x: Http.Connected        ⇒ sender() ! Http.Register(self)
+            case x: HttpRequest           ⇒ sender() ! HttpResponse(entity = "service-b" + x.uri.path.toString)
             case _: Http.ConnectionClosed ⇒ // ignore
           }
         }

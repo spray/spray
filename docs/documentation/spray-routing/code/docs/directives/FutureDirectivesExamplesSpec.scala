@@ -21,7 +21,7 @@ class FutureDirectivesExamplesSpec extends DirectivesSpec {
     }
 
   val resourceActor = system.actorOf(Props(new Actor {
-    def receive = { case _ => sender ! "resource" }
+    def receive = { case _ => sender() ! "resource" }
   }))
   implicit val responseTimeout = Timeout(2, TimeUnit.SECONDS)
 

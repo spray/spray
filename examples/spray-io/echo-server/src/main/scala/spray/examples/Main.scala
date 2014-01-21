@@ -37,7 +37,7 @@ class EchoServer extends Actor with ActorLogging {
       val tcpConnection = sender
       val newChild = context.watch(context.actorOf(Props(new EchoServerConnection(tcpConnection))))
       childrenCount += 1
-      sender ! Tcp.Register(newChild)
+      sender() ! Tcp.Register(newChild)
       log.debug("Registered for new connection")
 
     case Terminated(_) if childrenCount > 0 =>

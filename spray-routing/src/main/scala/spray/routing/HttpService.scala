@@ -42,14 +42,14 @@ trait HttpServiceBase extends Directives {
 
     {
       case request: HttpRequest ⇒
-        val ctx = RequestContext(request, ac.sender, request.uri.path).withDefaultSender(ac.self)
+        val ctx = RequestContext(request, ac.sender(), request.uri.path).withDefaultSender(ac.self)
         runSealedRoute(ctx)
 
       case ctx: RequestContext ⇒ runSealedRoute(ctx)
 
       case Tcp.Connected(_, _) ⇒
         // by default we register ourselves as the handler for a new connection
-        ac.sender ! Tcp.Register(ac.self)
+        ac.sender() ! Tcp.Register(ac.self)
 
       case x: Tcp.ConnectionClosed        ⇒ onConnectionClosed(x)
 

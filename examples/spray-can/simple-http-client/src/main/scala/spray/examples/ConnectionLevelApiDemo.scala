@@ -32,13 +32,13 @@ trait ConnectionLevelApiDemo {
       case request: HttpRequest =>
         // start by establishing a new HTTP connection
         IO(Http) ! Http.Connect(host, port = 80)
-        context.become(connecting(sender, request))
+        context.become(connecting(sender(), request))
     }
 
     def connecting(commander: ActorRef, request: HttpRequest): Receive = {
       case _: Http.Connected =>
         // once connected, we can send the request across the connection
-        sender ! request
+        sender() ! request
         context.become(waitingForResponse(commander))
 
       case Http.CommandFailed(Http.Connect(address, _, _, _, _)) =>
@@ -50,7 +50,7 @@ trait ConnectionLevelApiDemo {
     def waitingForResponse(commander: ActorRef): Receive = {
       case response@ HttpResponse(status, entity, _, _) =>
         log.info("Connection-Level API: received {} response with {} bytes", status, entity.data.length)
-        sender ! Http.Close
+        sender() ! Http.Close
         context.become(waitingForClose(commander, response))
 
       case ev@(Http.SendFailed(_) | Timedout(_))=>

@@ -32,7 +32,7 @@ class PimpedActorSystem(underlying: ActorSystem) {
           def receive = {
             case subject: ActorRef ⇒
               context.watch(subject)
-              receiver = Some(sender)
+              receiver = Some(sender())
             case x: Terminated ⇒
               receiver.foreach(_ ! x)
               context.stop(self)

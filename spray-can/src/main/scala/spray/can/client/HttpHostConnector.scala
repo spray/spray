@@ -49,7 +49,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
   def receive: Receive = {
     case request: HttpRequest ⇒
       val requestWithDefaultHeaders = request.withDefaultHeaders(headers)
-      dispatchStrategy(RequestContext(requestWithDefaultHeaders, settings.maxRetries, settings.maxRedirects, sender))
+      dispatchStrategy(RequestContext(requestWithDefaultHeaders, settings.maxRetries, settings.maxRedirects, sender()))
 
     case ctx: RequestContext ⇒
       // either a retry or redirect
@@ -58,7 +58,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
       dispatchStrategy(ctx.copy(request = requestWithDefaultHeaders))
 
     case RequestCompleted ⇒
-      updateSlotState(sender, slotStates(sender).dequeueOne)
+      updateSlotState(sender(), slotStates(sender()).dequeueOne)
       dispatchStrategy.onConnectionStateChange()
 
     case Http.CloseAll(cmd) ⇒
@@ -67,13 +67,13 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
         case (acc, (ref, _))                   ⇒ ref ! cmd; acc + ref
       }
       if (stillConnected.isEmpty) {
-        sender ! Http.ClosedAll
+        sender() ! Http.ClosedAll
         context.stop(self)
-      } else context.become(closing(stillConnected, Set(sender)))
+      } else context.become(closing(stillConnected, Set(sender())))
 
     case Disconnected(rescheduledRequestCount) ⇒
       val newState =
-        slotStates(sender) match {
+        slotStates(sender()) match {
           case SlotState.Connected(reqs) if reqs.size == rescheduledRequestCount ⇒
             SlotState.Unconnected // "normal" case when a connection was closed
           case SlotState.Idle ⇒ SlotState.Unconnected
@@ -82,7 +82,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
 
           case SlotState.Unconnected ⇒ throw new IllegalStateException("Unexpected slot state: Unconnected")
         }
-      updateSlotState(sender, newState)
+      updateSlotState(sender(), newState)
       dispatchStrategy.onConnectionStateChange()
 
     case Terminated(child) ⇒
@@ -90,8 +90,8 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
       dispatchStrategy.onConnectionStateChange()
 
     case DemandIdleShutdown ⇒
-      removeSlot(sender)
-      sender ! PoisonPill
+      removeSlot(sender())
+      sender() ! PoisonPill
 
     case ReceiveTimeout ⇒
       if (slotStates.isEmpty) {
@@ -99,7 +99,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
         context.parent ! DemandIdleShutdown
         context.become { // after having initiated our shutdown we must be bounce all requests
           case request: HttpRequest ⇒ context.parent.forward(request -> normalizedSetup)
-          case _: Http.CloseAll     ⇒ sender ! Http.ClosedAll; context.stop(self)
+          case _: Http.CloseAll     ⇒ sender() ! Http.ClosedAll; context.stop(self)
           case _: Terminated        ⇒ // ignore, can happen if the last slot has sent us a `DemandIdleShutdown` and
           // a `ReceiveTimeout` is coming in before the `Terminated` event from the last slot
         }
@@ -108,7 +108,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
 
   def closing(connected: Set[ActorRef], commanders: Set[ActorRef]): Receive = {
     case Http.CloseAll(cmd) ⇒
-      context.become(closing(connected, commanders + sender))
+      context.become(closing(connected, commanders + sender()))
 
     case Terminated(child) ⇒
       val stillConnected = connected - child

@@ -12,7 +12,7 @@ import akka.actor.{ ActorRef, Actor }
  */
 private[spray] trait SimpleStash { _: Actor ⇒
   private[this] var buffered = Queue.empty[(ActorRef, Any)]
-  def stash(x: Any): Unit = buffered = buffered.enqueue(sender -> x)
+  def stash(x: Any): Unit = buffered = buffered.enqueue(sender() -> x)
   def unstashAll() = {
     buffered foreach { case (sender, msg) ⇒ self.tell(msg, sender) }
     buffered = Queue.empty
