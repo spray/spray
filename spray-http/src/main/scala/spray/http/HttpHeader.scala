@@ -274,6 +274,14 @@ object HttpHeaders {
     protected def companion = Date
   }
 
+  object ETag extends ModeledCompanion {
+    def apply(tag: String, weak: Boolean = false): ETag = ETag(EntityTag(tag, weak))
+  }
+  case class ETag(etag: EntityTag) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ etag
+    protected def companion = ETag
+  }
+
   object Expect extends ModeledCompanion {
     def apply(first: String, more: String*): Expect = apply(first +: more)
     implicit val expectationsRenderer = Renderer.defaultSeqRenderer[String] // cache
@@ -294,6 +302,38 @@ object HttpHeaders {
     def isEmpty = host.isEmpty
     def renderValue[R <: Rendering](r: R): r.type = if (port > 0) r ~~ host ~~ ':' ~~ port else r ~~ host
     protected def companion = Host
+  }
+
+  object `If-Match` extends ModeledCompanion {
+    val `*` = `If-Match`(EntityTagRange.`*`)
+    def apply(first: EntityTag, more: EntityTag*): `If-Match` =
+      `If-Match`(EntityTagRange(first +: more))
+  }
+  case class `If-Match`(m: EntityTagRange) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ m
+    protected def companion = `If-Match`
+  }
+
+  object `If-Modified-Since` extends ModeledCompanion
+  case class `If-Modified-Since`(date: DateTime) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = date.renderRfc1123DateTimeString(r)
+    protected def companion = `If-Modified-Since`
+  }
+
+  object `If-None-Match` extends ModeledCompanion {
+    val `*` = `If-None-Match`(EntityTagRange.`*`)
+    def apply(first: EntityTag, more: EntityTag*): `If-None-Match` =
+      `If-None-Match`(EntityTagRange(first +: more))
+  }
+  case class `If-None-Match`(m: EntityTagRange) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ m
+    protected def companion = `If-None-Match`
+  }
+
+  object `If-Unmodified-Since` extends ModeledCompanion
+  case class `If-Unmodified-Since`(date: DateTime) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = date.renderRfc1123DateTimeString(r)
+    protected def companion = `If-Unmodified-Since`
   }
 
   object `Last-Modified` extends ModeledCompanion

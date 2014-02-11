@@ -220,6 +220,11 @@ class HttpHeaderSpec extends Specification {
         "Fri, 23 Mar 1804 12:11:10 GMT")
     }
 
+    "ETag" in {
+      """ETag: "938fz3f83z3z38z"""" =!= ETag("938fz3f83z3z38z", weak = false)
+      """ETag: W/"938fz3f83z3z38z"""" =!= ETag("938fz3f83z3z38z", weak = true)
+    }
+
     "Expect" in {
       "Expect: 100-continue" =!= Expect("100-continue")
     }
@@ -230,6 +235,29 @@ class HttpHeaderSpec extends Specification {
       "Host: [2001:db8::1]:8080" =!= Host("[2001:db8::1]", 8080)
       "Host: [2001:db8::1]" =!= Host("[2001:db8::1]")
       "Host: [::FFFF:129.144.52.38]" =!= Host("[::FFFF:129.144.52.38]")
+    }
+
+    "If-Match" in {
+      """If-Match: *""" =!= `If-Match`.`*`
+      """If-Match: "938fz3f83z3z38z"""" =!= `If-Match`(EntityTag("938fz3f83z3z38z"))
+      """If-Match: "938fz3f83z3z38z", "0293f34hhv0nc"""" =!=
+        `If-Match`(EntityTag("938fz3f83z3z38z"), EntityTag("0293f34hhv0nc"))
+    }
+
+    "If-Modified-Since" in {
+      "If-Modified-Since: Wed, 13 Jul 2011 08:12:31 GMT" =!= `If-Modified-Since`(DateTime(2011, 7, 13, 8, 12, 31))
+    }
+
+    "If-None-Match" in {
+      """If-None-Match: *""" =!= `If-None-Match`.`*`
+      """If-None-Match: "938fz3f83z3z38z"""" =!= `If-None-Match`(EntityTag("938fz3f83z3z38z"))
+      """If-None-Match: "938fz3f83z3z38z", "0293f34hhv0nc"""" =!=
+        `If-None-Match`(EntityTag("938fz3f83z3z38z"), EntityTag("0293f34hhv0nc"))
+      """If-None-Match: W/"938fz3f83z3z38z"""" =!= `If-None-Match`(EntityTag("938fz3f83z3z38z", weak = true))
+    }
+
+    "If-Unmodified-Since" in {
+      "If-Unmodified-Since: Wed, 13 Jul 2011 08:12:31 GMT" =!= `If-Unmodified-Since`(DateTime(2011, 7, 13, 8, 12, 31))
     }
 
     "Last-Modified" in {

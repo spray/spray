@@ -147,7 +147,7 @@ private[parser] trait ProtocolParameterRules {
 
   /* 3.11 Entity Tags */
 
-  def EntityTag = rule { optional("W/") ~ OpaqueTag }
+  def EntityTag = rule { ("W/" ~ push(true) | push(false)) ~ OpaqueTag }
 
   def OpaqueTag = rule { QuotedString }
 
