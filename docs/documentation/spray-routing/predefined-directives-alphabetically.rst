@@ -41,8 +41,6 @@ Directive                              Description
 :ref:`-deleteCookie-`                  Adds a ``Set-Cookie`` header expiring the given cookie to all ``HttpResponse``
                                        replies of its inner Route
 :ref:`-detach-`                        Executes its inner Route in a ``Future``
-:ref:`-dynamic-`                       Rebuilds its inner Route for every request anew
-:ref:`-dynamicIf-`                     Conditionally rebuilds its inner Route for every request anew
 :ref:`-encodeResponse-`                Compresses responses coming back from its inner Route using a given Encoder
 :ref:`-entity-`                        Unmarshalls the requests entity according to a given definition, rejects in
                                        case of problems

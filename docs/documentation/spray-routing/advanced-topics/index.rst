@@ -7,7 +7,6 @@ having to fully understand the topics in this chapter.
 
 .. toctree::
 
-   understanding-dsl-structure
    case-class-extraction
    custom-directives
    response-streaming

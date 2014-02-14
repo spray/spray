@@ -7,7 +7,5 @@ ExecutionDirectives
    :maxdepth: 1
 
    detach
-   dynamic
-   dynamicIf
    handleExceptions
    handleRejections

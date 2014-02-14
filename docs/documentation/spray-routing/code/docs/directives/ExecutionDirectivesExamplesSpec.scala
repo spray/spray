@@ -41,53 +41,6 @@ class ExecutionDirectivesExamplesSpec extends DirectivesSpec {
       original !== alternative
     }
   }
-  "dynamic-0" in {
-    var value = 0
-    val route =
-      dynamic {
-        value += 1 /// executed for each request
-        complete(s"Result is now $value") // route executed in future
-      }
-    Get("/") ~> route ~> check {
-      responseAs[String] === "Result is now 1"
-    }
-    Get("/") ~> route ~> check {
-      responseAs[String] === "Result is now 2"
-    }
-  }
-  "dynamicIf" in {
-    def countDynamically(dyn: Boolean) = {
-      var value = 0
-      dynamicIf(dyn) {
-        value += 1 /// executed for each request
-        complete(s"Result is now $value") // route executed in future
-      }
-    }
-
-    val route =
-      path("dynamic")(countDynamically(true)) ~
-      path("static")(countDynamically(false))
-
-    Get("/dynamic") ~> route ~> check {
-      responseAs[String] === "Result is now 1"
-    }
-    Get("/dynamic") ~> route ~> check {
-      responseAs[String] === "Result is now 2"
-    }
-    Get("/dynamic") ~> route ~> check {
-      responseAs[String] === "Result is now 3"
-    }
-
-    Get("/static") ~> route ~> check {
-      responseAs[String] === "Result is now 1"
-    }
-    Get("/static") ~> route ~> check {
-      responseAs[String] === "Result is now 1"
-    }
-    Get("/static") ~> route ~> check {
-      responseAs[String] === "Result is now 1"
-    }
-  }
   "handleExceptions" in {
     val divByZeroHandler = ExceptionHandler {
       case _: ArithmeticException => complete(StatusCodes.BadRequest, "You've got your arithmetic wrong, fool!")
