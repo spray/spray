@@ -17,11 +17,11 @@ package spray.httpx
 
 import org.json4s.native.Serialization
 import org.json4s.Formats
-import spray.httpx.marshalling.{ Marshaller, MetaMarshallers }
+import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.Unmarshaller
 import spray.http._
 
-trait Json4sSupport extends MetaMarshallers {
+trait Json4sSupport {
 
   /**
    * Supplies the serialization and deserialization formats for JSON4s.
