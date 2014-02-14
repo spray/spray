@@ -17,11 +17,11 @@ package spray.httpx
 
 import org.json4s.jackson.Serialization
 import org.json4s.Formats
-import spray.httpx.marshalling.{ Marshaller, MetaMarshallers }
+import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.Unmarshaller
 import spray.http._
 
-trait Json4sJacksonSupport extends MetaMarshallers {
+trait Json4sJacksonSupport {
   implicit def json4sJacksonFormats: Formats
 
   implicit def json4sUnmarshaller[T: Manifest] =
