@@ -115,7 +115,7 @@ abstract class Directive[L <: HList] { self ⇒
     }
 }
 
-object Directive {
+object Directive extends LowerPriorityDirectiveImplicits {
 
   /**
    * A Directive that always passes the request on to its inner route (i.e. does nothing).
@@ -124,7 +124,9 @@ object Directive {
     def happly(inner: HNil ⇒ Route) = inner(HNil)
   }
 
-  implicit def pimpApply[L <: HList](directive: Directive[L])(implicit hac: ApplyConverter[L]): hac.In ⇒ Route = f ⇒ directive.happly(hac(f))
+  implicit class pimpDirective0Apply(directive: Directive0) {
+    def apply(inner: ⇒ Route): Route = directive.happly(HNil ⇒ inner)
+  }
 
   implicit class SingleValueModifiers[T](underlying: Directive1[T]) {
     def map[R](f: T ⇒ R)(implicit hl: HListable[R]): Directive[hl.Out] =
@@ -139,4 +141,8 @@ object Directive {
     def filter(predicate: T ⇒ Boolean, rejections: Rejection*): Directive1[T] =
       underlying.hfilter({ case value :: HNil ⇒ predicate(value) }, rejections: _*)
   }
+}
+
+sealed abstract class LowerPriorityDirectiveImplicits {
+  implicit def pimpApply[L <: HList](directive: Directive[L])(implicit hac: ApplyConverter[L]): hac.In ⇒ Route = f ⇒ directive.happly(hac(f))
 }

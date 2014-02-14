@@ -29,4 +29,17 @@ class BasicDirectivesSpec extends RoutingSpec {
     }
   }
 
+  "Directive0" should {
+    "evaluate its sub-route lazily" in {
+      val dir: Directive0 = reject.toDirective
+      var triggered = false
+      Get() ~> dir {
+        triggered = true
+        completeOk
+      } ~> check {
+        handled === false
+        triggered === false
+      }
+    }
+  }
 }

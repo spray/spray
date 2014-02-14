@@ -18,7 +18,19 @@ package spray.routing
 
 import shapeless._
 
-abstract class ApplyConverterInstances {
+abstract class ApplyConverter[L <: HList] {
+  type In
+  def apply(f: In): L ⇒ Route
+}
+
+object ApplyConverter {
+  implicit val hacZ = new ApplyConverter[HNil] {
+    type In = () => Route
+    def apply(fn: In) = {
+      case HNil => fn()
+    }
+  }
+
 [#  implicit def hac1[[#T1#]] = new ApplyConverter[[#T1# :: ] :: HNil] {
     type In = ([#T1#]) => Route
     def apply(fn: In) = {
