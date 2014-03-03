@@ -92,6 +92,16 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
       serverHandler.reply(HttpResponse(entity = "yeah"))
       probe.expectMsgType[HttpResponse].entity === HttpEntity("yeah")
     }
+    "allow handling a request without a sender being set" in new TestSetup {
+      val connection = openNewClientConnection()
+      val serverHandler = acceptConnection()
+
+      val probe = sendRequest(connection, Get("/abc"))
+      serverHandler.expectMsgType[HttpRequest].uri === Uri(s"http://$hostname:$port/abc")
+
+      serverHandler.sender ! HttpResponse(entity = "yeah") // sender is null at receive
+      probe.expectMsgType[HttpResponse].entity === HttpEntity("yeah")
+    }
 
     "properly complete a chunked request/response cycle" in new TestSetup {
       val connection = openNewClientConnection()

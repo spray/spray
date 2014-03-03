@@ -43,7 +43,7 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
     if (openRequest.isWaitingForChunkHandler) WaitingForChunkHandler else Uncompleted
 
   def handle(message: Any)(implicit sender: ActorRef) {
-    require(RefUtils.isLocal(sender), "A request cannot be completed from a remote actor")
+    require(sender == null || RefUtils.isLocal(sender), "A request cannot be completed from a remote actor")
     message match {
       case part: HttpMessagePartWrapper if part.messagePart.isInstanceOf[HttpResponsePart] ⇒
         part.messagePart.asInstanceOf[HttpResponsePart] match {
