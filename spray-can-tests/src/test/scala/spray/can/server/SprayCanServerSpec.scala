@@ -34,6 +34,7 @@ import spray.http._
 import HttpProtocols._
 import spray.can.Http.RegisterChunkHandler
 import spray.can.client.ClientConnectionSettings
+import spray.io.CommandWrapper
 
 class SprayCanServerSpec extends Specification with NoTimeConversions {
   val testConf: Config = ConfigFactory.parseString("""
@@ -244,6 +245,21 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
       "when a HTTP/1.0 request includes an absolute URI" in new RawRequestTestSetup(
         target = "http://ex%61mple.com/f%6f%6fbar?q=b%61z",
         protocol = `HTTP/1.0`)
+    }
+    "allow changing timeouts with SetRequestTimeout" in new TestSetup {
+      val connection = openNewClientConnection()
+      val serverHandler = acceptConnection()
+
+      val probe = sendRequest(connection, Get("/abc"))
+      serverHandler.expectMsgType[HttpRequest].uri === Uri(s"http://$hostname:$port/abc")
+      val sender = serverHandler.sender
+
+      serverHandler.send(sender, CommandWrapper(SetRequestTimeout(100.millis)))
+      serverHandler.send(sender, CommandWrapper(SetTimeoutTimeout(100.millis)))
+      serverHandler.expectMsgType[Timedout](1.second)
+      probe.expectMsgType[HttpResponse](1.second).entity ===
+        HttpEntity("Ooops! The server was not able to produce a timely response to your request.\n" +
+          "Please try again in a short while!")
     }
   }
 
