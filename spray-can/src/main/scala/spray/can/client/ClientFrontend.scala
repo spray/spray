@@ -142,7 +142,7 @@ private object ClientFrontend {
                 val r = rec.request.message.asInstanceOf[HttpRequest]
                 log.warning("{} request to '{}' timed out after {}, closing connection", r.method, r.uri, requestTimeout)
                 dispatch(rec.sender, Timedout(rec.request))
-                commandPL(Http.Close)
+                commandPL(Http.Abort)
               }
             }
 
