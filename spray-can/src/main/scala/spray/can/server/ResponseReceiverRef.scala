@@ -19,7 +19,7 @@ package spray.can.server
 import akka.util.Unsafe
 import akka.spray.{ RefUtils, UnregisteredActorRef }
 import akka.actor._
-import spray.io.Command
+import spray.io.{ CommandWrapper, Command }
 import spray.http._
 import spray.can.Http
 import spray.can.Http.RegisterChunkHandler
@@ -58,6 +58,8 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
 
         }
       case RegisterChunkHandler(handler) ⇒ dispatch(ChunkHandlerRegistration(openRequest, handler), WaitingForChunkHandler, Uncompleted)
+      case s: SetRequestTimeout          ⇒ dispatch(CommandWrapper(s))
+      case s: SetTimeoutTimeout          ⇒ dispatch(CommandWrapper(s))
       case x: Command                    ⇒ dispatch(x)
       case x ⇒
         openRequest.context.log.warning("Illegal response {} to {}", x, requestInfo)
