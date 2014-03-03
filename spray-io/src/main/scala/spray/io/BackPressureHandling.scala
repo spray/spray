@@ -178,11 +178,12 @@ object BackPressureHandling {
 
           def closed(): State = new State {
             def commandPipeline = {
-              case c @ (_: Tcp.Write | _: Tcp.CloseCommand) ⇒ log.warning(s"Connection is already closed, dropping command $c")
+              case c @ (_: Tcp.Write | _: Tcp.CloseCommand) ⇒ log.debug(s"Connection is already closed, dropping command $c")
               case c                                        ⇒ commandPL(c)
             }
             def eventPipeline = {
-              case e ⇒ eventPL(e)
+              case CanCloseNow ⇒ // ignore here
+              case e           ⇒ eventPL(e)
             }
           }
         }
