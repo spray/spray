@@ -46,6 +46,11 @@ trait JsonSupportSpec extends Specification {
     "use UTF-8 as the default charset for JSON source decoding" in {
       HttpEntity(MediaTypes.`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
     }
+    "provide proper error messages for requirement errors" in {
+      val Left(MalformedContent(msg, Some(ex: IllegalArgumentException))) =
+        HttpEntity(MediaTypes.`application/json`, Employee.illegalEmployeeJson).as[Employee]
+      msg === "requirement failed: Board members must be older than 40"
+    }
   }
 }
 

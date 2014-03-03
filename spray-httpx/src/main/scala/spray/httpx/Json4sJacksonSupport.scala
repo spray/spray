@@ -21,12 +21,12 @@ import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.Unmarshaller
 import spray.http._
 
-trait Json4sJacksonSupport {
+trait Json4sJacksonSupport extends BaseJson4sSupport {
   implicit def json4sJacksonFormats: Formats
 
   implicit def json4sUnmarshaller[T: Manifest] =
     Unmarshaller[T](MediaTypes.`application/json`) {
-      case x: HttpEntity.NonEmpty ⇒ Serialization.read[T](x.asString(defaultCharset = HttpCharsets.`UTF-8`))
+      case x: HttpEntity.NonEmpty ⇒ unpackExceptions(Serialization.read[T](x.asString(defaultCharset = HttpCharsets.`UTF-8`)))
     }
 
   implicit def json4sMarshaller[T <: AnyRef] =
