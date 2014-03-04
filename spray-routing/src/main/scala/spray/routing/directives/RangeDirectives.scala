@@ -76,7 +76,7 @@ trait RangeDirectives {
           if (satisfiableRanges.isEmpty) {
             ctx.reject(UnsatisfiableRangeRejection(requestedRanges, entityLength))
           } else if (requestedRanges.size == 1) {
-            completeWithSingleByteRange(ctx, requestedRanges(0), responseEntity, responseHeaders)
+            completeWithSingleByteRange(ctx, requestedRanges.head, responseEntity, responseHeaders)
           } else {
             completeWithMultipartByteRanges(ctx, rangeCoalesceThreshold, satisfiableRanges, responseEntity, responseHeaders)
           }
@@ -92,43 +92,40 @@ trait RangeDirectives {
     val appliedRanges = satisfiableRanges.map(applyRange(responseEntityLength))
     val coalescedRanges = coalesceRanges(rangeCoalesceThreshold)(appliedRanges)
     val bodyParts = coalescedRanges.map(r ⇒
-      ByteRangePart(HttpEntity(responseEntity.contentType, responseEntity.data.slice(r.firstBytePosition, r.length)),
-        Seq(`Content-Range`(ContentRange(r.firstBytePosition, r.lastBytePosition, Some(responseEntityLength))))))
-
+      ByteRangePart(HttpEntity(responseEntity.contentType, responseEntity.data.slice(r.fromIndex, r.length)),
+        Seq(`Content-Range`(ContentRange(r.fromIndex, r.toIndex - 1, Some(responseEntityLength))))))
     ctx.complete(PartialContent, responseHeaders, MultipartByteRanges(bodyParts))
-
   }
 
   private def completeWithSingleByteRange(ctx: RequestContext, satisfiableRange: ByteRangeSetEntry, responseEntity: HttpEntity.NonEmpty, responseHeaders: List[HttpHeader]): Unit = {
     val responseEntityLength = responseEntity.data.length
     val appliedRange = applyRange(responseEntityLength)(satisfiableRange)
-    val contentRangeHeader: HttpHeader = `Content-Range`(ContentRange(appliedRange.firstBytePosition, appliedRange.lastBytePosition, Some(responseEntityLength)))
-    val partialData = responseEntity.data.slice(appliedRange.firstBytePosition, appliedRange.length)
+    val contentRangeHeader: HttpHeader = `Content-Range`(ContentRange(appliedRange.fromIndex, appliedRange.toIndex - 1, Some(responseEntityLength)))
+    val partialData = responseEntity.data.slice(appliedRange.fromIndex, appliedRange.length)
     val partialEntity = HttpEntity(responseEntity.contentType, partialData)
     val partialResponse = HttpResponse(status = PartialContent, headers = contentRangeHeader :: responseHeaders, entity = partialEntity)
     ctx.complete(partialResponse)
   }
 
-  private case class AppliedByteRange(firstBytePosition: Long, lastBytePosition: Long) {
-    val length: Long = lastBytePosition - firstBytePosition + 1
-
-    def shortestDistanceTo(other: AppliedByteRange): Long = {
-      math.max(0,
-        if (firstBytePosition <= other.firstBytePosition) {
-          other.firstBytePosition - lastBytePosition
+  private case class AppliedIndexRange(fromIndex: Long, toIndex: Long) {
+    val length: Long = toIndex - fromIndex
+    def shortestDistanceTo(other: AppliedIndexRange): Long = {
+      math.max(0L,
+        if (fromIndex <= other.fromIndex) {
+          other.fromIndex - toIndex
         } else {
-          firstBytePosition - other.lastBytePosition
+          fromIndex - other.toIndex
         })
     }
-    def mergeWith(other: AppliedByteRange): AppliedByteRange =
-      AppliedByteRange(math.min(firstBytePosition, other.firstBytePosition), math.max(lastBytePosition, other.lastBytePosition))
+    def mergeWith(other: AppliedIndexRange): AppliedIndexRange =
+      AppliedIndexRange(math.min(fromIndex, other.fromIndex), math.max(toIndex, other.toIndex))
   }
 
-  private def applyRange(entityLength: Long)(range: ByteRangeSetEntry): AppliedByteRange = {
+  private def applyRange(entityLength: Long)(range: ByteRangeSetEntry): AppliedIndexRange = {
     range match {
-      case ByteRange(from, None)         ⇒ AppliedByteRange(from, entityLength - 1L)
-      case ByteRange(from, Some(to))     ⇒ AppliedByteRange(from, math.min(to, entityLength - 1L))
-      case SuffixByteRange(suffixLength) ⇒ AppliedByteRange(math.max(0, entityLength - suffixLength), entityLength - 1L)
+      case ByteRange(from, None)         ⇒ AppliedIndexRange(from, entityLength)
+      case ByteRange(from, Some(to))     ⇒ AppliedIndexRange(from, math.min(to + 1, entityLength))
+      case SuffixByteRange(suffixLength) ⇒ AppliedIndexRange(math.max(0, entityLength - suffixLength), entityLength)
     }
   }
 
@@ -140,9 +137,8 @@ trait RangeDirectives {
    * media type and the chosen boundary parameter length, it can be less efficient to transfer many small
    * disjoint parts than it is to transfer the entire selected representation.
    */
-  private def coalesceRanges(threshold: Long)(ranges: Seq[AppliedByteRange]): Seq[AppliedByteRange] = {
-
-    ranges.foldLeft(Seq.empty[AppliedByteRange]) { (akku, next) ⇒
+  private def coalesceRanges(threshold: Long)(ranges: Seq[AppliedIndexRange]): Seq[AppliedIndexRange] = {
+    ranges.foldLeft(Seq.empty[AppliedIndexRange]) { (akku, next) ⇒
       val (mergeCandidates, otherCandidates) = akku.partition(_.shortestDistanceTo(next) <= threshold)
       val merged = mergeCandidates.foldLeft(next)((a, b) ⇒ a.mergeWith(b))
       otherCandidates :+ merged
