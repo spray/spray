@@ -42,6 +42,16 @@ class RequestRendererSpec extends Specification {
         }
       }
 
+      "GET request with a URI that requires encoding" in new TestSetup() {
+        HttpRequest(GET, "/abc<def") must beRenderedTo {
+          """|GET /abc%3Cdef HTTP/1.1
+            |Host: test.com:8080
+            |User-Agent: spray-can/1.0.0
+            |
+            |"""
+        }
+      }
+
       "POST request, a few headers (incl. a custom Host header) and no body" in new TestSetup() {
         HttpRequest(POST, "/abc/xyz", List(
           RawHeader("X-Fancy", "naa"),
@@ -193,6 +203,28 @@ class RequestRendererSpec extends Specification {
           """GET /abc HTTP/1.1
             |User-Agent: user-ua/1.0
             |Host: test.com:8080
+            |
+            |"""
+        }
+      }
+    }
+
+    "properly uses URI from Raw-Request-URI header if present" in {
+      "GET request with Raw-Request-URI" in new TestSetup() {
+        HttpRequest(GET, "/abc", List(`Raw-Request-URI`("/def"))) must beRenderedTo {
+          """GET /def HTTP/1.1
+            |Host: test.com:8080
+            |User-Agent: spray-can/1.0.0
+            |
+            |"""
+        }
+      }
+
+      "GET request with Raw-Request-URI sends raw URI even with invalid utf8 characters" in new TestSetup() {
+        HttpRequest(GET, "/abc", List(`Raw-Request-URI`("/def%80%fe%ff"))) must beRenderedTo {
+          """GET /def%80%fe%ff HTTP/1.1
+            |Host: test.com:8080
+            |User-Agent: spray-can/1.0.0
             |
             |"""
         }

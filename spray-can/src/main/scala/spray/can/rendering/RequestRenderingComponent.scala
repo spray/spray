@@ -67,6 +67,9 @@ private[can] trait RequestRenderingComponent {
               render(x)
               renderHeaders(tail, hostHeaderSeen, userAgentSeen = true, contentTypeSeen, contentLengthSeen)
 
+            case x: `Raw-Request-URI` ⇒
+              renderHeaders(tail, hostHeaderSeen, userAgentSeen, contentTypeSeen, contentLengthSeen)
+
             case x: RawHeader if x.lowercaseName == "content-type" ||
               x.lowercaseName == "content-length" ||
               x.lowercaseName == "transfer-encoding" ||
@@ -92,9 +95,24 @@ private[can] trait RequestRenderingComponent {
             }
         }
 
-      import request._
-      uri.renderWithoutFragment(r ~~ request.method ~~ ' ', UTF8) ~~ ' ' ~~ protocol ~~ CrLf
-      renderHeaders(headers)
+      def renderRequestLine(): Unit = {
+        @tailrec def renderUri(headers: List[HttpHeader]): Unit = {
+          headers match {
+            case head :: tail ⇒ head match {
+              case x: `Raw-Request-URI` ⇒ x.renderValue(r)
+              case _                    ⇒ renderUri(tail)
+            }
+            case Nil ⇒ request.uri.renderWithoutFragment(r, UTF8)
+          }
+        }
+
+        r ~~ request.method ~~ ' '
+        renderUri(request.headers)
+        r ~~ ' ' ~~ request.protocol ~~ CrLf
+      }
+
+      renderRequestLine()
+      renderHeaders(request.headers)
     }
 
     def chunkless = chunklessStreaming || (ctx.requestProtocol eq HttpProtocols.`HTTP/1.0`)
