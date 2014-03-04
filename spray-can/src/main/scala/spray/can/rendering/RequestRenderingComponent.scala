@@ -68,7 +68,6 @@ private[can] trait RequestRenderingComponent {
               renderHeaders(tail, hostHeaderSeen, userAgentSeen = true, contentTypeSeen, contentLengthSeen)
 
             case x: `Raw-Request-URI` ⇒
-              suppressionWarning(x, "Raw-Request-URI header value is used to override the URI and is not sent in headers")
               renderHeaders(tail, hostHeaderSeen, userAgentSeen, contentTypeSeen, contentLengthSeen)
 
             case x: RawHeader if x.lowercaseName == "content-type" ||
@@ -97,21 +96,18 @@ private[can] trait RequestRenderingComponent {
         }
 
       def renderRequestLine(): Unit = {
-        @tailrec def findRawRequestUriHeader(headers: List[HttpHeader]): Option[`Raw-Request-URI`] = {
+        @tailrec def renderUri(headers: List[HttpHeader]): Unit = {
           headers match {
             case head :: tail ⇒ head match {
-              case x: `Raw-Request-URI` ⇒ Some(x)
-              case _                    ⇒ findRawRequestUriHeader(tail)
+              case x: `Raw-Request-URI` ⇒ x.renderValue(r)
+              case _                    ⇒ renderUri(tail)
             }
-            case Nil ⇒ None
+            case Nil ⇒ request.uri.renderWithoutFragment(r, UTF8)
           }
         }
 
         r ~~ request.method ~~ ' '
-        findRawRequestUriHeader(request.headers) match {
-          case Some(rawHeader) ⇒ rawHeader.renderValue(r)
-          case None            ⇒ request.uri.renderWithoutFragment(r, UTF8)
-        }
+        renderUri(request.headers)
         r ~~ ' ' ~~ request.protocol ~~ CrLf
       }
 
