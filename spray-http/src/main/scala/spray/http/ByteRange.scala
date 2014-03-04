@@ -23,9 +23,14 @@ object ByteRange {
 }
 
 case class ByteRange(firstBytePosition: Long, lastBytePosition: Option[Long] = None) extends ByteRangeSetEntry {
-  require(lastBytePosition.getOrElse(Long.MaxValue) >= firstBytePosition, s"lastBytePosition must be greater than equals firstBytePosition")
+  require(firstBytePosition <= lastBytePosition.getOrElse(Long.MaxValue), "firstBytePosition must be <= lastBytePosition")
 
-  def render[R <: Rendering](r: R): r.type = r ~~ firstBytePosition.toString ~~ '-' ~~ lastBytePosition.map(_.toString).getOrElse("")
+  def render[R <: Rendering](r: R): r.type = r ~~ firstBytePosition.toString ~~ '-' ~~ {
+    lastBytePosition match {
+      case Some(x) ⇒ x.toString
+      case _       ⇒ ""
+    }
+  }
 }
 
 case class SuffixByteRange(suffixLength: Long) extends ByteRangeSetEntry {
@@ -43,7 +48,7 @@ object MultipartByteRanges {
  */
 case class ByteRangePart(entity: HttpEntity, headers: Seq[HttpHeader] = Nil) {
 
-  def contentRange: Option[ContentRange] =
+  def contentRange: Option[ContentRangeLike] =
     headers.collectFirst {
       case contentRangeHeader: HttpHeaders.`Content-Range` ⇒ contentRangeHeader.contentRange
     }

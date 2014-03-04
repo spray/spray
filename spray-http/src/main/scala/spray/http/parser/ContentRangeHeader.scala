@@ -29,10 +29,14 @@ import spray.http.parser.BasicRules._
 private[parser] trait ContentRangeHeader {
   this: Parser with ProtocolParameterRules with RangeHeader ⇒
 
-  def `*Content-Range` = rule(ContentRangeSpec) ~ EOI ~~> ((range, length) ⇒ { HttpHeaders.`Content-Range`(ContentRange(range.map(_._1), range.map(_._2), length)) })
+  def `*Content-Range` = rule(ContentRangeSpec) ~ EOI ~~> ((range, length) ⇒ HttpHeaders.`Content-Range`(range match {
+    case Some(r) ⇒ ContentRange(r._1, r._2, length)
+    case None    ⇒ UnsatisfiableContentRange(length)
+  }))
+
   def ContentRangeSpec = rule { ByteContentRangeSpec }
   def ByteContentRangeSpec = rule { BytesUnit ~ DROP ~ SP ~ BytesRangeResponseSpec ~ ch('/') ~ ((InstanceLength ~~> (a ⇒ Some(a))) | ch('*') ~> (_ ⇒ None)) }
-  def BytesRangeResponseSpec = rule { (FirstBytePosition ~ ch('-') ~ LastBytePosition) ~~> ((a, b) ⇒ Some(a, b)) | ch('*') ~> (_ ⇒ None) }
+  def BytesRangeResponseSpec = rule { (FirstBytePosition ~ ch('-') ~ LastBytePosition) ~~> (Some(_, _)) | ch('*') ~ push(None) }
   def InstanceLength = rule { oneOrMore(Digit) ~> (_.toLong) }
 
 }

@@ -25,6 +25,6 @@ private[parser] trait AcceptRangesHeader {
 
   def `*Accept-Ranges` = rule(AcceptableRanges) ~ EOI ~~> (HttpHeaders.`Accept-Ranges`(_))
 
-  def AcceptableRanges = rule { str("none") ~> (_ ⇒ Nil) | oneOrMore(RangeUnit, separator = ListSep) }
+  def AcceptableRanges = rule { "none" ~ push(Nil) | oneOrMore(RangeUnit, separator = ListSep) }
 
 }

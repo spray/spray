@@ -25,14 +25,10 @@ import java.io.{ ByteArrayOutputStream, ByteArrayInputStream }
 import spray.http.HttpHeaders.`Content-Type`
 import spray.http.parser.HttpParser
 import org.parboiled.common.FileUtils
-import spray.http.BodyPart
 import spray.http.HttpHeaders.RawHeader
 import scala.Some
 import spray.util._
 
-/**
- * @author Daniel
- */
 trait ByteRangesUnmarshallers {
 
   private[this] val mimeParsingConfig = {

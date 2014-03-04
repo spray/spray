@@ -42,9 +42,11 @@ private[parser] trait RangeHeader {
   def RangesSpecifier = rule { ByteRangesSpecifier }
   def ByteRangesSpecifier = rule { BytesUnit ~ DROP ~ ch('=') ~ ByteRangeSet }
   def ByteRangeSet = rule { oneOrMore(ByteRangeSpec | SuffixByteRangeSpec, separator = ListSep) }
-  def ByteRangeSpec = rule { FirstBytePosition ~ ch('-') ~ optional(LastBytePosition) ~~> ((a, b) ⇒ ByteRange(a, b)) }
-  def FirstBytePosition = rule { oneOrMore(Digit) ~> (_.toLong) }
-  def LastBytePosition = rule { oneOrMore(Digit) ~> (_.toLong) }
-  def SuffixByteRangeSpec = rule { ch('-') ~ SuffixLength ~~> (a ⇒ SuffixByteRange(a)) }
-  def SuffixLength = rule { oneOrMore(Digit) ~> (_.toLong) }
+  def ByteRangeSpec = rule { FirstBytePosition ~ ch('-') ~ optional(LastBytePosition) ~~> (ByteRange(_, _)) }
+  def FirstBytePosition = rule { longExpression }
+  def LastBytePosition = rule { longExpression }
+  def SuffixByteRangeSpec = rule { ch('-') ~ SuffixLength ~~> SuffixByteRange }
+  def SuffixLength = rule { longExpression }
+
+  def longExpression = oneOrMore(Digit) ~> (_.toLong)
 }

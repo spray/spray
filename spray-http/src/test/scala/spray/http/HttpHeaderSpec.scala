@@ -194,9 +194,9 @@ class HttpHeaderSpec extends Specification {
     }
 
     "Content-Range" in {
-      "Content-Range: bytes 0-9/10" =!= `Content-Range`(ContentRange(0, 9, 10))
-      "Content-Range: bytes 1-42/*" =!= `Content-Range`(ContentRange(1, 42))
-      "Content-Range: bytes */*" =!= `Content-Range`(ContentRange(None, None, None))
+      "Content-Range: bytes 0-9/10" =!= `Content-Range`(ContentRange(0, 9, Some(10)))
+      "Content-Range: bytes 1-42/*" =!= `Content-Range`(ContentRange(1, 42, None))
+      "Content-Range: bytes */*" =!= `Content-Range`(UnsatisfiableContentRange(None))
     }
 
     "Cookie" in {

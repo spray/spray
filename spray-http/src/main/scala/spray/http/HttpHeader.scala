@@ -243,7 +243,7 @@ object HttpHeaders {
   }
 
   object `Content-Range` extends ModeledCompanion
-  case class `Content-Range`(contentRange: ContentRange) extends ModeledHeader {
+  case class `Content-Range`(contentRange: ContentRangeLike) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ contentRange
     protected def companion = `Content-Range`
   }

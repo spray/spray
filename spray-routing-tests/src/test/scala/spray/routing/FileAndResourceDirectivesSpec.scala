@@ -24,7 +24,8 @@ import spray.util._
 import MediaTypes._
 import HttpHeaders._
 import HttpCharsets._
-import scala.Some
+import spray.http.ContentRange
+import spray.http.SuffixByteRange
 
 class FileAndResourceDirectivesSpec extends RoutingSpec {
 
@@ -32,6 +33,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     """spray.routing {
       |  file-chunking-threshold-size = 16
       |  file-chunking-chunk-size = 8
+      |  range-coalesce-threshold = 1
       |}""".stripMargin
 
   "getFromFile" should {
@@ -71,19 +73,27 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
       Get() ~> addHeader(Range(ByteRange(0, 10))) ~> getFromFile(file) ~> check {
         body.asString === "ABCDEFGHIJK"
         status === StatusCodes.PartialContent
-        headers must contain(`Content-Range`(ContentRange(0, 10, 26)))
+        headers must contain(`Content-Range`(ContentRange(0, 10, Some(26))))
       }
+      file.delete
     }
 
-    "return a partial file with multiple requested ranges" in {
+    "return file content parts with  ranges file" in {
       val file = File.createTempFile("partialTest", null)
-      FileUtils.writeAllText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", file)
-      Get() ~> addHeader(Range(ByteRange(0, 10), SuffixByteRange(10))) ~> getFromFile(file) ~> check {
-        //responseAs[MultipartByteRanges].parts
-        status === StatusCodes.PartialContent
-        headers must not(haveOneElementLike { case `Content-Range`(_) ⇒ ok })
-        mediaType.withParameters(Map.empty) === `multipart/byteranges`
-      }
+
+      try {
+        FileUtils.writeAllText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", file)
+        Get() ~> addHeader(Range(ByteRange(1, 10), SuffixByteRange(10))) ~> getFromFile(file) ~> check {
+          val parts = responseAs[MultipartByteRanges].parts
+          parts.size === 2
+          parts(0).entity.data.asString === "BCDEFGHIJK"
+          parts(1).entity.data.asString === "QRSTUVWXYZ"
+
+          status === StatusCodes.PartialContent
+          headers must not(haveOneElementLike { case `Content-Range`(_) ⇒ ok })
+          mediaType.withParameters(Map.empty) === `multipart/byteranges`
+        }
+      } finally file.delete
     }
 
     "return a chunked response for files larger than the configured file-chunking-threshold-size" in {

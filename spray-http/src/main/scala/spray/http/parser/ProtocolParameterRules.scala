@@ -155,8 +155,8 @@ private[parser] trait ProtocolParameterRules {
 
   def RangeUnit = rule { BytesUnit | OtherRangeUnit }
 
-  def BytesUnit = rule { ignoreCase("bytes") ~> (_ ⇒ spray.http.BytesUnit) }
+  def BytesUnit = rule { ignoreCase("bytes") ~ push(spray.http.BytesUnit) }
 
-  def OtherRangeUnit = rule { Token ~~> (s ⇒ spray.http.OtherRangeUnit(s)) }
+  def OtherRangeUnit = rule { Token ~~> (spray.http.OtherRangeUnit) }
 
 }
