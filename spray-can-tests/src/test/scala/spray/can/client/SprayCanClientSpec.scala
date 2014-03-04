@@ -67,9 +67,18 @@ class SprayCanClientSpec extends Specification with NoTimeConversions {
     "properly complete a pipelined request/response cycle with a chunked request" in new TestSetup {
       val clientConnection = newClientConnect()
       val client = send(clientConnection, ChunkedRequestStart(Get("/abc") ~> Host(hostname, port)))
-      client.send(clientConnection, MessageChunk("123"))
-      client.send(clientConnection, MessageChunk("456"))
-      client.send(clientConnection, ChunkedMessageEnd)
+
+      case class CustomAck(value: Int)
+      client.send(clientConnection, MessageChunk("123").withAck(CustomAck(1)))
+      client.expectMsg(CustomAck(1))
+
+      // chunks sent from third-party actor should get ack
+      val clientWorker = TestProbe()
+      clientWorker.send(clientConnection, MessageChunk("456").withAck(CustomAck(2)))
+      clientWorker.expectMsg(CustomAck(2))
+
+      clientWorker.send(clientConnection, ChunkedMessageEnd.withAck(CustomAck(3)))
+      clientWorker.expectMsg(CustomAck(3))
       client.send(clientConnection, Get("/def") ~> Host(hostname, port))
 
       val server = acceptConnection()
