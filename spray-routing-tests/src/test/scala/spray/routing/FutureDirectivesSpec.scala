@@ -22,12 +22,12 @@ import spray.util.SingletonException
 
 class FutureDirectivesSpec extends RoutingSpec {
 
-  object TestException extends SingletonException
-  class SimpleException(msg: String) extends Exception(msg)
+  class TestException(msg: String) extends Exception(msg)
+  object TestException extends SingletonException("XXX")
+  def throwTestException[T](msgPrefix: String): T ⇒ Nothing = t ⇒ throw new TestException(msgPrefix + t)
 
   implicit val exceptionHandler = ExceptionHandler {
-    case e: SimpleException ⇒ ctx ⇒
-      ctx.complete(StatusCodes.InternalServerError, "Oops. " + e)
+    case e: TestException ⇒ complete(StatusCodes.InternalServerError, "Oops. " + e)
   }
 
   "The `onComplete` directive" should {
@@ -48,19 +48,15 @@ class FutureDirectivesSpec extends RoutingSpec {
       }
     }
     "correct catch exception in the success case" in {
-      Get() ~> onComplete(Future.successful("ok")) {
-        res ⇒ throw new SimpleException("Unexpected exception in " + res)
-      } ~> check {
+      Get() ~> onComplete(Future.successful("ok")) { throwTestException("EX when ") } ~> check {
         status === StatusCodes.InternalServerError
-        responseAs[String] === "Oops. spray.routing.FutureDirectivesSpec$SimpleException: Unexpected exception in Success(ok)"
+        responseAs[String] === "Oops. spray.routing.FutureDirectivesSpec$TestException: EX when Success(ok)"
       }
     }
     "correct catch exception in the failure case" in {
-      Get() ~> onComplete(Future.failed(new RuntimeException("no"))) {
-        res ⇒ throw new SimpleException("Unexpected exception in " + res)
-      } ~> check {
+      Get() ~> onComplete(Future.failed(new RuntimeException("no"))) { throwTestException("EX when ") } ~> check {
         status === StatusCodes.InternalServerError
-        responseAs[String] === "Oops. spray.routing.FutureDirectivesSpec$SimpleException: Unexpected exception in Failure(java.lang.RuntimeException: no)"
+        responseAs[String] === "Oops. spray.routing.FutureDirectivesSpec$TestException: EX when Failure(java.lang.RuntimeException: no)"
       }
     }
   }
@@ -77,13 +73,13 @@ class FutureDirectivesSpec extends RoutingSpec {
       }
     }
     "correct catch exception in the success case" in {
-      Get() ~> onSuccess(Future.successful("ok")) { _ ⇒ throw new SimpleException("Exception in the success case!") } ~> check {
+      Get() ~> onSuccess(Future.successful("ok")) { throwTestException("EX when ") } ~> check {
         status === StatusCodes.InternalServerError
-        responseAs[String] === "Oops. spray.routing.FutureDirectivesSpec$SimpleException: Exception in the success case!"
+        responseAs[String] === "Oops. spray.routing.FutureDirectivesSpec$TestException: EX when ok"
       }
     }
     "correct catch exception in the failure case" in {
-      Get() ~> onSuccess(Future.failed(TestException)) { _ ⇒ throw new SimpleException("Exception in the failure case!") } ~> check {
+      Get() ~> onSuccess(Future.failed(TestException)) { throwTestException("EX when ") } ~> check {
         status === StatusCodes.InternalServerError
         responseAs[String] === "There was an internal server error."
       }
@@ -98,19 +94,19 @@ class FutureDirectivesSpec extends RoutingSpec {
     }
     "throw an exception in the failure case" in {
       Get() ~> onFailure(Future.failed[String](TestException)) { echoComplete } ~> check {
-        responseAs[String] === "spray.routing.FutureDirectivesSpec$TestException$"
+        responseAs[String] === "spray.routing.FutureDirectivesSpec$TestException$: XXX"
       }
     }
     "correct catch exception in the success case" in {
-      Get() ~> onFailure(Future.successful("ok")) { _ ⇒ throw new SimpleException("Exception in the success case!") } ~> check {
+      Get() ~> onFailure(Future.successful("ok")) { throwTestException("EX when ") } ~> check {
         status === StatusCodes.OK
         responseAs[String] === "ok"
       }
     }
     "correct catch exception in the failure case" in {
-      Get() ~> onFailure(Future.failed[String](TestException)) { _ ⇒ throw new SimpleException("Exception in the success case!") } ~> check {
+      Get() ~> onFailure(Future.failed[String](TestException)) { throwTestException("EX when ") } ~> check {
         status === StatusCodes.InternalServerError
-        responseAs[String] === "Oops. spray.routing.FutureDirectivesSpec$SimpleException: Exception in the success case!"
+        responseAs[String] === "Oops. spray.routing.FutureDirectivesSpec$TestException: EX when spray.routing.FutureDirectivesSpec$TestException$: XXX"
       }
     }
   }
