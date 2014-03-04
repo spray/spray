@@ -101,8 +101,8 @@ class SprayCanClientSpec extends Specification with NoTimeConversions {
       val server = acceptConnection()
       server.expectMsgType[HttpRequest].uri.path.toString === "/def"
       client.expectMsg(Timedout(request))
-      client.expectMsg(Http.Closed)
-      server.expectMsg(Http.PeerClosed)
+      client.expectMsg(Http.Aborted)
+      server.expectMsgType[Http.ErrorClosed]
       unbind()
     }
 
