@@ -32,10 +32,9 @@ case class UnsatisfiableContentRange(instanceLength: Option[Long]) extends Conte
 }
 
 case class ContentRange(firstByte: Long, lastByte: Long, instanceLength: Option[Long]) extends ContentRangeLike {
-  require(firstByte >= 0L, s"firstByte must be non negative")
-  require(firstByte <= lastByte, s"firstByte must be <= lastByte")
-  require(instanceLength.getOrElse(0L) >= 0, s"instanceLength must be non negative")
-  require(instanceLength.getOrElse(Long.MaxValue) > lastByte, s"instanceLength must be greater than lastByte")
+  require(firstByte >= 0L, "firstByte must be non negative")
+  require(firstByte <= lastByte, "firstByte must be <= lastByte")
+  require(instanceLength.isEmpty || instanceLength.get > lastByte, "instanceLength must be empty or > lastByte")
 
   def render[R <: Rendering](r: R): r.type = {
     r ~~ "bytes " ~~ firstByte ~~ '-' ~~ lastByte ~~ '/'
