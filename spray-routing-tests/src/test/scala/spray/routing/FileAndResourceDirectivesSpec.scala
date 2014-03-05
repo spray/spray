@@ -67,7 +67,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
       file.delete
     }
 
-    "return a partial file with a single requested range" in {
+    "return a single range from a file" in {
       val file = File.createTempFile("partialTest", null)
       FileUtils.writeAllText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", file)
       Get() ~> addHeader(Range(ByteRange(0, 10))) ~> getFromFile(file) ~> check {
@@ -78,12 +78,13 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
       file.delete
     }
 
-    "return file content parts with  ranges file" in {
+    "return multiple ranges from a file at once" in {
       val file = File.createTempFile("partialTest", null)
+      val settingsWithDisabledAutoChunking:RoutingSettings = new RoutingSettings(true, Long.MaxValue, Int.MaxValue, null, true, 10, 1)
 
       try {
         FileUtils.writeAllText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", file)
-        Get() ~> addHeader(Range(ByteRange(1, 10), SuffixByteRange(10))) ~> getFromFile(file) ~> check {
+        Get() ~> addHeader(Range(ByteRange(1, 10), SuffixByteRange(10))) ~> getFromFile(file, ContentTypes.`text/plain`)(settingsWithDisabledAutoChunking, actorSystem) ~> check {
           val parts = responseAs[MultipartByteRanges].parts
           parts.size === 2
           parts(0).entity.data.asString === "BCDEFGHIJK"
