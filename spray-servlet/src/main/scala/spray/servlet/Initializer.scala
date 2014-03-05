@@ -80,6 +80,7 @@ class Initializer extends ServletContextListener {
     booted switchOff {
       println("Shutting down spray application ...")
       actorSystem.foreach(_.shutdown())
+      actorSystem.foreach(_.awaitTermination())
     }
   }
 }
