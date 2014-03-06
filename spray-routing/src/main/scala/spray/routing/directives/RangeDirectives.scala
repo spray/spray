@@ -17,146 +17,112 @@
 package spray.routing
 package directives
 
-import spray.http.HttpHeaders.{ Range, `Accept-Ranges`, `Content-Range` }
-import spray.http._
 import shapeless.HNil
-import spray.routing.directives.RouteDirectives._
-import spray.http.ByteRangePart
-import spray.http.ContentRange
-import spray.routing.TooManyRangesRejection
-import spray.http.SuffixByteRange
-import spray.routing.RequestContext
-import spray.http.HttpResponse
-import spray.routing.UnsatisfiableRangeRejection
+import spray.httpx.marshalling.Marshaller
+import spray.http._
+import StatusCodes._
+import HttpHeaders._
 
 trait RangeDirectives {
   import BasicDirectives._
-  import MethodDirectives._
-  import RespondWithDirectives.respondWithHeader
-  import StatusCodes.PartialContent
+  import RouteDirectives._
 
   /**
-   * Answers GET requests with a `Accept-Ranges: bytes` header and converts HttpResponses coming back from its inner route
-   * into partial responses if the initial request contained a valid `Range` request header. The requested byte-ranges may
-   * be coalesced.
-   * Rejects non-GET requests with a `MethodRejection`.
-   * Rejects requests with no satisfiable ranges `UnsatisfiableRangeRejection`.
+   * Answers GET requests with an `Accept-Ranges: bytes` header and converts HttpResponses coming back from its inner
+   * route into partial responses if the initial request contained a valid `Range` request header. The requested
+   * byte-ranges may be coalesced.
+   * This directive is transparent to non-GET requests
+   * Rejects requests with unsatisfiable ranges `UnsatisfiableRangeRejection`.
    * Rejects requests with too many expected ranges.
    * @see rfc2616 14.35.2
    */
-  def withRangeSupport()(implicit settings: RoutingSettings): Directive0 = withRangeSupport(settings.rangeCountLimit, settings.rangeCoalesceThreshold)
+  def withRangeSupport(m: RangeDirectives.WithRangeSupportMagnet): Directive0 = {
+    import m._
 
-  /**
-   * Answers GET requests with a `Accept-Ranges: bytes` header and converts HttpResponses coming back from its inner route
-   * into partial responses if the initial request contained a valid `Range` request header. The requested byte-ranges may
-   * be coalesced.
-   * Rejects non-GET requests with a `MethodRejection`.
-   * Rejects requests with no satisfiable ranges `UnsatisfiableRangeRejection`.
-   * Rejects requests with too many expected ranges.
-   * @see rfc2616 14.35.2
-   */
-  def withRangeSupport(rangeCountLimit: Int, rangeCoalesceThreshold: Long): Directive0 = get & respondWithAcceptByteRangesHeader & applyRanges(rangeCountLimit, rangeCoalesceThreshold)
-
-  private val respondWithAcceptByteRangesHeader: Directive0 = respondWithHeader(`Accept-Ranges`(BytesUnit))
-
-  private def applyRanges(rangeCountLimit: Int, rangeCoalesceThreshold: Long): Directive0 = {
-    extract(_.request.header[Range]).flatMap[HNil] {
-      case None ⇒ pass
-      case Some(Range(requestedRanges)) if requestedRanges.size > rangeCountLimit ⇒ reject(TooManyRangesRejection(rangeCountLimit))
-      case Some(Range(requestedRanges)) ⇒ applyMultipleRanges(rangeCoalesceThreshold, requestedRanges)
+    class IndexRange(val start: Long, val end: Long) {
+      def length = end - start
+      def apply(entity: HttpEntity.NonEmpty) = HttpEntity(entity.contentType, entity.data.slice(start, length))
+      def distance(other: IndexRange) = mergedEnd(other) - mergedStart(other) - (length + other.length)
+      def mergeWith(other: IndexRange) = new IndexRange(mergedStart(other), mergedEnd(other))
+      def contentRangeHeader(entity: HttpEntity.NonEmpty) = `Content-Range`(ContentRange(start, end - 1, entity.data.length))
+      private def mergedStart(other: IndexRange) = math.min(start, other.start)
+      private def mergedEnd(other: IndexRange) = math.max(end, other.end)
     }
-  }
 
-  private def applyMultipleRanges(rangeCoalesceThreshold: Long, requestedRanges: Seq[ByteRangeSetEntry]): Directive0 = {
-    mapRequestContext { ctx ⇒
-      ctx.withRouteResponseHandling {
-        case HttpResponse(status, responseEntity @ HttpEntity.NonEmpty(contentType, data), responseHeaders, _) ⇒ {
-          val entityLength = data.length
-          val satisfiableRanges = requestedRanges.filter(satisfiableRange(entityLength))
-          if (satisfiableRanges.isEmpty) {
-            ctx.reject(UnsatisfiableRangeRejection(requestedRanges, entityLength))
-          } else if (requestedRanges.size == 1) {
-            completeWithSingleByteRange(ctx, requestedRanges.head, responseEntity, responseHeaders)
-          } else {
-            completeWithMultipartByteRanges(ctx, rangeCoalesceThreshold, satisfiableRanges, responseEntity, responseHeaders)
-          }
+    def indexRange(entityLength: Long)(range: ByteRange): IndexRange =
+      range match {
+        case ByteRange.Slice(start, end)    ⇒ new IndexRange(start, math.min(end + 1, entityLength))
+        case ByteRange.FromOffset(first)    ⇒ new IndexRange(first, entityLength)
+        case ByteRange.Suffix(suffixLength) ⇒ new IndexRange(math.max(0, entityLength - suffixLength), entityLength)
+      }
+
+    /**
+     * When multiple ranges are requested, a server may coalesce any of the ranges that overlap or that are separated
+     * by a gap that is smaller than the overhead of sending multiple parts, regardless of the order in which the
+     * corresponding byte-range-spec appeared in the received Range header field. Since the typical overhead between
+     * parts of a multipart/byteranges payload is around 80 bytes, depending on the selected representation's
+     * media type and the chosen boundary parameter length, it can be less efficient to transfer many small
+     * disjoint parts than it is to transfer the entire selected representation.
+     */
+    def coalesceRanges(iRanges: Seq[IndexRange]): Seq[IndexRange] =
+      iRanges.foldLeft(Seq.empty[IndexRange]) { (acc, iRange) ⇒
+        val (mergeCandidates, otherCandidates) = acc.partition(_.distance(iRange) <= rangeCoalescingThreshold)
+        val merged = mergeCandidates.foldLeft(iRange)(_ mergeWith _)
+        otherCandidates :+ merged
+      }
+
+    def multipartRanges(ranges: Seq[ByteRange], entity: HttpEntity.NonEmpty) = {
+      val iRanges = ranges.map(indexRange(entity.data.length))
+      val bodyParts = coalesceRanges(iRanges).map(ir ⇒ BodyPart(ir(entity), ir.contentRangeHeader(entity) :: Nil))
+      MultipartByteRanges(bodyParts)
+    }
+
+    def rangeResponse(range: ByteRange, entity: HttpEntity.NonEmpty, headers: List[HttpHeader]) = {
+      val aiRange = indexRange(entity.data.length)(range)
+      HttpResponse(PartialContent, aiRange(entity), aiRange.contentRangeHeader(entity) :: headers)
+    }
+
+    def satisfiable(entityLength: Long)(range: ByteRange): Boolean =
+      range match {
+        case ByteRange.Slice(firstPos, _)   ⇒ firstPos < entityLength
+        case ByteRange.FromOffset(firstPos) ⇒ firstPos < entityLength
+        case ByteRange.Suffix(length)       ⇒ length > 0
+      }
+
+    def applyRanges(ranges: Seq[ByteRange]): Directive0 =
+      mapRequestContext { ctx ⇒
+        ctx.withRouteResponseHandling {
+          case HttpResponse(OK, entity: HttpEntity.NonEmpty, headers, protocol) ⇒
+            ranges.filter(satisfiable(entity.data.length)) match {
+              case Nil                   ⇒ ctx.reject(UnsatisfiableRangeRejection(ranges, entity.data.length))
+              case Seq(satisfiableRange) ⇒ ctx.complete(rangeResponse(satisfiableRange, entity, headers))
+              case satisfiableRanges     ⇒ ctx.complete(PartialContent, headers, multipartRanges(satisfiableRanges, entity))
+            }
         }
       }
 
+    def rangeHeaderOfGetRequests(ctx: RequestContext): Option[Range] =
+      if (ctx.request.method == HttpMethods.GET) ctx.request.header[Range] else None
+
+    extract(rangeHeaderOfGetRequests).flatMap[HNil] {
+      case Some(Range(RangeUnit.Bytes, ranges)) ⇒
+        if (ranges.size <= rangeCountLimit) applyRanges(ranges) & RangeDirectives.respondWithAcceptByteRangesHeader
+        else reject(TooManyRangesRejection(rangeCountLimit))
+      case _ ⇒ MethodDirectives.get & RangeDirectives.respondWithAcceptByteRangesHeader | pass
     }
   }
-
-  private def completeWithMultipartByteRanges(ctx: RequestContext, rangeCoalesceThreshold: Long, satisfiableRanges: Seq[ByteRangeSetEntry],
-                                              responseEntity: HttpEntity.NonEmpty, responseHeaders: List[HttpHeader]): Unit = {
-    val responseEntityLength = responseEntity.data.length
-    val appliedRanges = satisfiableRanges.map(applyRange(responseEntityLength))
-    val coalescedRanges = coalesceRanges(rangeCoalesceThreshold)(appliedRanges)
-    val bodyParts = coalescedRanges.map(r ⇒
-      ByteRangePart(HttpEntity(responseEntity.contentType, responseEntity.data.slice(r.fromIndex, r.length)),
-        Seq(`Content-Range`(ContentRange(r.fromIndex, r.toIndex - 1, Some(responseEntityLength))))))
-    ctx.complete(PartialContent, responseHeaders, MultipartByteRanges(bodyParts))
-  }
-
-  private def completeWithSingleByteRange(ctx: RequestContext, satisfiableRange: ByteRangeSetEntry, responseEntity: HttpEntity.NonEmpty, responseHeaders: List[HttpHeader]): Unit = {
-    val responseEntityLength = responseEntity.data.length
-    val appliedRange = applyRange(responseEntityLength)(satisfiableRange)
-    val contentRangeHeader: HttpHeader = `Content-Range`(ContentRange(appliedRange.fromIndex, appliedRange.toIndex - 1, Some(responseEntityLength)))
-    val partialData = responseEntity.data.slice(appliedRange.fromIndex, appliedRange.length)
-    val partialEntity = HttpEntity(responseEntity.contentType, partialData)
-    val partialResponse = HttpResponse(status = PartialContent, headers = contentRangeHeader :: responseHeaders, entity = partialEntity)
-    ctx.complete(partialResponse)
-  }
-
-  private case class AppliedIndexRange(fromIndex: Long, toIndex: Long) {
-    val length: Long = toIndex - fromIndex
-    def shortestDistanceTo(other: AppliedIndexRange): Long = {
-      math.max(0L,
-        if (fromIndex <= other.fromIndex) {
-          other.fromIndex - toIndex
-        } else {
-          fromIndex - other.toIndex
-        })
-    }
-    def mergeWith(other: AppliedIndexRange): AppliedIndexRange =
-      AppliedIndexRange(math.min(fromIndex, other.fromIndex), math.max(toIndex, other.toIndex))
-  }
-
-  private def applyRange(entityLength: Long)(range: ByteRangeSetEntry): AppliedIndexRange = {
-    range match {
-      case ByteRange(from, None)         ⇒ AppliedIndexRange(from, entityLength)
-      case ByteRange(from, Some(to))     ⇒ AppliedIndexRange(from, math.min(to + 1, entityLength))
-      case SuffixByteRange(suffixLength) ⇒ AppliedIndexRange(math.max(0, entityLength - suffixLength), entityLength)
-    }
-  }
-
-  /**
-   * When multiple ranges are requested, a server may coalesce any of the ranges that overlap or that are separated
-   * by a gap that is smaller than the overhead of sending multiple parts, regardless of the order in which the
-   * corresponding byte-range-spec appeared in the received Range header field. Since the typical overhead between
-   * parts of a multipart/byteranges payload is around 80 bytes, depending on the selected representation's
-   * media type and the chosen boundary parameter length, it can be less efficient to transfer many small
-   * disjoint parts than it is to transfer the entire selected representation.
-   */
-  private def coalesceRanges(threshold: Long)(ranges: Seq[AppliedIndexRange]): Seq[AppliedIndexRange] = {
-    ranges.foldLeft(Seq.empty[AppliedIndexRange]) { (akku, next) ⇒
-      val (mergeCandidates, otherCandidates) = akku.partition(_.shortestDistanceTo(next) <= threshold)
-      val merged = mergeCandidates.foldLeft(next)((a, b) ⇒ a.mergeWith(b))
-      otherCandidates :+ merged
-    }
-  }
-
-  /**
-   * If a valid byte-range-set includes at least one byte-range-spec with a first-byte-pos that is
-   * less than the current length of the representation, or at least one suffix-byte-range-spec
-   * with a non-zero suffix-length, then the byte-range-set is satisfiable.
-   */
-  private def satisfiableRange(entityLength: Long)(range: ByteRangeSetEntry) = range match {
-    case ByteRange(firstBytePosition, _) if firstBytePosition >= entityLength ⇒ false
-    case SuffixByteRange(0) ⇒ false
-    case _ ⇒ true
-  }
-
 }
 
-object RangeDirectives extends RangeDirectives
+object RangeDirectives extends RangeDirectives {
+  private val respondWithAcceptByteRangesHeader: Directive0 =
+    RespondWithDirectives.respondWithHeader(`Accept-Ranges`(RangeUnit.Bytes))
+
+  class WithRangeSupportMagnet(val rangeCountLimit: Int, val rangeCoalescingThreshold: Long)(implicit m: Marshaller[MultipartByteRanges])
+  object WithRangeSupportMagnet {
+    implicit def fromSettings(u: Unit)(implicit settings: RoutingSettings, m: Marshaller[MultipartByteRanges]) =
+      new WithRangeSupportMagnet(settings.rangeCountLimit, settings.rangeCoalescingThreshold)
+    implicit def fromCountLimitAndCoalescingThreshold(t: (Int, Long))(implicit m: Marshaller[MultipartByteRanges]) =
+      new WithRangeSupportMagnet(t._1, t._2)
+  }
+}
 

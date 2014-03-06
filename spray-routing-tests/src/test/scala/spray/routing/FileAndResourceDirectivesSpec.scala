@@ -24,8 +24,6 @@ import spray.util._
 import MediaTypes._
 import HttpHeaders._
 import HttpCharsets._
-import spray.http.ContentRange
-import spray.http.SuffixByteRange
 
 class FileAndResourceDirectivesSpec extends RoutingSpec {
 
@@ -33,7 +31,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     """spray.routing {
       |  file-chunking-threshold-size = 16
       |  file-chunking-chunk-size = 8
-      |  range-coalesce-threshold = 1
+      |  range-coalescing-threshold = 1
       |}""".stripMargin
 
   "getFromFile" should {
@@ -48,50 +46,54 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     }
     "return the file content with the MediaType matching the file extension" in {
       val file = File.createTempFile("sprayTest", ".PDF")
-      FileUtils.writeAllText("This is PDF", file)
-      Get() ~> getFromFile(file.getPath) ~> check {
-        mediaType === `application/pdf`
-        definedCharset === None
-        body.asString === "This is PDF"
-        headers must contain(`Last-Modified`(DateTime(file.lastModified)))
-      }
-      file.delete
+      try {
+        FileUtils.writeAllText("This is PDF", file)
+        Get() ~> getFromFile(file.getPath) ~> check {
+          mediaType === `application/pdf`
+          definedCharset === None
+          body.asString === "This is PDF"
+          headers must contain(`Last-Modified`(DateTime(file.lastModified)))
+        }
+      } finally file.delete
     }
     "return the file content with MediaType 'application/octet-stream' on unknown file extensions" in {
       val file = File.createTempFile("sprayTest", null)
-      FileUtils.writeAllText("Some content", file)
-      Get() ~> getFromFile(file) ~> check {
-        mediaType === `application/octet-stream`
-        body.asString === "Some content"
-      }
-      file.delete
+      try {
+        FileUtils.writeAllText("Some content", file)
+        Get() ~> getFromFile(file) ~> check {
+          mediaType === `application/octet-stream`
+          body.asString === "Some content"
+        }
+      } finally file.delete
     }
 
     "return a single range from a file" in {
       val file = File.createTempFile("partialTest", null)
-      FileUtils.writeAllText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", file)
-      Get() ~> addHeader(Range(ByteRange(0, 10))) ~> getFromFile(file) ~> check {
-        body.asString === "ABCDEFGHIJK"
-        status === StatusCodes.PartialContent
-        headers must contain(`Content-Range`(ContentRange(0, 10, Some(26))))
-      }
-      file.delete
+      try {
+        FileUtils.writeAllText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", file)
+        Get() ~> addHeader(Range(ByteRange(0, 10))) ~> getFromFile(file) ~> check {
+          body.asString === "ABCDEFGHIJK"
+          status === StatusCodes.PartialContent
+          headers must contain(`Content-Range`(ContentRange(0, 10, 26)))
+        }
+      } finally file.delete
     }
 
     "return multiple ranges from a file at once" in {
       val file = File.createTempFile("partialTest", null)
-      val settingsWithDisabledAutoChunking:RoutingSettings = new RoutingSettings(true, Long.MaxValue, Int.MaxValue, null, true, 10, 1)
-
+      val settingsWithDisabledAutoChunking = new RoutingSettings(true, Long.MaxValue, Int.MaxValue, null, true, 10, 1)
       try {
         FileUtils.writeAllText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", file)
-        Get() ~> addHeader(Range(ByteRange(1, 10), SuffixByteRange(10))) ~> getFromFile(file, ContentTypes.`text/plain`)(settingsWithDisabledAutoChunking, actorSystem) ~> check {
+        Get() ~> addHeader(Range(ByteRange(1, 10), ByteRange.suffix(10))) ~> {
+          getFromFile(file, ContentTypes.`text/plain`)(settingsWithDisabledAutoChunking, actorSystem)
+        } ~> check {
           val parts = responseAs[MultipartByteRanges].parts
           parts.size === 2
           parts(0).entity.data.asString === "BCDEFGHIJK"
           parts(1).entity.data.asString === "QRSTUVWXYZ"
 
           status === StatusCodes.PartialContent
-          headers must not(haveOneElementLike { case `Content-Range`(_) ⇒ ok })
+          headers must not(haveOneElementLike { case `Content-Range`(_, _) ⇒ ok })
           mediaType.withParameters(Map.empty) === `multipart/byteranges`
         }
       } finally file.delete

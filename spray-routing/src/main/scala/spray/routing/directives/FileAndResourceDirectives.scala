@@ -67,7 +67,7 @@ trait FileAndResourceDirectives {
         if (file.isFile && file.canRead) {
           respondWithLastModifiedHeader(file.lastModified) {
             autoChunk(settings.fileChunkingThresholdSize, settings.fileChunkingChunkSize) {
-              withRangeSupport()(settings) {
+              withRangeSupport() {
                 complete(HttpEntity(contentType, HttpData(file)))
               }
             }

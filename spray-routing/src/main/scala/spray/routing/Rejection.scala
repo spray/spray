@@ -94,7 +94,7 @@ case class UnsupportedRequestEncodingRejection(supported: HttpEncoding) extends 
  * Signals that the request was rejected because the requests contains only unsatisfiable ByteRanges.
  * The actualEntityLength gives the client a hint to create satisfiable ByteRanges.
  */
-case class UnsatisfiableRangeRejection(unsatisfiableRanges: Seq[ByteRangeSetEntry], actualEntityLength: Long) extends Rejection
+case class UnsatisfiableRangeRejection(unsatisfiableRanges: Seq[ByteRange], actualEntityLength: Long) extends Rejection
 
 /**
  * Rejection created by range directives.
