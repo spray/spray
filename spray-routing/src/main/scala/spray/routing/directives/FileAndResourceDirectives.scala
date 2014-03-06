@@ -28,6 +28,7 @@ import HttpHeaders._
 
 /* format: OFF */
 trait FileAndResourceDirectives {
+  import CacheConditionDirectives._
   import ChunkingDirectives._
   import ExecutionDirectives._
   import MethodDirectives._
@@ -65,8 +66,8 @@ trait FileAndResourceDirectives {
     get {
       detach() {
         if (file.isFile && file.canRead) {
-          respondWithLastModifiedHeader(file.lastModified) {
-            autoChunk(settings.fileChunkingThresholdSize, settings.fileChunkingChunkSize) {
+          autoChunked.apply {
+            conditionalFor(file.length, file.lastModified).apply {
               withRangeSupport() {
                 complete(HttpEntity(contentType, HttpData(file)))
               }
@@ -76,10 +77,20 @@ trait FileAndResourceDirectives {
       }
     }
 
+  private def autoChunked(implicit settings: RoutingSettings, refFactory: ActorRefFactory): Directive0 =
+    autoChunk(settings.fileChunkingThresholdSize, settings.fileChunkingChunkSize)
+
+  private def conditionalFor(length: Long, lastModified: Long)(implicit settings: RoutingSettings): Directive0 =
+    if (settings.fileGetConditional) {
+      val tag = java.lang.Long.toHexString(lastModified ^ java.lang.Long.reverse(length))
+      val lastModifiedDateTime = DateTime(math.min(lastModified, System.currentTimeMillis))
+      conditional(EntityTag(tag), lastModifiedDateTime)
+    } else BasicDirectives.noop
+
   /**
    * Adds a Last-Modified header to all HttpResponses from its inner Route.
    */
-  def respondWithLastModifiedHeader(timestamp: Long): Directive0 =
+  def respondWithLastModifiedHeader(timestamp: Long): Directive0 = // TODO: remove when migrating to akka-http
     respondWithHeader(`Last-Modified`(DateTime(math.min(timestamp, System.currentTimeMillis))))
 
   /**
@@ -107,19 +118,24 @@ trait FileAndResourceDirectives {
           theClassLoader.getResource(resourceName) match {
             case null ⇒ reject
             case url ⇒
-              val lastModified = {
+              val (length, lastModified) = {
                 val conn = url.openConnection()
                 conn.setUseCaches(false) // otherwise the JDK will keep the JAR file open when we close!
+                val len = conn.getContentLengthLong
                 val lm = conn.getLastModified
                 conn.getInputStream.close()
-                lm
+                len -> lm
               }
               implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(contentType)
-              respondWithLastModifiedHeader(lastModified) {
-                complete {
-                  // readAllBytes closes the InputStream when done, which ends up closing the JAR file
-                  // if caching has been disabled on the connection
-                  FileUtils.readAllBytes(url.openStream())
+              autoChunked.apply { // TODO: add implicit RoutingSettings to method and use here
+                conditionalFor(length, lastModified).apply {
+                  withRangeSupport() {
+                    complete {
+                      // readAllBytes closes the InputStream when done, which ends up closing the JAR file
+                      // if caching has been disabled on the connection
+                      FileUtils.readAllBytes(url.openStream())
+                    }
+                  }
                 }
               }
           }

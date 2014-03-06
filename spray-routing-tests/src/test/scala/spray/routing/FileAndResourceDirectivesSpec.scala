@@ -81,12 +81,11 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
 
     "return multiple ranges from a file at once" in {
       val file = File.createTempFile("partialTest", null)
-      val settingsWithDisabledAutoChunking = new RoutingSettings(true, Long.MaxValue, Int.MaxValue, null, true, 10, 1)
+      implicit val settingsWithDisabledAutoChunking = new RoutingSettings(true, 0, Int.MaxValue, false, null, true, 10, 1)
       try {
         FileUtils.writeAllText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", file)
-        Get() ~> addHeader(Range(ByteRange(1, 10), ByteRange.suffix(10))) ~> {
-          getFromFile(file, ContentTypes.`text/plain`)(settingsWithDisabledAutoChunking, actorSystem)
-        } ~> check {
+        val rangeHeader = Range(ByteRange(1, 10), ByteRange.suffix(10))
+        Get() ~> addHeader(rangeHeader) ~> getFromFile(file, ContentTypes.`text/plain`) ~> check {
           val parts = responseAs[MultipartByteRanges].parts
           parts.size === 2
           parts(0).entity.data.asString === "BCDEFGHIJK"
@@ -127,10 +126,11 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
       def runCheck =
         Get() ~> route ~> check {
           mediaType === `text/html`
-          body.asString === "<p>Lorem ipsum!</p>"
+          body.asString === "<p>Lorem"
           headers must have {
             case `Last-Modified`(dt) ⇒ DateTime(2011, 7, 1) < dt && dt.clicks < System.currentTimeMillis()
           }
+          chunks.map(_.data.asString).mkString === " ipsum!</p>"
         }
 
       runCheck
