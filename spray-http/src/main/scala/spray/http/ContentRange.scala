@@ -17,31 +17,39 @@
 
 package spray.http
 
-sealed trait ContentRangeLike extends ValueRenderable {
+sealed trait ContentRange extends ValueRenderable {
   def instanceLength: Option[Long]
 }
 
-case class UnsatisfiableContentRange(instanceLength: Option[Long]) extends ContentRangeLike {
-  override def render[R <: Rendering](r: R): r.type = {
-    r ~~ "bytes */"
-    if (instanceLength.isDefined)
-      r ~~ instanceLength.get.toString
-    else
-      r ~~ '*'
+// http://tools.ietf.org/html/rfc2616#section-14.16
+object ContentRange {
+  def apply(first: Long, last: Long): Default = apply(first, last, None)
+  def apply(first: Long, last: Long, instanceLength: Long): Default = apply(first, last, Some(instanceLength))
+  def apply(first: Long, last: Long, instanceLength: Option[Long]): Default = Default(first, last, instanceLength)
+
+  /**
+   * Models a satisfiable HTTP content-range.
+   */
+  case class Default(first: Long, last: Long, instanceLength: Option[Long]) extends ContentRange {
+    require(0 <= first && first <= last, "first must be >= 0 and <= last")
+    require(instanceLength.isEmpty || instanceLength.get > last, "instanceLength must be empty or > last")
+
+    def render[R <: Rendering](r: R): r.type = {
+      r ~~ first ~~ '-' ~~ last ~~ '/'
+      if (instanceLength.isDefined) r ~~ instanceLength.get else r ~~ '*'
+    }
+  }
+
+  /**
+   * An unsatisfiable content-range.
+   */
+  case class Unsatisfiable(instanceLength: Option[Long]) extends ContentRange {
+    def render[R <: Rendering](r: R): r.type = {
+      r ~~ "*/"
+      if (instanceLength.isDefined) r ~~ instanceLength.get else r ~~ '*'
+    }
+  }
+  object Unsatisfiable extends Unsatisfiable(None) {
+    def apply(instanceLength: Long): Unsatisfiable = apply(Some(instanceLength))
   }
 }
-
-case class ContentRange(firstByte: Long, lastByte: Long, instanceLength: Option[Long]) extends ContentRangeLike {
-  require(firstByte >= 0L, "firstByte must be non negative")
-  require(firstByte <= lastByte, "firstByte must be <= lastByte")
-  require(instanceLength.isEmpty || instanceLength.get > lastByte, "instanceLength must be empty or > lastByte")
-
-  def render[R <: Rendering](r: R): r.type = {
-    r ~~ "bytes " ~~ firstByte ~~ '-' ~~ lastByte ~~ '/'
-    if (instanceLength.isDefined)
-      r ~~ instanceLength.get.toString
-    else
-      r ~~ '*'
-  }
-}
-

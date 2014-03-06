@@ -151,12 +151,12 @@ private[parser] trait ProtocolParameterRules {
 
   def OpaqueTag = rule { QuotedString }
 
-  /* 3.12 Range Units */
+  /* 3.12 Range Units */ // http://tools.ietf.org/html/rfc2616#section-3.12
 
-  def RangeUnit = rule { BytesUnit | OtherRangeUnit }
+  def `range-unit` = rule { `bytes-unit` | `other-range-unit` }
 
-  def BytesUnit = rule { ignoreCase("bytes") ~ push(spray.http.BytesUnit) }
+  def `bytes-unit` = rule { ignoreCase("bytes") ~ push(RangeUnit.Bytes) }
 
-  def OtherRangeUnit = rule { Token ~~> (spray.http.OtherRangeUnit) }
+  def `other-range-unit` = rule { Token ~~> RangeUnit.Other }
 
 }

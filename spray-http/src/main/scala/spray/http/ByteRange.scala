@@ -16,42 +16,25 @@
 
 package spray.http
 
-sealed trait ByteRangeSetEntry extends ValueRenderable
+sealed trait ByteRange extends ValueRenderable
 
 object ByteRange {
-  def apply(firstBytePosition: Long, lastBytePosition: Long): ByteRange = ByteRange(firstBytePosition, Some(lastBytePosition))
-}
+  def apply(first: Long, last: Long) = Slice(first, last)
+  def fromOffset(offset: Long) = FromOffset(offset)
+  def suffix(length: Long) = Suffix(length)
 
-case class ByteRange(firstBytePosition: Long, lastBytePosition: Option[Long] = None) extends ByteRangeSetEntry {
-  require(firstBytePosition <= lastBytePosition.getOrElse(Long.MaxValue), "firstBytePosition must be <= lastBytePosition")
+  case class Slice(first: Long, last: Long) extends ByteRange {
+    require(0 <= first && first <= last, "first must be >= 0 and <= last")
+    def render[R <: Rendering](r: R): r.type = r ~~ first ~~ '-' ~~ last
+  }
 
-  def render[R <: Rendering](r: R): r.type = r ~~ firstBytePosition.toString ~~ '-' ~~ {
-    lastBytePosition match {
-      case Some(x) ⇒ x.toString
-      case _       ⇒ ""
-    }
+  case class FromOffset(offset: Long) extends ByteRange {
+    require(0 <= offset, "offset must be >= 0")
+    def render[R <: Rendering](r: R): r.type = r ~~ offset ~~ '-'
+  }
+
+  case class Suffix(length: Long) extends ByteRange {
+    require(0 <= length, "length must be >= 0")
+    def render[R <: Rendering](r: R): r.type = r ~~ '-' ~~ length
   }
 }
-
-case class SuffixByteRange(suffixLength: Long) extends ByteRangeSetEntry {
-  def render[R <: Rendering](r: R): r.type = r ~~ '-' ~~ suffixLength.toString
-}
-
-case class MultipartByteRanges(parts: Seq[ByteRangePart])
-
-object MultipartByteRanges {
-  val Empty = MultipartByteRanges(Nil)
-}
-
-/**
- * Model for one part of a multipart/byteranges message.
- */
-case class ByteRangePart(entity: HttpEntity, headers: Seq[HttpHeader] = Nil) {
-
-  def contentRange: Option[ContentRangeLike] =
-    headers.collectFirst {
-      case contentRangeHeader: HttpHeaders.`Content-Range` ⇒ contentRangeHeader.contentRange
-    }
-
-}
-

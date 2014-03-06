@@ -97,8 +97,8 @@ class HttpHeaderSpec extends Specification {
     }
 
     "Accept-Ranges" in {
-      "Accept-Ranges: bytes" =!= `Accept-Ranges`(BytesUnit)
-      "Accept-Ranges: bytes, sausages" =!= `Accept-Ranges`(BytesUnit, OtherRangeUnit("sausages"))
+      "Accept-Ranges: bytes" =!= `Accept-Ranges`(RangeUnit.Bytes)
+      "Accept-Ranges: bytes, sausages" =!= `Accept-Ranges`(RangeUnit.Bytes, RangeUnit.Other("sausages"))
       "Accept-Ranges: none" =!= `Accept-Ranges`(Nil)
     }
 
@@ -194,9 +194,9 @@ class HttpHeaderSpec extends Specification {
     }
 
     "Content-Range" in {
-      "Content-Range: bytes 0-9/10" =!= `Content-Range`(ContentRange(0, 9, Some(10)))
-      "Content-Range: bytes 1-42/*" =!= `Content-Range`(ContentRange(1, 42, None))
-      "Content-Range: bytes */*" =!= `Content-Range`(UnsatisfiableContentRange(None))
+      "Content-Range: bytes 0-9/10" =!= `Content-Range`(ContentRange(0, 9, 10))
+      "Content-Range: bytes 1-42/*" =!= `Content-Range`(ContentRange(1, 42))
+      "Content-Range: bytes */*" =!= `Content-Range`(ContentRange.Unsatisfiable)
     }
 
     "Cookie" in {
@@ -273,9 +273,9 @@ class HttpHeaderSpec extends Specification {
 
     "Range" in {
       "Range: bytes=0-1" =!= Range(ByteRange(0, 1))
-      "Range: bytes=0-" =!= Range(ByteRange(0, None))
-      "Range: bytes=-1" =!= Range(SuffixByteRange(1L))
-      "Range: bytes=0-1, 2-3, -99" =!= Range(ByteRange(0, 1), ByteRange(2, 3), SuffixByteRange(99))
+      "Range: bytes=0-" =!= Range(ByteRange.fromOffset(0))
+      "Range: bytes=-1" =!= Range(ByteRange.suffix(1))
+      "Range: bytes=0-1, 2-3, -99" =!= Range(ByteRange(0, 1), ByteRange(2, 3), ByteRange.suffix(99))
     }
 
     "Set-Cookie" in {

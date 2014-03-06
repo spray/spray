@@ -125,6 +125,7 @@ object HttpHeaders {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ methods
     protected def companion = `Access-Control-Allow-Methods`
   }
+
   object `Access-Control-Allow-Origin` extends ModeledCompanion
   case class `Access-Control-Allow-Origin`(allowedOrigins: AllowedOrigins) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ allowedOrigins
@@ -179,10 +180,7 @@ object HttpHeaders {
   }
   case class `Accept-Ranges`(acceptRanges: Seq[RangeUnit]) extends ModeledHeader {
     import `Accept-Ranges`.acceptRangesRenderer
-    def renderValue[R <: Rendering](r: R): r.type = {
-      if (acceptRanges.isEmpty) r ~~ "none"
-      else r ~~ acceptRanges
-    }
+    def renderValue[R <: Rendering](r: R): r.type = if (acceptRanges.isEmpty) r ~~ "none" else r ~~ acceptRanges
     protected def companion = `Accept-Ranges`
   }
 
@@ -242,9 +240,11 @@ object HttpHeaders {
     protected def companion = `Content-Length`
   }
 
-  object `Content-Range` extends ModeledCompanion
-  case class `Content-Range`(contentRange: ContentRangeLike) extends ModeledHeader {
-    def renderValue[R <: Rendering](r: R): r.type = r ~~ contentRange
+  object `Content-Range` extends ModeledCompanion {
+    def apply(contentRange: ContentRange): `Content-Range` = apply(RangeUnit.Bytes, contentRange)
+  }
+  case class `Content-Range`(rangeUnit: RangeUnit, contentRange: ContentRange) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ rangeUnit ~~ ' ' ~~ contentRange
     protected def companion = `Content-Range`
   }
 
@@ -315,13 +315,13 @@ object HttpHeaders {
   }
 
   object Range extends ModeledCompanion {
-    def apply(first: ByteRangeSetEntry, more: ByteRangeSetEntry*): Range = Range(first +: more)
-    implicit val rangesRenderer = Renderer.defaultSeqRenderer[ByteRangeSetEntry] // cache
+    def apply(first: ByteRange, more: ByteRange*): Range = apply(first +: more)
+    def apply(ranges: Seq[ByteRange]): Range = Range(RangeUnit.Bytes, ranges)
+    implicit val rangesRenderer = Renderer.defaultSeqRenderer[ByteRange] // cache
   }
-
-  case class Range(ranges: Seq[ByteRangeSetEntry]) extends ModeledHeader {
+  case class Range(rangeUnit: RangeUnit, ranges: Seq[ByteRange]) extends ModeledHeader {
     import Range.rangesRenderer
-    def renderValue[R <: Rendering](r: R): r.type = r ~~ "bytes=" ~~ ranges
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ rangeUnit ~~ '=' ~~ ranges
     protected def companion = Range
   }
 
