@@ -44,10 +44,10 @@ class FormDataUnmarshallersSpec extends Specification {
           MultipartContent(
             Seq(
               BodyPart(
-                HttpEntity(ContentType(`text/plain`, Some(`UTF-8`)), "test@there.com"),
+                HttpEntity(ContentTypes.`text/plain(UTF-8)`, "test@there.com"),
                 List(
                   `Content-Disposition`("form-data", Map("name" -> "email")),
-                  `Content-Type`(ContentType(`text/plain`, Some(`UTF-8`)))))))
+                  `Content-Type`(ContentTypes.`text/plain(UTF-8)`)))))
         }
     }
     "correctly unmarshal multipart content with two different parts" in {
@@ -69,12 +69,38 @@ class FormDataUnmarshallersSpec extends Specification {
                 HttpEntity(`application/octet-stream`, "filecontent"),
                 List(
                   RawHeader("Content-Transfer-Encoding", "binary"),
-                  `Content-Type`(ContentType(`application/octet-stream`))))))
+                  `Content-Type`(ContentTypes.`application/octet-stream`)))))
         }
     }
     "reject illegal multipart content" in {
       val Left(MalformedContent(msg, _)) = HttpEntity(`multipart/mixed` withBoundary "12345", "--noob").as[MultipartContent]
       msg === "Missing start boundary"
+    }
+  }
+
+  "The MultipartByteRangesUnmarshaller" should {
+    "correctly unmarshal multipart/byteranges content with two different parts" in {
+      HttpEntity(`multipart/byteranges` withBoundary "12345",
+        """|--12345
+          |Content-Range: bytes 0-2/26
+          |Content-Type: text/plain
+          |
+          |ABC
+          |--12345
+          |Content-Range: bytes 23-25/26
+          |Content-Type: text/plain
+          |
+          |XYZ
+          |--12345--""".stripMarginWithNewline("\r\n")).as[MultipartByteRanges] === Right {
+          MultipartByteRanges(
+            Seq(
+              BodyPart(
+                HttpEntity(ContentTypes.`text/plain`, "ABC"),
+                List(`Content-Type`(ContentTypes.`text/plain`), `Content-Range`(ContentRange(0, 2, 26)))),
+              BodyPart(
+                HttpEntity(ContentTypes.`text/plain`, "XYZ"),
+                List(`Content-Type`(ContentTypes.`text/plain`), `Content-Range`(ContentRange(23, 25, 26))))))
+        }
     }
   }
 
