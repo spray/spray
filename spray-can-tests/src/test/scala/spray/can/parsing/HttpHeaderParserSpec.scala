@@ -185,6 +185,7 @@ class HttpHeaderParserSpec extends Specification {
 
     "parse and cache an invalid modelled header as RawHeader" in new TestSetup() {
       parseAndCache("Content-Type: abc:123\r\nx")() === RawHeader("Content-Type", "abc:123")
+      parseAndCache("Origin: localhost:8080\r\nx")() === RawHeader("Origin", "localhost:8080")
     }
 
     "parse and cache a raw header" in new TestSetup(primed = false) {
