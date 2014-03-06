@@ -103,13 +103,14 @@ object SubNode {
         }
       val children: Seq[ContentNode] = {
         val other = Main.settings.otherVersions map { v ⇒
-          SphinxDoc.load(s"documentation-$v/index/") match {
+          val vv = v.takeWhile(_ != ' ')
+          SphinxDoc.load(s"documentation-$vv/index/") match {
             case Some(d) ⇒
-              new BranchRootNode("Documentation » " + v, v, DOC_URI + v + '/', "documentation-" + v, d, v) {
+              new BranchRootNode("Documentation » " + v, v, DOC_URI + vv + '/', "documentation-" + vv, d, vv) {
                 def isRoot = false
                 def parent = docRoot
               }
-            case None ⇒ sys.error(s"index.fjson for documentation version $v not found")
+            case None ⇒ sys.error(s"index.fjson for documentation version $vv not found")
           }
         }
         val nodes = other ++ APIDocNode.findFor(_parent, Main.settings.mainVersion) :+ SubNode(this, Main.settings.mainVersion)(li)

@@ -14,7 +14,7 @@ object VersionTools {
     case _                                 ⇒ UnknownVersion(name)
   }
 
-  private val FinalVersionP = """(\d+\.\d+\.\d+)""".r
+  private val FinalVersionP = """(\d+\.\d+\.\d+).*""".r
   private val SnapshotVersionP = """(.+)-SNAPSHOT""".r
   private val SuffixedVersionP = """([^-]+)-(.+)""".r
 }
