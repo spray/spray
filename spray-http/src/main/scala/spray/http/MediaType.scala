@@ -81,12 +81,12 @@ object MediaRange {
     def mainType = mediaType.mainType
     def parameters = mediaType.parameters
     override def isApplication = mediaType.isApplication
-    override def isAudio = mediaType.isApplication
-    override def isImage = mediaType.isApplication
-    override def isMessage = mediaType.isApplication
-    override def isMultipart = mediaType.isApplication
-    override def isText = mediaType.isApplication
-    override def isVideo = mediaType.isApplication
+    override def isAudio = mediaType.isAudio
+    override def isImage = mediaType.isImage
+    override def isMessage = mediaType.isMessage
+    override def isMultipart = mediaType.isMultipart
+    override def isText = mediaType.isText
+    override def isVideo = mediaType.isVideo
     def matches(mediaType: MediaType) =
       this.mediaType.mainType == mediaType.mainType && this.mediaType.subType == mediaType.subType
     def withParameters(parameters: Map[String, String]) = copy(mediaType = mediaType.withParameters(parameters))
