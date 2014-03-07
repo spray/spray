@@ -180,6 +180,7 @@ class UriSpec extends Specification {
       Path("/%2F%5C") === Path / """/\"""
       Path("/:foo:/") === Path / ":foo:" / ""
       Path("%2520").head === "%20"
+      Path("/foo%20bar") === Path / "foo bar"
     }
     "support the `startsWith` predicate" in {
       Empty startsWith Empty must beTrue

@@ -125,6 +125,7 @@ object HttpHeaders {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ methods
     protected def companion = `Access-Control-Allow-Methods`
   }
+
   object `Access-Control-Allow-Origin` extends ModeledCompanion
   case class `Access-Control-Allow-Origin`(allowedOrigins: AllowedOrigins) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ allowedOrigins
@@ -171,6 +172,16 @@ object HttpHeaders {
     import Allow.methodsRenderer
     def renderValue[R <: Rendering](r: R): r.type = r ~~ methods
     protected def companion = Allow
+  }
+
+  object `Accept-Ranges` extends ModeledCompanion {
+    def apply(first: RangeUnit, more: RangeUnit*): `Accept-Ranges` = apply(first +: more)
+    implicit val acceptRangesRenderer = Renderer.defaultSeqRenderer[RangeUnit] // cache
+  }
+  case class `Accept-Ranges`(acceptRanges: Seq[RangeUnit]) extends ModeledHeader {
+    import `Accept-Ranges`.acceptRangesRenderer
+    def renderValue[R <: Rendering](r: R): r.type = if (acceptRanges.isEmpty) r ~~ "none" else r ~~ acceptRanges
+    protected def companion = `Accept-Ranges`
   }
 
   object Authorization extends ModeledCompanion
@@ -227,6 +238,14 @@ object HttpHeaders {
   case class `Content-Length`(length: Long)(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ length
     protected def companion = `Content-Length`
+  }
+
+  object `Content-Range` extends ModeledCompanion {
+    def apply(contentRange: ContentRange): `Content-Range` = apply(RangeUnit.Bytes, contentRange)
+  }
+  case class `Content-Range`(rangeUnit: RangeUnit, contentRange: ContentRange) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ rangeUnit ~~ ' ' ~~ contentRange
+    protected def companion = `Content-Range`
   }
 
   object `Content-Type` extends ModeledCompanion
@@ -293,6 +312,17 @@ object HttpHeaders {
   case class Origin(originList: Seq[HttpOrigin]) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ originList
     protected def companion = Origin
+  }
+
+  object Range extends ModeledCompanion {
+    def apply(first: ByteRange, more: ByteRange*): Range = apply(first +: more)
+    def apply(ranges: Seq[ByteRange]): Range = Range(RangeUnit.Bytes, ranges)
+    implicit val rangesRenderer = Renderer.defaultSeqRenderer[ByteRange] // cache
+  }
+  case class Range(rangeUnit: RangeUnit, ranges: Seq[ByteRange]) extends ModeledHeader {
+    import Range.rangesRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ rangeUnit ~~ '=' ~~ ranges
+    protected def companion = Range
   }
 
   object `Proxy-Authenticate` extends ModeledCompanion {

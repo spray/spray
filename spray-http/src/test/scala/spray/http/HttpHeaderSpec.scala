@@ -96,6 +96,12 @@ class HttpHeaderSpec extends Specification {
       "Access-Control-Request-Method: POST" =!= `Access-Control-Request-Method`(POST)
     }
 
+    "Accept-Ranges" in {
+      "Accept-Ranges: bytes" =!= `Accept-Ranges`(RangeUnit.Bytes)
+      "Accept-Ranges: bytes, sausages" =!= `Accept-Ranges`(RangeUnit.Bytes, RangeUnit.Other("sausages"))
+      "Accept-Ranges: none" =!= `Accept-Ranges`(Nil)
+    }
+
     "Accept-Encoding" in {
       "Accept-Encoding: compress, gzip, fancy" =!=
         `Accept-Encoding`(compress, gzip, HttpEncoding.custom("fancy"))
@@ -187,6 +193,12 @@ class HttpHeaderSpec extends Specification {
         `Content-Type`(ContentType(MediaType.custom("application", "*", allowArbitrarySubtypes = true)))
     }
 
+    "Content-Range" in {
+      "Content-Range: bytes 0-9/10" =!= `Content-Range`(ContentRange(0, 9, 10))
+      "Content-Range: bytes 1-42/*" =!= `Content-Range`(ContentRange(1, 42))
+      "Content-Range: bytes */*" =!= `Content-Range`(ContentRange.Unsatisfiable)
+    }
+
     "Cookie" in {
       "Cookie: SID=31d4d96e407aad42" =!= Cookie(HttpCookie("SID", "31d4d96e407aad42"))
       "Cookie: SID=31d4d96e407aad42; lang=en>US" =!= Cookie(HttpCookie("SID", "31d4d96e407aad42"), HttpCookie("lang", "en>US"))
@@ -257,6 +269,13 @@ class HttpHeaderSpec extends Specification {
 
     "Transfer-Encoding" in {
       "Transfer-Encoding: chunked" =!= `Transfer-Encoding`("chunked")
+    }
+
+    "Range" in {
+      "Range: bytes=0-1" =!= Range(ByteRange(0, 1))
+      "Range: bytes=0-" =!= Range(ByteRange.fromOffset(0))
+      "Range: bytes=-1" =!= Range(ByteRange.suffix(1))
+      "Range: bytes=0-1, 2-3, -99" =!= Range(ByteRange(0, 1), ByteRange(2, 3), ByteRange.suffix(99))
     }
 
     "Set-Cookie" in {
