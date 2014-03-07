@@ -2,7 +2,8 @@ package docs.directives
 
 import spray.http.StatusCodes._
 import spray.http.HttpHeaders._
-import spray.http.HttpHeader
+import spray.http.{HttpOrigin, HttpHeader}
+import spray.routing.MissingHeaderRejection
 
 class HeaderDirectivesExamplesSpec extends DirectivesSpec {
   "headerValueByName-0" in {
@@ -55,6 +56,42 @@ class HeaderDirectivesExamplesSpec extends DirectivesSpec {
     Get("/") ~> sealRoute(route) ~> check {
       status === NotFound
       responseAs[String] === "The requested resource could not be found."
+    }
+  }
+  "headerValueByType-0" in {
+    val route =
+      headerValueByType[Origin]() { origin ⇒
+        complete(s"The first origin was ${origin.originList.head}")
+      }
+
+    val originHeader = Origin(Seq(HttpOrigin("http://localhost:8080")))
+
+    // extract a header if the type is matching
+    Get("abc") ~> originHeader ~> route ~> check {
+      responseAs[String] === "The first origin was http://localhost:8080"
+    }
+
+    // reject a request if no header of the given type is present
+    Get("abc") ~> route ~> check {
+      rejection must beLike { case MissingHeaderRejection("Origin") ⇒ ok }
+    }
+  }
+  "optionalHeaderValueByType-0" in {
+    val route =
+      optionalHeaderValueByType[Origin]() {
+        case Some(origin) ⇒ complete(s"The first origin was ${origin.originList.head}")
+        case None         ⇒ complete("No Origin header found.")
+      }
+
+    val originHeader = Origin(Seq(HttpOrigin("http://localhost:8080")))
+    // extract Some(header) if the type is matching
+    Get("abc") ~> originHeader ~> route ~> check {
+      responseAs[String] === "The first origin was http://localhost:8080"
+    }
+
+    // extract None if no header of the given type is present
+    Get("abc") ~> route ~> check {
+      responseAs[String] === "No Origin header found."
     }
   }
 }

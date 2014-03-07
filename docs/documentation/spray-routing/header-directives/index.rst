@@ -11,7 +11,9 @@ response headers use one of the :ref:`RespondWithDirectives`.
 
    headerValue
    headerValueByName
+   headerValueByType
    headerValuePF
    optionalHeaderValue
    optionalHeaderValueByName
+   optionalHeaderValueByType
    optionalHeaderValuePF

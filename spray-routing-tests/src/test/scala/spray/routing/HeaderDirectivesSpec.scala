@@ -43,6 +43,24 @@ class HeaderDirectivesSpec extends RoutingSpec {
     }
   }
 
+  "The headerValueByType directive" should {
+    val route =
+      headerValueByType[Origin]() { origin ⇒
+        complete(s"The first origin was ${origin.originList.head}")
+      }
+    "extract a header if the type is matching" in {
+      val originHeader = Origin(Seq(HttpOrigin("http://localhost:8080")))
+      Get("abc") ~> originHeader ~> route ~> check {
+        responseAs[String] === "The first origin was http://localhost:8080"
+      }
+    }
+    "reject a request if no header of the given type is present" in {
+      Get("abc") ~> route ~> check {
+        rejection must beLike { case MissingHeaderRejection("Origin") ⇒ ok }
+      }
+    }
+  }
+
   "The optionalHeaderValue directive" should {
     val myHeaderValue = optionalHeaderValue {
       case Connection(tokens) ⇒ Some(tokens.head)
@@ -69,4 +87,22 @@ class HeaderDirectivesSpec extends RoutingSpec {
     }
   }
 
+  "The optionalHeaderValueByType directive" should {
+    val route =
+      optionalHeaderValueByType[Origin]() {
+        case Some(origin) ⇒ complete(s"The first origin was ${origin.originList.head}")
+        case None         ⇒ complete("No Origin header found.")
+      }
+    "extract Some(header) if the type is matching" in {
+      val originHeader = Origin(Seq(HttpOrigin("http://localhost:8080")))
+      Get("abc") ~> originHeader ~> route ~> check {
+        responseAs[String] === "The first origin was http://localhost:8080"
+      }
+    }
+    "extract None if no header of the given type is present" in {
+      Get("abc") ~> route ~> check {
+        responseAs[String] === "No Origin header found."
+      }
+    }
+  }
 }
