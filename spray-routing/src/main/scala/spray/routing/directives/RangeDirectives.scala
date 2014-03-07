@@ -34,7 +34,12 @@ trait RangeDirectives {
    * This directive is transparent to non-GET requests
    * Rejects requests with unsatisfiable ranges `UnsatisfiableRangeRejection`.
    * Rejects requests with too many expected ranges.
-   * @see rfc2616 14.35.2
+   *
+   * Note: if you want to combine this directive with `conditional(...)` you need to put
+   * it on the *inside* of the `conditional(...)` directive, i.e. `conditional(...)` must be
+   * on a higher level in your route structure in order to function correctly.
+   *
+   * @see https://datatracker.ietf.org/doc/draft-ietf-httpbis-p5-range/
    */
   def withRangeSupport(m: RangeDirectives.WithRangeSupportMagnet): Directive0 = {
     import m._
