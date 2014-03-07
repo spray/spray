@@ -43,6 +43,10 @@ private[parser] trait RangeHeaders {
 
   def InstanceLength = rule { ch('/') ~ (longExpression ~~> (Some(_)) | ch('*') ~ push(None)) }
 
+  // http://tools.ietf.org/html/rfc2616#section-14.27
+
+  def `*If-Range` = rule { (EntityTag ~~> (Left(_)) | HttpDate ~~> (Right(_))) ~ EOI ~~> (HttpHeaders.`If-Range`(_)) }
+
   // http://tools.ietf.org/html/rfc2616#section-14.35.1
 
   def `*Range` = rule(`ranges-specifier` ~ EOI ~~> (HttpHeaders.Range(_, _)))

@@ -50,12 +50,10 @@ private[parser] trait CacheControlHeader {
 
   def FieldNames = rule { oneOrMore(QuotedString, separator = ListSep) }
 
-  def ETagDef = rule { EntityTag ~~> ((weak, tag) ⇒ http.EntityTag(tag, weak)) }
-
   def OpaqueTagDef = rule { OpaqueTag ~~> (http.EntityTag(_, weak = false)) }
 
   // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.19
-  def `*ETag` = rule { ETagDef ~ EOI ~~> (ETag(_)) }
+  def `*ETag` = rule { EntityTag ~ EOI ~~> (ETag(_)) }
 
   // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.24
   def `*If-Match` = rule {
@@ -69,7 +67,7 @@ private[parser] trait CacheControlHeader {
   // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.26
   def `*If-None-Match` = rule {
     "*" ~ push(`If-None-Match`.`*`) |
-      oneOrMore(ETagDef, separator = ListSep) ~ EOI ~~> (tags ⇒ `If-None-Match`(EntityTagRange(tags)))
+      oneOrMore(EntityTag, separator = ListSep) ~ EOI ~~> (tags ⇒ `If-None-Match`(EntityTagRange(tags)))
   }
 
   // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.28

@@ -147,7 +147,7 @@ private[parser] trait ProtocolParameterRules {
 
   /* 3.11 Entity Tags */
 
-  def EntityTag = rule { ("W/" ~ push(true) | push(false)) ~ OpaqueTag }
+  def EntityTag = rule { ("W/" ~ push(true) | push(false)) ~ OpaqueTag ~~> ((weak, tag) ⇒ spray.http.EntityTag(tag, weak)) }
 
   def OpaqueTag = rule { QuotedString }
 

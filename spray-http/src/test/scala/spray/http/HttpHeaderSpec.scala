@@ -256,6 +256,11 @@ class HttpHeaderSpec extends Specification {
       """If-None-Match: W/"938fz3f83z3z38z"""" =!= `If-None-Match`(EntityTag("938fz3f83z3z38z", weak = true))
     }
 
+    "If-Range" in {
+      """If-Range: "abcdefg"""" =!= `If-Range`(Left(EntityTag("abcdefg")))
+      """If-Range: Wed, 13 Jul 2011 08:12:31 GMT""" =!= `If-Range`(Right(DateTime(2011, 7, 13, 8, 12, 31)))
+    }
+
     "If-Unmodified-Since" in {
       "If-Unmodified-Since: Wed, 13 Jul 2011 08:12:31 GMT" =!= `If-Unmodified-Since`(DateTime(2011, 7, 13, 8, 12, 31))
     }

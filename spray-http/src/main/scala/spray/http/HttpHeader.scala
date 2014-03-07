@@ -330,6 +330,16 @@ object HttpHeaders {
     protected def companion = `If-None-Match`
   }
 
+  object `If-Range` extends ModeledCompanion
+  case class `If-Range`(entityTagOrDateTime: Either[EntityTag, DateTime]) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): r.type =
+      entityTagOrDateTime match {
+        case Left(tag)       ⇒ r ~~ tag
+        case Right(dateTime) ⇒ dateTime.renderRfc1123DateTimeString(r)
+      }
+    protected def companion = `If-Range`
+  }
+
   object `If-Unmodified-Since` extends ModeledCompanion
   case class `If-Unmodified-Since`(date: DateTime) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = date.renderRfc1123DateTimeString(r)
