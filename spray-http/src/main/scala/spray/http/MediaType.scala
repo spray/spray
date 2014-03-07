@@ -379,6 +379,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   val `image/x-rgb`       = img("x-rgb", compressible, binary, "rgb")
   val `image/x-xbitmap`   = img("x-xbitmap", compressible, binary, "xbm")
   val `image/x-xpixmap`   = img("x-xpixmap", compressible, binary, "xpm")
+  val `image/webp`        = img("webp", uncompressible, binary, "webp")
 
   val `message/http`            = msg("http")
   val `message/delivery-status` = msg("delivery-status")
