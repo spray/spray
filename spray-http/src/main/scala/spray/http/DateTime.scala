@@ -214,16 +214,31 @@ object DateTime {
 
   /**
    * Creates a new DateTime instance from the given String,
-   * if it adheres to the format `yyyy-mm-ddThh:mm:ss`.
+   * if it adheres to the format `yyyy-mm-ddThh:mm:ss[.ms][Z]`.
+   * Note that the implementation will strip off the milliseconds.
    */
   def fromIsoDateTimeString(string: String): Option[DateTime] = {
-    def c(ix: Int) = string.charAt(ix)
+    val l = string.length
+
+    def c(ix: Int) = {
+      if (ix >= 0) string.charAt(ix)
+      else string.charAt(l + ix)
+    }
     def i(ix: Int) = {
       val x = c(ix)
       require('0' <= x && x <= '9')
       x - '0'
     }
-    if (string.length == 19 && c(4) == '-' && c(7) == '-' && c(10) == 'T' && c(13) == ':' && c(16) == ':') {
+    def is_i(ix: Int) = {
+      val x = c(ix)
+      '0' <= x && x <= '9'
+    }
+
+    val check1 = l >= 19 && (c(4) == '-' && c(7) == '-' && c(10) == 'T' && c(13) == ':' && c(16) == ':')
+    val check2 = l <= 19 || (c(19) == '.' && (20 until l - 1).forall(ix ⇒ is_i(ix)))
+    val check3 = l <= 20 || (c(-1) == 'Z' || is_i(-1))
+
+    if (check1 && check2 && check3) {
       try {
         val year = i(0) * 1000 + i(1) * 100 + i(2) * 10 + i(3)
         val month = i(5) * 10 + i(6)
