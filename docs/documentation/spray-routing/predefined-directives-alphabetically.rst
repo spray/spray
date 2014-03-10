@@ -73,6 +73,7 @@ Directive                              Description
 :ref:`-headerValue-`                   Extracts an HTTP header value using a given function, rejects if no value can
                                        be extracted
 :ref:`-headerValueByName-`             Extracts an HTTP header value by selecting a header by name
+:ref:`-headerValueByType-`             Extracts an HTTP header value by selecting a header by type
 :ref:`-headerValuePF-`                 Same as :ref:`-headerValue-`, but with a ``PartialFunction``
 :ref:`-hextract-`                      Extracts an ``HList`` of values from the ``RequestContext`` using a function
 :ref:`-host-`                          Rejects all requests with a hostname different from a given definition,
@@ -114,6 +115,7 @@ Directive                              Description
                                        request extracts ``None``
 :ref:`-optionalHeaderValue-`           Extracts an optional HTTP header value using a given function
 :ref:`-optionalHeaderValueByName-`     Extracts an optional HTTP header value by selecting a header by name
+:ref:`-optionalHeaderValueByType-`     Extracts an optional HTTP header value by selecting a header by type
 :ref:`-optionalHeaderValuePF-`         Extracts an optional HTTP header value using a given partial function
 :ref:`-options-`                       Rejects all non-OPTIONS requests
 :ref:`-parameter-`                     Extracts the value of a request query parameter, rejects if the request doesn't
