@@ -120,11 +120,12 @@ trait FileAndResourceDirectives {
             case url ⇒
               val (length, lastModified) = {
                 val conn = url.openConnection()
-                conn.setUseCaches(false) // otherwise the JDK will keep the JAR file open when we close!
-                val len = conn.getContentLengthLong
-                val lm = conn.getLastModified
-                conn.getInputStream.close()
-                len -> lm
+                try {
+                  conn.setUseCaches(false) // otherwise the JDK will keep the JAR file open when we close!
+                  val len = conn.getContentLength
+                  val lm = conn.getLastModified
+                  len -> lm
+                } finally { conn.getInputStream.close() }
               }
               implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(contentType)
               autoChunked.apply { // TODO: add implicit RoutingSettings to method and use here
@@ -133,7 +134,9 @@ trait FileAndResourceDirectives {
                     complete {
                       // readAllBytes closes the InputStream when done, which ends up closing the JAR file
                       // if caching has been disabled on the connection
-                      FileUtils.readAllBytes(url.openStream())
+                      val is = url.openStream()
+                      try { FileUtils.readAllBytes(is) }
+                      finally { is.close() }
                     }
                   }
                 }
