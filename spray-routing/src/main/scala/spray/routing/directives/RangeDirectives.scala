@@ -39,7 +39,7 @@ trait RangeDirectives {
    * it on the *inside* of the `conditional(...)` directive, i.e. `conditional(...)` must be
    * on a higher level in your route structure in order to function correctly.
    *
-   * @see https://datatracker.ietf.org/doc/draft-ietf-httpbis-p5-range/
+   * @see https://tools.ietf.org/html/draft-ietf-httpbis-p5-range/
    */
   def withRangeSupport(m: RangeDirectives.WithRangeSupportMagnet): Directive0 = {
     import m._

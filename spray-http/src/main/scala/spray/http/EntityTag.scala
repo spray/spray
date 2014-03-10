@@ -19,22 +19,24 @@ package spray.http
 case class EntityTag(tag: String, weak: Boolean = false) extends ValueRenderable {
   def render[R <: Rendering](r: R): r.type = if (weak) r ~~ "W/" ~~#! tag else r ~~#! tag
 }
-
-sealed abstract class EntityTagRange extends ValueRenderable {
-  def matches(entityTag: EntityTag, weak: Boolean): Boolean
+object EntityTag {
+  def matchesRange(eTag: EntityTag, entityTagRange: EntityTagRange, weak: Boolean) = entityTagRange match {
+    case EntityTagRange.`*`           ⇒ weak || !eTag.weak
+    case EntityTagRange.Default(tags) ⇒ tags.exists(matches(eTag, _, weak))
+  }
+  def matches(eTag: EntityTag, other: EntityTag, weak: Boolean) =
+    other.tag == eTag.tag && (weak || !other.weak && !eTag.weak)
 }
+
+sealed abstract class EntityTagRange extends ValueRenderable
 object EntityTagRange {
   implicit val tagsRenderer = Renderer.defaultSeqRenderer[EntityTag] // cache
   case object `*` extends EntityTagRange {
     def render[R <: Rendering](r: R): r.type = r ~~ '*'
-    def matches(entityTag: EntityTag, weak: Boolean) = weak || !entityTag.weak
   }
   case class Default(tags: Seq[EntityTag]) extends EntityTagRange {
     require(tags.nonEmpty, "tags must not be empty")
     def render[R <: Rendering](r: R): r.type = r ~~ tags
-    def matches(entityTag: EntityTag, weak: Boolean) = tags.exists { t ⇒
-      t.tag == entityTag.tag && (weak || !t.weak && !entityTag.weak)
-    }
   }
   def apply(tags: Seq[EntityTag]) = Default(tags)
 }

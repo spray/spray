@@ -21,6 +21,7 @@ import spray.http._
 import HttpHeaders._
 import HttpMethods._
 import StatusCodes._
+import EntityTag._
 
 trait CacheConditionDirectives {
   import BasicDirectives._
@@ -58,7 +59,7 @@ trait CacheConditionDirectives {
 
         def step1() =
           header[`If-Match`] match {
-            case Some(`If-Match`(im)) ⇒ if (im.matches(eTag, weak = false)) step3() else complete412()
+            case Some(`If-Match`(im)) ⇒ if (matchesRange(eTag, im, weak = false)) step3() else complete412()
             case None                 ⇒ step2()
           }
         def step2() =
@@ -69,7 +70,7 @@ trait CacheConditionDirectives {
         def step3() =
           header[`If-None-Match`] match {
             case Some(`If-None-Match`(inm)) ⇒
-              if (!inm.matches(eTag, weak = true)) step5()
+              if (!matchesRange(eTag, inm, weak = true)) step5()
               else if (isGetOrHead) complete304() else complete412()
             case None ⇒ step4()
           }
@@ -81,13 +82,13 @@ trait CacheConditionDirectives {
             }
           } else step5()
         def step5() =
-          if (method == GET && header[Range].isDefined) {
+          if (method == GET && header[Range].isDefined)
             header[`If-Range`] match {
-              case Some(`If-Range`(Left(tag))) if tag != eTag ⇒ runInnerRouteWithRangeHeaderFilteredOut()
+              case Some(`If-Range`(Left(tag))) if matches(eTag, tag, weak = false) ⇒ runInnerRouteWithRangeHeaderFilteredOut()
               case Some(`If-Range`(Right(ims))) if !unmodified(ims) ⇒ runInnerRouteWithRangeHeaderFilteredOut()
               case _ ⇒ step6()
             }
-          } else step6()
+          else step6()
         def step6() = route(ctxWithResponseHeaders)
       }
     }
