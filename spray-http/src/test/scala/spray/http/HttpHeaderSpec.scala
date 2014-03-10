@@ -271,8 +271,8 @@ class HttpHeaderSpec extends Specification {
       """Link: <http://example.org/>; rel="start http://example.net/relation/other"""" =!= Link(Uri("http://example.org/"),
         rel("start http://example.net/relation/other"))
 
-      skipped("TODO: only one 'rel=' is allowed; http://tools.ietf.org/html/rfc5988#section-5.3 requires any subsequent ones to be skipped")
-      """Link: </>; rel=prev""" =!= Link(Uri("/"), prev, next)
+      // only one 'rel=' is allowed, http://tools.ietf.org/html/rfc5988#section-5.3 requires any subsequent ones to be skipped
+      """Link: </>; rel=prev; rel=next""" =!=> """</>; rel=prev"""
     }
 
     "Origin" in {

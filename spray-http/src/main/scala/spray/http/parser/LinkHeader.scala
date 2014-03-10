@@ -22,6 +22,7 @@ import org.parboiled.scala._
 import BasicRules._
 import LinkDirectives._
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
+import scala.annotation.tailrec
 
 // http://tools.ietf.org/html/rfc5988#section-5
 private[parser] trait LinkHeader {
@@ -32,7 +33,8 @@ private[parser] trait LinkHeader {
   }
 
   def `link-value` = rule {
-    `URI-Reference-Between-Triangles` ~ OptWS ~ oneOrMore(`link-param`) ~~> (LinkDirective(_, _))
+    `URI-Reference-Between-Triangles` ~ OptWS ~ oneOrMore(`link-param`) ~~>
+      ((uri, params) ⇒ LinkDirective(uri, ensureOnlyOneLinkParam(params)))
   }
 
   def `URI-Reference-Between-Triangles` = rule {
@@ -65,4 +67,16 @@ private[parser] trait LinkHeader {
       | "anchor=" ~ `URI-Reference-Quoted` ~~> (anchor(_))
       | "title=" ~ QuotedString ~~> (title(_))))
 
+  /** Skips `rel` params after the first, see http://tools.ietf.org/html/rfc5988#section-5.3 */
+  def ensureOnlyOneLinkParam(l: List[LinkParam]): List[LinkParam] = {
+    @tailrec def rec(remaining: List[LinkParam], res: List[LinkParam] = Nil, seenRel: Boolean = false): List[LinkParam] =
+      remaining match {
+        case (_: rel) :: rest if seenRel        ⇒ rec(rest, res, seenRel)
+        case (r: rel) :: rest /* if !seenRel */ ⇒ rec(rest, r :: res, seenRel = true)
+        case first :: rest                      ⇒ rec(rest, first :: res, seenRel)
+        case Nil                                ⇒ res
+      }
+
+    rec(l).reverse
+  }
 }
