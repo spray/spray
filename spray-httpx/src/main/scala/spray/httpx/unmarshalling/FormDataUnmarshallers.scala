@@ -116,7 +116,7 @@ trait FormDataUnmarshallers {
         val data = entity.asString(defaultCharset)
         try {
           val query = Uri.Query(data, entity.contentType.definedCharset.getOrElse(defaultCharset).nioCharset)
-          FormData(query.toMap)
+          FormData(query)
         } catch {
           case ex: IllegalUriException ⇒
             throw new IllegalArgumentException(ex.info.formatPretty.replace("Query,", "form content,"))
