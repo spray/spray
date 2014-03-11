@@ -214,7 +214,7 @@ object DateTime {
 
   /**
    * Creates a new DateTime instance from the given String,
-   * if it adheres to the format `yyyy-mm-ddThh:mm:ss[.S[S[S[S]]]][Z]`.
+   * if it adheres to the format `yyyy-mm-ddThh:mm:ss[.SSSZ]`.
    * Note that the implementation will strip off the milliseconds.
    */
   def fromIsoDateTimeString(string: String): Option[DateTime] = {
@@ -229,11 +229,7 @@ object DateTime {
     def check(len: Int): Boolean =
       len match {
         case 19 ⇒ c(4) == '-' && c(7) == '-' && c(10) == 'T' && c(13) == ':' && c(16) == ':'
-        case 20 ⇒ check(19) && c(19) == 'Z'
-        case 21 ⇒ check(19) && c(19) == '.' && isDigit(c(20))
-        case 22 ⇒ check(21) && isDigitOrZ(c(21))
-        case 23 ⇒ check(21) && isDigit(c(21)) && isDigitOrZ(c(22))
-        case 24 ⇒ check(21) && isDigit(c(21)) && isDigit(c(22)) && c(23) == 'Z'
+        case 24 ⇒ check(19) && c(19) == '.' && isDigit(c(20)) && isDigit(c(21)) && isDigit(c(22)) && c(23) == 'Z'
         case _  ⇒ false
       }
     if (check(string.length)) {
