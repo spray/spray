@@ -234,11 +234,16 @@ object DateTime {
       '0' <= x && x <= '9'
     }
 
+    // check if string.substring(0, 19) is of format `yyyy-mm-ddThh:mm:ss`
     val check1 = l >= 19 && (c(4) == '-' && c(7) == '-' && c(10) == 'T' && c(13) == ':' && c(16) == ':')
-    val check2 = l <= 19 || (c(19) == '.' && (20 until l - 1).forall(ix ⇒ is_i(ix)))
-    val check3 = l <= 20 || (c(-1) == 'Z' || is_i(-1))
+    // check if string.substring(19) is of format `Z`
+    val check2 = l != 20 || (c(-1) == 'Z')
+    // check if string.substring(19) is of format `.S`
+    val check3 = l != 21 || (c(19) == '.' && is_i(20))
+    // check if string.substring(19) is of format `[.[S[S[S]]]][Z]`
+    val check4 = l < 22 || (c(19) == '.' && (20 until l - 1).forall(ix ⇒ is_i(ix) && (is_i(-1) || c(-1) == 'Z')))
 
-    if (check1 && check2 && check3) {
+    if (check1 && check2 && check3 && check4) {
       try {
         val year = i(0) * 1000 + i(1) * 100 + i(2) * 10 + i(3)
         val month = i(5) * 10 + i(6)
