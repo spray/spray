@@ -19,6 +19,7 @@ package spray.http
 /**
  * Immutable, fast and efficient Date + Time implementation without any dependencies.
  * Does not support TimeZones, all DateTime values are always GMT based.
+ * Note that this implementation discards milliseconds (i.e. rounds down to full seconds).
  */
 case class DateTime private (year: Int, // the year
                              month: Int, // the month of the year. January is 1.
@@ -124,6 +125,7 @@ object DateTime {
 
   /**
    * Creates a new `DateTime` with the given properties.
+   * Note that this implementation discards milliseconds (i.e. rounds down to full seconds).
    */
   def apply(year: Int, month: Int, day: Int, hour: Int = 0, minute: Int = 0, second: Int = 0): DateTime = {
     require(1800 <= year && year <= 9999, "year must be >= 1800 and <= 9999")
@@ -153,6 +155,7 @@ object DateTime {
   /**
    * Creates a new `DateTime` from the number of milli seconds
    * since the start of "the epoch", namely January 1, 1970, 00:00:00 GMT.
+   * Note that this implementation discards milliseconds (i.e. rounds down to full seconds).
    */
   def apply(clicks: Long): DateTime = {
     require(DateTime.MinValue.clicks <= clicks && clicks <= DateTime.MaxValue.clicks,
@@ -209,13 +212,14 @@ object DateTime {
 
   /**
    * Creates a new `DateTime` instance for the current point in time.
+   * Note that this implementation discards milliseconds (i.e. rounds down to full seconds).
    */
   def now: DateTime = apply(System.currentTimeMillis)
 
   /**
    * Creates a new DateTime instance from the given String,
    * if it adheres to the format `yyyy-mm-ddThh:mm:ss[.SSSZ]`.
-   * Note that the implementation will strip off the milliseconds.
+   * Note that this implementation discards milliseconds (i.e. rounds down to full seconds).
    */
   def fromIsoDateTimeString(string: String): Option[DateTime] = {
     def c(ix: Int) = string.charAt(ix)
