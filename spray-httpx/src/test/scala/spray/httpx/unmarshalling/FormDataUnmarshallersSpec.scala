@@ -159,9 +159,14 @@ class FormDataUnmarshallersSpec extends Specification {
       HttpEntity(`application/x-www-form-urlencoded`, "email=test%40there.com&password=&username=dirk").as[FormData] ===
         Right(FormData(Map("email" -> "test@there.com", "password" -> "", "username" -> "dirk")))
     }
+    "correctly unmarshal duplicate fields" in {
+      HttpEntity(`application/x-www-form-urlencoded`, "a=42&b=23&a=32").as[FormData] ===
+        Right(FormData(Seq("a" -> "42", "b" -> "23", "a" -> "32")))
+    }
+
     "be lenient on empty key/value pairs" in {
       HttpEntity(`application/x-www-form-urlencoded`, "&key=value&&key2=&").as[FormData] ===
-        Right(FormData(Map("" -> "", "key" -> "value", "key2" -> "")))
+        Right(FormData(Seq("" -> "", "key" -> "value", "" -> "", "key2" -> "", "" -> "")))
     }
     "reject illegal form content" in {
       val Left(MalformedContent(msg, _)) = HttpEntity(`application/x-www-form-urlencoded`, "key=really=not_good").as[FormData]
