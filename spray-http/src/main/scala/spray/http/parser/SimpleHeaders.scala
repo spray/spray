@@ -60,10 +60,6 @@ private[parser] trait SimpleHeaders {
     (Token | IPv6Reference | push("")) ~ OptWS ~ optional(":" ~ oneOrMore(Digit) ~> (_.toInt)) ~ EOI
       ~~> ((h, p) ⇒ Host(h, p.getOrElse(0))))
 
-  def `*Last-Modified` = rule {
-    HttpDate ~ EOI ~~> (`Last-Modified`(_))
-  }
-
   def `*Location` = rule {
     oneOrMore(Text) ~> { uri ⇒ Location(Uri(uri)) } ~ EOI
   }

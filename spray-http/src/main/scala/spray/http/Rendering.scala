@@ -170,7 +170,12 @@ trait Rendering {
    * or in double quotes (if it contains at least one non-token char).
    */
   def ~~#(s: String): this.type =
-    if (CharPredicate.HttpToken.matchAll(s)) this ~~ s else ~~('"').putEscaped(s) ~~ '"'
+    if (CharPredicate.HttpToken.matchAll(s)) this ~~ s else ~~#!(s)
+
+  /**
+   * Renders the given string in double quotes.
+   */
+  def ~~#!(s: String): this.type = ~~('"').putEscaped(s) ~~ '"'
 
   def putEscaped(s: String, escape: CharPredicate = Rendering.`\"`, escChar: Char = '\\'): this.type = {
     @tailrec def rec(ix: Int = 0): this.type =
