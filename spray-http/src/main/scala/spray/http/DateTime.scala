@@ -214,7 +214,7 @@ object DateTime {
 
   /**
    * Creates a new DateTime instance from the given String,
-   * if it adheres to the format `yyyy-mm-ddThh:mm:ss[.ms][Z]`.
+   * if it adheres to the format `yyyy-mm-ddThh:mm:ss[.S[S[S[S]]]][Z]`.
    * Note that the implementation will strip off the milliseconds.
    */
   def fromIsoDateTimeString(string: String): Option[DateTime] = {
