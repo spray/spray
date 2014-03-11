@@ -62,19 +62,14 @@ class DateTimeSpec extends Specification {
       DateTime.fromIsoDateTimeString("2011-07-12T14:08:12") must beSome(DateTime(specificClicks))
     }
     "properly parse a legal string with milliseconds" in {
-      DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.001") must beSome(DateTime(specificClicks))
-      DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.01") must beSome(DateTime(specificClicks))
       DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.1") must beSome(DateTime(specificClicks))
+      DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.12") must beSome(DateTime(specificClicks))
       DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.123") must beSome(DateTime(specificClicks))
     }
     "properly parse a legal string with Z suffix" in {
-      DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.001") must beSome(DateTime(specificClicks))
-      DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.01") must beSome(DateTime(specificClicks))
-      DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.1") must beSome(DateTime(specificClicks))
-      DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.123") must beSome(DateTime(specificClicks))
-      DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.001Z") must beSome(DateTime(specificClicks))
-      DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.01Z") must beSome(DateTime(specificClicks))
+      DateTime.fromIsoDateTimeString("2011-07-12T14:08:12Z") must beSome(DateTime(specificClicks))
       DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.1Z") must beSome(DateTime(specificClicks))
+      DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.12Z") must beSome(DateTime(specificClicks))
       DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.123Z") must beSome(DateTime(specificClicks))
     }
     "fail on an illegal string" in {
@@ -89,6 +84,8 @@ class DateTimeSpec extends Specification {
       "example 9" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.a1") must beNone }
       "example 10" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.123a") must beNone }
       "example 11" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.123aZ") must beNone }
+      "example 12" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.1234") must beNone }
+      "example 13" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.1234Z") must beNone }
     }
   }
 

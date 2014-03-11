@@ -218,32 +218,25 @@ object DateTime {
    * Note that the implementation will strip off the milliseconds.
    */
   def fromIsoDateTimeString(string: String): Option[DateTime] = {
-    val l = string.length
-
-    def c(ix: Int) = {
-      if (ix >= 0) string.charAt(ix)
-      else string.charAt(l + ix)
-    }
+    def c(ix: Int) = string.charAt(ix)
+    def isDigit(c: Char) = '0' <= c && c <= '9'
+    def isDigitOrZ(c: Char) = isDigit(c) || c == 'Z'
     def i(ix: Int) = {
       val x = c(ix)
-      require('0' <= x && x <= '9')
+      require(isDigit(x))
       x - '0'
     }
-    def is_i(ix: Int) = {
-      val x = c(ix)
-      '0' <= x && x <= '9'
-    }
-
-    // check if string.substring(0, 19) is of format `yyyy-mm-ddThh:mm:ss`
-    val check1 = l >= 19 && (c(4) == '-' && c(7) == '-' && c(10) == 'T' && c(13) == ':' && c(16) == ':')
-    // check if string.substring(19) is of format `Z`
-    val check2 = l != 20 || (c(-1) == 'Z')
-    // check if string.substring(19) is of format `.S`
-    val check3 = l != 21 || (c(19) == '.' && is_i(20))
-    // check if string.substring(19) is of format `[.[S[S[S]]]][Z]`
-    val check4 = l < 22 || (c(19) == '.' && (20 until l - 1).forall(ix ⇒ is_i(ix) && (is_i(-1) || c(-1) == 'Z')))
-
-    if (check1 && check2 && check3 && check4) {
+    def check(len: Int): Boolean =
+      len match {
+        case 19 ⇒ c(4) == '-' && c(7) == '-' && c(10) == 'T' && c(13) == ':' && c(16) == ':'
+        case 20 ⇒ check(19) && c(19) == 'Z'
+        case 21 ⇒ check(19) && c(19) == '.' && isDigit(c(20))
+        case 22 ⇒ check(21) && isDigitOrZ(c(21))
+        case 23 ⇒ check(21) && isDigit(c(21)) && isDigitOrZ(c(22))
+        case 24 ⇒ check(21) && isDigit(c(21)) && isDigit(c(22)) && c(23) == 'Z'
+        case _  ⇒ false
+      }
+    if (check(string.length)) {
       try {
         val year = i(0) * 1000 + i(1) * 100 + i(2) * 10 + i(3)
         val month = i(5) * 10 + i(6)
