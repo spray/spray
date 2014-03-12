@@ -147,8 +147,8 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
   def showRequest(request: HttpRequest) = LogEntry(request.uri, InfoLevel)
 
   def showErrorResponses(request: HttpRequest): Any ⇒ Option[LogEntry] = {
-    case HttpResponse(OK, _, _, _)       ⇒ None
-    case HttpResponse(NotFound, _, _, _) ⇒ Some(LogEntry("404: " + request.uri, WarningLevel))
+    case HttpResponse(OK | NotModified, _, _, _) ⇒ None
+    case HttpResponse(NotFound, _, _, _)         ⇒ Some(LogEntry("404: " + request.uri, WarningLevel))
     case r @ HttpResponse(Found | MovedPermanently, _, _, _) ⇒
       Some(LogEntry(s"${r.status.intValue}: ${request.uri} -> ${r.header[HttpHeaders.Location].map(_.uri.toString).getOrElse("")}", WarningLevel))
     case response ⇒ Some(
@@ -156,7 +156,7 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
   }
 
   def showRepoResponses(repo: String)(request: HttpRequest): HttpResponsePart ⇒ Option[LogEntry] = {
-    case HttpResponse(OK, _, _, _) ⇒ Some(LogEntry(repo + " 200: " + request.uri, InfoLevel))
+    case HttpResponse(s @ (OK | NotModified), _, _, _) ⇒ Some(LogEntry(s"$repo  ${s.intValue}: ${request.uri}", InfoLevel))
     case ChunkedResponseStart(HttpResponse(OK, _, _, _)) ⇒ Some(LogEntry(repo + " 200 (chunked): " + request.uri, InfoLevel))
     case HttpResponse(NotFound, _, _, _) ⇒ Some(LogEntry(repo + " 404: " + request.uri))
     case _ ⇒ None
