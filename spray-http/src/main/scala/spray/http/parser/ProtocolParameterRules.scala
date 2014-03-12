@@ -139,7 +139,7 @@ private[parser] trait ProtocolParameterRules {
 
   // RFC2616 definition, extended in order to also accept
   // language-tags defined by https://tools.ietf.org/html/bcp47
-  def LanguageTag = rule { PrimaryTag ~ zeroOrMore("-" ~ SubTag) }
+  def LanguageTag = rule { PrimaryTag ~ zeroOrMore("-" ~ SubTag) ~~> (Language(_, _: _*)) }
 
   def PrimaryTag = rule { oneOrMore(Alpha) ~> identityFunc ~ OptWS }
 

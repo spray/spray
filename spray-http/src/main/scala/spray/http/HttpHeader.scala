@@ -362,6 +362,18 @@ object HttpHeaders {
   }
 
   object Origin extends ModeledCompanion // TODO: turn argument into repeated parameter for more convenience
+
+  object Link extends ModeledCompanion with LinkHeaderCompanion {
+    def apply(first: Value, more: Value*): Link = apply(first +: more)
+    def apply(uri: Uri, first: Param, more: Param*): Link = apply(Value(uri, first +: more))
+    implicit val valueRenderer = Renderer.defaultSeqRenderer[Value]
+  }
+  case class Link(values: Seq[Link.Value]) extends ModeledHeader {
+    import Link.valueRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ values
+    protected def companion = Link
+  }
+
   case class Origin(originList: Seq[HttpOrigin]) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ originList
     protected def companion = Origin

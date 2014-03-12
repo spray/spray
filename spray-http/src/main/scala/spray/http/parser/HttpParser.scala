@@ -37,6 +37,7 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
     with ContentTypeHeader
     with CookieHeaders
     with RangeHeaders
+    with LinkHeader
     with SimpleHeaders
     with CORSHeaders {
 

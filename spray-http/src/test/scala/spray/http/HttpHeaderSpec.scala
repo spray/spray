@@ -204,7 +204,7 @@ class HttpHeaderSpec extends Specification {
       "Cookie: SID=31d4d96e407aad42; lang=en>US" =!= Cookie(HttpCookie("SID", "31d4d96e407aad42"), HttpCookie("lang", "en>US"))
       "Cookie: a=1;b=2" =!= Cookie(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
       "Cookie: a=1 ;b=2" =!= Cookie(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
-      "Cookie: a=1; b=2" =!= Cookie(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
+      "Cookie: a=1; b=2" =!= Cookie(HttpCookie("a", "1"), HttpCookie("b", "2"))
       Cookie(HttpCookie("SID", "31d4d96e407aad42",
         domain = Some("example.com"),
         expires = Some(DateTime(2021, 6, 9, 10, 18, 14)),
@@ -276,6 +276,34 @@ class HttpHeaderSpec extends Specification {
         "https://spray.io/%7Bsec%7D")
       "Location: https://spray.io/ sec" =!= ErrorInfo("Illegal HTTP header 'Location': Illegal URI " +
         "reference, unexpected character ' ' at position 17", "\nhttps://spray.io/ sec\n                 ^\n")
+    }
+
+    "Link" in {
+      "Link: </?page=2>; rel=next" =!= Link(Uri("/?page=2"), Link.next)
+      "Link: <https://spray.io>; rel=next" =!= Link(Uri("https://spray.io"), Link.next)
+      """Link: </>; rel=prev, </page/2>; rel="next"""" =!=
+        Link(Link.Value(Uri("/"), Link.prev), Link.Value(Uri("/page/2"), Link.next)).renderedTo("</>; rel=prev, </page/2>; rel=next")
+
+      """Link: </>; rel="x.y-z http://spray.io"""" =!= Link(Uri("/"), Link.rel("x.y-z http://spray.io"))
+      """Link: </>; title="My Title"""" =!= Link(Uri("/"), Link.title("My Title"))
+      """Link: </>; rel=next; title="My Title"""" =!= Link(Uri("/"), Link.next, Link.title("My Title"))
+      """Link: </>; anchor="http://example.com"""" =!= Link(Uri("/"), Link.anchor(Uri("http://example.com")))
+      """Link: </>; rev=foo; hreflang=de-de; media=print; type=application/json""" =!=
+        Link(Uri("/"), Link.rev("foo"), Link.hreflang(Language("de", "de")), Link.media("print"), Link.`type`(`application/json`))
+
+      /* RFC 5988 examples */
+      """Link: <http://example.com/TheBook/chapter2>; rel="previous"; title="previous chapter"""" =!=
+        Link(Uri("http://example.com/TheBook/chapter2"), Link.rel("previous"), Link.title("previous chapter"))
+        .renderedTo("""<http://example.com/TheBook/chapter2>; rel=previous; title="previous chapter"""")
+
+      """Link: </>; rel="http://example.net/foo"""" =!= Link(Uri("/"), Link.rel("http://example.net/foo"))
+        .renderedTo("</>; rel=http://example.net/foo")
+
+      """Link: <http://example.org/>; rel="start http://example.net/relation/other"""" =!= Link(Uri("http://example.org/"),
+        Link.rel("start http://example.net/relation/other"))
+
+      // only one 'rel=' is allowed, http://tools.ietf.org/html/rfc5988#section-5.3 requires any subsequent ones to be skipped
+      "Link: </>; rel=prev; rel=next" =!=> "</>; rel=prev"
     }
 
     "Origin" in {
@@ -409,7 +437,10 @@ class HttpHeaderSpec extends Specification {
   implicit class TestHeader(header: HttpHeader) extends TestExample {
     def apply(line: String) = {
       val Array(name, value) = line.split(": ", 2)
-      HttpParser.parseHeader(RawHeader(name, value)) === Right(header) and rendersTo(line)
+      val h = HttpParser.parseHeader(RawHeader(name, value))
+      if (h.isRight && h.right.get.isInstanceOf[RawHeader] && !header.isInstanceOf[RawHeader])
+        failure(s"`$line` was not parsed into a ModeledHeader")
+      h === Right(header) and rendersTo(line)
     }
     protected def rendersTo(line: String) = header.toString === line
     def renderedTo(expectedRendering: String): TestHeader =
