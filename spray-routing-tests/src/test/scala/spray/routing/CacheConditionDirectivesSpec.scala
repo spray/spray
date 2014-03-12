@@ -22,13 +22,11 @@ import spray.http.HttpHeaders._
 
 class CacheConditionDirectivesSpec extends RoutingSpec {
 
-  "the conditional directive" should {
-    val timestamp = DateTime.now - 2000L
+  "the `conditional` directive" should {
+    val timestamp = DateTime.now - 2000
     val ifUnmodifiedSince = `If-Unmodified-Since`(timestamp)
     val ifModifiedSince = `If-Modified-Since`(timestamp)
     val tag = EntityTag("fresh")
-    val ifMatch = `If-Match`(tag)
-    val ifNoneMatch = `If-None-Match`(tag)
     val responseHeaders = List(ETag(tag), `Last-Modified`(timestamp))
 
     def taggedAndTimestamped = conditional(tag, timestamp) { completeOk }
@@ -42,70 +40,69 @@ class CacheConditionDirectivesSpec extends RoutingSpec {
     }
 
     "return OK for non-matching resources" in {
-      Get() ~> addHeader(`If-None-Match`(EntityTag("old"))) ~> taggedAndTimestamped ~> check {
+      Get() ~> `If-None-Match`(EntityTag("old")) ~> taggedAndTimestamped ~> check {
         status === OK
         headers must containAllOf(responseHeaders)
       }
-      Get() ~> addHeader(`If-Modified-Since`(timestamp - 1000L)) ~> taggedAndTimestamped ~> check {
+      Get() ~> `If-Modified-Since`(timestamp - 1000) ~> taggedAndTimestamped ~> check {
         status === OK
         headers must containAllOf(responseHeaders)
       }
-      Get() ~> addHeaders(`If-None-Match`(EntityTag("old")), `If-Modified-Since`(timestamp - 1000L)) ~> taggedAndTimestamped ~> check {
+      Get() ~> `If-None-Match`(EntityTag("old")) ~> `If-Modified-Since`(timestamp - 1000) ~> taggedAndTimestamped ~> check {
         status === OK
         headers must containAllOf(responseHeaders)
       }
     }
 
     "ignore If-Modified-Since if If-None-Match is defined" in {
-      Get() ~> addHeaders(ifNoneMatch, `If-Modified-Since`(timestamp - 1000L)) ~> taggedAndTimestamped ~> check {
+      Get() ~> `If-None-Match`(tag) ~> `If-Modified-Since`(timestamp - 1000) ~> taggedAndTimestamped ~> check {
         status === NotModified
       }
-      Get() ~> addHeaders(`If-None-Match`(EntityTag("old")), ifModifiedSince) ~> taggedAndTimestamped ~> check {
+      Get() ~> `If-None-Match`(EntityTag("old")) ~> ifModifiedSince ~> taggedAndTimestamped ~> check {
         status === OK
       }
     }
 
     "return PreconditionFailed for matched but unsafe resources" in {
-      Put() ~> addHeaders(ifNoneMatch, ifModifiedSince) ~> taggedAndTimestamped ~> check {
+      Put() ~> `If-None-Match`(tag) ~> ifModifiedSince ~> taggedAndTimestamped ~> check {
         status === PreconditionFailed
         headers === Nil
       }
     }
 
     "return NotModified for matching resources" in {
-      Get() ~> addHeaders(`If-None-Match`.`*`, ifModifiedSince) ~> taggedAndTimestamped ~> check {
+      Get() ~> `If-None-Match`.`*` ~> ifModifiedSince ~> taggedAndTimestamped ~> check {
         status === NotModified
         headers must containAllOf(responseHeaders)
       }
-      Get() ~> addHeaders(ifNoneMatch, ifModifiedSince) ~> taggedAndTimestamped ~> check {
+      Get() ~> `If-None-Match`(tag) ~> ifModifiedSince ~> taggedAndTimestamped ~> check {
         status === NotModified
         headers must containAllOf(responseHeaders)
       }
-      Get() ~> addHeaders(ifNoneMatch, `If-Modified-Since`(timestamp + 1000L)) ~> taggedAndTimestamped ~> check {
+      Get() ~> `If-None-Match`(tag) ~> `If-Modified-Since`(timestamp + 1000) ~> taggedAndTimestamped ~> check {
         status === NotModified
         headers must containAllOf(responseHeaders)
       }
-      Get() ~> addHeaders(`If-None-Match`(tag.copy(weak = true)), ifModifiedSince) ~> taggedAndTimestamped ~> check {
+      Get() ~> `If-None-Match`(tag.copy(weak = true)) ~> ifModifiedSince ~> taggedAndTimestamped ~> check {
         status === NotModified
         headers must containAllOf(responseHeaders)
       }
-      val multi = `If-None-Match`(tag, EntityTag("some"), EntityTag("other"))
-      Get() ~> addHeaders(multi, ifModifiedSince) ~> taggedAndTimestamped ~> check {
+      Get() ~> `If-None-Match`(tag, EntityTag("some"), EntityTag("other")) ~> ifModifiedSince ~> taggedAndTimestamped ~> check {
         status === NotModified
         headers must containAllOf(responseHeaders)
       }
     }
 
     "return NotModified when only one matching header is set" in {
-      Get() ~> addHeader(`If-None-Match`.`*`) ~> taggedAndTimestamped ~> check {
+      Get() ~> `If-None-Match`.`*` ~> taggedAndTimestamped ~> check {
         status === NotModified
         headers must containAllOf(responseHeaders)
       }
-      Get() ~> addHeader(ifNoneMatch) ~> taggedAndTimestamped ~> check {
+      Get() ~> `If-None-Match`(tag) ~> taggedAndTimestamped ~> check {
         status === NotModified
         headers must containAllOf(responseHeaders)
       }
-      Get() ~> addHeader(ifModifiedSince) ~> taggedAndTimestamped ~> check {
+      Get() ~> ifModifiedSince ~> taggedAndTimestamped ~> check {
         status === NotModified
         headers must containAllOf(responseHeaders)
       }
@@ -113,48 +110,84 @@ class CacheConditionDirectivesSpec extends RoutingSpec {
 
     "return NotModified for matching weak resources" in {
       val weakTag = tag.copy(weak = true)
-      Get() ~> addHeader(ifNoneMatch) ~> weak ~> check {
+      Get() ~> `If-None-Match`(tag) ~> weak ~> check {
         status === NotModified
         headers must containAllOf(List(ETag(weakTag), `Last-Modified`(timestamp)))
       }
-      Get() ~> addHeader(`If-None-Match`(weakTag)) ~> weak ~> check {
+      Get() ~> `If-None-Match`(weakTag) ~> weak ~> check {
         status === NotModified
         headers must containAllOf(List(ETag(weakTag), `Last-Modified`(timestamp)))
       }
     }
 
     "return normally for matching If-Match/If-Unmodified" in {
-      Put() ~> addHeader(`If-Match`.`*`) ~> taggedAndTimestamped ~> check {
+      Put() ~> `If-Match`.`*` ~> taggedAndTimestamped ~> check {
         status === OK
         headers must containAllOf(responseHeaders)
       }
-      Put() ~> addHeader(ifMatch) ~> taggedAndTimestamped ~> check {
+      Put() ~> `If-Match`(tag) ~> taggedAndTimestamped ~> check {
         status === OK
         headers must containAllOf(responseHeaders)
       }
-      Put() ~> addHeader(ifUnmodifiedSince) ~> taggedAndTimestamped ~> check {
+      Put() ~> ifUnmodifiedSince ~> taggedAndTimestamped ~> check {
         status === OK
         headers must containAllOf(responseHeaders)
       }
     }
 
     "return PreconditionFailed for non-matching If-Match/If-Unmodified" in {
-      Put() ~> addHeader(`If-Match`(EntityTag("old"))) ~> taggedAndTimestamped ~> check {
+      Put() ~> `If-Match`(EntityTag("old")) ~> taggedAndTimestamped ~> check {
         status === PreconditionFailed
         headers === Nil
       }
-      Put() ~> addHeader(`If-Unmodified-Since`(timestamp - 1000L)) ~> taggedAndTimestamped ~> check {
+      Put() ~> `If-Unmodified-Since`(timestamp - 1000) ~> taggedAndTimestamped ~> check {
         status === PreconditionFailed
         headers === Nil
       }
     }
 
     "ignore If-Unmodified-Since if If-Match is defined" in {
-      Put() ~> addHeaders(ifMatch, `If-Unmodified-Since`(timestamp - 1000L)) ~> taggedAndTimestamped ~> check {
+      Put() ~> `If-Match`(tag) ~> `If-Unmodified-Since`(timestamp - 1000) ~> taggedAndTimestamped ~> check {
         status === OK
       }
-      Put() ~> addHeaders(`If-Match`(EntityTag("old")), ifModifiedSince) ~> taggedAndTimestamped ~> check {
+      Put() ~> `If-Match`(EntityTag("old")) ~> ifModifiedSince ~> taggedAndTimestamped ~> check {
         status === PreconditionFailed
+      }
+    }
+
+    "not filter out a `Range` header if `If-Range` does match the timestamp" in {
+      Get() ~> `If-Range`(timestamp) ~> Range(ByteRange(0, 10)) ~> {
+        (conditional(tag, timestamp) & optionalHeaderValueByType[Range]()) { echoComplete }
+      } ~> check {
+        status === OK
+        responseAs[String] must startWith("Some")
+      }
+    }
+
+    "filter out a `Range` header if `If-Range` doesn't match the timestamp" in {
+      Get() ~> `If-Range`(timestamp - 1000) ~> Range(ByteRange(0, 10)) ~> {
+        (conditional(tag, timestamp) & optionalHeaderValueByType[Range]()) { echoComplete }
+      } ~> check {
+        status === OK
+        responseAs[String] === "None"
+      }
+    }
+
+    "not filter out a `Range` header if `If-Range` does match the ETag" in {
+      Get() ~> `If-Range`(tag) ~> Range(ByteRange(0, 10)) ~> {
+        (conditional(tag, timestamp) & optionalHeaderValueByType[Range]()) { echoComplete }
+      } ~> check {
+        status === OK
+        responseAs[String] must startWith("Some")
+      }
+    }
+
+    "filter out a `Range` header if `If-Range` doesn't match the ETag" in {
+      Get() ~> `If-Range`(EntityTag("other")) ~> Range(ByteRange(0, 10)) ~> {
+        (conditional(tag, timestamp) & optionalHeaderValueByType[Range]()) { echoComplete }
+      } ~> check {
+        status === OK
+        responseAs[String] === "None"
       }
     }
   }

@@ -84,7 +84,7 @@ trait CacheConditionDirectives {
         def step5() =
           if (method == GET && header[Range].isDefined)
             header[`If-Range`] match {
-              case Some(`If-Range`(Left(tag))) if matches(eTag, tag, weak = false) ⇒ runInnerRouteWithRangeHeaderFilteredOut()
+              case Some(`If-Range`(Left(tag))) if !matches(eTag, tag, weak = false) ⇒ runInnerRouteWithRangeHeaderFilteredOut()
               case Some(`If-Range`(Right(ims))) if !unmodified(ims) ⇒ runInnerRouteWithRangeHeaderFilteredOut()
               case _ ⇒ step6()
             }
