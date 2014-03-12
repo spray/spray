@@ -224,7 +224,6 @@ object DateTime {
   def fromIsoDateTimeString(string: String): Option[DateTime] = {
     def c(ix: Int) = string.charAt(ix)
     def isDigit(c: Char) = '0' <= c && c <= '9'
-    def isDigitOrZ(c: Char) = isDigit(c) || c == 'Z'
     def i(ix: Int) = {
       val x = c(ix)
       require(isDigit(x))
