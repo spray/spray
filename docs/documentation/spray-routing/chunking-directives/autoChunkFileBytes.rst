@@ -14,7 +14,6 @@ Signature
 
     def autoChunkFileBytes(maxChunkSize: Long)(implicit factory: ActorRefFactory): Directive0
     def autoChunkFileBytes(threshold: Long, maxChunkSize: Long)(implicit factory: ActorRefFactory): Directive0
-    def autoChunkFileBytes(magnet: ChunkSizeMagnet): Directive0
 
 The signature shown is simplified, the real signature uses magnets. [1]_
 

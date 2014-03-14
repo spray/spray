@@ -33,6 +33,8 @@ Directive                              Description
                                        ``Deflate`` unless the request explicitly sets ``Accept-Encoding`` to ``identity``.
 :ref:`-compressResponseIfRequested-`   Compresses responses coming back from its inner Route using either ``Gzip`` or
                                        ``Deflate``, but only when the request explicitly accepts one of them.
+:ref:`-conditional-`                   Depending on the given ETag and Last-Modified values responds with
+                                       ``304 Not Modified`` if the request comes with the respective conditional headers.
 :ref:`-cookie-`                        Extracts an ``HttpCookie`` with a given name or rejects if no such cookie is
                                        present in the request
 :ref:`-decodeRequest-`                 Decompresses incoming requests using a given Decoder
@@ -180,4 +182,6 @@ Directive                              Description
 :ref:`-unmatchedPath-`                 Extracts the unmatched path from the RequestContext
 :ref:`-validate-`                      Passes or rejects the request depending on evaluation of a given conditional
                                        expression
+:ref:`-withRangeSupport-`              Transforms the response from its inner route into a ``206 Partial Content``
+                                       response if the client requested only part of the resource with a ``Range`` header.
 ====================================== =================================================================================
