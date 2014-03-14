@@ -18,7 +18,7 @@ class RangeDirectivesExamplesSpec extends DirectivesSpec {
     }
 
     Get() ~> addHeader(Range(ByteRange(0, 1), ByteRange(1, 2), ByteRange(6, 7))) ~> route ~> check {
-      headers must not(haveOneElementLike { case _: `Content-Range` ⇒ ok })
+      headers must not(contain(like[HttpHeader] { case `Content-Range`(_, _) ⇒ ok }))
       responseAs[MultipartByteRanges] must beLike {
         case MultipartByteRanges(
           BodyPart(entity1, _ +: `Content-Range`(RangeUnit.Bytes, range1) +: _) +:

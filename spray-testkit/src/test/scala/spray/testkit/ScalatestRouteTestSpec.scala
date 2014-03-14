@@ -17,7 +17,8 @@
 package spray.testkit
 
 import org.scalatest.FreeSpec
-import org.scalatest.matchers.MustMatchers
+import org.scalatest.Matchers
+import akka.testkit.TestProbe
 import spray.routing.{ MethodRejection, RequestContext, Directives }
 import spray.http._
 import HttpMethods._
@@ -25,16 +26,15 @@ import MediaTypes._
 import HttpCharsets._
 import StatusCodes._
 import HttpHeaders._
-import akka.testkit.TestProbe
 
-class ScalatestRouteTestSpec extends FreeSpec with MustMatchers with Directives with ScalatestRouteTest {
+class ScalatestRouteTestSpec extends FreeSpec with Matchers with Directives with ScalatestRouteTest {
 
   "The ScalatestRouteTest should support" - {
 
     "the most simple and direct route test" in {
       Get() ~> {
         (_: RequestContext).complete(HttpResponse())
-      } ~> (_.response) must be === HttpResponse()
+      } ~> (_.response) shouldEqual HttpResponse()
     }
 
     "a test using a directive and some checks" in {
@@ -42,9 +42,9 @@ class ScalatestRouteTestSpec extends FreeSpec with MustMatchers with Directives 
       Get() ~> addHeader(pinkHeader) ~> {
         respondWithHeader(pinkHeader) { complete("abc") }
       } ~> check {
-        status must be === OK
-        body must be === HttpEntity(ContentType(`text/plain`, `UTF-8`), "abc")
-        header("Fancy") must be === Some(pinkHeader)
+        status shouldEqual OK
+        body shouldEqual HttpEntity(ContentType(`text/plain`, `UTF-8`), "abc")
+        header("Fancy") shouldEqual Some(pinkHeader)
       }
     }
 
@@ -54,7 +54,7 @@ class ScalatestRouteTestSpec extends FreeSpec with MustMatchers with Directives 
           complete("naah")
         }
       } ~> check {
-        rejections must be === List(MethodRejection(GET), MethodRejection(PUT))
+        rejections shouldEqual List(MethodRejection(GET), MethodRejection(PUT))
       }
     }
 
@@ -74,9 +74,9 @@ class ScalatestRouteTestSpec extends FreeSpec with MustMatchers with Directives 
       ctx.complete("abc")
 
       check {
-        status must be === OK
-        body must be === HttpEntity(ContentType(`text/plain`, `UTF-8`), "abc")
-        header("Fancy") must be === Some(pinkHeader)
+        status shouldEqual OK
+        body shouldEqual HttpEntity(ContentType(`text/plain`, `UTF-8`), "abc")
+        header("Fancy") shouldEqual Some(pinkHeader)
       }(result)
     }
   }

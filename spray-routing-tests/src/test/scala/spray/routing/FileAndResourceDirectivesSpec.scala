@@ -92,7 +92,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
           parts(1).entity.data.asString === "QRSTUVWXYZ"
 
           status === StatusCodes.PartialContent
-          headers must not(haveOneElementLike { case `Content-Range`(_, _) ⇒ ok })
+          headers must not(contain(like[HttpHeader] { case `Content-Range`(_, _) ⇒ ok }))
           mediaType.withParameters(Map.empty) === `multipart/byteranges`
         }
       } finally file.delete
@@ -127,9 +127,9 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
         Get() ~> route ~> check {
           mediaType === `text/html`
           body.asString === "<p>Lorem"
-          headers must have {
-            case `Last-Modified`(dt) ⇒ DateTime(2011, 7, 1) < dt && dt.clicks < System.currentTimeMillis()
-          }
+          headers must contain(like[HttpHeader] {
+            case `Last-Modified`(dt) ⇒ (DateTime(2011, 7, 1) must be_<(dt)) and (dt.clicks must be_<(System.currentTimeMillis()))
+          })
           chunks.map(_.data.asString).mkString === " ipsum!</p>"
         }
 

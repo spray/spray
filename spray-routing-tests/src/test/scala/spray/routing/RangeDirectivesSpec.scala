@@ -75,7 +75,7 @@ class RangeDirectivesSpec extends RoutingSpec {
     "be transparent to non-200 responses" in {
       Get() ~> addHeader(Range(ByteRange(1, 2))) ~> HttpService.sealRoute(wrs(reject())) ~> check {
         status == NotFound
-        headers must not(haveOneElementLike { case _: `Content-Range` ⇒ ok })
+        headers must not(contain(like[HttpHeader] { case `Content-Range`(_, _) ⇒ ok }))
       }
     }
 
@@ -101,7 +101,7 @@ class RangeDirectivesSpec extends RoutingSpec {
       Get() ~> addHeader(Range(ByteRange(5, 10), ByteRange(0, 1), ByteRange(1, 2))) ~> {
         wrs { complete("Some random and not super short entity.") }
       } ~> check {
-        headers must not(haveOneElementLike { case _: `Content-Range` ⇒ ok })
+        headers must not(contain(like[HttpHeader] { case `Content-Range`(_, _) ⇒ ok }))
         responseAs[MultipartByteRanges] must beLike {
           case MultipartByteRanges(
             BodyPart(HttpEntity.NonEmpty(_, _), _ +: `Content-Range`(RangeUnit.Bytes, ContentRange.Default(5, 10, Some(39))) +: _) +:
