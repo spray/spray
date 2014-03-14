@@ -67,7 +67,7 @@ private[can] trait RequestRenderingComponent {
               render(x)
               renderHeaders(tail, hostHeaderSeen, userAgentSeen = true, contentTypeSeen, contentLengthSeen)
 
-            case x: `Raw-Request-URI` ⇒
+            case x: `Raw-Request-URI` ⇒ // we never render this header
               renderHeaders(tail, hostHeaderSeen, userAgentSeen, contentTypeSeen, contentLengthSeen)
 
             case x: RawHeader if x.lowercaseName == "content-type" ||

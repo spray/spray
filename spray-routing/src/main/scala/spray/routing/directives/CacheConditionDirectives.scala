@@ -28,9 +28,9 @@ trait CacheConditionDirectives {
 
   /**
    * Wraps its inner route with support for Conditional Requests as defined
-   * by http://tools.ietf.org/html/draft-ietf-httpbis-p4-conditional-26
+   * by tools.ietf.org/html/draft-ietf-httpbis-p4-conditional-26
    *
-   * In particular the algorithm defined by http://tools.ietf.org/html/draft-ietf-httpbis-p4-conditional-26#section-6
+   * In particular the algorithm defined by tools.ietf.org/html/draft-ietf-httpbis-p4-conditional-26#section-6
    * is implemented by this directive.
    *
    * Note: if you want to combine this directive with `withRangeSupport(...)` you need to put
