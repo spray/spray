@@ -58,7 +58,8 @@ trait MetaMarshallers extends LowerPriorityImplicitMetaMarshallers {
 
   implicit def streamMarshaller[T](implicit marshaller: Marshaller[T], refFactory: ActorRefFactory) =
     Marshaller[Stream[T]] { (value, ctx) ⇒
-      refFactory.actorOf(Props(new MetaMarshallers.ChunkingActor(marshaller, ctx))) ! value
+      if (value.isEmpty) ctx.marshalTo(HttpEntity.Empty)
+      else refFactory.actorOf(Props(new MetaMarshallers.ChunkingActor(marshaller, ctx))) ! value
     }
 }
 

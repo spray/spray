@@ -139,7 +139,7 @@ private[parser] trait ProtocolParameterRules {
 
   // RFC2616 definition, extended in order to also accept
   // language-tags defined by https://tools.ietf.org/html/bcp47
-  def LanguageTag = rule { PrimaryTag ~ zeroOrMore("-" ~ SubTag) }
+  def LanguageTag = rule { PrimaryTag ~ zeroOrMore("-" ~ SubTag) ~~> (Language(_, _: _*)) }
 
   def PrimaryTag = rule { oneOrMore(Alpha) ~> identityFunc ~ OptWS }
 
@@ -147,7 +147,16 @@ private[parser] trait ProtocolParameterRules {
 
   /* 3.11 Entity Tags */
 
-  def EntityTag = rule { optional("W/") ~ OpaqueTag }
+  def EntityTag = rule { ("W/" ~ push(true) | push(false)) ~ OpaqueTag ~~> ((weak, tag) ⇒ spray.http.EntityTag(tag, weak)) }
 
   def OpaqueTag = rule { QuotedString }
+
+  /* 3.12 Range Units */ // http://tools.ietf.org/html/rfc2616#section-3.12
+
+  def `range-unit` = rule { `bytes-unit` | `other-range-unit` }
+
+  def `bytes-unit` = rule { ignoreCase("bytes") ~ push(RangeUnit.Bytes) }
+
+  def `other-range-unit` = rule { Token ~~> RangeUnit.Other }
+
 }

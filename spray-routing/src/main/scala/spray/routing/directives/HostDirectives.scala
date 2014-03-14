@@ -48,11 +48,14 @@ trait HostDirectives {
    */
   def host(regex: Regex): Directive1[String] = {
     def forFunc(regexMatch: String ⇒ Option[String]): Directive1[String] = {
-      extract(ctx ⇒ regexMatch(ctx.request.uri.authority.host.address)).flatMap {
-        case Some(matched) ⇒ provide(matched)
-        case None          ⇒ reject
+      hostName.flatMap { name ⇒
+        regexMatch(name) match {
+          case Some(matched) ⇒ provide(matched)
+          case None          ⇒ reject
+        }
       }
     }
+
     regex.groupCount match {
       case 0 ⇒ forFunc(regex.findPrefixOf(_))
       case 1 ⇒ forFunc(regex.findPrefixMatchOf(_).map(_.group(1)))

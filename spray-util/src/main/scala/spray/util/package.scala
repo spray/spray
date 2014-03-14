@@ -32,7 +32,7 @@ import util.pimps._
 
 package object util {
 
-  val EOL = System.getProperty("line.separator")
+  val EOL = System.getProperty("line.separator") // TODO: remove since not used anymore
   val UTF8 = Charset.forName("UTF8")
   val US_ASCII = Charset.forName("US-ASCII")
   val EmptyByteArray = Array.empty[Byte]

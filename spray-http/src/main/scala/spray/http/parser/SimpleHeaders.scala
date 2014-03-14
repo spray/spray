@@ -29,6 +29,9 @@ import ProtectedHeaderCreation.enable
 private[parser] trait SimpleHeaders {
   this: Parser with ProtocolParameterRules with AdditionalRules ⇒
 
+  def `*Allow` = rule(
+    zeroOrMore(HttpParser.HttpMethodDef, separator = ListSep) ~ EOI ~~> (Allow(_: _*)))
+
   def `*Connection` = rule(
     oneOrMore(Token, separator = ListSep) ~ EOI ~~> (HttpHeaders.Connection(_)))
 
@@ -56,10 +59,6 @@ private[parser] trait SimpleHeaders {
   def `*Host` = rule(
     (Token | IPv6Reference | push("")) ~ OptWS ~ optional(":" ~ oneOrMore(Digit) ~> (_.toInt)) ~ EOI
       ~~> ((h, p) ⇒ Host(h, p.getOrElse(0))))
-
-  def `*Last-Modified` = rule {
-    HttpDate ~ EOI ~~> (`Last-Modified`(_))
-  }
 
   def `*Location` = rule {
     oneOrMore(Text) ~> { uri ⇒ Location(Uri(uri)) } ~ EOI

@@ -19,3 +19,5 @@ some other thread !). If the file cannot be found or read the request is rejecte
 
 To serve files from a directory use ``getFromDirectory``, instead. To serve a file from a classpath resource
 use ``getFromResource`` instead.
+
+Note that it's not required to wrap this directive with ``get`` as this directive will only respond to ``GET`` requests.

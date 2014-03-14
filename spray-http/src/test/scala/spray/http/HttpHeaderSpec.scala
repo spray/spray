@@ -26,9 +26,9 @@ import MediaRanges._
 import HttpCharsets._
 import HttpEncodings._
 import HttpMethods._
+import spray.util._
 
 class HttpHeaderSpec extends Specification {
-  val EOL = System.getProperty("line.separator")
   val `application/vnd.spray` = MediaTypes.register(MediaType.custom("application/vnd.spray"))
 
   "The HTTP header model must correctly parse and render the following headers" >> {
@@ -96,10 +96,17 @@ class HttpHeaderSpec extends Specification {
       "Access-Control-Request-Method: POST" =!= `Access-Control-Request-Method`(POST)
     }
 
+    "Accept-Ranges" in {
+      "Accept-Ranges: bytes" =!= `Accept-Ranges`(RangeUnit.Bytes)
+      "Accept-Ranges: bytes, sausages" =!= `Accept-Ranges`(RangeUnit.Bytes, RangeUnit.Other("sausages"))
+      "Accept-Ranges: none" =!= `Accept-Ranges`(Nil)
+    }
+
     "Accept-Encoding" in {
       "Accept-Encoding: compress, gzip, fancy" =!=
         `Accept-Encoding`(compress, gzip, HttpEncoding.custom("fancy"))
-      `Accept-Encoding`(gzip, identity withQValue 0.5, HttpEncodingRange.`*` withQValue 0)
+      "Accept-Encoding: gzip, identity;q=0.5, *;q=0.0" =!=
+        `Accept-Encoding`(gzip, identity withQValue 0.5, HttpEncodingRange.`*` withQValue 0)
         .renderedTo("gzip, identity;q=0.5, *;q=0.0")
       "Accept-Encoding: " =!= `Accept-Encoding`(identity).renderedTo("identity")
     }
@@ -110,6 +117,11 @@ class HttpHeaderSpec extends Specification {
       "Accept-Language: de-CH-1901, *;q=0" =!=
         `Accept-Language`(Language("de", "CH", "1901"), LanguageRanges.`*`).renderedTo("de-CH-1901, *")
       "Accept-Language: es-419, es" =!= `Accept-Language`(Language("es", "419"), Language("es"))
+    }
+
+    "Allow" in {
+      "Allow: " =!= Allow()
+      "Allow: GET, PUT" =!= Allow(GET, PUT)
     }
 
     "Authorization" in {
@@ -181,18 +193,36 @@ class HttpHeaderSpec extends Specification {
         `Content-Type`(ContentType(MediaType.custom("application", "*", allowArbitrarySubtypes = true)))
     }
 
+    "Content-Range" in {
+      "Content-Range: bytes 0-9/10" =!= `Content-Range`(ContentRange(0, 9, 10))
+      "Content-Range: bytes 1-42/*" =!= `Content-Range`(ContentRange(1, 42))
+      "Content-Range: bytes */*" =!= `Content-Range`(ContentRange.Unsatisfiable)
+    }
+
     "Cookie" in {
-      "Cookie: SID=31d4d96e407aad42" =!= `Cookie`(HttpCookie("SID", "31d4d96e407aad42"))
-      "Cookie: SID=31d4d96e407aad42; lang=en>US" =!= `Cookie`(HttpCookie("SID", "31d4d96e407aad42"), HttpCookie("lang", "en>US"))
-      "Cookie: a=1;b=2" =!= `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
-      "Cookie: a=1 ;b=2" =!= `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
-      "Cookie: a=1; b=2" =!= `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
+      "Cookie: SID=31d4d96e407aad42" =!= Cookie(HttpCookie("SID", "31d4d96e407aad42"))
+      "Cookie: SID=31d4d96e407aad42; lang=en>US" =!= Cookie(HttpCookie("SID", "31d4d96e407aad42"), HttpCookie("lang", "en>US"))
+      "Cookie: a=1;b=2" =!= Cookie(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
+      "Cookie: a=1 ;b=2" =!= Cookie(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
+      "Cookie: a=1; b=2" =!= Cookie(HttpCookie("a", "1"), HttpCookie("b", "2"))
+      Cookie(HttpCookie("SID", "31d4d96e407aad42",
+        domain = Some("example.com"),
+        expires = Some(DateTime(2021, 6, 9, 10, 18, 14)),
+        path = Some("/hello"),
+        httpOnly = true,
+        extension = Some("fancyPants"),
+        secure = true)).toString === "Cookie: SID=31d4d96e407aad42"
     }
 
     "Date" in {
       "Date: Wed, 13 Jul 2011 08:12:31 GMT" =!= Date(DateTime(2011, 7, 13, 8, 12, 31))
       "Date: Fri, 23 Mar 1804 12:11:10 UTC" =!= Date(DateTime(1804, 3, 23, 12, 11, 10)).renderedTo(
         "Fri, 23 Mar 1804 12:11:10 GMT")
+    }
+
+    "ETag" in {
+      """ETag: "938fz3f83z3z38z"""" =!= ETag("938fz3f83z3z38z", weak = false)
+      """ETag: W/"938fz3f83z3z38z"""" =!= ETag("938fz3f83z3z38z", weak = true)
     }
 
     "Expect" in {
@@ -207,6 +237,34 @@ class HttpHeaderSpec extends Specification {
       "Host: [::FFFF:129.144.52.38]" =!= Host("[::FFFF:129.144.52.38]")
     }
 
+    "If-Match" in {
+      """If-Match: *""" =!= `If-Match`.`*`
+      """If-Match: "938fz3f83z3z38z"""" =!= `If-Match`(EntityTag("938fz3f83z3z38z"))
+      """If-Match: "938fz3f83z3z38z", "0293f34hhv0nc"""" =!=
+        `If-Match`(EntityTag("938fz3f83z3z38z"), EntityTag("0293f34hhv0nc"))
+    }
+
+    "If-Modified-Since" in {
+      "If-Modified-Since: Wed, 13 Jul 2011 08:12:31 GMT" =!= `If-Modified-Since`(DateTime(2011, 7, 13, 8, 12, 31))
+    }
+
+    "If-None-Match" in {
+      """If-None-Match: *""" =!= `If-None-Match`.`*`
+      """If-None-Match: "938fz3f83z3z38z"""" =!= `If-None-Match`(EntityTag("938fz3f83z3z38z"))
+      """If-None-Match: "938fz3f83z3z38z", "0293f34hhv0nc"""" =!=
+        `If-None-Match`(EntityTag("938fz3f83z3z38z"), EntityTag("0293f34hhv0nc"))
+      """If-None-Match: W/"938fz3f83z3z38z"""" =!= `If-None-Match`(EntityTag("938fz3f83z3z38z", weak = true))
+    }
+
+    "If-Range" in {
+      """If-Range: "abcdefg"""" =!= `If-Range`(Left(EntityTag("abcdefg")))
+      """If-Range: Wed, 13 Jul 2011 08:12:31 GMT""" =!= `If-Range`(Right(DateTime(2011, 7, 13, 8, 12, 31)))
+    }
+
+    "If-Unmodified-Since" in {
+      "If-Unmodified-Since: Wed, 13 Jul 2011 08:12:31 GMT" =!= `If-Unmodified-Since`(DateTime(2011, 7, 13, 8, 12, 31))
+    }
+
     "Last-Modified" in {
       "Last-Modified: Wed, 13 Jul 2011 08:12:31 GMT" =!= `Last-Modified`(DateTime(2011, 7, 13, 8, 12, 31))
     }
@@ -218,6 +276,34 @@ class HttpHeaderSpec extends Specification {
         "https://spray.io/%7Bsec%7D")
       "Location: https://spray.io/ sec" =!= ErrorInfo("Illegal HTTP header 'Location': Illegal URI " +
         "reference, unexpected character ' ' at position 17", "\nhttps://spray.io/ sec\n                 ^\n")
+    }
+
+    "Link" in {
+      "Link: </?page=2>; rel=next" =!= Link(Uri("/?page=2"), Link.next)
+      "Link: <https://spray.io>; rel=next" =!= Link(Uri("https://spray.io"), Link.next)
+      """Link: </>; rel=prev, </page/2>; rel="next"""" =!=
+        Link(Link.Value(Uri("/"), Link.prev), Link.Value(Uri("/page/2"), Link.next)).renderedTo("</>; rel=prev, </page/2>; rel=next")
+
+      """Link: </>; rel="x.y-z http://spray.io"""" =!= Link(Uri("/"), Link.rel("x.y-z http://spray.io"))
+      """Link: </>; title="My Title"""" =!= Link(Uri("/"), Link.title("My Title"))
+      """Link: </>; rel=next; title="My Title"""" =!= Link(Uri("/"), Link.next, Link.title("My Title"))
+      """Link: </>; anchor="http://example.com"""" =!= Link(Uri("/"), Link.anchor(Uri("http://example.com")))
+      """Link: </>; rev=foo; hreflang=de-de; media=print; type=application/json""" =!=
+        Link(Uri("/"), Link.rev("foo"), Link.hreflang(Language("de", "de")), Link.media("print"), Link.`type`(`application/json`))
+
+      /* RFC 5988 examples */
+      """Link: <http://example.com/TheBook/chapter2>; rel="previous"; title="previous chapter"""" =!=
+        Link(Uri("http://example.com/TheBook/chapter2"), Link.rel("previous"), Link.title("previous chapter"))
+        .renderedTo("""<http://example.com/TheBook/chapter2>; rel=previous; title="previous chapter"""")
+
+      """Link: </>; rel="http://example.net/foo"""" =!= Link(Uri("/"), Link.rel("http://example.net/foo"))
+        .renderedTo("</>; rel=http://example.net/foo")
+
+      """Link: <http://example.org/>; rel="start http://example.net/relation/other"""" =!= Link(Uri("http://example.org/"),
+        Link.rel("start http://example.net/relation/other"))
+
+      // only one 'rel=' is allowed, http://tools.ietf.org/html/rfc5988#section-5.3 requires any subsequent ones to be skipped
+      "Link: </>; rel=prev; rel=next" =!=> "</>; rel=prev"
     }
 
     "Origin" in {
@@ -244,6 +330,13 @@ class HttpHeaderSpec extends Specification {
 
     "Transfer-Encoding" in {
       "Transfer-Encoding: chunked" =!= `Transfer-Encoding`("chunked")
+    }
+
+    "Range" in {
+      "Range: bytes=0-1" =!= Range(ByteRange(0, 1))
+      "Range: bytes=0-" =!= Range(ByteRange.fromOffset(0))
+      "Range: bytes=-1" =!= Range(ByteRange.suffix(1))
+      "Range: bytes=0-1, 2-3, -99" =!= Range(ByteRange(0, 1), ByteRange(2, 3), ByteRange.suffix(99))
     }
 
     "Set-Cookie" in {
@@ -280,7 +373,7 @@ class HttpHeaderSpec extends Specification {
                            realm="testrealm@host.com",
                            qop="auth,auth-int",
                            nonce=dcd98b7102dd2f0e8b11d0f600bfb0c093,
-                           opaque=5ccc069c403ebaf9f0171e9517f40e41""".replace(EOL, "\r\n") =!=
+                           opaque=5ccc069c403ebaf9f0171e9517f40e41""".stripMarginWithNewline("\r\n") =!=
         `WWW-Authenticate`(HttpChallenge("Digest", "testrealm@host.com", Map("qop" -> "auth,auth-int",
           "nonce" -> "dcd98b7102dd2f0e8b11d0f600bfb0c093", "opaque" -> "5ccc069c403ebaf9f0171e9517f40e41"))).renderedTo(
           "Digest realm=\"testrealm@host.com\",qop=\"auth,auth-int\",nonce=dcd98b7102dd2f0e8b11d0f600bfb0c093,opaque=5ccc069c403ebaf9f0171e9517f40e41")
@@ -344,7 +437,10 @@ class HttpHeaderSpec extends Specification {
   implicit class TestHeader(header: HttpHeader) extends TestExample {
     def apply(line: String) = {
       val Array(name, value) = line.split(": ", 2)
-      HttpParser.parseHeader(RawHeader(name, value)) === Right(header) and rendersTo(line)
+      val h = HttpParser.parseHeader(RawHeader(name, value))
+      if (h.isRight && h.right.get.isInstanceOf[RawHeader] && !header.isInstanceOf[RawHeader])
+        failure(s"`$line` was not parsed into a ModeledHeader")
+      h === Right(header) and rendersTo(line)
     }
     protected def rendersTo(line: String) = header.toString === line
     def renderedTo(expectedRendering: String): TestHeader =

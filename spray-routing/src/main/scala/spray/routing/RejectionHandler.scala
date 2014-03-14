@@ -62,9 +62,8 @@ object RejectionHandler {
       complete(BadRequest, "The request content was malformed:\n" + msg)
 
     case rejections @ (MethodRejection(_) :: _) ⇒
-      // TODO: add Allow header (required by the spec)
       val methods = rejections.collect { case MethodRejection(method) ⇒ method }
-      complete(MethodNotAllowed, "HTTP method not allowed, supported methods: " + methods.mkString(", "))
+      complete(MethodNotAllowed, List(Allow(methods: _*)), "HTTP method not allowed, supported methods: " + methods.mkString(", "))
 
     case rejections @ (SchemeRejection(_) :: _) ⇒
       val schemes = rejections.collect { case SchemeRejection(scheme) ⇒ scheme }
@@ -84,6 +83,13 @@ object RejectionHandler {
 
     case RequestEntityExpectedRejection :: _ ⇒
       complete(BadRequest, "Request entity expected but not supplied")
+
+    case TooManyRangesRejection(_) :: _ ⇒
+      complete(RequestedRangeNotSatisfiable, "Request contains too many ranges.")
+
+    case UnsatisfiableRangeRejection(unsatisfiableRanges, actualEntityLength) :: _ ⇒
+      complete(RequestedRangeNotSatisfiable, List(`Content-Range`(ContentRange.Unsatisfiable(actualEntityLength))),
+        unsatisfiableRanges.mkString("None of the following requested Ranges were satisfiable:\n", "\n", ""))
 
     case rejections @ (UnacceptedResponseContentTypeRejection(_) :: _) ⇒
       val supported = rejections.flatMap {

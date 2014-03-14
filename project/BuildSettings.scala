@@ -1,5 +1,6 @@
 import sbt._
 import Keys._
+import com.typesafe.sbt.SbtPgp
 import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import sbtassembly.Plugin.AssemblyKeys._
@@ -9,7 +10,7 @@ import com.typesafe.sbt.osgi.SbtOsgi
 import SbtOsgi._
 
 object BuildSettings {
-  val VERSION = "1.3.0"
+  val VERSION = "1.3.1"
 
   lazy val basicSettings = seq(
     version               := NightlyBuildSupport.buildVersion(VERSION),
@@ -37,6 +38,7 @@ object BuildSettings {
     basicSettings ++ formatSettings ++
     NightlyBuildSupport.settings ++
     net.virtualvoid.sbt.graph.Plugin.graphSettings ++
+    SbtPgp.settings ++
     seq(
       // scaladoc settings
       (scalacOptions in doc) <++= (name, version).map { (n, v) => Seq("-doc-title", n, "-doc-version", v) },
@@ -44,22 +46,38 @@ object BuildSettings {
       // publishing
       crossPaths := false,
       publishMavenStyle := true,
+      SbtPgp.useGpg := true,
       publishTo <<= version { version =>
         Some {
-          "spray nexus" at {
-            // public uri is repo.spray.io, we use an SSH tunnel to the nexus here
-            "http://localhost:42424/content/repositories/" + {
-              if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else
+          if (version.contains("-") || true) { // sonatype publishing currently disabled
+            "spray nexus" at {
+              // public uri is repo.spray.io, we use an SSH tunnel to the nexus here
+              "http://localhost:42424/content/repositories/" + {
+                if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else
                 if (NightlyBuildSupport.isNightly) "nightlies/" else "releases/"
+              }
             }
-          }
+          } else "sonatype release staging" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
         }
-      }
+      },
+      pomIncludeRepository := { _ => false },
+      pomExtra :=
+        <scm>
+          <url>git://github.com/spray/spray.git</url>
+          <connection>scm:git:git@github.com:spray/spray.git</connection>
+        </scm>
+        <developers>
+          <developer><id>sirthias</id><name>Mathias Doenitz</name></developer>
+          <developer><id>jrudolph</id><name>Johannes Rudolph</name></developer>
+        </developers>
     )
 
   lazy val noPublishing = seq(
     publish := (),
-    publishLocal := ()
+    publishLocal := (),
+    // required until these tickets are closed https://github.com/sbt/sbt-pgp/issues/42,
+    // https://github.com/sbt/sbt-pgp/issues/36
+    publishTo := None
   )
 
   lazy val generateSprayVersionConf = TaskKey[Seq[File]]("generate-spray-version-conf",

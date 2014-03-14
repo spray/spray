@@ -101,8 +101,8 @@ class RequestParserSpec extends Specification {
             |User-Agent: curl/7.19.7
             | abc
             |    xyz
-            |Accept: */*  """ + '\n' +
-            """Connection: close,
+            |Accept: */*
+            |Connection: close,
             | fancy
             |Content-type: application/json
             |
@@ -176,12 +176,18 @@ class RequestParserSpec extends Specification {
 
       "message chunk with and without extension" in {
         parse(start,
-          "3\nabc\n",
-          "10;some=stuff;bla\n0123456789ABCDEF\n",
+          """3
+            |abc
+            |10;some=stuff;bla
+            |0123456789ABCDEF
+            |""",
           "10;foo=",
-          "bar\n0123456789ABCDEF\n1" +
-            "0\n0123456789",
-          "ABCDEF\ndead") === startMatch ++
+          """bar
+            |0123456789ABCDEF
+            |10
+            |0123456789""",
+          """ABCDEF
+            |dead""") === startMatch ++
           Seq("abc", "", 'dontClose,
             "0123456789ABCDEF", "some=stuff;bla", 'dontClose,
             "0123456789ABCDEF", "foo=bar", 'dontClose,
@@ -189,7 +195,10 @@ class RequestParserSpec extends Specification {
       }
 
       "message end" in {
-        parse(start, "0\n\n") === startMatch ++ Seq("", Nil, 'dontClose)
+        parse(start,
+          """0
+            |
+            |""") === startMatch ++ Seq("", Nil, 'dontClose)
       }
 
       "message end with extension, trailer and remaining content" in {
@@ -259,7 +268,9 @@ class RequestParserSpec extends Specification {
           |"""
 
       "an illegal char after chunk size" in {
-        parse(start, "15 ;\n").takeRight(2) === Seq(BadRequest, "Illegal character ' ' in chunk start")
+        parse(start,
+          """15 ;
+            |""").takeRight(2) === Seq(BadRequest, "Illegal character ' ' in chunk start")
       }
 
       "an illegal char in chunk size" in {
@@ -272,16 +283,21 @@ class RequestParserSpec extends Specification {
       }
 
       "too-large chunk size" in {
-        parse(start, "1a2b3c4d5e\n").takeRight(2) ===
-          Seq(BadRequest, "HTTP chunk size exceeds the configured limit of 1048576 bytes")
+        parse(start,
+          """1a2b3c4d5e
+            |""").takeRight(2) === Seq(BadRequest, "HTTP chunk size exceeds the configured limit of 1048576 bytes")
       }
 
       "an illegal chunk termination" in {
-        parse(start, "3\nabcde").takeRight(2) === Seq(BadRequest, "Illegal chunk termination")
+        parse(start,
+          """3
+            |abcde""").takeRight(2) === Seq(BadRequest, "Illegal chunk termination")
       }
 
       "an illegal header in the trailer" in {
-        parse(start, "0\nF@oo: pip").takeRight(2) === Seq(BadRequest, "Illegal character '@' in header name")
+        parse(start,
+          """0
+            |F@oo: pip""").takeRight(2) === Seq(BadRequest, "Illegal character '@' in header name")
       }
     }
 
@@ -307,7 +323,10 @@ class RequestParserSpec extends Specification {
       }
 
       "HTTP version 1.2" in {
-        parse("GET / HTTP/1.2\r\n") ===
+        parse {
+          """GET / HTTP/1.2
+            |"""
+        } ===
           Seq(HTTPVersionNotSupported, "The server does not support the HTTP protocol version used in the request.")
       }
 
@@ -395,5 +414,5 @@ class RequestParserSpec extends Specification {
     rec(parser(data.head), data.tail)
   }
 
-  def prep(response: String) = response.stripMargin.replace(EOL, "\n").replace("\n", "\r\n")
+  def prep(response: String) = response.stripMarginWithNewline("\r\n")
 }

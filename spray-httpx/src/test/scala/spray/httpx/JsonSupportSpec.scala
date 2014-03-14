@@ -25,90 +25,70 @@ object Employee {
       |  "id": 12345,
       |  "boardMember": false
       |}""".stripMargin.getBytes(HttpCharsets.`UTF-8`.nioCharset)
+
+  val illegalEmployeeJson = """{"fname":"Little Boy","name":"Smith","age":7,"id":12345,"boardMember":true}"""
 }
 
-class SprayJsonSupportSpec extends Specification with SprayJsonSupport {
+trait JsonSupportSpec extends Specification {
+  require(getClass.getSimpleName.endsWith("Spec"))
+  // assuming that the classname ends with "Spec"
+  def name: String = getClass.getSimpleName.dropRight(4)
+  implicit def marshaller: Marshaller[Employee]
+  implicit def unmarshaller: Unmarshaller[Employee]
 
+  "The " + name should {
+    "provide unmarshalling support for a case class" in {
+      HttpEntity(ContentTypes.`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
+    }
+    "provide marshalling support for a case class" in {
+      marshal(Employee.simple) === Right(HttpEntity(ContentTypes.`application/json`, Employee.json))
+    }
+    "use UTF-8 as the default charset for JSON source decoding" in {
+      HttpEntity(MediaTypes.`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
+    }
+    "provide proper error messages for requirement errors" in {
+      val Left(MalformedContent(msg, Some(ex: IllegalArgumentException))) =
+        HttpEntity(MediaTypes.`application/json`, Employee.illegalEmployeeJson).as[Employee]
+      msg === "requirement failed: Board members must be older than 40"
+    }
+  }
+}
+
+class SprayJsonSupportSpec extends Specification with SprayJsonSupport with JsonSupportSpec {
   object MyJsonProtocol extends DefaultJsonProtocol {
     implicit val employeeFormat = jsonFormat5(Employee.apply)
   }
   import MyJsonProtocol._
-  implicit def sprayJsonMarshaller[T](implicit w: RootJsonWriter[T]) = super.sprayJsonMarshaller(w, CompactPrinter)
 
-  "The SprayJsonSupport" should {
-    "provide unmarshalling support for a case class" in {
-      HttpEntity(ContentTypes.`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
-    }
-    "provide marshalling support for a case class" in {
-      marshal(Employee.simple) === Right(HttpEntity(ContentTypes.`application/json`, Employee.json))
-    }
-    "use UTF-8 as the default charset for JSON source decoding" in {
-      HttpEntity(MediaTypes.`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
-    }
-  }
+  def marshaller: Marshaller[Employee] = sprayJsonMarshaller(implicitly[RootJsonWriter[Employee]], CompactPrinter)
+  def unmarshaller: Unmarshaller[Employee] = sprayJsonUnmarshaller[Employee]
 }
 
-class Json4sSupportSpec extends Specification with Json4sSupport {
+class Json4sSupportSpec extends Specification with Json4sSupport with JsonSupportSpec {
   val json4sFormats = DefaultFormats
 
-  "The Json4sSupport" should {
-    "provide unmarshalling support for a case class" in {
-      HttpEntity(ContentTypes.`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
-    }
-    "provide marshalling support for a case class" in {
-      marshal(Employee.simple) === Right(HttpEntity(ContentTypes.`application/json`, Employee.json))
-    }
-    "use UTF-8 as the default charset for JSON source decoding" in {
-      HttpEntity(MediaTypes.`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
-    }
-  }
+  def marshaller: Marshaller[Employee] = json4sMarshaller[Employee]
+  def unmarshaller: Unmarshaller[Employee] = json4sUnmarshaller[Employee]
 }
 
-class Json4sJacksonSupportSpec extends Specification with Json4sJacksonSupport {
+class Json4sJacksonSupportSpec extends Specification with Json4sJacksonSupport with JsonSupportSpec {
   val json4sJacksonFormats = DefaultFormats
 
-  "The Json4sJacksonSupport" should {
-    "provide unmarshalling support for a case class" in {
-      HttpEntity(ContentTypes.`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
-    }
-    "provide marshalling support for a case class" in {
-      marshal(Employee.simple) === Right(HttpEntity(ContentTypes.`application/json`, Employee.json))
-    }
-    "use UTF-8 as the default charset for JSON source decoding" in {
-      HttpEntity(MediaTypes.`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
-    }
-  }
+  def marshaller: Marshaller[Employee] = json4sMarshaller[Employee]
+  def unmarshaller: Unmarshaller[Employee] = json4sUnmarshaller[Employee]
 }
 
-class LiftJsonSupportSpec extends Specification with LiftJsonSupport {
+class LiftJsonSupportSpec extends Specification with LiftJsonSupport with JsonSupportSpec {
   val liftJsonFormats = net.liftweb.json.DefaultFormats
 
-  "The LiftJsonSupport" should {
-    "provide unmarshalling support for a case class" in {
-      HttpEntity(ContentTypes.`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
-    }
-    "provide marshalling support for a case class" in {
-      marshal(Employee.simple) === Right(HttpEntity(ContentTypes.`application/json`, Employee.json))
-    }
-    "use UTF-8 as the default charset for JSON source decoding" in {
-      HttpEntity(MediaTypes.`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
-    }
-  }
+  def marshaller: Marshaller[Employee] = liftJsonMarshaller[Employee]
+  def unmarshaller: Unmarshaller[Employee] = liftJsonUnmarshaller[Employee]
 }
 
-class PlayJsonSupportSpec extends Specification with PlayJsonSupport {
+class PlayJsonSupportSpec extends Specification with PlayJsonSupport with JsonSupportSpec {
   implicit val employeeReader = Json.reads[Employee]
   implicit val employeeWriter = Json.writes[Employee]
 
-  "The PlayJsonSupport" should {
-    "provide unmarshalling capability for case classes with an in-scope Reads[T]" in {
-      HttpEntity(ContentTypes.`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
-    }
-    "provide marshalling capability for case classes with an in-scope Writes[T]" in {
-      marshal(Employee.simple) === Right(HttpEntity(ContentTypes.`application/json`, Employee.json))
-    }
-    "use UTF-8 as the default charset for JSON source decoding" in {
-      HttpEntity(MediaTypes.`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
-    }
-  }
+  def marshaller: Marshaller[Employee] = playJsonMarshaller[Employee]
+  def unmarshaller: Unmarshaller[Employee] = playJsonUnmarshaller[Employee]
 }

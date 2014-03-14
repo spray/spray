@@ -7,13 +7,88 @@ is defined like this:
 .. includecode:: /../spray-routing/src/main/scala/spray/routing/Directives.scala
    :snippet: source-quote
 
-You can browse the predefined directives by trait:
+
+.. _Request Directives:
+
+Directives filtering or extracting from the request
+---------------------------------------------------
+
+:ref:`MethodDirectives`
+  Filter and extract based on the request method.
+
+:ref:`HeaderDirectives`
+  Filter and extract based on request headers.
+
+:ref:`PathDirectives`
+  Filter and extract from the request URI path.
+
+:ref:`HostDirectives`
+  Filter and extract based on the target host.
+
+:ref:`ParameterDirectives`, :ref:`FormFieldDirectives`, :ref:`AnyParamDirectives`
+  Filter and extract based on query parameters, form fields, or both.
+
+:ref:`EncodingDirectives`
+  Filter and decode compressed request content.
+
+:ref:`MarshallingDirectives`
+  Extract the request entity.
+
+:ref:`SchemeDirectives`
+  Filter and extract based on the request scheme.
+
+:ref:`SecurityDirectives`
+  Handle authentication data from the request.
+
+:ref:`CookieDirectives`
+  Filter and extract cookies.
+
+:ref:`BasicDirectives` and :ref:`MiscDirectives`
+  Directives handling request properties.
+
+
+.. _Response Directives:
+
+Directives creating or transforming the response
+------------------------------------------------
+
+:ref:`CacheConditionDirectives`
+  Support for conditional requests (``304 Not Modified`` responses).
+
+:ref:`ChunkingDirectives`
+  Automatically break a response into chunks.
+
+:ref:`CookieDirectives`
+  Set, modify, or delete cookies.
+
+:ref:`EncodingDirectives`
+  Compress responses.
+
+:ref:`FileAndResourceDirectives`
+  Deliver responses from files and resources.
+
+:ref:`RangeDirectives`
+  Support for range requests (``206 Partial Content`` responses).
+
+:ref:`RespondWithDirectives`
+  Change response properties.
+
+:ref:`RouteDirectives`
+  Complete or reject a request with a response.
+
+:ref:`BasicDirectives` and :ref:`MiscDirectives`
+  Directives handling or transforming response properties.
+
+
+List of predefined directives by trait
+--------------------------------------
 
 .. toctree::
    :maxdepth: 1
 
    any-param-directives/index
    basic-directives/index
+   cache-condition-directives/index
    caching-directives/index
    chunking-directives/index
    cookie-directives/index
@@ -30,6 +105,7 @@ You can browse the predefined directives by trait:
    misc-directives/index
    parameter-directives/index
    path-directives/index
+   range-directives/index
    respond-with-directives/index
    route-directives/index
    scheme-directives/index

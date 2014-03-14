@@ -56,16 +56,25 @@ trait FormDataUnmarshallers {
 
   implicit val MultipartContentUnmarshaller = multipartContentUnmarshaller(`UTF-8`)
   def multipartContentUnmarshaller(defaultCharset: HttpCharset): Unmarshaller[MultipartContent] =
-    Unmarshaller[MultipartContent](`multipart/*`) {
+    multipartPartsUnmarshaller[MultipartContent](`multipart/*`, defaultCharset, MultipartContent(_))
+
+  implicit val MultipartByteRangesUnmarshaller = multipartByteRangesUnmarshaller(`UTF-8`)
+  def multipartByteRangesUnmarshaller(defaultCharset: HttpCharset): Unmarshaller[MultipartByteRanges] =
+    multipartPartsUnmarshaller[MultipartByteRanges](`multipart/byteranges`, defaultCharset, MultipartByteRanges(_))
+
+  def multipartPartsUnmarshaller[T <: MultipartParts](mediaRange: MediaRange,
+                                                      defaultCharset: HttpCharset,
+                                                      create: Seq[BodyPart] ⇒ T): Unmarshaller[T] =
+    Unmarshaller[T](mediaRange) {
       case HttpEntity.NonEmpty(contentType, data) ⇒
         contentType.mediaType.parameters.get("boundary") match {
           case None | Some("") ⇒
             sys.error("Content-Type with a multipart media type must have a non-empty 'boundary' parameter")
           case Some(boundary) ⇒
             val mimeMsg = new MIMEMessage(new ByteArrayInputStream(data.toByteArray), boundary, mimeParsingConfig)
-            MultipartContent(convertMimeMessage(mimeMsg, defaultCharset))
+            create(convertMimeMessage(mimeMsg, defaultCharset))
         }
-      case HttpEntity.Empty ⇒ MultipartContent.Empty
+      case HttpEntity.Empty ⇒ create(Nil)
     }
 
   implicit val MultipartFormDataUnmarshaller: Unmarshaller[MultipartFormData] =
@@ -107,7 +116,7 @@ trait FormDataUnmarshallers {
         val data = entity.asString(defaultCharset)
         try {
           val query = Uri.Query(data, entity.contentType.definedCharset.getOrElse(defaultCharset).nioCharset)
-          FormData(query.toMap)
+          FormData(query)
         } catch {
           case ex: IllegalUriException ⇒
             throw new IllegalArgumentException(ex.info.formatPretty.replace("Query,", "form content,"))

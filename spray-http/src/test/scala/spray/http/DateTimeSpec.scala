@@ -61,11 +61,26 @@ class DateTimeSpec extends Specification {
     "properly parse a legal string" in {
       DateTime.fromIsoDateTimeString("2011-07-12T14:08:12") must beSome(DateTime(specificClicks))
     }
+    "properly parse a legal extended string" in {
+      DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.123Z") must beSome(DateTime(specificClicks))
+    }
     "fail on an illegal string" in {
       "example 1" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12x") must beNone }
       "example 2" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08_12") must beNone }
       "example 3" in { DateTime.fromIsoDateTimeString("201A-07-12T14:08:12") must beNone }
       "example 4" in { DateTime.fromIsoDateTimeString("2011-13-12T14:08:12") must beNone }
+    }
+    "fail on an illegal extended string" in {
+      "example 1" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.") must beNone }
+      "example 2" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.a") must beNone }
+      "example 3" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.Z") must beNone }
+      "example 4" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.1") must beNone }
+      "example 5" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.12") must beNone }
+      "example 6" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.123") must beNone }
+      "example 7" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.1234") must beNone }
+      "example 8" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.1Z") must beNone }
+      "example 9" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.12Z") must beNone }
+      "example 10" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12.1234Z") must beNone }
     }
   }
 

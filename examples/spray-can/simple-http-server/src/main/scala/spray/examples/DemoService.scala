@@ -51,7 +51,10 @@ class DemoService extends Actor with ActorLogging {
 
     case r@HttpRequest(POST, Uri.Path("/file-upload"), headers, entity: HttpEntity.NonEmpty, protocol) =>
       // emulate chunked behavior for POST requests to this path
-      r.asPartStream().foreach(self.tell(_, sender()))
+      val parts = r.asPartStream()
+      val client = sender()
+      val handler = context.actorOf(Props(new FileUploadHandler(client, parts.head.asInstanceOf[ChunkedRequestStart])))
+      parts.tail.foreach(handler !)
 
     case s@ChunkedRequestStart(HttpRequest(POST, Uri.Path("/file-upload"), _, _, _)) =>
       val client = sender()

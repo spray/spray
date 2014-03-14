@@ -5,9 +5,11 @@ import akka.actor.ActorSystem
 import spray.routing.SimpleRoutingApp
 import spray.http._
 import MediaTypes._
+import scala.util.{Failure, Success}
 
 object Main extends App with SimpleRoutingApp {
   implicit val system = ActorSystem("simple-routing-app")
+  import system.dispatcher
 
   startServer("localhost", port = 8080) {
     get {
@@ -31,6 +33,11 @@ object Main extends App with SimpleRoutingApp {
         }
       }
     }
+  }.onComplete {
+    case Success(b) =>
+      println(s"Successfully bound to ${b.localAddress}")
+    case Failure(ex) =>
+      println(ex.getMessage)
+      system.shutdown()
   }
-
 }

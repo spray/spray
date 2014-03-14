@@ -44,6 +44,8 @@ private[parser] object BasicRules extends Parser {
 
   def LWS = rule { optional(CRLF) ~ oneOrMore(anyOf(" \t")) }
 
+  def SP = rule { str(" ") }
+
   def Text = rule { !CTL ~ ANY | LWS }
 
   def Hex = rule { "A" - "F" | "a" - "f" | Digit }
