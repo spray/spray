@@ -26,7 +26,7 @@ sealed trait HttpForm {
 /**
  * Model for `application/x-www-form-urlencoded` form data.
  */
-case class FormData(fields: Seq[(String, String)]) extends HttpForm {
+case class FormData(fields: Seq[(String, String)]) extends HttpForm { // TODO: better FormData(query: Uri.Query)?
   type FieldType = (String, String)
 }
 

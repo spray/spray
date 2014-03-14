@@ -40,6 +40,7 @@ class SprayCanClientSpec extends Specification with NoTimeConversions {
     akka.io.tcp.trace-logging = off
     spray.can.client.request-timeout = 500ms
     spray.can.client.response-chunk-aggregation-limit = 0
+    spray.can.client.proxy.http = none
     spray.can.host-connector.max-retries = 1
     spray.can.host-connector.idle-timeout = infinite
     spray.can.host-connector.client.request-timeout = 500ms
@@ -66,9 +67,18 @@ class SprayCanClientSpec extends Specification with NoTimeConversions {
     "properly complete a pipelined request/response cycle with a chunked request" in new TestSetup {
       val clientConnection = newClientConnect()
       val client = send(clientConnection, ChunkedRequestStart(Get("/abc") ~> Host(hostname, port)))
-      client.send(clientConnection, MessageChunk("123"))
-      client.send(clientConnection, MessageChunk("456"))
-      client.send(clientConnection, ChunkedMessageEnd)
+
+      case class CustomAck(value: Int)
+      client.send(clientConnection, MessageChunk("123").withAck(CustomAck(1)))
+      client.expectMsg(CustomAck(1))
+
+      // chunks sent from third-party actor should get ack
+      val clientWorker = TestProbe()
+      clientWorker.send(clientConnection, MessageChunk("456").withAck(CustomAck(2)))
+      clientWorker.expectMsg(CustomAck(2))
+
+      clientWorker.send(clientConnection, ChunkedMessageEnd.withAck(CustomAck(3)))
+      clientWorker.expectMsg(CustomAck(3))
       client.send(clientConnection, Get("/def") ~> Host(hostname, port))
 
       val server = acceptConnection()
@@ -100,8 +110,8 @@ class SprayCanClientSpec extends Specification with NoTimeConversions {
       val server = acceptConnection()
       server.expectMsgType[HttpRequest].uri.path.toString === "/def"
       client.expectMsg(Timedout(request))
-      client.expectMsg(Http.Closed)
-      server.expectMsg(Http.PeerClosed)
+      client.expectMsg(Http.Aborted)
+      server.expectMsgType[Http.ErrorClosed]
       unbind()
     }
 

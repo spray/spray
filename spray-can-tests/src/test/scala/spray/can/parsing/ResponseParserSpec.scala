@@ -121,14 +121,21 @@ class ResponseParserSpec extends Specification {
 
       "message chunk with and without extension" in {
         parse(start,
-          "3\nabc\n",
-          "10;some=stuff;bla\n0123456789ABCDEF\n") === startMatch ++ Seq(
+          """3
+            |abc
+            |""",
+          """10;some=stuff;bla
+            |0123456789ABCDEF
+            |""") === startMatch ++ Seq(
             "abc", "", 'dontClose,
             "0123456789ABCDEF", "some=stuff;bla", 'dontClose)
       }
 
       "message end" in {
-        parse(start, "0\n\n") === startMatch ++ Seq("", Nil, 'dontClose)
+        parse(start,
+          """0
+            |
+            |""") === startMatch ++ Seq("", Nil, 'dontClose)
       }
 
       "message end with extension, trailer and remaining content" in {
@@ -256,5 +263,5 @@ class ResponseParserSpec extends Specification {
     rec(parser(data.head), data.tail)
   }
 
-  def prep(response: String) = response.stripMargin.replace(EOL, "\n").replace("\n", "\r\n")
+  def prep(response: String) = response.stripMarginWithNewline("\r\n")
 }

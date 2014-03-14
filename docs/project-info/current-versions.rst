@@ -13,13 +13,13 @@ This version targets Scala 2.9.x and Akka 1.3.x and is therefore not recommended
 Its documentation doesn't live here but in the (old) `github wiki`_.
 
 
-1.0.0 / 1.1.0 / 1.2.0
----------------------
+1.0.0 / 1.1.0 / 1.2.0 / 1.3.0
+-----------------------------
 
-The current and stable *spray* release is a triple release,
-targeting Scala 2.9 and Scala 2.10 as well as three Akka versions at the same time.
+The current and stable *spray* release is a quadrupel release,
+targeting Scala 2.9 and Scala 2.10 as well as four Akka versions at the same time.
 
-Please choose |1.0|, |1.1| or |1.2| depending on what Scala/Akka version you are targeting:
+Please choose |1.0|, |1.1|, |1.2| or |1.3| depending on what Scala/Akka version you are targeting:
 
 .. rst-class:: wide
 
@@ -29,15 +29,19 @@ Please choose |1.0|, |1.1| or |1.2| depending on what Scala/Akka version you are
 - | *spray* |1.1| is built against Scala 2.10.3 and Akka 2.1.4.
   | It's sources live in the `release/1.1`_ branch of the *spray* repository.
 
-- | *spray* |1.2| is built against Scala 2.10.3 and Akka 2.2.3.
+- | *spray* |1.2| is built against Scala 2.10.3 and Akka 2.2.4.
   | It's sources live in the `release/1.2`_ branch of the *spray* repository.
   | (Please note that Akka 2.2.3 or later is *required*, earlier Akka versions will *not* work!)
+
+- | *spray* |1.3| is built against Scala 2.10.3 and Akka 2.3.0.
+  | It's sources live in the `release/1.3`_ branch of the *spray* repository.
 
 For information about where to find the *spray* artifacts please check out the :ref:`maven-repo` chapter.
 
 .. |1.0| replace:: **1.0.0**
 .. |1.1| replace:: **1.1.0**
 .. |1.2| replace:: **1.2.0**
+.. |1.3| replace:: **1.3.0**
 
 
 Nightly Builds
@@ -59,3 +63,4 @@ Nightly builds are available from the http://nightlies.spray.io repository.
 .. _release/1.0: https://github.com/spray/spray/tree/release/1.0
 .. _release/1.1: https://github.com/spray/spray/tree/release/1.1
 .. _release/1.2: https://github.com/spray/spray/tree/release/1.2
+.. _release/1.3: https://github.com/spray/spray/tree/release/1.3

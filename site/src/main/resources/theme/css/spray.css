@@ -154,3 +154,11 @@ table.footnote td { vertical-align: top; }
 }
 
 .sidebar .well { overflow: hidden }
+
+span.twitter-typeahead input[type=text] { width: 200px; margin: -5px 46px 0 0; }
+.tt-suggestion { white-space: nowrap; }
+
+@media (max-width: 979px) {
+    #talk-link { display: none; }
+}
+

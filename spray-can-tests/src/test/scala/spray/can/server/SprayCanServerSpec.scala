@@ -27,12 +27,14 @@ import akka.actor.{ Terminated, ActorRef, ActorSystem }
 import akka.io.IO
 import akka.testkit.TestProbe
 import spray.can.Http
+import spray.util._
 import spray.util.Utils.temporaryServerHostnameAndPort
 import spray.httpx.RequestBuilding._
 import spray.http._
 import HttpProtocols._
 import spray.can.Http.RegisterChunkHandler
 import spray.can.client.ClientConnectionSettings
+import spray.io.CommandWrapper
 
 class SprayCanServerSpec extends Specification with NoTimeConversions {
   val testConf: Config = ConfigFactory.parseString("""
@@ -90,6 +92,16 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
       serverHandler.reply(HttpResponse(entity = "yeah"))
       probe.expectMsgType[HttpResponse].entity === HttpEntity("yeah")
     }
+    "allow handling a request without a sender being set" in new TestSetup {
+      val connection = openNewClientConnection()
+      val serverHandler = acceptConnection()
+
+      val probe = sendRequest(connection, Get("/abc"))
+      serverHandler.expectMsgType[HttpRequest].uri === Uri(s"http://$hostname:$port/abc")
+
+      serverHandler.sender ! HttpResponse(entity = "yeah") // sender is null at receive
+      probe.expectMsgType[HttpResponse].entity === HttpEntity("yeah")
+    }
 
     "properly complete a chunked request/response cycle" in new TestSetup {
       val connection = openNewClientConnection()
@@ -142,12 +154,12 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
         new TestSetup {
           val socket = openClientSocket()
           val serverHandler = acceptConnection()
-          val writer = write(socket, request + "\r\n\r\n")
-          val (text, reader) = readAll(socket)()
+          write(socket, request + "\r\n\r\n")
+          val (text, _) = readAll(socket)()
           socket.close()
           serverHandler.expectMsg(Http.ConfirmedClosed)
           text must startWith("HTTP/1.1 400 Bad Request")
-          text.takeRight(errorMsg.length) === errorMsg
+          text must endWith(errorMsg)
         }
       "when an HTTP/1.1 request has no Host header" in errorTest(
         request = "GET / HTTP/1.1",
@@ -167,14 +179,14 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
           """Illegal request-target, unexpected end-of-input at position 16:\u0020
             |http://host:naaa
             |                ^
-            |""".stripMargin)
+            |""".stripMarginWithNewline("\n")) // UriParser Exceptions are rendered with \n
       "when the request has an URI with a fragment" in errorTest(
         request = "GET /path?query#fragment HTTP/1.1",
         errorMsg =
           """Illegal request-target, unexpected character '#' at position 11:\u0020
             |/path?query#fragment
             |           ^
-            |""".stripMargin)
+            |""".stripMarginWithNewline("\n")) // UriParser Exceptions are rendered with \n
       "when the request has an absolute URI without authority part and a non-empty host header" in errorTest(
         request = "GET http:/foo HTTP/1.1\r\nHost: spray.io",
         errorMsg = "'Host' header value doesn't match request target authority")
@@ -243,6 +255,21 @@ class SprayCanServerSpec extends Specification with NoTimeConversions {
       "when a HTTP/1.0 request includes an absolute URI" in new RawRequestTestSetup(
         target = "http://ex%61mple.com/f%6f%6fbar?q=b%61z",
         protocol = `HTTP/1.0`)
+    }
+    "allow changing timeouts with SetRequestTimeout" in new TestSetup {
+      val connection = openNewClientConnection()
+      val serverHandler = acceptConnection()
+
+      val probe = sendRequest(connection, Get("/abc"))
+      serverHandler.expectMsgType[HttpRequest].uri === Uri(s"http://$hostname:$port/abc")
+      val sender = serverHandler.sender
+
+      serverHandler.send(sender, SetRequestTimeout(100.millis))
+      serverHandler.send(sender, SetTimeoutTimeout(100.millis))
+      serverHandler.expectMsgType[Timedout](1.second)
+      probe.expectMsgType[HttpResponse](1.second).entity ===
+        HttpEntity("Ooops! The server was not able to produce a timely response to your request.\n" +
+          "Please try again in a short while!")
     }
   }
 

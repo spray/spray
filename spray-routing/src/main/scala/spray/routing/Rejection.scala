@@ -90,6 +90,20 @@ case class UnsupportedRequestContentTypeRejection(errorMsg: String) extends Reje
 case class UnsupportedRequestEncodingRejection(supported: HttpEncoding) extends Rejection
 
 /**
+ * Rejection created by range directives.
+ * Signals that the request was rejected because the requests contains only unsatisfiable ByteRanges.
+ * The actualEntityLength gives the client a hint to create satisfiable ByteRanges.
+ */
+case class UnsatisfiableRangeRejection(unsatisfiableRanges: Seq[ByteRange], actualEntityLength: Long) extends Rejection
+
+/**
+ * Rejection created by range directives.
+ * Signals that the request contains too many ranges. An irregular high number of ranges
+ * indicates a broken client or a denial of service attack.
+ */
+case class TooManyRangesRejection(maxRanges: Int) extends Rejection
+
+/**
  * Rejection created by decoding filters.
  * Signals that the request was rejected because the requests content is corrupted.
  */

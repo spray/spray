@@ -95,4 +95,6 @@ class PimpedString(underlying: String) {
   def startsWith(c: Char) = underlying.nonEmpty && underlying.charAt(0) == c
 
   def endsWith(c: Char) = underlying.nonEmpty && underlying.charAt(underlying.length - 1) == c
+
+  def stripMarginWithNewline(newline: String) = underlying.stripMargin.replace("\r\n", "\n").replace("\n", newline)
 }

@@ -18,6 +18,7 @@ package spray.routing
 
 import scala.concurrent.{ Future, Promise }
 import spray.http._
+import spray.util._
 import HttpHeaders._
 import StatusCodes._
 import MediaTypes._
@@ -114,7 +115,7 @@ class RouteDirectivesSpec extends RoutingSpec {
           """{
             |  "name": "Ida",
             |  "age": 83
-            |}""".stripMargin
+            |}""".stripMarginWithNewline("\n")
       }
       Get().withHeaders(Accept(MediaTypes.`text/xml`)) ~> route ~> check {
         responseAs[xml.NodeSeq] === <data><name>Ida</name><age>83</age></data>

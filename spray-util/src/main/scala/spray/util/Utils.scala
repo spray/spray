@@ -27,7 +27,10 @@ import scala.annotation.tailrec
 object Utils {
 
   def actorSystemNameFrom(clazz: Class[_]) =
-    clazz.getName.replace('.', '-').filter(_ != '$')
+    clazz.getName
+      .replace('.', '-')
+      .replace('_', '-')
+      .filter(_ != '$')
 
   def temporaryServerAddress(interface: String = "127.0.0.1"): InetSocketAddress = {
     val serverSocket = ServerSocketChannel.open()

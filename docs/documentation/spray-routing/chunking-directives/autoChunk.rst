@@ -13,7 +13,6 @@ Signature
 
     def autoChunk(maxChunkSize: Long)(implicit factory: ActorRefFactory): Directive0
     def autoChunk(threshold: Long, maxChunkSize: Long)(implicit factory: ActorRefFactory): Directive0
-    def autoChunk(magnet: ChunkSizeMagnet): Directive0
 
 The signature shown is simplified, the real signature uses magnets. [1]_
 

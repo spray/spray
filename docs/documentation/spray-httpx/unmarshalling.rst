@@ -70,7 +70,7 @@ One is the ``Unmarshaller.apply`` helper, which is defined as such::
     def apply[T](unmarshalFrom: ContentTypeRange*)
                 (f: PartialFunction[HttpEntity, T]): Unmarshaller[T]
 
-The default ``NodeSeqMarshaller`` for example is defined with it:
+The default ``NodeSeqUnmarshaller`` for example is defined with it:
 
 .. includecode:: /../spray-httpx/src/main/scala/spray/httpx/unmarshalling/BasicUnmarshallers.scala
    :snippet: nodeseq-unmarshaller

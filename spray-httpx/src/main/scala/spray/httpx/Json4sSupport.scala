@@ -16,35 +16,22 @@
 package spray.httpx
 
 import org.json4s.native.Serialization
-import org.json4s.Formats
-import spray.httpx.marshalling.{ Marshaller, MetaMarshallers }
-import spray.httpx.unmarshalling.Unmarshaller
-import spray.http._
 
-trait Json4sSupport extends MetaMarshallers {
-
-  /**
-   * Supplies the serialization and deserialization formats for JSON4s.
-   *
-   * proper usage
-   * formats = DefaultFormats(NoTypeHints)
-   * if you want extra support add json4s-ext to dependencies and add
-   *
-   * all examples taken from json4s.org site:
-   * Scala enums
-   * implicit val formats = org.json4s.DefaultFormats + new org.json4s.ext.EnumSerializer(MyEnum)
-   * or for enum names
-   * implicit val formats = org.json4s.DefaultFormats + new org.json4s.ext.EnumNameSerializer(MyEnum)
-   * Joda Time
-   * implicit val formats = org.json4s.DefaultFormats ++ org.json4s.ext.JodaTimeSerializers.all
-   */
-  implicit def json4sFormats: Formats
-
-  implicit def json4sUnmarshaller[T: Manifest] =
-    Unmarshaller[T](MediaTypes.`application/json`) {
-      case x: HttpEntity.NonEmpty ⇒ Serialization.read[T](x.asString(defaultCharset = HttpCharsets.`UTF-8`))
-    }
-
-  implicit def json4sMarshaller[T <: AnyRef] =
-    Marshaller.delegate[T, String](ContentTypes.`application/json`)(Serialization.write(_))
+/**
+ * Supplies the serialization and deserialization formats for JSON4s.
+ *
+ * proper usage
+ * formats = DefaultFormats(NoTypeHints)
+ * if you want extra support add json4s-ext to dependencies and add
+ *
+ * all examples taken from json4s.org site:
+ * Scala enums
+ * implicit val formats = org.json4s.DefaultFormats + new org.json4s.ext.EnumSerializer(MyEnum)
+ * or for enum names
+ * implicit val formats = org.json4s.DefaultFormats + new org.json4s.ext.EnumNameSerializer(MyEnum)
+ * Joda Time
+ * implicit val formats = org.json4s.DefaultFormats ++ org.json4s.ext.JodaTimeSerializers.all
+ */
+trait Json4sSupport extends BaseJson4sSupport {
+  protected[httpx] def serialization = Serialization
 }

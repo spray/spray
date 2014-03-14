@@ -31,13 +31,17 @@ import spray.util._
 trait RouteTest extends RequestBuilding with RouteResultComponent {
   this: TestFrameworkInterface ⇒
 
+  /** Override to supply a custom ActorSystem */
+  protected def createActorSystem(): ActorSystem =
+    ActorSystem(Utils.actorSystemNameFrom(getClass), testConfig)
+
   def testConfigSource: String = ""
   def testConfig: Config = {
     val source = testConfigSource
     val config = if (source.isEmpty) ConfigFactory.empty() else ConfigFactory.parseString(source)
     config.withFallback(ConfigFactory.load())
   }
-  implicit val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConfig)
+  implicit val system = createActorSystem()
   implicit def executor = system.dispatcher
 
   def cleanUp(): Unit = { system.shutdown() }

@@ -26,7 +26,7 @@ import spray.routing._
 import html._
 import StatusCodes._
 
-class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
+class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with SearchSuggestions {
 
   // format: OFF
   def receive = runRoute {
@@ -53,6 +53,9 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
         host(_.endsWith("parboiled.org")) {
           redirect("https://github.com/sirthias/parboiled/wiki", Found)
         } ~
+        host(_.endsWith("parboiled2.org")) {
+          redirect("https://github.com/sirthias/parboiled2", Found)
+        } ~
         host(_.endsWith("pegdown.org")) {
           redirect("https://github.com/sirthias/pegdown", Found)
         } ~
@@ -64,6 +67,7 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
             talkCharts("scala.io") ~
             talkCharts("wjax") ~
             talkCharts("webinar") ~
+            searchRoute("spray.io") ~
             path("webinar" / "video" /) { redirect("http://www.youtube.com/watch?v=7MqD7_YvZ8Q", Found) } ~
             getFromResourceDirectory("theme") ~
             pathPrefix("_images") {
@@ -143,8 +147,8 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
   def showRequest(request: HttpRequest) = LogEntry(request.uri, InfoLevel)
 
   def showErrorResponses(request: HttpRequest): Any ⇒ Option[LogEntry] = {
-    case HttpResponse(OK, _, _, _)       ⇒ None
-    case HttpResponse(NotFound, _, _, _) ⇒ Some(LogEntry("404: " + request.uri, WarningLevel))
+    case HttpResponse(OK | NotModified | PartialContent, _, _, _) ⇒ None
+    case HttpResponse(NotFound, _, _, _)                          ⇒ Some(LogEntry("404: " + request.uri, WarningLevel))
     case r @ HttpResponse(Found | MovedPermanently, _, _, _) ⇒
       Some(LogEntry(s"${r.status.intValue}: ${request.uri} -> ${r.header[HttpHeaders.Location].map(_.uri.toString).getOrElse("")}", WarningLevel))
     case response ⇒ Some(
@@ -152,7 +156,7 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
   }
 
   def showRepoResponses(repo: String)(request: HttpRequest): HttpResponsePart ⇒ Option[LogEntry] = {
-    case HttpResponse(OK, _, _, _) ⇒ Some(LogEntry(repo + " 200: " + request.uri, InfoLevel))
+    case HttpResponse(s @ (OK | NotModified), _, _, _) ⇒ Some(LogEntry(s"$repo  ${s.intValue}: ${request.uri}", InfoLevel))
     case ChunkedResponseStart(HttpResponse(OK, _, _, _)) ⇒ Some(LogEntry(repo + " 200 (chunked): " + request.uri, InfoLevel))
     case HttpResponse(NotFound, _, _, _) ⇒ Some(LogEntry(repo + " 404: " + request.uri))
     case _ ⇒ None

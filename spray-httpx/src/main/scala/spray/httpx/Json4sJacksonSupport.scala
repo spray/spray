@@ -15,20 +15,12 @@
  */
 package spray.httpx
 
-import org.json4s.jackson.Serialization
-import org.json4s.Formats
-import spray.httpx.marshalling.{ Marshaller, MetaMarshallers }
-import spray.httpx.unmarshalling.Unmarshaller
-import spray.http._
+import org.json4s.{ Formats, jackson }
 
-trait Json4sJacksonSupport extends MetaMarshallers {
+trait Json4sJacksonSupport extends BaseJson4sSupport {
   implicit def json4sJacksonFormats: Formats
 
-  implicit def json4sUnmarshaller[T: Manifest] =
-    Unmarshaller[T](MediaTypes.`application/json`) {
-      case x: HttpEntity.NonEmpty ⇒ Serialization.read[T](x.asString(defaultCharset = HttpCharsets.`UTF-8`))
-    }
-
-  implicit def json4sMarshaller[T <: AnyRef] =
-    Marshaller.delegate[T, String](ContentTypes.`application/json`)(Serialization.write(_))
+  // needed for backwards compatibility
+  final def json4sFormats: Formats = json4sJacksonFormats
+  protected[httpx] def serialization = jackson.Serialization
 }

@@ -91,19 +91,30 @@ object SubNode {
       def isRoot = false
       def parent = _parent
       val doc = SphinxDoc(FileUtils.readAllTextFromResource("documentation-root.html"), "documentation", PostMetaData())
+      private val versionNodeOrdering: Ordering[ContentNode] =
+        Ordering.by[ContentNode, (Int, String with ReversedOrdering, String with ReversedOrdering)] { node ⇒
+          import VersionTools._
+          VersionTools.parseVersion(node.name) match {
+            case FinalVersion(name)            ⇒ (1, "", name)
+            case SnapshotVersion(name)         ⇒ (2, "", name)
+            case SuffixedVersion(name, suffix) ⇒ (3, suffix, name)
+            case UnknownVersion(name)          ⇒ (4, "", name)
+          }
+        }
       val children: Seq[ContentNode] = {
         val other = Main.settings.otherVersions map { v ⇒
-          SphinxDoc.load(s"documentation-$v/index/") match {
+          val vv = v.takeWhile(_ != ' ')
+          SphinxDoc.load(s"documentation-$vv/index/") match {
             case Some(d) ⇒
-              new BranchRootNode("Documentation » " + v, v, DOC_URI + v + '/', "documentation-" + v, d, v) {
+              new BranchRootNode("Documentation » " + v, v, DOC_URI + vv + '/', "documentation-" + vv, d, vv) {
                 def isRoot = false
                 def parent = docRoot
               }
-            case None ⇒ sys.error(s"index.fjson for documentation version $v not found")
+            case None ⇒ sys.error(s"index.fjson for documentation version $vv not found")
           }
         }
         val nodes = other ++ APIDocNode.findFor(_parent, Main.settings.mainVersion) :+ SubNode(this, Main.settings.mainVersion)(li)
-        nodes.sortBy(_.name)
+        nodes.sorted(versionNodeOrdering)
       }
     }
 }

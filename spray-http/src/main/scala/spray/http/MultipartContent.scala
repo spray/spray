@@ -19,17 +19,29 @@ package spray.http
 import java.io.File
 import HttpHeaders.`Content-Disposition`
 
+trait MultipartParts {
+  def parts: Seq[BodyPart]
+}
+
 /**
- * Basic model for multipart content as defined in RFC 2046.
+ * Basic model for multipart/mixed content as defined in RFC 2046.
  * If you are looking for a model for `multipart/form-data` you should be using [[spray.http.MultipartFormData]].
  */
-case class MultipartContent(parts: Seq[BodyPart])
-
+case class MultipartContent(parts: Seq[BodyPart]) extends MultipartParts
 object MultipartContent {
   val Empty = MultipartContent(Nil)
 
   def apply(files: Map[String, FormFile]): MultipartContent =
     MultipartContent(files.map(e ⇒ BodyPart(e._2, e._1))(collection.breakOut))
+}
+
+/**
+ * Model for multipart/byteranges content as defined in RFC 2046.
+ * If you are looking for a model for `multipart/form-data` you should be using [[spray.http.MultipartFormData]].
+ */
+case class MultipartByteRanges(parts: Seq[BodyPart]) extends MultipartParts
+object MultipartByteRanges {
+  val Empty = MultipartByteRanges(Nil)
 }
 
 /**
@@ -48,6 +60,11 @@ case class BodyPart(entity: HttpEntity, headers: Seq[HttpHeader] = Nil) {
     headers.collectFirst {
       case `Content-Disposition`("form-data", parameters) if parameters.contains(parameter) ⇒
         parameters(parameter)
+    }
+
+  def contentRange: Option[ContentRange] =
+    headers.collectFirst {
+      case contentRangeHeader: HttpHeaders.`Content-Range` ⇒ contentRangeHeader.contentRange
     }
 }
 object BodyPart {

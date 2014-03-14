@@ -85,16 +85,17 @@ class RejectionHandlerSpec extends RoutingSpec {
         entity(as[NodeSeq]) { _ ⇒ completeOk }
       } ~> check {
         status === BadRequest
-        responseAs[String] === "The request content was malformed:\n" +
-          "XML document structures must start and end within the same entity."
+        responseAs[String] must startWith("The request content was malformed:")
       }
     }
     "respond with MethodNotAllowed for requests resulting in MethodRejections" in {
+      import HttpMethods._
       Post("/", "/test") ~> wrap {
         get { complete("yes") } ~
           put { complete("yes") }
       } ~> check {
         status === MethodNotAllowed
+        headers === Allow(GET, PUT) :: Nil
         responseAs[String] === "HTTP method not allowed, supported methods: GET, PUT"
       }
     }

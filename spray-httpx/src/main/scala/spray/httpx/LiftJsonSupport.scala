@@ -16,6 +16,8 @@
 
 package spray.httpx
 
+import java.lang.reflect.InvocationTargetException
+
 import net.liftweb.json._
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.Unmarshaller
@@ -37,7 +39,10 @@ trait LiftJsonSupport {
     Unmarshaller[T](MediaTypes.`application/json`) {
       case x: HttpEntity.NonEmpty ⇒
         val jsonSource = x.asString(defaultCharset = HttpCharsets.`UTF-8`)
-        parse(jsonSource).extract[T]
+        try parse(jsonSource).extract[T]
+        catch {
+          case MappingException("unknown error", ite: InvocationTargetException) ⇒ throw ite.getCause
+        }
     }
 
   implicit def liftJsonMarshaller[T <: AnyRef] =

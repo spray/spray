@@ -13,4 +13,4 @@ Project Info
    references
    sponsors
    license
-   other-projects
+   community-projects

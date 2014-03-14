@@ -36,9 +36,12 @@ trait MultipartMarshallers {
     Base64.custom.encodeToString(array, false)
   }
 
-  implicit def multipartContentMarshaller = {
+  implicit def multipartByterangesMarshaller = multipartPartsMarshaller[MultipartByteRanges](`multipart/byteranges`)
+  implicit def multipartContentMarshaller = multipartPartsMarshaller[MultipartContent](`multipart/mixed`)
+
+  private def multipartPartsMarshaller[T <: MultipartParts](mediatype: MultipartMediaType): Marshaller[T] = {
     val boundary = randomBoundary
-    Marshaller.of[MultipartContent](`multipart/mixed` withBoundary boundary) { (value, contentType, ctx) ⇒
+    Marshaller.of[T](mediatype withBoundary boundary) { (value, contentType, ctx) ⇒
       if (!value.parts.isEmpty) {
         val r = new HttpDataRendering(rawBytesSizeHint = 512)
         value.parts.foreach { part ⇒

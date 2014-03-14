@@ -17,9 +17,12 @@
 package spray.routing
 
 import spray.http._
-import HttpHeaders.Cookie
+import HttpHeaders._
+import StatusCodes.OK
 
 class CookieDirectivesSpec extends RoutingSpec {
+
+  val deletedTimeStamp = DateTime.fromIsoDateTimeString("1800-01-01T00:00:00")
 
   "The 'cookie' directive" should {
     "extract the respectively named cookie" in {
@@ -44,8 +47,9 @@ class CookieDirectivesSpec extends RoutingSpec {
       Get() ~> {
         deleteCookie("myCookie", "test.com") { completeOk }
       } ~> check {
-        response.toString === "HttpResponse(200 OK,Empty,List(Set-Cookie: myCookie=deleted; " +
-          "Expires=Wed, 01 Jan 1800 00:00:00 GMT; Domain=test.com),HTTP/1.1)"
+        status === OK
+        header[`Set-Cookie`] === Some(`Set-Cookie`(HttpCookie("myCookie", "deleted", expires = deletedTimeStamp,
+          domain = Some("test.com"))))
       }
     }
 
@@ -53,10 +57,10 @@ class CookieDirectivesSpec extends RoutingSpec {
       Get() ~> {
         deleteCookie(HttpCookie("myCookie", "test.com"), HttpCookie("myCookie2", "foobar.com")) { completeOk }
       } ~> check {
-        response.toString === "HttpResponse(200 OK,Empty,List(" +
-          "Set-Cookie: myCookie=deleted; Expires=Wed, 01 Jan 1800 00:00:00 GMT, " +
-          "Set-Cookie: myCookie2=deleted; Expires=Wed, 01 Jan 1800 00:00:00 GMT" +
-          "),HTTP/1.1)"
+        status === OK
+        headers.collect { case `Set-Cookie`(x) ⇒ x } === List(
+          HttpCookie("myCookie", "deleted", expires = deletedTimeStamp),
+          HttpCookie("myCookie2", "deleted", expires = deletedTimeStamp))
       }
     }
   }
@@ -84,7 +88,8 @@ class CookieDirectivesSpec extends RoutingSpec {
       Get() ~> {
         setCookie(HttpCookie("myCookie", "test.com")) { completeOk }
       } ~> check {
-        response.toString === "HttpResponse(200 OK,Empty,List(Set-Cookie: myCookie=test.com),HTTP/1.1)"
+        status === OK
+        header[`Set-Cookie`] === Some(`Set-Cookie`(HttpCookie("myCookie", "test.com")))
       }
     }
 
@@ -92,10 +97,9 @@ class CookieDirectivesSpec extends RoutingSpec {
       Get() ~> {
         setCookie(HttpCookie("myCookie", "test.com"), HttpCookie("myCookie2", "foobar.com")) { completeOk }
       } ~> check {
-        response.toString === "HttpResponse(200 OK,Empty,List(" +
-          "Set-Cookie: myCookie=test.com, " +
-          "Set-Cookie: myCookie2=foobar.com" +
-          "),HTTP/1.1)"
+        status === OK
+        headers.collect { case `Set-Cookie`(x) ⇒ x } === List(
+          HttpCookie("myCookie", "test.com"), HttpCookie("myCookie2", "foobar.com"))
       }
     }
   }

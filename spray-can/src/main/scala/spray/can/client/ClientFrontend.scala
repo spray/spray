@@ -105,9 +105,7 @@ private object ClientFrontend {
                 commandPL(Http.Close)
               }
 
-            case Pipeline.AckEvent(ack) ⇒
-              if (!openRequests.isEmpty) dispatch(openRequests.head.sender, ack)
-              else throw new IllegalStateException
+            case AckAndSender(ack, sender) ⇒ dispatch(sender, ack)
 
             case x: Tcp.ConnectionClosed ⇒
               openRequests.foldLeft(closeCommanders)(_ + _.sender) foreach (dispatch(_, x))
@@ -129,7 +127,7 @@ private object ClientFrontend {
 
           def render(part: HttpRequestPart, message: HttpMessage, ack: Option[Any]): Unit = {
             val sentAck = ack match {
-              case Some(x) ⇒ Pipeline.AckEvent(x)
+              case Some(x) ⇒ AckAndSender(x, context.sender)
               case None    ⇒ Tcp.NoAck(PartAndSender(part, context.sender))
             }
             commandPL(RequestPartRenderingContext(part, message.protocol, sentAck))
@@ -142,7 +140,7 @@ private object ClientFrontend {
                 val r = rec.request.message.asInstanceOf[HttpRequest]
                 log.warning("{} request to '{}' timed out after {}, closing connection", r.method, r.uri, requestTimeout)
                 dispatch(rec.sender, Timedout(rec.request))
-                commandPL(Http.Close)
+                commandPL(Http.Abort)
               }
             }
 
@@ -163,4 +161,5 @@ private object ClientFrontend {
   private class RequestRecord(val request: HttpRequestPart with HttpMessageStart, val sender: ActorRef, var state: RequestState)
 
   private case class PartAndSender(part: HttpRequestPart, sender: ActorRef)
+  private[client] case class AckAndSender(ack: Any, sender: ActorRef) extends Event
 }
