@@ -21,12 +21,13 @@ package parser
 import org.parboiled.scala._
 import BasicRules._
 import CacheDirectives._
+import HttpHeaders._
 
 private[parser] trait CacheControlHeader {
   this: Parser with ProtocolParameterRules ⇒
 
-  def `*Cache-Control` = rule(
-    zeroOrMore(cacheDirective, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Cache-Control`(_)))
+  // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.9
+  def `*Cache-Control` = rule(zeroOrMore(cacheDirective, separator = ListSep) ~ EOI ~~> (`Cache-Control`(_)))
 
   def cacheDirective = rule(
     "no-cache" ~ push(`no-cache`)
@@ -48,4 +49,30 @@ private[parser] trait CacheControlHeader {
       | Token ~ optional("=" ~ (Token | QuotedString)) ~~> (CacheDirective.custom(_, _)))
 
   def FieldNames = rule { oneOrMore(QuotedString, separator = ListSep) }
+
+  def OpaqueTagDef = rule { OpaqueTag ~~> (http.EntityTag(_, weak = false)) }
+
+  // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.19
+  def `*ETag` = rule { EntityTag ~ EOI ~~> (ETag(_)) }
+
+  // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.24
+  def `*If-Match` = rule {
+    "*" ~ push(`If-Match`.`*`) |
+      oneOrMore(OpaqueTagDef, separator = ListSep) ~ EOI ~~> (tags ⇒ `If-Match`(EntityTagRange(tags)))
+  }
+
+  // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.25
+  def `*If-Modified-Since` = rule { HttpDate ~ EOI ~~> (`If-Modified-Since`(_)) }
+
+  // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.26
+  def `*If-None-Match` = rule {
+    "*" ~ push(`If-None-Match`.`*`) |
+      oneOrMore(EntityTag, separator = ListSep) ~ EOI ~~> (tags ⇒ `If-None-Match`(EntityTagRange(tags)))
+  }
+
+  // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.28
+  def `*If-Unmodified-Since` = rule { HttpDate ~ EOI ~~> (`If-Unmodified-Since`(_)) }
+
+  // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.29
+  def `*Last-Modified` = rule { HttpDate ~ EOI ~~> (`Last-Modified`(_)) }
 }

@@ -49,11 +49,12 @@ class HttpClientConnectionPipelineSpec extends Specification with RawSpecs2Pipel
 
     "send out a simple (acked) HttpRequest to the server" in new Fixture(stage) {
       val probe = TestProbe()
+      val Ack = ClientFrontend.AckAndSender('Ack, probe.ref)
       probe.send(connectionActor, Http.MessageCommand(HttpRequest().withAck('Ack)))
       commands.expectMsgPF() {
-        case Tcp.Write(StringBytes(data), Pipeline.AckEvent('Ack)) ⇒ data
+        case Tcp.Write(StringBytes(data), Ack) ⇒ data
       } === emptyRawRequest()
-      connectionActor ! Pipeline.AckEvent('Ack)
+      connectionActor ! Ack
       commands.expectMsg(Pipeline.Tell(probe.ref, 'Ack, connectionActor))
     }
 

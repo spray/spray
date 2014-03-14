@@ -33,6 +33,8 @@ Directive                              Description
                                        ``Deflate`` unless the request explicitly sets ``Accept-Encoding`` to ``identity``.
 :ref:`-compressResponseIfRequested-`   Compresses responses coming back from its inner Route using either ``Gzip`` or
                                        ``Deflate``, but only when the request explicitly accepts one of them.
+:ref:`-conditional-`                   Depending on the given ETag and Last-Modified values responds with
+                                       ``304 Not Modified`` if the request comes with the respective conditional headers.
 :ref:`-cookie-`                        Extracts an ``HttpCookie`` with a given name or rejects if no such cookie is
                                        present in the request
 :ref:`-decodeRequest-`                 Decompresses incoming requests using a given Decoder
@@ -73,6 +75,7 @@ Directive                              Description
 :ref:`-headerValue-`                   Extracts an HTTP header value using a given function, rejects if no value can
                                        be extracted
 :ref:`-headerValueByName-`             Extracts an HTTP header value by selecting a header by name
+:ref:`-headerValueByType-`             Extracts an HTTP header value by selecting a header by type
 :ref:`-headerValuePF-`                 Same as :ref:`-headerValue-`, but with a ``PartialFunction``
 :ref:`-hextract-`                      Extracts an ``HList`` of values from the ``RequestContext`` using a function
 :ref:`-host-`                          Rejects all requests with a hostname different from a given definition,
@@ -114,6 +117,7 @@ Directive                              Description
                                        request extracts ``None``
 :ref:`-optionalHeaderValue-`           Extracts an optional HTTP header value using a given function
 :ref:`-optionalHeaderValueByName-`     Extracts an optional HTTP header value by selecting a header by name
+:ref:`-optionalHeaderValueByType-`     Extracts an optional HTTP header value by selecting a header by type
 :ref:`-optionalHeaderValuePF-`         Extracts an optional HTTP header value using a given partial function
 :ref:`-options-`                       Rejects all non-OPTIONS requests
 :ref:`-parameter-`                     Extracts the value of a request query parameter, rejects if the request doesn't
@@ -178,4 +182,6 @@ Directive                              Description
 :ref:`-unmatchedPath-`                 Extracts the unmatched path from the RequestContext
 :ref:`-validate-`                      Passes or rejects the request depending on evaluation of a given conditional
                                        expression
+:ref:`-withRangeSupport-`              Transforms the response from its inner route into a ``206 Partial Content``
+                                       response if the client requested only part of the resource with a ``Range`` header.
 ====================================== =================================================================================

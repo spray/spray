@@ -30,12 +30,20 @@ private object ResponseRendering {
 
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
+          var closeAfterEnd = false
+
           val commandPipeline: CPL = {
             case ctx: ResponsePartRenderingContext ⇒
               val rendering = new HttpDataRendering(settings.responseHeaderSizeHint)
-              val close = renderResponsePartRenderingContext(rendering, ctx, context.log)
+              val closeMode = renderResponsePartRenderingContext(rendering, ctx, context.log)
               commandPL(toTcpWriteCommand(rendering.get, ctx.ack))
-              if (close) commandPL(Http.ConfirmedClose)
+
+              val closeNow = closeMode.shouldCloseNow(ctx.responsePart, closeAfterEnd)
+              if (closeMode == CloseMode.CloseAfterEnd) closeAfterEnd = true
+              if (closeNow) {
+                closeAfterEnd = false
+                commandPL(Http.ConfirmedClose)
+              }
 
             case cmd ⇒ commandPL(cmd)
           }

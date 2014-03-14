@@ -44,6 +44,11 @@ class MetaMarshallersSpec extends Specification {
       ctx.chunks.map(_.data.asString) === Seq("def", "ghi", "jkl")
       ctx.chunkedMessageEnd === Some(ChunkedMessageEnd)
     }
+    "properly marshal an empty Stream" in {
+      val ctx = new CollectingMarshallingContext
+      marshalCollecting(Stream.empty[String], ctx)
+      ctx.entity === Some(HttpEntity.Empty)
+    }
   }
 
   "MMarshallers" should {

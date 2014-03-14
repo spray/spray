@@ -49,7 +49,13 @@ trait BasicUnmarshallers {
   implicit val NodeSeqUnmarshaller =
     Unmarshaller[NodeSeq](`text/xml`, `application/xml`, `text/html`, `application/xhtml+xml`) {
       case HttpEntity.NonEmpty(contentType, data) ⇒
-        XML.load(new InputStreamReader(new ByteArrayInputStream(data.toByteArray), contentType.charset.nioCharset))
+        val parser = XML.parser
+        try {
+          parser.setProperty("http://apache.org/xml/properties/locale", java.util.Locale.ROOT)
+        } catch {
+          case e: org.xml.sax.SAXNotRecognizedException ⇒ // property is not needed
+        }
+        XML.withSAXParser(parser).load(new InputStreamReader(new ByteArrayInputStream(data.toByteArray), contentType.charset.nioCharset))
       case HttpEntity.Empty ⇒ NodeSeq.Empty
     }
   //#

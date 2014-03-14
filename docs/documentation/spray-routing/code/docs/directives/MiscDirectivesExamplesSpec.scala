@@ -3,6 +3,7 @@ package docs.directives
 import spray.http.HttpHeaders.`Remote-Address`
 import spray.routing.Rejection
 import spray.http._
+import spray.util._
 import spray.http.Uri.Path
 import spray.routing.MethodRejection
 import spray.routing.ValidationRejection
@@ -65,14 +66,14 @@ class MiscDirectivesExamplesSpec extends DirectivesSpec {
       responseAs[String] ===
         """result({
           |  "abc": 456
-          |})""".stripMargin
+          |})""".stripMarginWithNewline("\n")
       contentType === MediaTypes.`application/javascript`.withCharset(HttpCharsets.`UTF-8`)
     }
     Get("/") ~> route ~> check {
       responseAs[String] ===
         """{
           |  "abc": 456
-          |}""".stripMargin
+          |}""".stripMarginWithNewline("\n")
       contentType === ContentTypes.`application/json`
     }
   }

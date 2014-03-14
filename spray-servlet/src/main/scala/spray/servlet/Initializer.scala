@@ -23,6 +23,7 @@ import scala.util.control.NonFatal
 import akka.util.Switch
 import akka.actor.ActorSystem
 import spray.util._
+import spray.http.Uri
 
 class Initializer extends ServletContextListener {
   private val booted = new Switch(false)
@@ -30,21 +31,27 @@ class Initializer extends ServletContextListener {
 
   def contextInitialized(ev: ServletContextEvent): Unit = {
     booted switchOn {
-      println("Starting spray application ...")
-      val servletContext = ev.getServletContext
+      val ctx = ev.getServletContext
+      ctx.log("Starting spray application ...")
 
       try {
         val classLoader = ActorSystem.asInstanceOf[{ def findClassLoader(): ClassLoader }].findClassLoader()
         val config = ConfigFactory.load(classLoader)
-        val settings = ConnectorSettings(config)
-        servletContext.setAttribute(Initializer.SettingsAttrName, settings)
+        val settings0 = ConnectorSettings(config)
+        val settings =
+          if (settings0.rootPath == Uri.Path("AUTO")) {
+            ctx.log(s"Automatically setting spray.servlet.root-path to '${ctx.getContextPath}'")
+            settings0.copy(rootPath = Uri.Path(ctx.getContextPath))
+          } else settings0
+
+        ctx.setAttribute(Initializer.SettingsAttrName, settings)
         def errorMsg(msg: String) = "Configured boot class " + settings.bootClass + ' ' + msg
         try {
           val bootClass = classLoader.loadClass(settings.bootClass)
           val boot =
             try {
               val constructor = bootClass.getConstructor(classOf[ServletContext])
-              constructor.newInstance(servletContext)
+              constructor.newInstance(ctx)
             } catch {
               case e: NoSuchMethodException ⇒
                 val constructor = bootClass.getConstructor()
@@ -53,18 +60,18 @@ class Initializer extends ServletContextListener {
           try {
             val webBoot = boot.asInstanceOf[WebBoot]
             actorSystem = Some(webBoot.system)
-            servletContext.setAttribute(Initializer.SystemAttrName, actorSystem.get)
-            servletContext.setAttribute(Initializer.ServiceActorAttrName, webBoot.serviceActor)
+            ctx.setAttribute(Initializer.SystemAttrName, actorSystem.get)
+            ctx.setAttribute(Initializer.ServiceActorAttrName, webBoot.serviceActor)
           } catch {
-            case e: ClassCastException ⇒ servletContext.log(errorMsg("does not implement spray.servlet.WebBoot"), e)
+            case e: ClassCastException ⇒ ctx.log(errorMsg("does not implement spray.servlet.WebBoot"), e)
           }
         } catch {
-          case e: ClassNotFoundException ⇒ servletContext.log(errorMsg("cannot be found"), e)
-          case e: NoSuchMethodException ⇒ servletContext.log(errorMsg("neither defines a constructor with a single " +
+          case e: ClassNotFoundException ⇒ ctx.log(errorMsg("cannot be found"), e)
+          case e: NoSuchMethodException ⇒ ctx.log(errorMsg("neither defines a constructor with a single " +
             "`javax.servlet.ServletContext` parameter nor a default constructor"), e)
         }
       } catch {
-        case NonFatal(e) ⇒ servletContext.log(e.getMessage.nullAsEmpty, e)
+        case NonFatal(e) ⇒ ctx.log(e.getMessage.nullAsEmpty, e)
       }
     }
   }
@@ -73,6 +80,7 @@ class Initializer extends ServletContextListener {
     booted switchOff {
       println("Shutting down spray application ...")
       actorSystem.foreach(_.shutdown())
+      actorSystem.foreach(_.awaitTermination())
     }
   }
 }

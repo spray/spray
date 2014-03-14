@@ -168,7 +168,12 @@ object SslTlsSupport {
                 if (tracing) log.debug("Received {} inbound bytes in finishingClose", data.size)
                 if (!engine.isInboundDone) {
                   enqueueInboundBytes(data)
-                  decrypt()
+                  try decrypt()
+                  catch {
+                    // SSLEngine may fail with IllegalStateException in some cases when receiving unexpected kinds of
+                    // SSL records after being closed, see https://github.com/spray/spray/issues/743
+                    case ex: IllegalStateException ⇒ log.debug("Ignoring exception in finishingClose: {}", ex.getMessage)
+                  }
                 } else log.warning("Dropping {} bytes that were received after SSL-level close", data.size)
               case WriteChunkAck           ⇒ // ignore, expected as ACK for the closing outbound bytes
               case Tcp.PeerClosed          ⇒ // expected after the final inbound packet, we simply drop it here

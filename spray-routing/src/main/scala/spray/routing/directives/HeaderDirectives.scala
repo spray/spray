@@ -64,6 +64,13 @@ trait HeaderDirectives {
     headerValue(optionalValue(headerName.toLowerCase)) | reject(MissingHeaderRejection(headerName))
 
   /**
+   * Extracts the HTTP request header of the given type.
+   * If no header with a matching type is found the request is rejected with a [[spray.routing.MissingHeaderRejection]].
+   */
+  def headerValueByType[T <: HttpHeader](magnet: ClassMagnet[T]): Directive1[T] =
+    headerValuePF(magnet.extractPF) | reject(MissingHeaderRejection(magnet.runtimeClass.getSimpleName))
+
+  /**
    * Extracts an optional HTTP header value using the given function.
    * If the given function throws an exception the request is rejected
    * with a [[spray.routing.MalformedHeaderRejection]].
@@ -94,6 +101,12 @@ trait HeaderDirectives {
     val f = optionalValue(headerName.toLowerCase)
     extract(_.request.headers.mapFind(f))
   }
+
+  /**
+   * Extract the header value of the optional HTTP request header with the given type.
+   */
+  def optionalHeaderValueByType[T <: HttpHeader](magnet: ClassMagnet[T]): Directive1[Option[T]] =
+    optionalHeaderValuePF(magnet.extractPF)
 
   private def optionalValue(lowerCaseName: String): HttpHeader ⇒ Option[String] = {
     case HttpHeader(`lowerCaseName`, value) ⇒ Some(value)

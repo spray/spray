@@ -1,3 +1,66 @@
+Version 1.2.1 (2014-03-14)
+--------------------------
+
+- spray-can:
+
+  + fix redirects not reusing same connection (#719)
+  + add `spray.can.{client,server}.ssl-tracing` flag to turn on SslTlsSupport DEBUG logging (#750)
+  + enabled redirection for any 307 responses
+  + avoid parsing attempt after complete input has been consumed
+  + don't require use of CommandWrapper with SetRequest/TimeoutTimeout (#731)
+  + don't crash if responder to HttpRequest is null (#788)
+  + abort connection on client-side request timeout (#785)
+  + add client-side support for `Raw-Request-URI` header (#654)
+  + dispatch acks for MessageChunk/ChunkedMessageEnd to sender (#773)
+
+- spray-http:
+
+  + add models for `Allow`, `Link`, `If-(None-)-Match`, `If-(Un)Modified-Since`, `If-Range`, `ETag`, `Last-Modified`, `Content-Range` and `Range` headers
+  + add `image/webp` media type (#809)
+  + fix relative URI resolution (#740)
+  + render Cookies as cookie-pairs in Cookie-headers (ignore other attributes)
+  + fix broken `MediaRange::isXXX` implementations (#804)
+  + improve `DateTime` from-String parsing to also support full ISO8601 strings
+
+- spray-httpx:
+
+  + fix `Json4sSupport` and `Json4sJacksonSupport` to not extend from `MetaMarshaller`
+  + always use ROOT locale for xml parsing exceptions
+  + marshal an empty Stream into a response with an empty entity (#789)
+  + allow `UrlEncodedFormDataUnmarshaller` to extract duplicate fields (#823)
+
+- spray-io:
+
+  + drop exception (debug logged) in SslTlsSupport during finishClose (#823)
+  + fix BackPressureHandling losing acks in particular situations (#798)
+  + try to ignore/tone down warnings in BackPressureHandling (#771)
+
+- spray-routing:
+
+  + add `CacheConditionDirectives` (`conditional` directive)
+  + add `conditional` support to FileAndResourceDirectives
+  + add `RangeDirectives` and UnsatisfiableRange rejection
+  + add range support to `FileAndResourceDirectives`
+  + add `(optional)headerValueByType` directive
+  + add `filter`/`hfilter` to `Directive`
+  + add `Allow` header to method rejections
+  + add missing support for RequiredValueReceptacles in formField and anyParam directives (#754)
+  + handle exceptions in `onComplete` directive
+  + better failure msg when binding in SimpleRoutingApp.startServer fails (#819)
+
+- spray-servlet:
+
+  + introduce `root-path = AUTO` and make it the default (#701)
+  + add termination awaiting to `Initializer::contextDestroyed`
+
+- spray-testkit: allow overriding of `ActorSystem` creation in `RouteTest` (#786)
+
+- spray-util:
+
+  + make testing agnostic to native newline characters (#632)
+  + replace underscore with hyphen in `Utils.actorSystemNameFrom` (#786)
+
+
 Version 1.2.0 (2013-11-29)
 --------------------------
 
