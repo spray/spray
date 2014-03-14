@@ -147,8 +147,8 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
   def showRequest(request: HttpRequest) = LogEntry(request.uri, InfoLevel)
 
   def showErrorResponses(request: HttpRequest): Any ⇒ Option[LogEntry] = {
-    case HttpResponse(OK | NotModified, _, _, _) ⇒ None
-    case HttpResponse(NotFound, _, _, _)         ⇒ Some(LogEntry("404: " + request.uri, WarningLevel))
+    case HttpResponse(OK | NotModified | PartialContent, _, _, _) ⇒ None
+    case HttpResponse(NotFound, _, _, _)                          ⇒ Some(LogEntry("404: " + request.uri, WarningLevel))
     case r @ HttpResponse(Found | MovedPermanently, _, _, _) ⇒
       Some(LogEntry(s"${r.status.intValue}: ${request.uri} -> ${r.header[HttpHeaders.Location].map(_.uri.toString).getOrElse("")}", WarningLevel))
     case response ⇒ Some(
