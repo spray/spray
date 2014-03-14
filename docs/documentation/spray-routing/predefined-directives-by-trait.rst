@@ -52,6 +52,9 @@ Directives filtering or extracting from the request
 Directives creating or transforming the response
 ------------------------------------------------
 
+:ref:`CacheConditionDirectives`
+  Support for conditional requests (``304 Not Modified`` responses).
+
 :ref:`ChunkingDirectives`
   Automatically break a response into chunks.
 
@@ -63,6 +66,9 @@ Directives creating or transforming the response
 
 :ref:`FileAndResourceDirectives`
   Deliver responses from files and resources.
+
+:ref:`RangeDirectives`
+  Support for range requests (``206 Partial Content`` responses).
 
 :ref:`RespondWithDirectives`
   Change response properties.
@@ -82,6 +88,7 @@ List of predefined directives by trait
 
    any-param-directives/index
    basic-directives/index
+   cache-condition-directives/index
    caching-directives/index
    chunking-directives/index
    cookie-directives/index
@@ -98,6 +105,7 @@ List of predefined directives by trait
    misc-directives/index
    parameter-directives/index
    path-directives/index
+   range-directives/index
    respond-with-directives/index
    route-directives/index
    scheme-directives/index

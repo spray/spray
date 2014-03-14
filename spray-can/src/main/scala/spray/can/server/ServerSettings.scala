@@ -44,6 +44,7 @@ case class ServerSettings(
     maxEncryptionChunkSize: Int,
     defaultHostHeader: Host,
     backpressureSettings: Option[BackpressureSettings],
+    sslTracing: Boolean,
     parserSettings: ParserSettings) {
 
   requirePositive(reapingCycle)
@@ -113,5 +114,6 @@ object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.serve
         c getInt "back-pressure.noack-rate",
         c getPossiblyInfiniteInt "back-pressure.reading-low-watermark"))
       else None,
+    c getBoolean "ssl-tracing",
     ParserSettings fromSubConfig c.getConfig("parsing"))
 }

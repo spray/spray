@@ -37,15 +37,20 @@ private[can] trait ResponseRenderingComponent {
 
   // returns a boolean indicating whether the connection is to be closed after this response was sent
   def renderResponsePartRenderingContext(r: Rendering, ctx: ResponsePartRenderingContext,
-                                         log: LoggingAdapter): Boolean = {
+                                         log: LoggingAdapter): CloseMode = {
     def renderResponseStart(response: HttpResponse, allowUserContentType: Boolean,
-                            allowUserContentLength: Boolean): Connection = {
+                            contentLengthDefined: Boolean): Boolean = {
       def render(h: HttpHeader) = r ~~ h ~~ CrLf
       def suppressionWarning(h: HttpHeader, msg: String = "the spray-can HTTP layer sets this header automatically!"): Unit =
         log.warning("Explicitly set response header '{}' is ignored, {}", h, msg)
 
-      @tailrec def renderHeaders(remaining: List[HttpHeader], userContentType: Boolean = false,
-                                 userContentLength: Boolean = false, connHeader: Connection = null): Connection =
+      def shouldClose(contentLengthDefined: Boolean, connectionHeader: Connection) =
+        ctx.closeAfterResponseCompletion || // request wants to close
+          (connectionHeader != null && connectionHeader.hasClose) || // application wants to close
+          (chunkless && !contentLengthDefined) // missing content-length, close needed as data boundary
+
+      @tailrec def renderHeaders(remaining: List[HttpHeader], contentLengthDefined: Boolean,
+                                 userContentType: Boolean = false, connHeader: Connection = null): Boolean =
         remaining match {
           case head :: tail ⇒ head match {
             case x: `Content-Type` ⇒
@@ -53,22 +58,20 @@ private[can] trait ResponseRenderingComponent {
                 if (userContentType) { suppressionWarning(x, "another `Content-Type` header was already rendered"); true }
                 else if (!allowUserContentType) { suppressionWarning(x, "the response Content-Type is set via the response's HttpEntity!"); false }
                 else { render(x); true }
-              renderHeaders(tail, userContentType = userCT, userContentLength, connHeader)
+              renderHeaders(tail, contentLengthDefined, userContentType = userCT, connHeader)
 
             case x: `Content-Length` ⇒
-              val userCL =
-                if (userContentLength) { suppressionWarning(x, "another `Content-Length` header was already rendered"); true }
-                else if (!allowUserContentLength) { suppressionWarning(x); false }
-                else { render(x); true }
-              renderHeaders(tail, userContentType, userContentLength = userCL, connHeader)
+              if (contentLengthDefined) { suppressionWarning(x, "another `Content-Length` header was already rendered"); true }
+              else { render(x); true }
+              renderHeaders(tail, true, userContentType, connHeader)
 
             case `Transfer-Encoding`(_) | Date(_) | Server(_) ⇒
               suppressionWarning(head)
-              renderHeaders(tail, userContentType, userContentLength, connHeader)
+              renderHeaders(tail, contentLengthDefined, userContentType, connHeader)
 
             case x: `Connection` ⇒
               val connectionHeader = if (connHeader eq null) x else Connection(x.tokens ++ connHeader.tokens)
-              renderHeaders(tail, userContentType, userContentLength, connectionHeader)
+              renderHeaders(tail, contentLengthDefined, userContentType, connectionHeader)
 
             case x: RawHeader if x.lowercaseName == "content-type" ||
               x.lowercaseName == "content-length" ||
@@ -77,11 +80,11 @@ private[can] trait ResponseRenderingComponent {
               x.lowercaseName == "server" ||
               x.lowercaseName == "connection" ⇒
               suppressionWarning(x, "illegal RawHeader")
-              renderHeaders(tail, userContentType, userContentLength, connHeader)
+              renderHeaders(tail, contentLengthDefined, userContentType, connHeader)
 
             case x ⇒
               render(x)
-              renderHeaders(tail, userContentType, userContentLength, connHeader)
+              renderHeaders(tail, contentLengthDefined, userContentType, connHeader)
           }
 
           case Nil ⇒
@@ -90,39 +93,21 @@ private[can] trait ResponseRenderingComponent {
               case HttpEntity.NonEmpty(contentType, _) if !userContentType ⇒ r ~~ `Content-Type` ~~ contentType ~~ CrLf
               case _ ⇒
             }
-            val result =
-              if (userContentLength) {
-                // if we have a user-specified Content-Length we are in chunkless response streaming mode and the client
-                // will assume that we keep the connection open after the response is finished
-                // however, we currently do not support keeping the response open after a chunkless streaming response
-                if (response.protocol == `HTTP/1.1`) Connection("close")
-                else null // in the `HTTP/1.0` response case we simply don't render any Connection header
-              } else connHeader
-            if (result != null) render(result)
-            result
+
+            shouldClose(contentLengthDefined, connHeader)
         }
       import response._
       if (status eq StatusCodes.OK) r ~~ DefaultStatusLine else r ~~ StatusLineStart ~~ status ~~ CrLf
       r ~~ serverAndDateHeader
-      renderHeaders(headers)
+      renderHeaders(headers, contentLengthDefined)
     }
 
     def renderResponse(response: HttpResponse): Boolean = {
       import response._
-      val connectionHeader = renderResponseStart(response,
+      val close = renderResponseStart(response,
         allowUserContentType = entity.isEmpty && ctx.requestMethod == HttpMethods.HEAD,
-        allowUserContentLength = false)
-      val close =
-        ctx.requestProtocol match {
-          case `HTTP/1.0` ⇒ if (connectionHeader eq null) {
-            if (!ctx.closeAfterResponseCompletion) r ~~ Connection ~~ KeepAlive ~~ CrLf
-            ctx.closeAfterResponseCompletion
-          } else !connectionHeader.hasKeepAlive
-          case `HTTP/1.1` ⇒ if (connectionHeader eq null) {
-            if (ctx.closeAfterResponseCompletion) r ~~ Connection ~~ Close ~~ CrLf
-            ctx.closeAfterResponseCompletion
-          } else connectionHeader.hasClose
-        }
+        contentLengthDefined = true)
+      renderConnectionHeader(close)
 
       // don't set a Content-Length header for non-keep-alive HTTP/1.0 responses (rely on body end by connection close)
       if (response.protocol == `HTTP/1.1` || !close || ctx.requestMethod == HttpMethods.HEAD)
@@ -132,10 +117,12 @@ private[can] trait ResponseRenderingComponent {
       close
     }
 
-    def renderChunkedResponseStart(response: HttpResponse, chunkless: Boolean): Boolean = {
-      renderResponseStart(response,
+    def renderChunkedResponseStart(response: HttpResponse): CloseMode = {
+      val close = renderResponseStart(response,
         allowUserContentType = response.entity.isEmpty,
-        allowUserContentLength = chunkless)
+        contentLengthDefined = false)
+      renderConnectionHeader(close)
+
       if (!chunkless) r ~~ `Transfer-Encoding` ~~ Chunked ~~ CrLf
       r ~~ CrLf
       if (ctx.requestMethod != HttpMethods.HEAD)
@@ -143,25 +130,28 @@ private[can] trait ResponseRenderingComponent {
           case HttpEntity.Empty             ⇒ // nothing to do
           case HttpEntity.NonEmpty(_, data) ⇒ if (chunkless) r ~~ data else r ~~ MessageChunk(data)
         }
-      false
+      if (close) CloseMode.CloseAfterEnd else CloseMode.DontClose
     }
+
+    def renderConnectionHeader(close: Boolean): Unit =
+      ctx.requestProtocol match {
+        case `HTTP/1.0` if !close ⇒ r ~~ Connection ~~ KeepAlive ~~ CrLf
+        case `HTTP/1.1` if close  ⇒ r ~~ Connection ~~ Close ~~ CrLf
+        case _                    ⇒ // no need for rendering
+      }
 
     def chunkless = chunklessStreaming || (ctx.requestProtocol eq `HTTP/1.0`)
 
     ctx.responsePart match {
-      case x: HttpResponse         ⇒ renderResponse(x)
-      case x: ChunkedResponseStart ⇒ renderChunkedResponseStart(x.response, chunkless)
+      case x: HttpResponse         ⇒ CloseMode.closeNowIf(renderResponse(x))
+      case x: ChunkedResponseStart ⇒ renderChunkedResponseStart(x.response)
       case x: MessageChunk ⇒
         if (ctx.requestMethod != HttpMethods.HEAD)
           if (chunkless) r ~~ x.data else r ~~ x
-        false
+        CloseMode.DontClose
       case x: ChunkedMessageEnd ⇒
-        if (ctx.requestMethod == HttpMethods.HEAD) ctx.closeAfterResponseCompletion
-        else if (chunkless) true
-        else {
-          r ~~ x
-          ctx.closeAfterResponseCompletion
-        }
+        if (ctx.requestMethod != HttpMethods.HEAD && !chunkless) r ~~ x
+        CloseMode.closeNowIf(ctx.closeAfterResponseCompletion)
     }
   }
 
@@ -182,4 +172,23 @@ private[can] trait ResponseRenderingComponent {
   }
 
   protected def dateTime(now: Long) = DateTime(now) // split out so we can stabilize by overriding in tests
+
+  sealed trait CloseMode {
+    def shouldCloseNow(part: HttpResponsePart, closeAfterEnd: Boolean): Boolean
+  }
+  object CloseMode {
+    case object DontClose extends CloseMode {
+      def shouldCloseNow(part: HttpResponsePart, closeAfterEnd: Boolean): Boolean =
+        closeAfterEnd && part.isInstanceOf[HttpMessageEnd]
+    }
+    case object CloseNow extends CloseMode {
+      def shouldCloseNow(part: HttpResponsePart, closeAfterEnd: Boolean): Boolean = true
+    }
+    case object CloseAfterEnd extends CloseMode {
+      def shouldCloseNow(part: HttpResponsePart, closeAfterEnd: Boolean): Boolean =
+        part.isInstanceOf[HttpMessageEnd]
+    }
+
+    def closeNowIf(doClose: Boolean): CloseMode = if (doClose) CloseNow else DontClose
+  }
 }

@@ -71,7 +71,6 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
             |Date: Thu, 25 Aug 2011 09:10:29 GMT
             |Age: 30
             |Content-Type: text/plain; charset=UTF-8
-            |Connection: Keep-Alive
             |Content-Length: 23
             |
             |Small f*ck up overhere!"""
@@ -89,7 +88,6 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
             |Server: spray-can/1.0.0
             |Date: Thu, 25 Aug 2011 09:10:29 GMT
             |Age: 30
-            |Connection: Keep-Alive
             |Content-Length: 23
             |
             |Small f*ck up overhere!"""
@@ -113,28 +111,26 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
             headers = List(RawHeader("Age", "30"), Connection("Keep-Alive")),
             entity = "Small f*ck up overhere!")) === result {
             """HTTP/1.1 200 OK
-            |Server: spray-can/1.0.0
-            |Date: Thu, 25 Aug 2011 09:10:29 GMT
-            |Age: 30
-            |Content-Type: text/plain; charset=UTF-8
-            |Connection: Keep-Alive
-            |Content-Length: 23
-            |
-            |"""
+              |Server: spray-can/1.0.0
+              |Date: Thu, 25 Aug 2011 09:10:29 GMT
+              |Age: 30
+              |Content-Type: text/plain; charset=UTF-8
+              |Content-Length: 23
+              |
+              |"""
           } -> false
       }
 
       "a chunked response without body" in new TestSetup() {
         render(
-          response = ChunkedResponseStart(HttpResponse(200, headers = List(RawHeader("Age", "30")))),
-          requestConnectionHeader = Some("close")) === result {
+          response = ChunkedResponseStart(HttpResponse(200, headers = List(RawHeader("Age", "30"))))) === result {
             """HTTP/1.1 200 OK
-            |Server: spray-can/1.0.0
-            |Date: Thu, 25 Aug 2011 09:10:29 GMT
-            |Age: 30
-            |Transfer-Encoding: chunked
-            |
-            |"""
+              |Server: spray-can/1.0.0
+              |Date: Thu, 25 Aug 2011 09:10:29 GMT
+              |Age: 30
+              |Transfer-Encoding: chunked
+              |
+              |"""
           } -> false
       }
 
@@ -173,16 +169,18 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
       "a chunkless chunked response without body and explicit Content-Type" in
         new TestSetup(chunklessStreaming = true) {
           render {
-            ChunkedResponseStart(HttpResponse(200, headers = List(RawHeader("Age", "30"), `Content-Type`(`text/plain`))))
+            ChunkedResponseStart(HttpResponse(200, headers = List(RawHeader("Age", "30"), `Content-Type`(`text/plain`), `Content-Length`(0))))
           } === result {
             """HTTP/1.1 200 OK
               |Server: spray-can/1.0.0
               |Date: Thu, 25 Aug 2011 09:10:29 GMT
               |Age: 30
               |Content-Type: text/plain
+              |Content-Length: 0
               |
               |"""
           } -> false
+          render(ChunkedMessageEnd) === result("") -> false
         }
 
       "a chunkless chunked response with body and explicit Content-Length" in
@@ -195,10 +193,28 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
               |Date: Thu, 25 Aug 2011 09:10:29 GMT
               |Content-Length: 1000
               |Content-Type: text/plain; charset=UTF-8
-              |Connection: close
               |
               |Yahoooo"""
           } -> false
+          render(ChunkedMessageEnd) === result("") -> false
+        }
+
+      "a chunkless chunked response with body and explicit Content-Length (HTTP/1.0)" in
+        new TestSetup(chunklessStreaming = true) {
+          render(
+            requestProtocol = `HTTP/1.0`,
+            response = ChunkedResponseStart(HttpResponse(entity = "Yahoooo", headers = List(`Content-Length`(1000))))) === result {
+              // no Connection: close header
+              """HTTP/1.1 200 OK
+              |Server: spray-can/1.0.0
+              |Date: Thu, 25 Aug 2011 09:10:29 GMT
+              |Content-Length: 1000
+              |Content-Type: text/plain; charset=UTF-8
+              |
+              |Yahoooo"""
+            } -> false
+          // but connection will still have to be closed afterwards
+          render(ChunkedMessageEnd) === result("") -> true
         }
 
       "a chunkless response chunk" in new TestSetup(chunklessStreaming = true) {
@@ -210,7 +226,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
 
       "a chunkless final response chunk" in new TestSetup(chunklessStreaming = true) {
         render(response = ChunkedMessageEnd("",
-          List(RawHeader("Age", "30"), RawHeader("Cache-Control", "public")))) === result("") -> true
+          List(RawHeader("Age", "30"), RawHeader("Cache-Control", "public")))) === result("") -> false
       }
 
       "The 'Connection' header should be rendered correctly" in new TestSetup() {
@@ -223,19 +239,29 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           `HTTP/1.0` ! NONE ! NONE ! NONE ! true |
           `HTTP/1.0` ! Some("close") ! NONE ! NONE ! true |
           `HTTP/1.0` ! Some("Keep-Alive") ! NONE ! Some("Keep-Alive") ! false |
-          `HTTP/1.1` ! NONE ! Some("close") ! Some("close") ! true |
-          `HTTP/1.0` ! Some("close") ! Some("Keep-Alive") ! Some("Keep-Alive") ! false |> {
-
+          `HTTP/1.1` ! NONE ! Some("close") ! Some("close") ! true |> {
             (reqProto, reqCH, resCH, renCH, close) ⇒
               render(
                 response = HttpResponse(200, headers = resCH.map(h ⇒ List(HttpHeaders.Connection(h))) getOrElse Nil),
                 requestProtocol = reqProto,
                 requestConnectionHeader = reqCH) === result {
-                  "HTTP/1.1 200 OK\n" +
-                    "Server: spray-can/1.0.0\n" +
-                    "Date: Thu, 25 Aug 2011 09:10:29 GMT\n" +
-                    renCH.map("Connection: " + _ + "\n").getOrElse("") +
-                    "Content-Length: 0\n\n"
+                  renCH match {
+                    case Some(connection) ⇒
+                      """HTTP/1.1 200 OK
+                         |Server: spray-can/1.0.0
+                         |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                         |Connection: %s
+                         |Content-Length: 0
+                         |
+                         |""" format connection
+                    case None ⇒
+                      """HTTP/1.1 200 OK
+                        |Server: spray-can/1.0.0
+                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                        |Content-Length: 0
+                        |
+                        |"""
+                  }
                 } -> close
           }
       }
@@ -247,6 +273,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
                   val transparentHeadRequests: Boolean = true)
       extends ResponseRenderingComponent with Scope {
 
+    var closeAfterEnd = false
     def render(response: HttpResponsePart,
                requestMethod: HttpMethod = HttpMethods.GET,
                requestProtocol: HttpProtocol = `HTTP/1.1`,
@@ -257,13 +284,18 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         case `HTTP/1.0` ⇒ connectionHeader.isEmpty || !connectionHeader.get.hasKeepAlive
       }
       val rendering = new ByteStringRendering(256)
-      val closeAfterWrite = renderResponsePartRenderingContext(rendering,
-        ResponsePartRenderingContext(response, requestMethod, requestProtocol, closeAfterResponseCompletion),
-        NoLogging)
-      rendering.get.utf8String -> closeAfterWrite
+      val closeMode =
+        renderResponsePartRenderingContext(rendering,
+          ResponsePartRenderingContext(response, requestMethod, requestProtocol, closeAfterResponseCompletion),
+          NoLogging)
+      val closeNow = closeMode.shouldCloseNow(response, closeAfterEnd)
+      if (closeMode == CloseMode.CloseAfterEnd) closeAfterEnd = true
+      if (closeNow) closeAfterEnd = false
+
+      rendering.get.utf8String -> closeNow
     }
 
-    def result(content: String) = content.stripMargin.replace(EOL, "\r\n")
+    def result(content: String) = content.stripMarginWithNewline("\r\n")
 
     override def dateTime(now: Long) = DateTime(2011, 8, 25, 9, 10, 29) // provide a stable date for testing
   }

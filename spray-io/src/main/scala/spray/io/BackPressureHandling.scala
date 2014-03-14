@@ -71,7 +71,7 @@ object BackPressureHandling {
               become(writeThrough(out, isReading = true, closeCommand))
             }
             def writeFailed(idx: Int): Unit = {
-              out.dequeue(idx - 1)
+              out.dequeue(idx - 1).foreach(eventPL)
 
               // go into buffering mode
               commandPL(Tcp.ResumeWriting)
@@ -183,7 +183,8 @@ object BackPressureHandling {
               case c                                        ⇒ commandPL(c)
             }
             def eventPipeline = {
-              case e ⇒ eventPL(e)
+              case CanCloseNow ⇒ // ignore here
+              case e           ⇒ eventPL(e)
             }
           }
         }
@@ -217,6 +218,7 @@ object BackPressureHandling {
     @tailrec final def dequeue(upToSeq: Int): Option[Event] =
       if (firstSequenceNo < upToSeq) {
         firstSequenceNo += 1
+        assert(!buffer.front.wantsAck) // as we would lose it here
         buffer = buffer.tail
         length -= 1
         dequeue(upToSeq)

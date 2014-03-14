@@ -23,4 +23,6 @@ class NotImplementedException(msg: String = "") extends RuntimeException(msg)
 /**
  * Convenience base class for exception objects.
  */
-abstract class SingletonException extends RuntimeException with NoStackTrace
+abstract class SingletonException(msg: String) extends RuntimeException(msg) with NoStackTrace {
+  def this() = this(null) // for binary compatibility
+}

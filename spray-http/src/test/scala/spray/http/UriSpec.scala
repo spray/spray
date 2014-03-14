@@ -180,6 +180,7 @@ class UriSpec extends Specification {
       Path("/%2F%5C") === Path / """/\"""
       Path("/:foo:/") === Path / ":foo:" / ""
       Path("%2520").head === "%20"
+      Path("/foo%20bar") === Path / "foo bar"
     }
     "support the `startsWith` predicate" in {
       Empty startsWith Empty must beTrue
@@ -436,8 +437,11 @@ class UriSpec extends Specification {
 
     // http://tools.ietf.org/html/rfc3986#section-5.4
     "pass the RFC 3986 reference resolution examples" in {
-      val base = parseAbsolute("http://a/b/c/d;p?q")
-      def resolve(uri: String) = parseAndResolve(uri, base).toString
+      def resolveUri(base: String): String ⇒ String = {
+        val baseUri = parseAbsolute(base)
+        uri ⇒ parseAndResolve(uri, baseUri).toString
+      }
+      val resolve = resolveUri("http://a/b/c/d;p?q")
 
       "normal examples" in {
         resolve("g:h") === "g:h"
@@ -489,6 +493,33 @@ class UriSpec extends Specification {
         resolve("g#s/../x") === "http://a/b/c/g#s/../x"
 
         resolve("http:g") === "http:g"
+      }
+
+      "against empty base URI" in {
+        val resolve = resolveUri("http://a:8080")
+
+        resolve("g:h") === "g:h"
+        resolve("g") === "http://a:8080/g"
+        resolve("./g") === "http://a:8080/g"
+        resolve("g/") === "http://a:8080/g/"
+        resolve("/g") === "http://a:8080/g"
+        resolve("//g") === "http://g"
+        resolve("?y") === "http://a:8080?y"
+        resolve("g?y") === "http://a:8080/g?y"
+        resolve("#s") === "http://a:8080#s"
+        resolve("g#s") === "http://a:8080/g#s"
+        resolve("g?y#s") === "http://a:8080/g?y#s"
+        resolve(";x") === "http://a:8080/;x"
+        resolve("g;x") === "http://a:8080/g;x"
+        resolve("g;x?y#s") === "http://a:8080/g;x?y#s"
+        resolve(".") === "http://a:8080/"
+        resolve("./") === "http://a:8080/"
+        resolve("..") === "http://a:8080/"
+        resolve("../") === "http://a:8080/"
+        resolve("../g") === "http://a:8080/g"
+        resolve("../..") === "http://a:8080/"
+        resolve("../../") === "http://a:8080/"
+        resolve("../../g") === "http://a:8080/g"
       }
     }
 

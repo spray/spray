@@ -33,6 +33,7 @@ case class ClientConnectionSettings(
     requestHeaderSizeHint: Int,
     maxEncryptionChunkSize: Int,
     connectingTimeout: Duration,
+    sslTracing: Boolean,
     parserSettings: ParserSettings,
     proxySettings: Map[String, ProxySettings]) {
 
@@ -62,6 +63,7 @@ object ClientConnectionSettings extends SettingsCompanion[ClientConnectionSettin
       c getIntBytes "request-header-size-hint",
       c getIntBytes "max-encryption-chunk-size",
       c getDuration "connecting-timeout",
+      c getBoolean "ssl-tracing",
       ParserSettings fromSubConfig c.getConfig("parsing"),
       ProxySettings fromSubConfig c.getConfig("proxy"))
   }

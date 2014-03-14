@@ -57,9 +57,11 @@ trait OnCompleteFutureMagnet[T] extends Directive1[Either[Throwable, T]]
 object OnCompleteFutureMagnet {
   implicit def apply[T](future: ⇒ Future[T])(implicit ec: ExecutionContext) =
     new OnCompleteFutureMagnet[T] {
-      def happly(f: (Either[Throwable, T] :: HNil) ⇒ Route) = ctx ⇒
-        try future.onComplete(t ⇒ f(t :: HNil)(ctx))
-        catch { case NonFatal(error) ⇒ ctx.failWith(error) }
+      def happly(f: (Either[Throwable, T] :: HNil) ⇒ Route): Route = ctx ⇒
+        future.onComplete { t ⇒
+          try f(t :: HNil)(ctx)
+          catch { case NonFatal(error) ⇒ ctx.failWith(error) }
+        }
     }
 }
 

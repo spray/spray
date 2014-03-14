@@ -16,13 +16,13 @@
 
 package spray.routing
 
-import akka.dispatch.Future
+import akka.dispatch.{ Promise, Future }
 import akka.util.duration._
 import scala.collection.immutable
 import akka.actor.{ ActorSystem, ActorRefFactory, Actor, Props }
 import akka.pattern.ask
 import akka.util.Timeout
-import akka.io.{ Inet, IO }
+import akka.io.{ Inet, IO, Tcp }
 import spray.io.ServerSSLEngineProvider
 import spray.can.Http
 import spray.can.server.ServerSettings
@@ -60,6 +60,13 @@ trait SimpleRoutingApp extends HttpService {
         }
       },
       name = serviceActorName)
-    IO(Http).ask(Http.Bind(serviceActor, interface, port, backlog, options, settings)).mapTo[Http.Bound]
+    IO(Http).ask(Http.Bind(serviceActor, interface, port, backlog, options, settings)).flatMap {
+      case b: Http.Bound ⇒ Promise.successful(b).future
+      case Tcp.CommandFailed(b: Http.Bind) ⇒
+        // TODO: replace by actual exception when Akka #3861 is fixed.
+        //       see https://www.assembla.com/spaces/akka/tickets/3861
+        Promise.failed(new RuntimeException(
+          "Binding failed. Switch on DEBUG-level logging for `akka.io.TcpListener` to log the cause.")).future
+    }
   }
 }

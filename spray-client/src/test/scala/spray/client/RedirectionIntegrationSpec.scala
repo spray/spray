@@ -32,6 +32,7 @@ class RedirectionIntegrationSpec extends Specification with NoTimeConversions {
         max-redirects = 5
       }
       server.remote-address-header = on
+      client.proxy.http = none
     }""")
   implicit val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConf)
   import system.dispatcher

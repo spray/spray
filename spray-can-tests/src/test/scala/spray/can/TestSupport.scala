@@ -114,7 +114,7 @@ object TestSupport {
       |"""
   }
 
-  def prep(s: String) = s.stripMargin.replace(EOL, "\r\n")
+  def prep(s: String) = s.stripMarginWithNewline("\r\n")
 
   def wipeDate(string: String) =
     string.fastSplit('\n').map {

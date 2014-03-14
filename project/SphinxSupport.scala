@@ -96,11 +96,11 @@ object SphinxSupport {
       name.split("(?=[A-Z])").drop(1).dropRight(1).map(_.toLowerCase).mkString("-")
 
     def writeGroup(group: DirectivesGroup): Unit = {
-      fw.write("{\ngroup: '")
+      fw.write("{\n\"group\": \"")
       fw.write(group.group)
-      fw.write("',\nentries: '")
+      fw.write("\",\n\"entries\": \"")
       fw.write(group.directives.mkString(" "))
-      fw.write("'},\n")
+      fw.write("\"},\n")
     }
     val groups = findDirectivesFiles.map(readDirectivesFile).sortBy(_.group)
 

@@ -125,6 +125,7 @@ object HttpHeaders {
     def renderValue[R <: Rendering](r: R): R = r ~~ methods
     protected def companion = `Access-Control-Allow-Methods`
   }
+
   object `Access-Control-Allow-Origin` extends ModeledCompanion
   case class `Access-Control-Allow-Origin`(allowedOrigins: AllowedOrigins) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): R = r ~~ allowedOrigins
@@ -162,6 +163,25 @@ object HttpHeaders {
     require(deltaSeconds >= 0, "deltaSeconds must be >= 0")
     def renderValue[R <: Rendering](r: R): R = r ~~ deltaSeconds
     protected def companion = `Access-Control-Max-Age`
+  }
+
+  object Allow extends ModeledCompanion {
+    implicit val methodsRenderer = Renderer.defaultSeqRenderer[HttpMethod]
+  }
+  case class Allow(methods: HttpMethod*) extends ModeledHeader {
+    import Allow.methodsRenderer
+    def renderValue[R <: Rendering](r: R): R = r ~~ methods
+    protected def companion = Allow
+  }
+
+  object `Accept-Ranges` extends ModeledCompanion {
+    def apply(first: RangeUnit, more: RangeUnit*): `Accept-Ranges` = apply(first +: more)
+    implicit val acceptRangesRenderer = Renderer.defaultSeqRenderer[RangeUnit] // cache
+  }
+  case class `Accept-Ranges`(acceptRanges: Seq[RangeUnit]) extends ModeledHeader {
+    import `Accept-Ranges`.acceptRangesRenderer
+    def renderValue[R <: Rendering](r: R): R = if (acceptRanges.isEmpty) r ~~ "none" else r ~~ acceptRanges
+    protected def companion = `Accept-Ranges`
   }
 
   object Authorization extends ModeledCompanion
@@ -220,6 +240,14 @@ object HttpHeaders {
     protected def companion = `Content-Length`
   }
 
+  object `Content-Range` extends ModeledCompanion {
+    def apply(contentRange: ContentRange): `Content-Range` = apply(RangeUnit.Bytes, contentRange)
+  }
+  case class `Content-Range`(rangeUnit: RangeUnit, contentRange: ContentRange) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): R = r ~~ rangeUnit ~~ ' ' ~~ contentRange
+    protected def companion = `Content-Range`
+  }
+
   object `Content-Type` extends ModeledCompanion
   case class `Content-Type`(contentType: ContentType)(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): R = r ~~ contentType
@@ -227,7 +255,10 @@ object HttpHeaders {
   }
 
   object Cookie extends ModeledCompanion {
-    def apply(first: HttpCookie, more: HttpCookie*): `Cookie` = apply(first +: more)
+    def apply(first: HttpCookie, more: HttpCookie*): Cookie = apply(first +: more)
+    implicit val cookieRenderer: Renderer[HttpCookie] = new Renderer[HttpCookie] {
+      def render[R <: Rendering](r: R, c: HttpCookie): R = r ~~ c.name ~~ '=' ~~ c.content
+    }
     implicit val cookiesRenderer: Renderer[Seq[HttpCookie]] =
       Renderer.seqRenderer(separator = "; ") // cache
   }
@@ -241,6 +272,14 @@ object HttpHeaders {
   case class Date(date: DateTime)(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): R = date.renderRfc1123DateTimeString(r)
     protected def companion = Date
+  }
+
+  object ETag extends ModeledCompanion {
+    def apply(tag: String, weak: Boolean = false): ETag = ETag(EntityTag(tag, weak))
+  }
+  case class ETag(etag: EntityTag) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): R = r ~~ etag
+    protected def companion = ETag
   }
 
   object Expect extends ModeledCompanion {
@@ -265,6 +304,51 @@ object HttpHeaders {
     protected def companion = Host
   }
 
+  object `If-Match` extends ModeledCompanion {
+    val `*` = `If-Match`(EntityTagRange.`*`)
+    def apply(first: EntityTag, more: EntityTag*): `If-Match` =
+      `If-Match`(EntityTagRange(first +: more))
+  }
+  case class `If-Match`(m: EntityTagRange) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): R = r ~~ m
+    protected def companion = `If-Match`
+  }
+
+  object `If-Modified-Since` extends ModeledCompanion
+  case class `If-Modified-Since`(date: DateTime) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): R = date.renderRfc1123DateTimeString(r)
+    protected def companion = `If-Modified-Since`
+  }
+
+  object `If-None-Match` extends ModeledCompanion {
+    val `*` = `If-None-Match`(EntityTagRange.`*`)
+    def apply(first: EntityTag, more: EntityTag*): `If-None-Match` =
+      `If-None-Match`(EntityTagRange(first +: more))
+  }
+  case class `If-None-Match`(m: EntityTagRange) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): R = r ~~ m
+    protected def companion = `If-None-Match`
+  }
+
+  object `If-Range` extends ModeledCompanion {
+    def apply(tag: EntityTag): `If-Range` = apply(Left(tag))
+    def apply(timestamp: DateTime): `If-Range` = apply(Right(timestamp))
+  }
+  case class `If-Range`(entityTagOrDateTime: Either[EntityTag, DateTime]) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): R =
+      entityTagOrDateTime match {
+        case Left(tag)       ⇒ r ~~ tag
+        case Right(dateTime) ⇒ dateTime.renderRfc1123DateTimeString(r)
+      }
+    protected def companion = `If-Range`
+  }
+
+  object `If-Unmodified-Since` extends ModeledCompanion
+  case class `If-Unmodified-Since`(date: DateTime) extends ModeledHeader {
+    def renderValue[R <: Rendering](r: R): R = date.renderRfc1123DateTimeString(r)
+    protected def companion = `If-Unmodified-Since`
+  }
+
   object `Last-Modified` extends ModeledCompanion
   case class `Last-Modified`(date: DateTime) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): R = date.renderRfc1123DateTimeString(r)
@@ -278,9 +362,32 @@ object HttpHeaders {
   }
 
   object Origin extends ModeledCompanion // TODO: turn argument into repeated parameter for more convenience
+
+  object Link extends ModeledCompanion with LinkHeaderCompanion {
+    def apply(first: Value, more: Value*): Link = apply(first +: more)
+    def apply(uri: Uri, first: Param, more: Param*): Link = apply(Value(uri, first +: more))
+    implicit val valueRenderer = Renderer.defaultSeqRenderer[Value]
+  }
+  case class Link(values: Seq[Link.Value]) extends ModeledHeader {
+    import Link.valueRenderer
+    def renderValue[R <: Rendering](r: R): R = r ~~ values
+    protected def companion = Link
+  }
+
   case class Origin(originList: Seq[HttpOrigin]) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): R = r ~~ originList
     protected def companion = Origin
+  }
+
+  object Range extends ModeledCompanion {
+    def apply(first: ByteRange, more: ByteRange*): Range = apply(first +: more)
+    def apply(ranges: Seq[ByteRange]): Range = Range(RangeUnit.Bytes, ranges)
+    implicit val rangesRenderer = Renderer.defaultSeqRenderer[ByteRange] // cache
+  }
+  case class Range(rangeUnit: RangeUnit, ranges: Seq[ByteRange]) extends ModeledHeader {
+    import Range.rangesRenderer
+    def renderValue[R <: Rendering](r: R): R = r ~~ rangeUnit ~~ '=' ~~ ranges
+    protected def companion = Range
   }
 
   object `Proxy-Authenticate` extends ModeledCompanion {
@@ -289,13 +396,13 @@ object HttpHeaders {
   }
   case class `Proxy-Authenticate`(challenges: Seq[HttpChallenge]) extends ModeledHeader {
     import `Proxy-Authenticate`.challengesRenderer
-    def renderValue[R <: Rendering](r: R): r.type = r ~~ challenges
+    def renderValue[R <: Rendering](r: R): R = r ~~ challenges
     protected def companion = `Proxy-Authenticate`
   }
 
   object `Proxy-Authorization` extends ModeledCompanion
   case class `Proxy-Authorization`(credentials: HttpCredentials) extends ModeledHeader {
-    def renderValue[R <: Rendering](r: R): r.type = r ~~ credentials
+    def renderValue[R <: Rendering](r: R): R = r ~~ credentials
     protected def companion = `Proxy-Authorization`
   }
 

@@ -629,7 +629,7 @@ object Uri {
         } else {
           // http://tools.ietf.org/html/rfc3986#section-5.2.3
           def mergePaths(base: Uri, path: Path): Path =
-            if (!base.authority.isEmpty && path.isEmpty) Path.Slash(path)
+            if (!base.authority.isEmpty && base.path.isEmpty) Path.Slash(path)
             else {
               import Path._
               def replaceLastSegment(p: Path, replacement: Path): Path = p match {

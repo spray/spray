@@ -41,7 +41,8 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
     akka.io.tcp.trace-logging = off
     spray.can.host-connector.max-retries = 4
     spray.can.client.request-timeout = 400ms
-    spray.can.client.user-agent-header = "RequestMachine"""")
+    spray.can.client.user-agent-header = "RequestMachine"
+    spray.can.client.proxy.http = none""")
   implicit val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConf)
   import system.dispatcher
   val (interface, port) = Utils.temporaryServerHostnameAndPort()

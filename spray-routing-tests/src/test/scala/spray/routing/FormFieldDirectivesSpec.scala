@@ -20,6 +20,7 @@ import shapeless.HNil
 import spray.httpx.marshalling.marshalUnsafe
 import spray.httpx.unmarshalling.FromStringDeserializers.HexInt
 import spray.http._
+import spray.httpx.unmarshalling.Deserializer
 
 class FormFieldDirectivesSpec extends RoutingSpec {
 
@@ -124,5 +125,38 @@ class FormFieldDirectivesSpec extends RoutingSpec {
       }
     }
   }
-
+  "The 'formField' requirement directive" should {
+    "block requests that do not contain the required formField" in {
+      Get("/", urlEncodedForm) ~> {
+        formFields('name ! "Mr. Mike") { completeOk }
+      } ~> check { handled must beFalse }
+    }
+    "block requests that contain the required parameter but with an unmatching value" in {
+      Get("/", urlEncodedForm) ~> {
+        formFields('firstName ! "Pete") { completeOk }
+      } ~> check { handled must beFalse }
+    }
+    "let requests pass that contain the required parameter with its required value" in {
+      Get("/", urlEncodedForm) ~> {
+        formFields('firstName ! "Mike") { completeOk }
+      } ~> check { response === Ok }
+    }
+  }
+  "The 'formField' requirement with deserializer directive" should {
+    "block requests that do not contain the required formField" in {
+      Get("/", urlEncodedForm) ~> {
+        formFields('oldAge.as(Deserializer.HexInt) ! 78) { completeOk }
+      } ~> check { handled must beFalse }
+    }
+    "block requests that contain the required parameter but with an unmatching value" in {
+      Get("/", urlEncodedForm) ~> {
+        formFields('age.as(Deserializer.HexInt) ! 78) { completeOk }
+      } ~> check { handled must beFalse }
+    }
+    "let requests pass that contain the required parameter with its required value" in {
+      Get("/", urlEncodedForm) ~> {
+        formFields('age.as(Deserializer.HexInt) ! 66 /* hex! */ ) { completeOk }
+      } ~> check { response === Ok }
+    }
+  }
 }

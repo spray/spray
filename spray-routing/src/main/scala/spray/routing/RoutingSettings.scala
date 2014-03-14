@@ -24,11 +24,16 @@ case class RoutingSettings(
     verboseErrorMessages: Boolean,
     fileChunkingThresholdSize: Long,
     fileChunkingChunkSize: Int,
+    fileGetConditional: Boolean,
     users: Config,
-    renderVanityFooter: Boolean) {
+    renderVanityFooter: Boolean,
+    rangeCountLimit: Int,
+    rangeCoalescingThreshold: Long) {
 
   require(fileChunkingThresholdSize >= 0, "file-chunking-threshold-size must be >= 0")
   require(fileChunkingChunkSize > 0, "file-chunking-chunk-size must be > 0")
+  require(rangeCountLimit >= 0, "range-count-limit must be >= 0")
+  require(rangeCoalescingThreshold >= 0, "range-coalescing-threshold must be >= 0")
 }
 
 object RoutingSettings extends SettingsCompanion[RoutingSettings]("spray.routing") {
@@ -36,8 +41,11 @@ object RoutingSettings extends SettingsCompanion[RoutingSettings]("spray.routing
     c getBoolean "verbose-error-messages",
     c getBytes "file-chunking-threshold-size",
     c getIntBytes "file-chunking-chunk-size",
+    c getBoolean "file-get-conditional",
     c getConfig "users",
-    c getBoolean "render-vanity-footer")
+    c getBoolean "render-vanity-footer",
+    c getInt "range-count-limit",
+    c getBytes "range-coalescing-threshold")
 
   implicit def default(implicit refFactory: ActorRefFactory) =
     apply(actorSystem)

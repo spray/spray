@@ -17,10 +17,10 @@
 package spray.routing
 
 import java.io.File
-import com.typesafe.config.ConfigFactory
 import org.parboiled.common.FileUtils
 import scala.util.Properties
 import spray.http._
+import spray.util._
 import MediaTypes._
 import HttpHeaders._
 import HttpCharsets._
@@ -31,6 +31,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     """spray.routing {
       |  file-chunking-threshold-size = 16
       |  file-chunking-chunk-size = 8
+      |  range-coalescing-threshold = 1
       |}""".stripMargin
 
   "getFromFile" should {
@@ -45,24 +46,58 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     }
     "return the file content with the MediaType matching the file extension" in {
       val file = File.createTempFile("sprayTest", ".PDF")
-      FileUtils.writeAllText("This is PDF", file)
-      Get() ~> getFromFile(file.getPath) ~> check {
-        mediaType === `application/pdf`
-        definedCharset === None
-        body.asString === "This is PDF"
-        headers === List(`Last-Modified`(DateTime(file.lastModified)))
-      }
-      file.delete
+      try {
+        FileUtils.writeAllText("This is PDF", file)
+        Get() ~> getFromFile(file.getPath) ~> check {
+          mediaType === `application/pdf`
+          definedCharset === None
+          body.asString === "This is PDF"
+          headers must contain(`Last-Modified`(DateTime(file.lastModified)))
+        }
+      } finally file.delete
     }
     "return the file content with MediaType 'application/octet-stream' on unknown file extensions" in {
       val file = File.createTempFile("sprayTest", null)
-      FileUtils.writeAllText("Some content", file)
-      Get() ~> getFromFile(file) ~> check {
-        mediaType === `application/octet-stream`
-        body.asString === "Some content"
-      }
-      file.delete
+      try {
+        FileUtils.writeAllText("Some content", file)
+        Get() ~> getFromFile(file) ~> check {
+          mediaType === `application/octet-stream`
+          body.asString === "Some content"
+        }
+      } finally file.delete
     }
+
+    "return a single range from a file" in {
+      val file = File.createTempFile("partialTest", null)
+      try {
+        FileUtils.writeAllText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", file)
+        Get() ~> addHeader(Range(ByteRange(0, 10))) ~> getFromFile(file) ~> check {
+          body.asString === "ABCDEFGHIJK"
+          status === StatusCodes.PartialContent
+          headers must contain(`Content-Range`(ContentRange(0, 10, 26)))
+        }
+      } finally file.delete
+    }
+
+    "return multiple ranges from a file at once" in {
+      val file = File.createTempFile("partialTest", null)
+      implicit val settingsWithDisabledAutoChunking = new RoutingSettings(true, 0, Int.MaxValue, false, null, true, 10, 1)
+      try {
+        FileUtils.writeAllText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", file)
+        val rangeHeader = Range(ByteRange(1, 10), ByteRange.suffix(10))
+        Get() ~> addHeader(rangeHeader) ~> getFromFile(file, ContentTypes.`text/plain`) ~> check {
+          val parts = responseAs[MultipartByteRanges].parts
+          parts.size === 2
+          parts(0).entity.data.asString === "BCDEFGHIJK"
+          parts(1).entity.data.asString === "QRSTUVWXYZ"
+
+          status === StatusCodes.PartialContent
+          headers must not(contain(like[HttpHeader] { case `Content-Range`(_, _) ⇒ ok }))
+          mediaType.withParameters(Map.empty) === `multipart/byteranges`
+        }
+      } finally file.delete
+    }
+
     "return a chunked response for files larger than the configured file-chunking-threshold-size" in {
       val file = File.createTempFile("sprayTest2", ".xml")
       try {
@@ -71,7 +106,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
           mediaType === `text/xml`
           definedCharset === Some(`UTF-8`)
           body.asString === "<this co"
-          headers === List(`Last-Modified`(DateTime(file.lastModified)))
+          headers must contain(`Last-Modified`(DateTime(file.lastModified)))
           chunks.map(_.data.asString).mkString("|") === "uld be X|ML if it| were fo|rmatted |correctl|y>"
         }
       } finally file.delete
@@ -91,10 +126,11 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
       def runCheck =
         Get() ~> route ~> check {
           mediaType === `text/html`
-          body.asString === "<p>Lorem ipsum!</p>"
+          body.asString === "<p>Lorem"
           headers must have {
             case `Last-Modified`(dt) ⇒ DateTime(2011, 7, 1) < dt && dt.clicks < System.currentTimeMillis()
           }
+          chunks.map(_.data.asString).mkString === " ipsum!</p>"
         }
 
       runCheck
@@ -115,7 +151,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     "return the resource content with the MediaType matching the file extension" in {
       val verify = check {
         mediaType === `application/pdf`
-        body.asString === "123\n"
+        body.asString === "123"
       }
       "example 1" in { Get("empty.pdf") ~> getFromResourceDirectory("subDirectory") ~> verify }
       "example 2" in { Get("empty.pdf") ~> getFromResourceDirectory("subDirectory/") ~> verify }
@@ -134,7 +170,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
 
     "properly render a simple directory" in {
       Get() ~> listDirectoryContents(base + "/someDir") ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /</title></head>
             |<body>
@@ -148,12 +184,13 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "properly render a sub directory" in {
       Get("/sub/") ~> listDirectoryContents(base + "/someDir") ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /sub/</title></head>
             |<body>
@@ -166,12 +203,13 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "properly render the union of several directories" in {
       Get() ~> listDirectoryContents(base + "/someDir", base + "/subDirectory") ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /</title></head>
             |<body>
@@ -180,20 +218,21 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<pre>
             |<a href="/emptySub/">emptySub/</a>        xxxx-xx-xx xx:xx:xx
             |<a href="/sub/">sub/</a>             xxxx-xx-xx xx:xx:xx
-            |<a href="/empty.pdf">empty.pdf</a>        xxxx-xx-xx xx:xx:xx            4  B
+            |<a href="/empty.pdf">empty.pdf</a>        xxxx-xx-xx xx:xx:xx            3  B
             |<a href="/fileA.txt">fileA.txt</a>        xxxx-xx-xx xx:xx:xx            3  B
             |<a href="/fileB.xml">fileB.xml</a>        xxxx-xx-xx xx:xx:xx            0  B
             |</pre>
             |<hr>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "properly render an empty sub directory with vanity footer" in {
       val settings = 0 // shadow implicit
       Get("/emptySub/") ~> listDirectoryContents(base + "/subDirectory") ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /emptySub/</title></head>
             |<body>
@@ -208,12 +247,13 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |</div>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "properly render an empty top-level directory" in {
       Get() ~> listDirectoryContents(base + "/subDirectory/emptySub") ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /</title></head>
             |<body>
@@ -225,12 +265,13 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "properly render a simple directory with a path prefix" in {
       Get("/files/") ~> pathPrefix("files")(listDirectoryContents(base + "/someDir")) ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /files/</title></head>
             |<body>
@@ -244,12 +285,13 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "properly render a sub directory with a path prefix" in {
       Get("/files/sub/") ~> pathPrefix("files")(listDirectoryContents(base + "/someDir")) ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /files/sub/</title></head>
             |<body>
@@ -262,12 +304,13 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "properly render an empty top-level directory with a path prefix" in {
       Get("/files/") ~> pathPrefix("files")(listDirectoryContents(base + "/subDirectory/emptySub")) ~> check {
-        eraseDateTime(responseAs[String]) ===
+        eraseDateTime(responseAs[String]) === prep {
           """<html>
             |<head><title>Index of /files/</title></head>
             |<body>
@@ -279,11 +322,14 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |</body>
             |</html>
-            |""".stripMargin
+            |"""
+        }
       }
     }
     "reject requests to file resources" in {
       Get() ~> listDirectoryContents(base + "subDirectory/empty.pdf") ~> check { handled must beFalse }
     }
   }
+
+  def prep(s: String) = s.stripMarginWithNewline("")
 }

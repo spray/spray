@@ -30,12 +30,16 @@ private[parsing] abstract class HttpMessagePartParser(val settings: ParserSettin
 
   def apply(input: ByteString): Result = parseMessageSafe(input)
 
-  def parseMessageSafe(input: ByteString, offset: Int = 0): Result =
-    try parseMessage(input, offset)
-    catch {
-      case NotEnoughDataException ⇒ needMoreData(input, offset)(parseMessageSafe)
-      case e: ParsingException    ⇒ fail(e.status, e.info)
-    }
+  def parseMessageSafe(input: ByteString, offset: Int = 0): Result = {
+    def needMoreData = this.needMoreData(input, offset)(parseMessageSafe)
+    if (input.length > offset)
+      try parseMessage(input, offset)
+      catch {
+        case NotEnoughDataException ⇒ needMoreData
+        case e: ParsingException    ⇒ fail(e.status, e.info)
+      }
+    else needMoreData
+  }
 
   def parseMessage(input: ByteString, offset: Int): Result
 

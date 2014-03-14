@@ -81,12 +81,12 @@ object MediaRange {
     def mainType = mediaType.mainType
     def parameters = mediaType.parameters
     override def isApplication = mediaType.isApplication
-    override def isAudio = mediaType.isApplication
-    override def isImage = mediaType.isApplication
-    override def isMessage = mediaType.isApplication
-    override def isMultipart = mediaType.isApplication
-    override def isText = mediaType.isApplication
-    override def isVideo = mediaType.isApplication
+    override def isAudio = mediaType.isAudio
+    override def isImage = mediaType.isImage
+    override def isMessage = mediaType.isMessage
+    override def isMultipart = mediaType.isMultipart
+    override def isText = mediaType.isText
+    override def isVideo = mediaType.isVideo
     def matches(mediaType: MediaType) =
       this.mediaType.mainType == mediaType.mainType && this.mediaType.subType == mediaType.subType
     def withParameters(parameters: Map[String, String]) = copy(mediaType = mediaType.withParameters(parameters))
@@ -379,6 +379,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   val `image/x-rgb`       = img("x-rgb", compressible, binary, "rgb")
   val `image/x-xbitmap`   = img("x-xbitmap", compressible, binary, "xbm")
   val `image/x-xpixmap`   = img("x-xpixmap", compressible, binary, "xpm")
+  val `image/webp`        = img("webp", uncompressible, binary, "webp")
 
   val `message/http`            = msg("http")
   val `message/delivery-status` = msg("delivery-status")
@@ -397,6 +398,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
     def `form-data`(parameters: Map[String, String]) = apply("form-data", parameters)
     def signed     (parameters: Map[String, String]) = apply("signed", parameters)
     def encrypted  (parameters: Map[String, String]) = apply("encrypted", parameters)
+    def byteRanges (parameters: Map[String, String]) = apply("byteranges", parameters)
   }
 
   val `multipart/mixed`       = multipart.mixed(Map.empty)
@@ -405,6 +407,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   val `multipart/form-data`   = multipart.`form-data`(Map.empty)
   val `multipart/signed`      = multipart.signed(Map.empty)
   val `multipart/encrypted`   = multipart.encrypted(Map.empty)
+  val `multipart/byteranges`  = multipart.byteRanges(Map.empty)
 
   val `text/asp`                  = txt("asp", "asp")
   val `text/cache-manifest`       = txt("cache-manifest", "manifest")

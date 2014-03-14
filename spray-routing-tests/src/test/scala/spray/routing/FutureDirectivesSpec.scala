@@ -22,7 +22,13 @@ import spray.util.SingletonException
 
 class FutureDirectivesSpec extends RoutingSpec {
 
-  object TestException extends SingletonException
+  class TestException(msg: String) extends Exception(msg)
+  object TestException extends SingletonException("XXX")
+  def throwTestException[T](msgPrefix: String): T ⇒ Nothing = t ⇒ throw new TestException(msgPrefix + t)
+
+  implicit val exceptionHandler = ExceptionHandler {
+    case e: TestException ⇒ complete(StatusCodes.InternalServerError, "Oops. " + e)
+  }
 
   "The `onComplete` directive" should {
     "properly unwrap a Future in the success case" in {
@@ -41,6 +47,18 @@ class FutureDirectivesSpec extends RoutingSpec {
         responseAs[String] === "Left(java.lang.RuntimeException: no)"
       }
     }
+    "correct catch exception in the success case" in {
+      Get() ~> onComplete(Promise.successful("ok")) { throwTestException("EX when ") } ~> check {
+        status === StatusCodes.InternalServerError
+        responseAs[String] === "Oops. spray.routing.FutureDirectivesSpec$TestException: EX when Right(ok)"
+      }
+    }
+    "correct catch exception in the failure case" in {
+      Get() ~> onComplete(Promise.failed[String](new RuntimeException("no"))) { throwTestException("EX when ") } ~> check {
+        status === StatusCodes.InternalServerError
+        responseAs[String] === "Oops. spray.routing.FutureDirectivesSpec$TestException: EX when Left(java.lang.RuntimeException: no)"
+      }
+    }
   }
 
   "The `onSuccess` directive" should {
@@ -54,6 +72,18 @@ class FutureDirectivesSpec extends RoutingSpec {
         status === StatusCodes.InternalServerError
       }
     }
+    "correct catch exception in the success case" in {
+      Get() ~> onSuccess(Promise.successful("ok")) { throwTestException("EX when ") } ~> check {
+        status === StatusCodes.InternalServerError
+        responseAs[String] === "Oops. spray.routing.FutureDirectivesSpec$TestException: EX when ok"
+      }
+    }
+    "correct catch exception in the failure case" in {
+      Get() ~> onSuccess(Promise.failed[String](TestException)) { throwTestException("EX when ") } ~> check {
+        status === StatusCodes.InternalServerError
+        responseAs[String] === "There was an internal server error."
+      }
+    }
   }
 
   "The `onFailure` directive" should {
@@ -64,9 +94,20 @@ class FutureDirectivesSpec extends RoutingSpec {
     }
     "throw an exception in the failure case" in {
       Get() ~> onFailure(Promise.failed[String](TestException)) { echoComplete } ~> check {
-        responseAs[String] === "spray.routing.FutureDirectivesSpec$TestException$"
+        responseAs[String] === "spray.routing.FutureDirectivesSpec$TestException$: XXX"
+      }
+    }
+    "correct catch exception in the success case" in {
+      Get() ~> onFailure(Promise.successful("ok")) { throwTestException("EX when ") } ~> check {
+        status === StatusCodes.OK
+        responseAs[String] === "ok"
+      }
+    }
+    "correct catch exception in the failure case" in {
+      Get() ~> onFailure(Promise.failed[String](TestException)) { throwTestException("EX when ") } ~> check {
+        status === StatusCodes.InternalServerError
+        responseAs[String] === "Oops. spray.routing.FutureDirectivesSpec$TestException: EX when spray.routing.FutureDirectivesSpec$TestException$: XXX"
       }
     }
   }
-
 }

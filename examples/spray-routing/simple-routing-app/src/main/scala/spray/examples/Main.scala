@@ -4,7 +4,6 @@ import akka.util.duration._
 import akka.actor.ActorSystem
 import spray.routing.SimpleRoutingApp
 import spray.http._
-import MediaTypes._
 
 object Main extends App with SimpleRoutingApp {
   implicit val system = ActorSystem("simple-routing-app")
@@ -31,6 +30,11 @@ object Main extends App with SimpleRoutingApp {
         }
       }
     }
+  }.onComplete {
+    case Right(b) =>
+      println("Successfully bound to " + b.localAddress)
+    case Left(ex) =>
+      println(ex.getMessage)
+      system.shutdown()
   }
-
 }

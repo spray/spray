@@ -28,9 +28,11 @@ import HttpHeaders._
 
 /* format: OFF */
 trait FileAndResourceDirectives {
+  import CacheConditionDirectives._
   import ChunkingDirectives._
   import ExecutionDirectives._
   import MethodDirectives._
+  import RangeDirectives._
   import RespondWithDirectives._
   import RouteDirectives._
   import MiscDirectives._
@@ -64,19 +66,31 @@ trait FileAndResourceDirectives {
     get {
       detach() {
         if (file.isFile && file.canRead) {
-          respondWithLastModifiedHeader(file.lastModified) {
-            autoChunk(settings.fileChunkingThresholdSize, settings.fileChunkingChunkSize) {
-              complete(HttpEntity(contentType, HttpData(file)))
+          autoChunked.apply {
+            conditionalFor(file.length, file.lastModified).apply {
+              withRangeSupport() {
+                complete(HttpEntity(contentType, HttpData(file)))
+              }
             }
           }
         } else reject
       }
     }
 
+  private def autoChunked(implicit settings: RoutingSettings, refFactory: ActorRefFactory): Directive0 =
+    autoChunk(settings.fileChunkingThresholdSize, settings.fileChunkingChunkSize)
+
+  private def conditionalFor(length: Long, lastModified: Long)(implicit settings: RoutingSettings): Directive0 =
+    if (settings.fileGetConditional) {
+      val tag = java.lang.Long.toHexString(lastModified ^ java.lang.Long.reverse(length))
+      val lastModifiedDateTime = DateTime(math.min(lastModified, System.currentTimeMillis))
+      conditional(EntityTag(tag), lastModifiedDateTime)
+    } else BasicDirectives.noop
+
   /**
    * Adds a Last-Modified header to all HttpResponses from its inner Route.
    */
-  def respondWithLastModifiedHeader(timestamp: Long): Directive0 =
+  def respondWithLastModifiedHeader(timestamp: Long): Directive0 = // TODO: remove when migrating to akka-http
     respondWithHeader(`Last-Modified`(DateTime(math.min(timestamp, System.currentTimeMillis))))
 
   /**
@@ -104,19 +118,27 @@ trait FileAndResourceDirectives {
           theClassLoader.getResource(resourceName) match {
             case null ⇒ reject
             case url ⇒
-              val lastModified = {
+              val (length, lastModified) = {
                 val conn = url.openConnection()
-                conn.setUseCaches(false) // otherwise the JDK will keep the JAR file open when we close!
-                val lm = conn.getLastModified
-                conn.getInputStream.close()
-                lm
+                try {
+                  conn.setUseCaches(false) // otherwise the JDK will keep the JAR file open when we close!
+                  val len = conn.getContentLength
+                  val lm = conn.getLastModified
+                  len -> lm
+                } finally { conn.getInputStream.close() }
               }
               implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(contentType)
-              respondWithLastModifiedHeader(lastModified) {
-                complete {
-                  // readAllBytes closes the InputStream when done, which ends up closing the JAR file
-                  // if caching has been disabled on the connection
-                  FileUtils.readAllBytes(url.openStream())
+              autoChunked.apply { // TODO: add implicit RoutingSettings to method and use here
+                conditionalFor(length, lastModified).apply {
+                  withRangeSupport() {
+                    complete {
+                      // readAllBytes closes the InputStream when done, which ends up closing the JAR file
+                      // if caching has been disabled on the connection
+                      val is = url.openStream()
+                      try { FileUtils.readAllBytes(is) }
+                      finally { is.close() }
+                    }
+                  }
                 }
               }
           }
@@ -260,21 +282,18 @@ case class DirectoryListing(path: String, isRoot: Boolean, files: Seq[File])
 
 object DirectoryListing {
 
-  private val html =
-    """<html>
-      |<head><title>Index of $</title></head>
-      |<body>
-      |<h1>Index of $</h1>
-      |<hr>
-      |<pre>
-      |$</pre>
-      |<hr>$
-      |<div style="width:100%;text-align:right;color:gray">
-      |<small>rendered by <a href="http://spray.io">spray</a> on $</small>
-      |</div>$
-      |</body>
-      |</html>
-      |""".stripMargin split '$'
+  private val html = new java.lang.StringBuilder()
+    .append("<html>")
+    .append("<head><title>Index of $</title></head>")
+    .append("<body>")
+    .append("<h1>Index of $</h1>")
+    .append("<hr><pre>$</pre><hr>$")
+    .append("""<div style="width:100%;text-align:right;color:gray">""")
+    .append("""<small>rendered by <a href="http://spray.io">spray</a> on $</small>""")
+    .append("</div>$")
+    .append("</body>")
+    .append("</html>")
+    .toString split '$'
 
   implicit def DefaultMarshaller(implicit settings: RoutingSettings): Marshaller[DirectoryListing] =
     Marshaller.delegate[DirectoryListing, String](MediaTypes.`text/html`) { listing ⇒
@@ -291,22 +310,22 @@ object DirectoryListing {
       sb.append(html(0)).append(path).append(html(1)).append(path).append(html(2))
       if (!isRoot) {
         val secondToLastSlash = path.lastIndexOf('/', path.lastIndexOf('/', path.length - 1) - 1)
-        sb.append("<a href=\"%s/\">../</a>\n" format path.substring(0, secondToLastSlash))
+        sb.append("<a href=\"%s/\">../</a>" format path.substring(0, secondToLastSlash))
       }
       def lastModified(file: File) = DateTime(file.lastModified).toIsoLikeDateTimeString
       def start(name: String) =
         sb.append("<a href=\"").append(path + name).append("\">").append(name).append("</a>")
           .append(" " * (maxNameLen - name.length))
       def renderDirectory(file: File, name: String) =
-        start(name + '/').append("        ").append(lastModified(file)).append('\n')
+        start(name + '/').append("        ").append(lastModified(file))
       def renderFile(file: File, name: String) = {
         val size = Utils.humanReadableByteCount(file.length, si = true)
         start(name).append("        ").append(lastModified(file))
-        sb.append("                ".substring(size.length)).append(size).append('\n')
+        sb.append("                ".substring(size.length)).append(size)
       }
       for ((file, name) ← directoryFilesAndNames) renderDirectory(file, name)
       for ((file, name) ← fileFilesAndNames) renderFile(file, name)
-      if (isRoot && files.isEmpty) sb.append("(no files)\n")
+      if (isRoot && files.isEmpty) sb.append("(no files)")
       sb.append(html(3))
       if (settings.renderVanityFooter) sb.append(html(4)).append(DateTime.now.toIsoLikeDateTimeString).append(html(5))
       sb.append(html(6)).toString

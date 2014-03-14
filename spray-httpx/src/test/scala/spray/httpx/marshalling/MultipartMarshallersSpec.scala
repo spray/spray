@@ -40,8 +40,10 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
       marshal(MultipartContent(Seq(BodyPart("")))) === Right {
         HttpEntity(
           contentType = ContentType(`multipart/mixed` withBoundary randomBoundary),
-          string = """--%1$s
-                     |--%1$s--""".stripMargin.replace(EOL, "\r\n") format randomBoundary)
+          string = result {
+            """--%1$s
+              |--%1$s--"""
+          }.format(randomBoundary))
       }
     }
 
@@ -55,12 +57,14 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
         }
       } === Right {
         HttpEntity(ContentType(`multipart/mixed` withBoundary randomBoundary),
-          """--%1$s
-            |Content-Disposition: form-data; name=email
-            |Content-Type: text/plain; charset=UTF-8
-            |
-            |test@there.com
-            |--%1$s--""".stripMargin.replace(EOL, "\r\n") format randomBoundary)
+          result {
+            """--%1$s
+              |Content-Disposition: form-data; name=email
+              |Content-Type: text/plain; charset=UTF-8
+              |
+              |test@there.com
+              |--%1$s--"""
+          }.format(randomBoundary))
       }
     }
 
@@ -75,7 +79,8 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
         }
       } === Right {
         HttpEntity(ContentType(`multipart/mixed` withBoundary randomBoundary),
-          """--%1$s
+          result {
+            """--%1$s
             |Content-Type: text/plain; charset=US-ASCII
             |
             |first part, with a trailing linebreak
@@ -85,7 +90,8 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
             |Content-Type: application/octet-stream
             |
             |filecontent
-            |--%1$s--""".stripMargin.replace(EOL, "\r\n") format randomBoundary)
+            |--%1$s--"""
+          }.format(randomBoundary))
       }
     }
   }
@@ -97,17 +103,19 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
         Right {
           HttpEntity(
             contentType = ContentType(`multipart/form-data` withBoundary randomBoundary),
-            string = """|--%1$s
-                        |Content-Disposition: form-data; name=surname
-                        |Content-Type: text/plain; charset=UTF-8
-                        |
-                        |Mike
-                        |--%1$s
-                        |Content-Disposition: form-data; name=age
-                        |Content-Type: text/xml; charset=UTF-8
-                        |
-                        |<int>42</int>
-                        |--%1$s--""".stripMargin.replace(EOL, "\r\n") format randomBoundary)
+            string = result {
+              """|--%1$s
+                |Content-Disposition: form-data; name=surname
+                |Content-Type: text/plain; charset=UTF-8
+                |
+                |Mike
+                |--%1$s
+                |Content-Disposition: form-data; name=age
+                |Content-Type: text/xml; charset=UTF-8
+                |
+                |<int>42</int>
+                |--%1$s--"""
+            }.format(randomBoundary))
         }
     }
 
@@ -124,24 +132,28 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
         Right {
           HttpEntity(
             contentType = ContentType(`multipart/form-data` withBoundary randomBoundary),
-            string = """--%1$s
-                       |Content-Disposition: form-data; name="attachment[0]"; filename=attachment.csv
-                       |Content-Type: text/csv
-                       |
-                       |name,age
-                       |"John Doe",20
-                       |
-                       |--%1$s
-                       |Content-Disposition: form-data; name="attachment[1]"; filename=attachment.csv
-                       |Content-Transfer-Encoding: binary
-                       |Content-Type: application/octet-stream
-                       |
-                       |name,age
-                       |"John Doe",20
-                       |
-                       |--%1$s--""".stripMargin.replace(EOL, "\r\n") format randomBoundary)
+            string = result {
+              """--%1$s
+                |Content-Disposition: form-data; name="attachment[0]"; filename=attachment.csv
+                |Content-Type: text/csv
+                |
+                |name,age
+                |"John Doe",20
+                |
+                |--%1$s
+                |Content-Disposition: form-data; name="attachment[1]"; filename=attachment.csv
+                |Content-Transfer-Encoding: binary
+                |Content-Type: application/octet-stream
+                |
+                |name,age
+                |"John Doe",20
+                |
+                |--%1$s--"""
+            }.format(randomBoundary))
         }
     }
 
   }
+
+  def result(body: String) = body.stripMarginWithNewline("\r\n")
 }
