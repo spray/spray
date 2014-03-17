@@ -40,7 +40,7 @@ trait SearchSuggestions { self: Directives ⇒
   // format: OFF
   def searchRoute(host: String) =
     pathPrefix("search") {
-      searchRouteFor(host, "documentation", "spray.io 1.2.0 documentation", "Search and suggest spray.io documentation pages")(suggestDocumentationPage)
+      searchRouteFor(host, "documentation", "spray.io 1.2.1 documentation", "Search and suggest spray.io documentation pages")(suggestDocumentationPage)
     }
 
   def searchRouteFor(host: String, name: String, shortName: String, description: String)(suggest: String ⇒ Suggestions): Route =
@@ -110,7 +110,7 @@ trait SearchSuggestions { self: Directives ⇒
     </OpenSearchDescription>
   }
 
-  val documentationPages = allNodesBelow(Main.root.find("documentation/1.2.0/").get)
+  val documentationPages = allNodesBelow(Main.root.find("documentation/1.2.1/").get)
 
   def allNodesBelow(branch: ContentNode): Seq[ContentNode] =
     if (branch.isLeaf) Seq(branch)

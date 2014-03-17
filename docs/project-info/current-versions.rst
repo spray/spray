@@ -13,7 +13,7 @@ This version targets Scala 2.9.x and Akka 1.3.x and is therefore not recommended
 Its documentation doesn't live here but in the (old) `github wiki`_.
 
 
-1.0.0 / 1.1.0 / 1.2.0 / 1.3.0
+1.0.1 / 1.1.1 / 1.2.1 / 1.3.1
 -----------------------------
 
 The current and stable *spray* release is a quadrupel release,
@@ -38,19 +38,19 @@ Please choose |1.0|, |1.1|, |1.2| or |1.3| depending on what Scala/Akka version 
 
 For information about where to find the *spray* artifacts please check out the :ref:`maven-repo` chapter.
 
-.. |1.0| replace:: **1.0.0**
-.. |1.1| replace:: **1.1.0**
-.. |1.2| replace:: **1.2.0**
-.. |1.3| replace:: **1.3.0**
+.. |1.0| replace:: **1.0.1**
+.. |1.1| replace:: **1.1.1**
+.. |1.2| replace:: **1.2.1**
+.. |1.3| replace:: **1.3.1**
 
 
 Nightly Builds
 --------------
 
 If you'd like to have access to the most recent changes and additions without having to build *spray* yourself you can
-rely on the nightly builds, which we are currently publishing for the `release/1.0`_, `release/1.1`_ and `release/1.2`_
-branches of the *spray* repository. Every day shortly past midnight UTC a new build is made available unless the
-respective branch has not seen any new commits since the last build.
+rely on the nightly builds, which we are currently publishing for the `release/1.0`_, `release/1.1`_, `release/1.2`_ and
+`release/1.3`_ branches of the *spray* repository. Every day shortly past midnight UTC a new build is made available
+unless the respective branch has not seen any new commits since the last build.
 
 In order to help you identify the exact commit from which a build is cut every artifact directory includes a
 ``commit-<version>.html`` file containing the commit hash with a link to the commit on github.
