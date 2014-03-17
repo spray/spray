@@ -282,18 +282,21 @@ case class DirectoryListing(path: String, isRoot: Boolean, files: Seq[File])
 
 object DirectoryListing {
 
-  private val html = new java.lang.StringBuilder()
-    .append("<html>")
-    .append("<head><title>Index of $</title></head>")
-    .append("<body>")
-    .append("<h1>Index of $</h1>")
-    .append("<hr><pre>$</pre><hr>$")
-    .append("""<div style="width:100%;text-align:right;color:gray">""")
-    .append("""<small>rendered by <a href="http://spray.io">spray</a> on $</small>""")
-    .append("</div>$")
-    .append("</body>")
-    .append("</html>")
-    .toString split '$'
+  private val html =
+    """<html>
+      |<head><title>Index of $</title></head>
+      |<body>
+      |<h1>Index of $</h1>
+      |<hr>
+      |<pre>
+      |$</pre>
+      |<hr>$
+      |<div style="width:100%;text-align:right;color:gray">
+      |<small>rendered by <a href="http://spray.io">spray</a> on $</small>
+      |</div>$
+      |</body>
+      |</html>
+      |""".stripMargin split '$'
 
   implicit def DefaultMarshaller(implicit settings: RoutingSettings): Marshaller[DirectoryListing] =
     Marshaller.delegate[DirectoryListing, String](MediaTypes.`text/html`) { listing ⇒
@@ -310,22 +313,22 @@ object DirectoryListing {
       sb.append(html(0)).append(path).append(html(1)).append(path).append(html(2))
       if (!isRoot) {
         val secondToLastSlash = path.lastIndexOf('/', path.lastIndexOf('/', path.length - 1) - 1)
-        sb.append("<a href=\"%s/\">../</a>" format path.substring(0, secondToLastSlash))
+        sb.append("<a href=\"%s/\">../</a>\n" format path.substring(0, secondToLastSlash))
       }
       def lastModified(file: File) = DateTime(file.lastModified).toIsoLikeDateTimeString
       def start(name: String) =
         sb.append("<a href=\"").append(path + name).append("\">").append(name).append("</a>")
           .append(" " * (maxNameLen - name.length))
       def renderDirectory(file: File, name: String) =
-        start(name + '/').append("        ").append(lastModified(file))
+        start(name + '/').append("        ").append(lastModified(file)).append('\n')
       def renderFile(file: File, name: String) = {
         val size = Utils.humanReadableByteCount(file.length, si = true)
         start(name).append("        ").append(lastModified(file))
-        sb.append("                ".substring(size.length)).append(size)
+        sb.append("                ".substring(size.length)).append(size).append('\n')
       }
       for ((file, name) ← directoryFilesAndNames) renderDirectory(file, name)
       for ((file, name) ← fileFilesAndNames) renderFile(file, name)
-      if (isRoot && files.isEmpty) sb.append("(no files)")
+      if (isRoot && files.isEmpty) sb.append("(no files)\n")
       sb.append(html(3))
       if (settings.renderVanityFooter) sb.append(html(4)).append(DateTime.now.toIsoLikeDateTimeString).append(html(5))
       sb.append(html(6)).toString
