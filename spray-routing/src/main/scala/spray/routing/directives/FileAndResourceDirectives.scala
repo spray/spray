@@ -296,7 +296,7 @@ object DirectoryListing {
       |</div>$
       |</body>
       |</html>
-      |""".stripMargin split '$'
+      |""".stripMarginWithNewline("\n") split '$'
 
   implicit def DefaultMarshaller(implicit settings: RoutingSettings): Marshaller[DirectoryListing] =
     Marshaller.delegate[DirectoryListing, String](MediaTypes.`text/html`) { listing ⇒
