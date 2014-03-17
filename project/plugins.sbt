@@ -9,7 +9,7 @@ libraryDependencies ++= Seq(
 
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.7.2")
 
-addSbtPlugin("io.spray" % "sbt-twirl" % "0.6.1")
+addSbtPlugin("io.spray" % "sbt-twirl" % "0.7.0")
 
 addSbtPlugin("io.spray" % "sbt-boilerplate" % "0.5.1")
 
