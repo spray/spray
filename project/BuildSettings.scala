@@ -111,15 +111,16 @@ object BuildSettings {
     javaOptions in Revolver.reStart ++= Seq("-verbose:gc", "-XX:+PrintCompilation")
   )
 
-  import com.github.siasia.WebPlugin._
+  import com.earldouglas.xsbtwebplugin.WebPlugin._
   lazy val jettyExampleSettings = exampleSettings ++ webSettings // ++ disableJettyLogSettings
 
-  import com.github.siasia.PluginKeys._
+  import com.earldouglas.xsbtwebplugin.PluginKeys._
   lazy val disableJettyLogSettings = inConfig(container.Configuration) {
     seq(
       start <<= (state, port, apps, customConfiguration, configurationFiles, configurationXml) map {
         (state, port, apps, cc, cf, cx) =>
-          state.get(container.attribute).get.start(port, None, Utils.NopLogger, apps, cc, cf, cx)
+          state.get(container.attribute).get.start(new java.net.InetSocketAddress(port),
+            None, Utils.NopLogger, apps, cc, cf, cx)
       }
     )
   }

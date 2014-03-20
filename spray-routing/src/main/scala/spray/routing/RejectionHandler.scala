@@ -43,7 +43,7 @@ object RejectionHandler {
       }
       ctx ⇒ ctx.complete(Unauthorized, challengeHeaders, rejectionMessage)
 
-    case AuthorizationFailedRejection :: _ ⇒
+      case AuthorizationFailedRejection :: _ ⇒
       complete(Forbidden, "The supplied authentication is not authorized to access this resource")
 
     case CorruptRequestEncodingRejection(msg) :: _ ⇒

@@ -39,12 +39,12 @@ object ExceptionHandler {
           ctx.request, e.getMessage, e.status)
         ctx.complete(e.status, e.info.format(settings.verboseErrorMessages))
 
-      case e: RequestProcessingException ⇒ ctx ⇒
+        case e: RequestProcessingException ⇒ ctx ⇒
         log.warning("Request {} could not be handled normally\n\t{}\n\tCompleting with '{}' response",
           ctx.request, e.getMessage, e.status)
         ctx.complete(e.status, e.info.format(settings.verboseErrorMessages))
 
-      case NonFatal(e) ⇒ ctx ⇒
+        case NonFatal(e) ⇒ ctx ⇒
         log.error(e, "Error during processing of request {}", ctx.request)
         ctx.complete(InternalServerError)
     }
