@@ -101,10 +101,11 @@ object BuildSettings {
     unmanagedSourceDirectories in Test <<= baseDirectory { _ ** "code" get }
   )
 
-  lazy val exampleSettings = basicSettings ++ noPublishing
+  lazy val exampleSettings = basicSettings ++ noPublishing ++ seq(Dependencies.scalaXmlModule)
   lazy val standaloneServerExampleSettings = exampleSettings ++ Revolver.settings
 
   lazy val benchmarkSettings = basicSettings ++ noPublishing ++ Revolver.settings ++ assemblySettings ++ Seq(
+    Dependencies.scalaXmlModule,
     mainClass in assembly := Some("spray.examples.Main"),
     jarName in assembly := "benchmark.jar",
     test in assembly := {},
