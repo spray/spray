@@ -43,7 +43,7 @@ object Utils {
   }
 
   def resourceContent(resource: String) =
-    new StreamCopier().emptyToString(getClass.getClassLoader.getResourceAsStream(resource))
+    new StreamCopier(1024).emptyToString(getClass.getClassLoader.getResourceAsStream(resource))
 
   def sudoCreateFile(file: String, input: CommandInput) = {
     val cmd = createFile(file, input)
