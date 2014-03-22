@@ -25,6 +25,7 @@ private object RenderSupport {
   val Chunked = "chunked".getAsciiBytes
   val KeepAlive = "Keep-Alive".getAsciiBytes
   val Close = "close".getAsciiBytes
+  val Upgrade = "Upgrade".getAsciiBytes
 
   def CrLf = Rendering.CrLf
 
