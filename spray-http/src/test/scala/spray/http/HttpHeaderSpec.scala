@@ -78,10 +78,10 @@ class HttpHeaderSpec extends Specification {
     }
 
     "Accept-Language" in {
-      "Accept-Language: da, en-gb ;q=0.8, en;q=0.7" =!=
-        `Accept-Language`(Language("da"), Language("en", "gb"), Language("en")).renderedTo("da, en-gb, en")
-      "Accept-Language: de-CH-1901, *;q=0" =!=
-        `Accept-Language`(Language("de", "CH", "1901"), LanguageRanges.`*`).renderedTo("de-CH-1901, *")
+      "Accept-Language: da, en-gb;q=0.8, en;q=0.7" =!=
+        `Accept-Language`(Language("da"), Language("en", "gb") withQValue 0.8f, Language("en") withQValue 0.7f)
+      "Accept-Language: de-CH-1901, *;q=0.0" =!=
+        `Accept-Language`(Language("de", "CH", "1901"), LanguageRanges.`*` withQValue 0f)
       "Accept-Language: es-419, es" =!= `Accept-Language`(Language("es", "419"), Language("es"))
     }
 
