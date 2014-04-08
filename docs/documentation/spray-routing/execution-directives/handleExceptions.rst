@@ -14,7 +14,7 @@ Signature
 Description
 -----------
 
-Using this directive is an alternative to using a global implicily defined ``ExceptionHandler`` that
+Using this directive is an alternative to using a global implicitly defined ``ExceptionHandler`` that
 applies to the complete route.
 
 See :ref:`Exception Handling` for general information about options for handling exceptions.
