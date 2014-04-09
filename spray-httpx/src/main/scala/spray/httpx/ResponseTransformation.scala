@@ -32,7 +32,9 @@ trait ResponseTransformation extends TransformerPipelineSupport {
       if (response.status.isSuccess)
         response.as[T] match {
           case Right(value) ⇒ value
-          case Left(error)  ⇒ throw new PipelineException(error.toString)
+          case Left(error: MalformedContent) ⇒
+            throw new PipelineException(error.errorMessage, error.cause.orNull)
+          case Left(error) ⇒ throw new PipelineException(error.toString)
         }
       else throw new UnsuccessfulResponseException(response)
 
