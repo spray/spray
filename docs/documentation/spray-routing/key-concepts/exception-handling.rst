@@ -3,7 +3,7 @@
 Exception Handling
 ==================
 
-Exceptions thrown during route execution bubble up throw the route structure up to the next enclosing
+Exceptions thrown during route execution bubble up through the route structure to the next enclosing
 :ref:`-handleExceptions-` directive, :ref:`runRoute` or the ``onFailure`` callback of a
 future created by ``detach``.
 
