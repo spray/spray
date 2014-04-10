@@ -16,35 +16,35 @@
 
 package spray.httpx
 
-import java.lang.reflect.InvocationTargetException
-
-import net.liftweb.json._
-import spray.httpx.marshalling.Marshaller
-import spray.httpx.unmarshalling.Unmarshaller
-import spray.http._
-
-/**
- * A trait providing automatic to and from JSON marshalling/unmarshalling for case classes via lift-json.
- * Note that *spray-routing* does not have an automatic dependency on *lift-json*. You'll need to provide the
- * appropriate *lift-json* artifacts yourself.
- */
-trait LiftJsonSupport {
-
-  /**
-   * The `Formats` to use for (de)serialization.
-   */
-  implicit def liftJsonFormats: Formats
-
-  implicit def liftJsonUnmarshaller[T: Manifest] =
-    Unmarshaller[T](MediaTypes.`application/json`) {
-      case x: HttpEntity.NonEmpty ⇒
-        val jsonSource = x.asString(defaultCharset = HttpCharsets.`UTF-8`)
-        try parse(jsonSource).extract[T]
-        catch {
-          case MappingException("unknown error", ite: InvocationTargetException) ⇒ throw ite.getCause
-        }
-    }
-
-  implicit def liftJsonMarshaller[T <: AnyRef] =
-    Marshaller.delegate[T, String](ContentTypes.`application/json`)(Serialization.write(_))
-}
+//import java.lang.reflect.InvocationTargetException
+//
+//import net.liftweb.json._
+//import spray.httpx.marshalling.Marshaller
+//import spray.httpx.unmarshalling.Unmarshaller
+//import spray.http._
+//
+///**
+// * A trait providing automatic to and from JSON marshalling/unmarshalling for case classes via lift-json.
+// * Note that *spray-routing* does not have an automatic dependency on *lift-json*. You'll need to provide the
+// * appropriate *lift-json* artifacts yourself.
+// */
+//trait LiftJsonSupport {
+//
+//  /**
+//   * The `Formats` to use for (de)serialization.
+//   */
+//  implicit def liftJsonFormats: Formats
+//
+//  implicit def liftJsonUnmarshaller[T: Manifest] =
+//    Unmarshaller[T](MediaTypes.`application/json`) {
+//      case x: HttpEntity.NonEmpty ⇒
+//        val jsonSource = x.asString(defaultCharset = HttpCharsets.`UTF-8`)
+//        try parse(jsonSource).extract[T]
+//        catch {
+//          case MappingException("unknown error", ite: InvocationTargetException) ⇒ throw ite.getCause
+//        }
+//    }
+//
+//  implicit def liftJsonMarshaller[T <: AnyRef] =
+//    Marshaller.delegate[T, String](ContentTypes.`application/json`)(Serialization.write(_))
+//}

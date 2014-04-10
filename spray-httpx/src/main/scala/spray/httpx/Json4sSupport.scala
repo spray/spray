@@ -15,23 +15,23 @@
  */
 package spray.httpx
 
-import org.json4s.native.Serialization
-
-/**
- * Supplies the serialization and deserialization formats for JSON4s.
- *
- * proper usage
- * formats = DefaultFormats(NoTypeHints)
- * if you want extra support add json4s-ext to dependencies and add
- *
- * all examples taken from json4s.org site:
- * Scala enums
- * implicit val formats = org.json4s.DefaultFormats + new org.json4s.ext.EnumSerializer(MyEnum)
- * or for enum names
- * implicit val formats = org.json4s.DefaultFormats + new org.json4s.ext.EnumNameSerializer(MyEnum)
- * Joda Time
- * implicit val formats = org.json4s.DefaultFormats ++ org.json4s.ext.JodaTimeSerializers.all
- */
-trait Json4sSupport extends BaseJson4sSupport {
-  protected[httpx] def serialization = Serialization
-}
+//import org.json4s.native.Serialization
+//
+///**
+// * Supplies the serialization and deserialization formats for JSON4s.
+// *
+// * proper usage
+// * formats = DefaultFormats(NoTypeHints)
+// * if you want extra support add json4s-ext to dependencies and add
+// *
+// * all examples taken from json4s.org site:
+// * Scala enums
+// * implicit val formats = org.json4s.DefaultFormats + new org.json4s.ext.EnumSerializer(MyEnum)
+// * or for enum names
+// * implicit val formats = org.json4s.DefaultFormats + new org.json4s.ext.EnumNameSerializer(MyEnum)
+// * Joda Time
+// * implicit val formats = org.json4s.DefaultFormats ++ org.json4s.ext.JodaTimeSerializers.all
+// */
+//trait Json4sSupport extends BaseJson4sSupport {
+//  protected[httpx] def serialization = Serialization
+//}

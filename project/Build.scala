@@ -84,9 +84,10 @@ object Build extends Build {
       "twirl.*;resolution := optional",
       "play.*;resolution := optional"
     )): _*)
+    .settings(scalaXmlModule)
     .settings(libraryDependencies ++=
       compile(mimepull) ++
-      provided(akkaActor, sprayJson, twirlApi, liftJson, json4sNative, json4sJackson, playJson) ++
+      provided(akkaActor, sprayJson, twirlApi) ++ //, liftJson, json4sNative, json4sJackson, playJson) ++
       test(specs2)
     )
 
@@ -167,7 +168,7 @@ object Build extends Build {
                sprayServlet, sprayTestKit, sprayUtil)
     .settings(SphinxSupport.settings: _*)
     .settings(docsSettings: _*)
-    .settings(libraryDependencies ++= test(akkaActor, sprayJson, specs2, json4sNative))
+    .settings(libraryDependencies ++= test(akkaActor, sprayJson, specs2)) // , json4sNative))
 
 
   // -------------------------------------------------------------------------------------------------------------------
