@@ -15,12 +15,12 @@
  */
 package spray.httpx
 
-//import org.json4s.{ Formats, jackson }
-//
-//trait Json4sJacksonSupport extends BaseJson4sSupport {
-//  implicit def json4sJacksonFormats: Formats
-//
-//  // needed for backwards compatibility
-//  final def json4sFormats: Formats = json4sJacksonFormats
-//  protected[httpx] def serialization = jackson.Serialization
-//}
+import org.json4s.{ Formats, jackson }
+
+trait Json4sJacksonSupport extends BaseJson4sSupport {
+  implicit def json4sJacksonFormats: Formats
+
+  // needed for backwards compatibility
+  final def json4sFormats: Formats = json4sJacksonFormats
+  protected[httpx] def serialization = jackson.Serialization
+}

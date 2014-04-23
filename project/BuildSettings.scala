@@ -10,7 +10,7 @@ import com.typesafe.sbt.osgi.SbtOsgi
 import SbtOsgi._
 
 object BuildSettings {
-  val VERSION = "1.3.1"
+  val VERSION = "1.3.1-20140423"
 
   lazy val basicSettings = seq(
     version               := NightlyBuildSupport.buildVersion(VERSION),
@@ -21,7 +21,7 @@ object BuildSettings {
                              "web services on top of Akka",
     startYear             := Some(2011),
     licenses              := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-    scalaVersion          := "2.11.0-RC4",
+    scalaVersion          := "2.11.0",
     resolvers             ++= Dependencies.resolutionRepos,
     scalacOptions         := Seq(
       "-encoding", "utf8",
@@ -44,7 +44,7 @@ object BuildSettings {
       (scalacOptions in doc) <++= (name, version).map { (n, v) => Seq("-doc-title", n, "-doc-version", v) },
 
       // publishing
-      crossPaths := false,
+      crossPaths := true,
       publishMavenStyle := true,
       SbtPgp.useGpg := true,
       publishTo <<= version { version =>

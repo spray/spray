@@ -87,7 +87,7 @@ object Build extends Build {
     .settings(scalaXmlModule)
     .settings(libraryDependencies ++=
       compile(mimepull) ++
-      provided(akkaActor, sprayJson, twirlApi) ++ //, liftJson, json4sNative, json4sJackson, playJson) ++
+      provided(akkaActor, sprayJson, json4sNative, json4sJackson, twirlApi) ++ //, liftJson, playJson) ++
       test(specs2)
     )
 
