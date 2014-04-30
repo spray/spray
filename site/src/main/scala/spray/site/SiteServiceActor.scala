@@ -65,8 +65,9 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
           } ~
           logRequestResponse(showErrorResponses _) {
             talkCharts("scala.io") ~
-            talkCharts("wjax") ~
             talkCharts("webinar") ~
+            talkCharts("wjax") ~
+            talkCharts("zse") ~
             searchRoute("spray.io") ~
             path("webinar" / "video" /) { redirect("http://www.youtube.com/watch?v=7MqD7_YvZ8Q", Found) } ~
             getFromResourceDirectory("theme") ~
