@@ -18,6 +18,7 @@ package spray.http
 
 import org.specs2.mutable.Specification
 import spray.util.UTF8
+import java.nio.charset.Charset
 import Uri._
 
 class UriSpec extends Specification {
@@ -177,6 +178,8 @@ class UriSpec extends Specification {
       Path("abc///de") === "abc" :: '/' :: '/' :: '/' :: "de" :: Empty
       Path("/abc%2F") === Path / "abc/"
       Path("H%C3%A4ll%C3%B6") === """Hällö""" :: Empty
+      Path("/%F0%9F%92%A9") === Path / "\ud83d\udca9"
+      Path("/%00%ff%00%61", Charset.forName("UTF-16")) === Path / "ÿa"
       Path("/%2F%5C") === Path / """/\"""
       Path("/:foo:/") === Path / ":foo:" / ""
       Path("%2520").head === "%20"
