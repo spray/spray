@@ -23,9 +23,7 @@ class PimpedRegex(regex: Regex) {
 
   def groupCount = {
     try {
-      val field = classOf[Pattern].getDeclaredField("capturingGroupCount")
-      field.setAccessible(true)
-      field.getInt(regex.pattern) - 1
+      regex.pattern.matcher("").groupCount()
     } catch {
       case t: Throwable ⇒
         throw new RuntimeException("Could not determine regex group count: " + regex.pattern.pattern, t)
