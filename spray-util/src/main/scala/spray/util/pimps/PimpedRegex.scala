@@ -16,18 +16,10 @@
 
 package spray.util.pimps
 
-import java.util.regex.Pattern
 import scala.util.matching.Regex
 
 class PimpedRegex(regex: Regex) {
 
-  def groupCount = {
-    try {
-      regex.pattern.matcher("").groupCount()
-    } catch {
-      case t: Throwable ⇒
-        throw new RuntimeException("Could not determine regex group count: " + regex.pattern.pattern, t)
-    }
-  }
+  def groupCount = regex.pattern.matcher("").groupCount()
 
 }
