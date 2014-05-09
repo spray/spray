@@ -59,6 +59,9 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
         host(_.endsWith("pegdown.org")) {
           redirect("https://github.com/sirthias/pegdown", Found)
         } ~
+        host(x => x.endsWith("waves.io") | x.endsWith("streamed.io")) {
+          redirect("https://github.com/sirthias/waves", Found)
+        } ~
         host("spray.io", "localhost", "127.0.0.1") {
           path("favicon.ico") {
             complete(NotFound) // fail early in order to prevent error response logging
