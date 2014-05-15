@@ -119,13 +119,18 @@ object Build extends Build {
 
   lazy val sprayRouting = Project("spray-routing", file("spray-routing"))
     .dependsOn(
-      sprayCaching % "provided", // for the CachingDirectives trait
+      sprayCaching % "provided", // for the CachingDirectives trait  and CachedUserPassAuthenticator object
       sprayCan % "provided",  // for the SimpleRoutingApp trait
       sprayHttp, sprayHttpx, sprayUtil,
       sprayIO) // for access to akka.io.Tcp, can go away after upgrade to Akka 2.2
     .settings(sprayModuleSettings: _*)
     .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
-    .settings(osgiSettings(exports = Seq("spray.routing"), imports = Seq("shapeless.*;resolution:=optional")): _*)
+    .settings(osgiSettings(exports = Seq("spray.routing"), imports = Seq(
+      "spray.caching.*;resolution:=optional",
+      "spray.can.*;resolution:=optional",
+      "spray.io.*;resolution:=optional",
+      "shapeless.*;resolution:=optional"
+    )): _*)
     .settings(libraryDependencies ++=
       compile(shapeless) ++
       provided(akkaActor)
