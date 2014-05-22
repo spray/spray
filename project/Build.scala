@@ -128,8 +128,7 @@ object Build extends Build {
     .settings(osgiSettings(exports = Seq("spray.routing"), imports = Seq(
       "spray.caching.*;resolution:=optional",
       "spray.can.*;resolution:=optional",
-      "spray.io.*;resolution:=optional",
-      "shapeless.*;resolution:=optional"
+      "spray.io.*;resolution:=optional"
     )): _*)
     .settings(libraryDependencies ++=
       compile(shapeless) ++
