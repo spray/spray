@@ -152,6 +152,13 @@ class HttpHeaderSpec extends Specification {
         `Cache-Control`(`no-cache`, `max-age`(0))
       "Cache-Control: private=\"Some-Field\"" =!=
         `Cache-Control`(`private`("Some-Field"))
+      "Cache-Control: private, no-cache, no-cache=Set-Cookie, proxy-revalidate" =!=
+        `Cache-Control`(`private`(), `no-cache`, `no-cache`("Set-Cookie"), `proxy-revalidate`).renderedTo(
+          "private, no-cache, no-cache=\"Set-Cookie\", proxy-revalidate")
+      "Cache-Control: no-cache=Set-Cookie" =!=
+        `Cache-Control`(`no-cache`("Set-Cookie")).renderedTo("no-cache=\"Set-Cookie\"")
+      "Cache-Control: private=\"a,b\", no-cache" =!=
+        `Cache-Control`(`private`("a", "b"), `no-cache`)
       "Cache-Control: private, community=\"<UCI>\"" =!=
         `Cache-Control`(`private`(), CacheDirective.custom("community", Some("<UCI>")))
     }
