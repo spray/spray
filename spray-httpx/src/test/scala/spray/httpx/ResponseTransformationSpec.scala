@@ -23,6 +23,7 @@ import encoding.Gzip
 import spray.http._
 import spray.util._
 import HttpHeaders._
+import unmarshalling.Unmarshaller
 
 class ResponseTransformationSpec extends Specification with RequestBuilding with ResponseTransformation {
   implicit val system = ActorSystem()
@@ -75,6 +76,15 @@ class ResponseTransformationSpec extends Specification with RequestBuilding with
       val pipeline = echo ~> ((_: HttpResponse).copy(status = 500)) ~> unmarshal[String]
       pipeline(Get("/", "XXX")).await must throwAn(
         new UnsuccessfulResponseException(HttpResponse(StatusCodes.InternalServerError, entity = "XXX")))
+    }
+
+    "set the cause of a pipeline exception when using a delegate unmarshaller" in {
+      implicit val IntUnmarshaller: Unmarshaller[Int] =
+        Unmarshaller.delegate(ContentTypeRange.`*`)((_: String).toInt)
+      val pipeline = echo ~> unmarshal[Int]
+      pipeline(Get("/", "abc")).await must throwA[PipelineException].like {
+        case e: PipelineException ⇒ e.getCause must (not(beNull[Throwable]) and beAnInstanceOf[NumberFormatException])
+      }
     }
   }
 

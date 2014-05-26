@@ -331,5 +331,5 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     }
   }
 
-  def prep(s: String) = s.stripMarginWithNewline("")
+  def prep(s: String) = s.stripMarginWithNewline("\n")
 }
