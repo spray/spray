@@ -31,7 +31,7 @@ object Dependencies {
 //  val liftJson      = "net.liftweb"                             %%  "lift-json"                   % "2.5.1"
   val json4sNative  = "org.json4s"                              %%  "json4s-native"               % "3.2.9"
   val json4sJackson = "org.json4s"                              %%  "json4s-jackson"              % "3.2.9"
-  val playJson      = "com.typesafe.play"                       %%  "play-json"                   % "2.3.0-RC1"
+  val playJson      = "com.typesafe.play"                       %%  "play-json"                   % "2.3.0"
 
   import Keys.{libraryDependencies, scalaVersion}
   /*
