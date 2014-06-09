@@ -113,7 +113,7 @@ object Build extends Build {
     )): _*)
     .settings(libraryDependencies ++=
       compile(mimepull) ++
-      provided(akkaActor, sprayJson, twirlApi, liftJson, json4sNative, json4sJackson, playJson) ++
+      provided(akkaActor, sprayJson, twirlApi, playTwirlApi, liftJson, json4sNative, json4sJackson, playJson) ++
       test(specs2)
     )
 
