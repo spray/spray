@@ -10,7 +10,7 @@ Signature
 ---------
 
 .. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/ParameterDirectives.scala
-   :snippet: parameterSeq
+   :snippet: parameterMap
 
 Description
 -----------
@@ -25,4 +25,4 @@ Example
 -------
 
 .. includecode:: ../code/docs/directives/ParameterDirectivesExamplesSpec.scala
-   :snippet: parameterSeq
+   :snippet: parameterMap
