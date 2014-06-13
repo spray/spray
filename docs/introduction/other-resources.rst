@@ -1,6 +1,12 @@
 Other Resources
 ===============
 
+May 2014: "Actors, HTTP and Reactive Streams" talk from `JAX 2014`__
+  | Slides: `/jax14/`__
+
+__ http://jax.de/2014/
+__ /jax14/
+
 Apr 2014: "Introduction to *Akka* and *spray*" at the `Zurich Scala Enthusiasts Meetup`__
   | Slides: `/zse/`__
 
