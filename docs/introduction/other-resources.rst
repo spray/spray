@@ -1,6 +1,12 @@
 Other Resources
 ===============
 
+June 2014: "akka-http: (un)REST your actors" talk from `ScalaDays 2014`__
+  | Slides: `/scaladays2014/`__
+
+__ http://scaladays.org/
+__ /scaladays2014/
+
 May 2014: "Actors, HTTP and Reactive Streams" talk from `JAX 2014`__
   | Slides: `/jax14/`__
 
