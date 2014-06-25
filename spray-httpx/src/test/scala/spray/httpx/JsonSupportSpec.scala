@@ -2,7 +2,7 @@ package spray.httpx
 
 import org.specs2.mutable.Specification
 import org.json4s.DefaultFormats
-//import play.api.libs.json.Json
+import play.api.libs.json.Json
 import spray.httpx.unmarshalling._
 import spray.httpx.marshalling._
 import spray.json._
@@ -78,17 +78,17 @@ class Json4sJacksonSupportSpec extends Specification with Json4sJacksonSupport w
   def unmarshaller: Unmarshaller[Employee] = json4sUnmarshaller[Employee]
 }
 
-//class LiftJsonSupportSpec extends Specification with LiftJsonSupport with JsonSupportSpec {
-//  val liftJsonFormats = net.liftweb.json.DefaultFormats
-//
-//  def marshaller: Marshaller[Employee] = liftJsonMarshaller[Employee]
-//  def unmarshaller: Unmarshaller[Employee] = liftJsonUnmarshaller[Employee]
-//}
-//
-//class PlayJsonSupportSpec extends Specification with PlayJsonSupport with JsonSupportSpec {
-//  implicit val employeeReader = Json.reads[Employee]
-//  implicit val employeeWriter = Json.writes[Employee]
-//
-//  def marshaller: Marshaller[Employee] = playJsonMarshaller[Employee]
-//  def unmarshaller: Unmarshaller[Employee] = playJsonUnmarshaller[Employee]
-//}
+class LiftJsonSupportSpec extends Specification with LiftJsonSupport with JsonSupportSpec {
+  val liftJsonFormats = net.liftweb.json.DefaultFormats
+
+  def marshaller: Marshaller[Employee] = liftJsonMarshaller[Employee]
+  def unmarshaller: Unmarshaller[Employee] = liftJsonUnmarshaller[Employee]
+}
+
+class PlayJsonSupportSpec extends Specification with PlayJsonSupport with JsonSupportSpec {
+  implicit val employeeReader = Json.reads[Employee]
+  implicit val employeeWriter = Json.writes[Employee]
+
+  def marshaller: Marshaller[Employee] = playJsonMarshaller[Employee]
+  def unmarshaller: Unmarshaller[Employee] = playJsonUnmarshaller[Employee]
+}
