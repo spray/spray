@@ -13,14 +13,12 @@ object Dependencies {
   def runtime   (deps: ModuleID*): Seq[ModuleID] = deps map (_ % "runtime")
   def container (deps: ModuleID*): Seq[ModuleID] = deps map (_ % "container")
 
-  val scalaReflect  = "org.scala-lang"                          %   "scala-reflect"               % "2.11.0"
   val akkaActor     = "com.typesafe.akka"                       %%  "akka-osgi"                   % "2.3.2"
   val akkaSlf4j     = "com.typesafe.akka"                       %%  "akka-slf4j"                  % "2.3.2"
   val akkaTestKit   = "com.typesafe.akka"                       %%  "akka-testkit"                % "2.3.2"
   val parboiled     = "org.parboiled"                           %%  "parboiled-scala"             % "1.1.6"
   val shapeless     = "com.chuusai"                             %%  "shapeless"                   % "1.2.4"
   val scalatest     = "org.scalatest"                           %%  "scalatest"                   % "2.1.3"
-  val specs2        = "org.specs2"                              %%  "specs2"                      % "2.3.11"
   val sprayJson     = "io.spray"                                %%  "spray-json"                  % "1.2.6"
   val twirlApi      = "io.spray"                                %%  "twirl-api"                   % "0.7.0"
   val clHashMap     = "com.googlecode.concurrentlinkedhashmap"  %   "concurrentlinkedhashmap-lru" % "1.4"
@@ -46,6 +44,14 @@ object Dependencies {
       case _ =>
         libraryDependencies.value
     }
+  }
+
+  val addScalaReflect = libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided")
+  val addSpecs2 = libraryDependencies <+= scalaVersion(version => "org.specs2" %% "specs2" % specs2VersionPerScala(version))
+
+  def specs2VersionPerScala(version: String): String = CrossVersion.partialVersion(version) match {
+    case Some((2, 11)) => "2.3.12"
+    case _ => "2.3.10"
   }
 }
 
