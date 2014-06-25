@@ -53,5 +53,10 @@ object Dependencies {
     case Some((2, 11)) => "2.3.12"
     case _ => "2.3.10"
   }
+
+  val addShapeless2 = libraryDependencies <+= scalaVersion {
+    case "2.11.1" => "com.chuusai" %% "shapeless" % "2.0.0"
+    case "2.10.4" => "com.chuusai" %% "shapeless" % "2.0.0" cross CrossVersion.full
+  }
 }
 

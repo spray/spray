@@ -16,7 +16,7 @@ object Build extends Build {
 
   lazy val root = Project("root",file("."))
     .aggregate(docs, examples, sprayCaching, sprayCan, sprayCanTests, sprayClient, sprayHttp, sprayHttpx,
-      sprayIO, sprayIOTests, sprayRouting, sprayRoutingTests, sprayServlet, sprayTestKit, sprayUtil)
+      sprayIO, sprayIOTests, sprayRouting, sprayRoutingShapeless2, sprayRoutingTests, sprayServlet, sprayTestKit, sprayUtil)
     .settings(basicSettings: _*)
     .settings(noPublishing: _*)
 
@@ -107,20 +107,35 @@ object Build extends Build {
     .settings(noPublishing: _*)
     .settings(libraryDependencies ++= test(akkaActor, scalatest), addSpecs2)
 
+  def sprayRoutingProject(name: String, base: File) =
+    Project(name, base)
+      .dependsOn(
+        sprayCaching % "provided", // for the CachingDirectives trait
+        sprayCan % "provided",  // for the SimpleRoutingApp trait
+        sprayHttp, sprayHttpx, sprayUtil)
+      .settings(sprayModuleSettings: _*)
+      .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
+      .settings(osgiSettings(exports = Seq("spray.routing"), imports = Seq("shapeless.*;resolution:=optional")): _*)
+      .settings(libraryDependencies ++=
+        provided(akkaActor)
+      )
+  lazy val sprayRouting =
+    sprayRoutingProject("spray-routing", file("spray-routing"))
+      .settings(libraryDependencies ++= compile(shapeless))
 
-  lazy val sprayRouting = Project("spray-routing", file("spray-routing"))
-    .dependsOn(
-      sprayCaching % "provided", // for the CachingDirectives trait
-      sprayCan % "provided",  // for the SimpleRoutingApp trait
-      sprayHttp, sprayHttpx, sprayUtil)
-    .settings(sprayModuleSettings: _*)
-    .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
-    .settings(osgiSettings(exports = Seq("spray.routing"), imports = Seq("shapeless.*;resolution:=optional")): _*)
-    .settings(libraryDependencies ++=
-      compile(shapeless) ++
-      provided(akkaActor)
-    )
-
+  val sourceWithShapeless2Changes = Set("Prepender.scala", "ShapelessSupport.scala").map(_.toLowerCase)
+  lazy val sprayRoutingShapeless2 =
+    sprayRoutingProject("spray-routing-shapeless2", file("spray-routing-shapeless2"))
+      .settings(
+        addShapeless2,
+        managedSources in Compile <++= managedSources in Compile in sprayRouting,
+        unmanagedSources in Compile <++= (unmanagedSources in Compile in sprayRouting).map {
+          _.filter { f =>
+            val isExcluded = sourceWithShapeless2Changes(f.getName.toLowerCase)
+            !(isExcluded && f.getAbsolutePath.contains("spray-routing/"))
+          }
+        }
+      )
 
   lazy val sprayRoutingTests = Project("spray-routing-tests", file("spray-routing-tests"))
     .dependsOn(sprayCaching, sprayHttp, sprayHttpx, sprayRouting, sprayTestKit, sprayUtil)
