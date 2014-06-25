@@ -28,7 +28,7 @@ object Dependencies {
   val servlet30     = "org.eclipse.jetty.orbit"                 %   "javax.servlet"               % "3.0.0.v201112011016" artifacts Artifact("javax.servlet", "jar", "jar")
   val logback       = "ch.qos.logback"                          %   "logback-classic"             % "1.1.1"
   val mimepull      = "org.jvnet.mimepull"                      %   "mimepull"                    % "1.9.4"
-//  val liftJson      = "net.liftweb"                             %%  "lift-json"                   % "2.5.1"
+  val liftJson      = "net.liftweb"                             %%  "lift-json"                   % "2.6-M4"
   val json4sNative  = "org.json4s"                              %%  "json4s-native"               % "3.2.9"
   val json4sJackson = "org.json4s"                              %%  "json4s-jackson"              % "3.2.9"
   val playJson      = "com.typesafe.play"                       %%  "play-json"                   % "2.3.0"
