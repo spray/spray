@@ -71,6 +71,7 @@ private[can] trait ResponseRenderingComponent {
 
             case x: `Connection` ⇒
               val connectionHeader = if (connHeader eq null) x else Connection(x.tokens ++ connHeader.tokens)
+              if (x.hasUpgrade) render(x)
               renderHeaders(tail, contentLengthDefined, userContentType, connectionHeader)
 
             case x: RawHeader if x.lowercaseName == "content-type" ||

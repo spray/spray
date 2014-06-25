@@ -209,6 +209,7 @@ object HttpHeaders {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ tokens
     def hasClose = has("close")
     def hasKeepAlive = has("keep-alive")
+    def hasUpgrade = has("upgrade")
     @tailrec private def has(item: String, ix: Int = 0): Boolean =
       if (ix < tokens.length)
         if (tokens(ix) equalsIgnoreCase item) true
