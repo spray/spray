@@ -129,6 +129,7 @@ object Build extends Build {
       .settings(
         addShapeless2,
         managedSources in Compile <++= managedSources in Compile in sprayRouting,
+        unmanagedResourceDirectories in Compile <++= (unmanagedResourceDirectories in Compile in sprayRouting),
         unmanagedSources in Compile <++= (unmanagedSources in Compile in sprayRouting).map {
           _.filter { f =>
             val isExcluded = sourceWithShapeless2Changes(f.getName.toLowerCase)
