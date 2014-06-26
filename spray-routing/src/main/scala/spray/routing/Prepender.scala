@@ -18,6 +18,8 @@ package spray.routing
 
 import shapeless._
 
+// !!! NOTE: Make sure to apply all changes in this file to spray-routing-shapeless2 as well !!!
+
 // TODO: check whether we can remove this additional layer on top of PrependAux
 trait Prepender[P <: HList, S <: HList] {
   type Out <: HList

@@ -17,8 +17,6 @@
 package spray.routing
 package directives
 
-import shapeless._
-
 trait AnyParamDirectives {
   /**
    * Extracts a parameter either from a form field or from query parameters (in that order), and passes the value(s)
@@ -68,44 +66,4 @@ object AnyParamDefMagnet {
       type Out = apdm21.Out
       def apply() = apdm21(value)
     }
-}
-
-trait AnyParamDefMagnet2[T] {
-  type Out
-  def apply(value: T): Out
-}
-
-object AnyParamDefMagnet2 {
-  import FieldDefMagnet2.FieldDefMagnetAux
-  import ParamDefMagnet2.ParamDefMagnetAux
-
-  implicit def forTuple[T <: Product, L <: HList, Out](implicit hla: HListerAux[T, L],
-                                                       apdma: AnyParamDefMagnet2[L]) =
-    new AnyParamDefMagnet2[T] {
-      def apply(value: T) = apdma(hla(value))
-      type Out = apdma.Out
-    }
-
-  implicit def forHList[L <: HList](implicit f: LeftFolder[L, Directive0, MapReduce.type]) =
-    new AnyParamDefMagnet2[L] {
-      type Out = f.Out
-      def apply(value: L) = {
-        value.foldLeft(BasicDirectives.noop)(MapReduce)
-      }
-    }
-
-  object MapReduce extends Poly2 {
-    implicit def from[T, LA <: HList, LB <: HList, Out <: HList](implicit fdma: FieldDefMagnetAux[T, Directive[LB]],
-                                                                 pdma: ParamDefMagnetAux[T, Directive[LB]],
-                                                                 ev: PrependAux[LA, LB, Out]) = {
-
-      // see https://groups.google.com/forum/?fromgroups=#!topic/spray-user/HGEEdVajpUw
-      def fdmaWrapper(t: T): Directive[LB] = fdma(t).hflatMap {
-        case None :: HNil ⇒ pdma(t)
-        case x            ⇒ BasicDirectives.hprovide(x)
-      }
-
-      at[Directive[LA], T] { (a, t) ⇒ a & (fdmaWrapper(t) | pdma(t)) }
-    }
-  }
 }
