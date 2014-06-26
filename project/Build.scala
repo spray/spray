@@ -16,7 +16,7 @@ object Build extends Build {
 
   lazy val root = Project("root",file("."))
     .aggregate(docs, examples, sprayCaching, sprayCan, sprayCanTests, sprayClient, sprayHttp, sprayHttpx,
-      sprayIO, sprayIOTests, sprayRouting, sprayRoutingShapeless2, sprayRoutingTests, sprayServlet, sprayTestKit, sprayUtil)
+      sprayIO, sprayIOTests, sprayRouting, sprayRoutingShapeless2, sprayRoutingTests, sprayRoutingShapeless2Tests, sprayServlet, sprayTestKit, sprayUtil)
     .settings(basicSettings: _*)
     .settings(noPublishing: _*)
 
@@ -138,12 +138,24 @@ object Build extends Build {
         }
       )
 
-  lazy val sprayRoutingTests = Project("spray-routing-tests", file("spray-routing-tests"))
-    .dependsOn(sprayCaching, sprayHttp, sprayHttpx, sprayRouting, sprayTestKit, sprayUtil)
-    .settings(sprayModuleSettings: _*)
-    .settings(noPublishing: _*)
-    .settings(libraryDependencies ++= test(akkaActor, shapeless, sprayJson), addSpecs2)
+  def sprayRoutingTestProject(name: String, base: File) =
+    Project(name, base)
+      .dependsOn(sprayCaching, sprayHttp, sprayHttpx, sprayTestKit, sprayUtil)
+      .settings(sprayModuleSettings: _*)
+      .settings(noPublishing: _*)
+      .settings(libraryDependencies ++= test(akkaActor, sprayJson), addSpecs2)
 
+  lazy val sprayRoutingTests =
+    sprayRoutingTestProject("spray-routing-tests", file("spray-routing-tests"))
+      .dependsOn(sprayRouting)
+
+  lazy val sprayRoutingShapeless2Tests =
+    sprayRoutingTestProject("spray-routing-shapeless2-tests", file("spray-routing-shapeless2-tests"))
+      .dependsOn(sprayRoutingShapeless2)
+      .settings(
+        unmanagedResourceDirectories in Test <++= (unmanagedResourceDirectories in Test in sprayRoutingTests),
+        unmanagedSourceDirectories in Test <<= (unmanagedSourceDirectories in Test in sprayRoutingTests)
+      )
 
   lazy val sprayServlet = Project("spray-servlet", file("spray-servlet"))
     .dependsOn(sprayHttp, sprayUtil)
