@@ -49,11 +49,13 @@ object ConnectionTimeouts {
             case write: Tcp.WriteCommand ⇒
               commandPL(write)
               become(atWork(writePossiblyPending = true))
-            case SetIdleTimeout(newTimeout) ⇒ timeout = newTimeout; resetDeadline()
-            case cmd                        ⇒ commandPL(cmd)
+            case SetIdleTimeout(newTimeout) ⇒
+              timeout = newTimeout; resetDeadline()
+            case cmd ⇒ commandPL(cmd)
           }
           val eventPipeline: EPL = {
-            case x: Tcp.Received ⇒ resetDeadline(); eventPL(x)
+            case x: Tcp.Received ⇒
+              resetDeadline(); eventPL(x)
             case tick @ TickGenerator.Tick ⇒
               if (idleDeadline.isPast && writePossiblyPending) become(checkForPendingWrite())
               else shutdownIfIdle()
@@ -69,9 +71,11 @@ object ConnectionTimeouts {
           commandPL(TestWrite)
 
           def commandPipeline = {
-            case write: Tcp.WriteCommand    ⇒ become(atWork(writePossiblyPending = true)); outer.commandPipeline(write)
-            case SetIdleTimeout(newTimeout) ⇒ timeout = newTimeout; resetDeadline()
-            case cmd                        ⇒ commandPL(cmd)
+            case write: Tcp.WriteCommand ⇒
+              become(atWork(writePossiblyPending = true)); outer.commandPipeline(write)
+            case SetIdleTimeout(newTimeout) ⇒
+              timeout = newTimeout; resetDeadline()
+            case cmd ⇒ commandPL(cmd)
           }
           def eventPipeline = {
             // case Tcp.Received not necessary because we are just waiting for the TestWrite acknowledgements in this state.

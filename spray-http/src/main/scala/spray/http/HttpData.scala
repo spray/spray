@@ -295,9 +295,11 @@ object HttpData {
         def hasNext: Boolean = nxt.nonEmpty
         def next(): SimpleNonEmpty =
           nxt match {
-            case x: SimpleNonEmpty ⇒ nxt = Empty; x
-            case Compound(h, t)    ⇒ nxt = t; h
-            case Empty             ⇒ throw new NoSuchElementException("next on empty iterator")
+            case x: SimpleNonEmpty ⇒
+              nxt = Empty; x
+            case Compound(h, t) ⇒
+              nxt = t; h
+            case Empty ⇒ throw new NoSuchElementException("next on empty iterator")
           }
       }
     def copyToArray(xs: Array[Byte], sourceOffset: Long = 0, targetOffset: Int = 0, span: Int = length.toInt): Unit = {

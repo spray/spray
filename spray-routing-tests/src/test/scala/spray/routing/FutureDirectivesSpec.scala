@@ -43,7 +43,7 @@ class FutureDirectivesSpec extends RoutingSpec {
       }
     }
     "properly unwrap a Future in the failure case" in {
-      Get() ~> onComplete(Future.failed(new RuntimeException("no"))) { echoComplete } ~> check {
+      Get() ~> onComplete(Future.failed[String](new RuntimeException("no"))) { echoComplete } ~> check {
         responseAs[String] === "Failure(java.lang.RuntimeException: no)"
       }
     }
@@ -54,7 +54,7 @@ class FutureDirectivesSpec extends RoutingSpec {
       }
     }
     "correct catch exception in the failure case" in {
-      Get() ~> onComplete(Future.failed(new RuntimeException("no"))) { throwTestException("EX when ") } ~> check {
+      Get() ~> onComplete(Future.failed[String](new RuntimeException("no"))) { throwTestException("EX when ") } ~> check {
         status === StatusCodes.InternalServerError
         responseAs[String] === "Oops. spray.routing.FutureDirectivesSpec$TestException: EX when Failure(java.lang.RuntimeException: no)"
       }

@@ -163,8 +163,10 @@ private trait OpenRequestComponent { component ⇒
 
       state =
         state match {
-          case WaitingForChunkHandlerBuffering(_, receiveds) ⇒ receiveds.foreach(dispatch); ReceivingRequestChunks(handler)
-          case WaitingForChunkHandlerReceivedAll(_, receiveds) ⇒ receiveds.foreach(dispatch); WaitingForResponse(handler)
+          case WaitingForChunkHandlerBuffering(_, receiveds) ⇒
+            receiveds.foreach(dispatch); ReceivingRequestChunks(handler)
+          case WaitingForChunkHandlerReceivedAll(_, receiveds) ⇒
+            receiveds.foreach(dispatch); WaitingForResponse(handler)
           case x ⇒ throw new IllegalStateException("Didn't expect " + x)
         }
     }

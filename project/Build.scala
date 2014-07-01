@@ -16,7 +16,7 @@ object Build extends Build {
 
   lazy val root = Project("root",file("."))
     .aggregate(docs, examples, sprayCaching, sprayCan, sprayCanTests, sprayClient, sprayHttp, sprayHttpx,
-      sprayIO, sprayIOTests, sprayRouting, sprayRoutingTests, sprayServlet, sprayTestKit, sprayUtil)
+      sprayIO, sprayIOTests, sprayRouting, sprayRoutingShapeless2, sprayRoutingTests, sprayRoutingShapeless2Tests, sprayServlet, sprayTestKit, sprayUtil)
     .settings(basicSettings: _*)
     .settings(noPublishing: _*)
 
@@ -31,8 +31,8 @@ object Build extends Build {
     .settings(osgiSettings(exports = Seq("spray.caching")): _*)
     .settings(libraryDependencies ++=
       provided(akkaActor) ++
-      compile(clHashMap) ++
-      test(specs2)
+      compile(clHashMap),
+      addSpecs2
     )
 
 
@@ -42,7 +42,8 @@ object Build extends Build {
     .settings(osgiSettings(exports = Seq("spray.can")): _*)
     .settings(libraryDependencies ++=
       provided(akkaActor) ++
-      test(akkaTestKit, specs2)
+      test(akkaTestKit),
+      addSpecs2
     )
 
 
@@ -50,7 +51,7 @@ object Build extends Build {
     .dependsOn(sprayCan, sprayHttp, sprayHttpx, sprayIO, sprayTestKit, sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(noPublishing: _*)
-    .settings(libraryDependencies ++= test(akkaActor, specs2))
+    .settings(libraryDependencies ++= test(akkaActor), addSpecs2)
 
 
   lazy val sprayClient = Project("spray-client", file("spray-client"))
@@ -59,7 +60,8 @@ object Build extends Build {
     .settings(osgiSettings(exports = Seq("spray.client")): _*)
     .settings(libraryDependencies ++=
       provided(akkaActor) ++
-      test(akkaTestKit, specs2)
+      test(akkaTestKit),
+      addSpecs2
     )
 
 
@@ -69,8 +71,8 @@ object Build extends Build {
     .settings(osgiSettings(exports = Seq("spray.http")): _*)
     .settings(libraryDependencies ++=
       compile(parboiled) ++
-      provided(akkaActor) ++
-      test(specs2)
+      provided(akkaActor),
+      addSpecs2
     )
 
 
@@ -84,10 +86,11 @@ object Build extends Build {
       "twirl.*;resolution := optional",
       "play.*;resolution := optional"
     )): _*)
+    .settings(scalaXmlModule)
     .settings(libraryDependencies ++=
       compile(mimepull) ++
-      provided(akkaActor, sprayJson, twirlApi, liftJson, json4sNative, json4sJackson, playJson) ++
-      test(specs2)
+      provided(akkaActor, sprayJson, json4sNative, json4sJackson, twirlApi, playJson, liftJson),
+      addSpecs2
     )
 
 
@@ -95,44 +98,72 @@ object Build extends Build {
     .dependsOn(sprayUtil, sprayHttp)
     .settings(sprayModuleSettings: _*)
     .settings(osgiSettings(exports = Seq("spray.io")): _*)
-    .settings(libraryDependencies ++= provided(akkaActor, scalaReflect))
+    .settings(libraryDependencies ++= provided(akkaActor), addScalaReflect)
 
 
   lazy val sprayIOTests = Project("spray-io-tests", file("spray-io-tests"))
     .dependsOn(sprayIO, sprayTestKit, sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(noPublishing: _*)
-    .settings(libraryDependencies ++= test(akkaActor, specs2, scalatest))
+    .settings(libraryDependencies ++= test(akkaActor, scalatest), addSpecs2)
 
+  def sprayRoutingProject(name: String, base: File) =
+    Project(name, base)
+      .dependsOn(
+        sprayCaching % "provided", // for the CachingDirectives trait
+        sprayCan % "provided",  // for the SimpleRoutingApp trait
+        sprayHttp, sprayHttpx, sprayUtil)
+      .settings(sprayModuleSettings: _*)
+      .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
+      .settings(osgiSettings(exports = Seq("spray.routing"), imports = Seq("shapeless.*;resolution:=optional")): _*)
+      .settings(libraryDependencies ++=
+        provided(akkaActor)
+      )
+  lazy val sprayRouting =
+    sprayRoutingProject("spray-routing", file("spray-routing"))
+      .settings(libraryDependencies ++= compile(shapeless))
 
-  lazy val sprayRouting = Project("spray-routing", file("spray-routing"))
-    .dependsOn(
-      sprayCaching % "provided", // for the CachingDirectives trait
-      sprayCan % "provided",  // for the SimpleRoutingApp trait
-      sprayHttp, sprayHttpx, sprayUtil)
-    .settings(sprayModuleSettings: _*)
-    .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
-    .settings(osgiSettings(exports = Seq("spray.routing"), imports = Seq("shapeless.*;resolution:=optional")): _*)
-    .settings(libraryDependencies ++=
-      compile(shapeless) ++
-      provided(akkaActor)
-    )
+  val sourceWithShapeless2Changes = Set("Prepender.scala", "ShapelessSupport.scala").map(_.toLowerCase)
+  lazy val sprayRoutingShapeless2 =
+    sprayRoutingProject("spray-routing-shapeless2", file("spray-routing-shapeless2"))
+      .settings(
+        addShapeless2,
+        managedSources in Compile <++= managedSources in Compile in sprayRouting,
+        unmanagedResourceDirectories in Compile <++= (unmanagedResourceDirectories in Compile in sprayRouting),
+        unmanagedSources in Compile <++= (unmanagedSources in Compile in sprayRouting).map {
+          _.filter { f =>
+            val isExcluded = sourceWithShapeless2Changes(f.getName.toLowerCase)
+            !(isExcluded && f.getAbsolutePath.contains("spray-routing/"))
+          }
+        }
+      )
 
+  def sprayRoutingTestProject(name: String, base: File) =
+    Project(name, base)
+      .dependsOn(sprayCaching, sprayHttp, sprayHttpx, sprayTestKit, sprayUtil)
+      .settings(sprayModuleSettings: _*)
+      .settings(noPublishing: _*)
+      .settings(libraryDependencies ++= test(akkaActor, sprayJson), addSpecs2)
 
-  lazy val sprayRoutingTests = Project("spray-routing-tests", file("spray-routing-tests"))
-    .dependsOn(sprayCaching, sprayHttp, sprayHttpx, sprayRouting, sprayTestKit, sprayUtil)
-    .settings(sprayModuleSettings: _*)
-    .settings(noPublishing: _*)
-    .settings(libraryDependencies ++= test(akkaActor, specs2, shapeless, sprayJson))
+  lazy val sprayRoutingTests =
+    sprayRoutingTestProject("spray-routing-tests", file("spray-routing-tests"))
+      .dependsOn(sprayRouting)
 
+  lazy val sprayRoutingShapeless2Tests =
+    sprayRoutingTestProject("spray-routing-shapeless2-tests", file("spray-routing-shapeless2-tests"))
+      .dependsOn(sprayRoutingShapeless2)
+      .settings(
+        unmanagedResourceDirectories in Test <++= (unmanagedResourceDirectories in Test in sprayRoutingTests),
+        unmanagedSourceDirectories in Test <<= (unmanagedSourceDirectories in Test in sprayRoutingTests)
+      )
 
   lazy val sprayServlet = Project("spray-servlet", file("spray-servlet"))
     .dependsOn(sprayHttp, sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(osgiSettings(exports = Seq("spray.servlet"), imports = Seq("javax.servlet.*;version=\"[2.6,4.0)\"")): _*)
     .settings(libraryDependencies ++=
-      provided(akkaActor, servlet30) ++
-      test(specs2)
+      provided(akkaActor, servlet30),
+      addSpecs2
     )
 
 
@@ -145,7 +176,7 @@ object Build extends Build {
       sprayUtil
     )
     .settings(sprayModuleSettings: _*)
-    .settings(libraryDependencies ++= akkaTestKit +: provided(akkaActor, scalatest, specs2))
+    .settings(libraryDependencies ++= akkaTestKit +: provided(akkaActor, scalatest), addSpecs2)
 
 
   lazy val sprayUtil = Project("spray-util", file("spray-util"))
@@ -153,8 +184,10 @@ object Build extends Build {
     .settings(sprayVersionConfGeneration: _*)
     .settings(osgiSettings(exports = Seq("spray.util", "akka.spray")): _*)
     .settings(libraryDependencies ++=
-      provided(akkaActor, scalaReflect) ++
-      test(akkaTestKit, specs2)
+      provided(akkaActor) ++
+      test(akkaTestKit),
+      addScalaReflect,
+      addSpecs2
     )
 
 
@@ -167,7 +200,7 @@ object Build extends Build {
                sprayServlet, sprayTestKit, sprayUtil)
     .settings(SphinxSupport.settings: _*)
     .settings(docsSettings: _*)
-    .settings(libraryDependencies ++= test(akkaActor, sprayJson, specs2, json4sNative))
+    .settings(libraryDependencies ++= test(akkaActor, sprayJson)) // , json4sNative))
 
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -239,9 +272,9 @@ object Build extends Build {
     .settings(jettyExampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
-      test(specs2) ++
       runtime(akkaSlf4j, logback) ++
-      container(jettyWebApp, servlet30)
+      container(jettyWebApp, servlet30),
+      addSpecs2
     )
 
   lazy val onSprayCan = Project("on-spray-can", file("examples/spray-routing/on-spray-can"))
@@ -249,8 +282,8 @@ object Build extends Build {
     .settings(standaloneServerExampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
-      test(specs2) ++
-      runtime(akkaSlf4j, logback)
+      runtime(akkaSlf4j, logback),
+      addSpecs2
     )
 
   lazy val simpleRoutingApp = Project("simple-routing-app", file("examples/spray-routing/simple-routing-app"))

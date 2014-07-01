@@ -21,7 +21,7 @@ object BuildSettings {
                              "web services on top of Akka",
     startYear             := Some(2011),
     licenses              := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-    scalaVersion          := "2.10.4",
+    crossScalaVersions    := Seq("2.11.1", "2.10.4"),
     resolvers             ++= Dependencies.resolutionRepos,
     scalacOptions         := Seq(
       "-encoding", "utf8",
@@ -44,7 +44,7 @@ object BuildSettings {
       (scalacOptions in doc) <++= (name, version).map { (n, v) => Seq("-doc-title", n, "-doc-version", v) },
 
       // publishing
-      crossPaths := false,
+      crossPaths := true,
       publishMavenStyle := true,
       SbtPgp.useGpg := true,
       publishTo <<= version { version =>
@@ -101,25 +101,27 @@ object BuildSettings {
     unmanagedSourceDirectories in Test <<= baseDirectory { _ ** "code" get }
   )
 
-  lazy val exampleSettings = basicSettings ++ noPublishing
+  lazy val exampleSettings = basicSettings ++ noPublishing ++ seq(Dependencies.scalaXmlModule)
   lazy val standaloneServerExampleSettings = exampleSettings ++ Revolver.settings
 
   lazy val benchmarkSettings = basicSettings ++ noPublishing ++ Revolver.settings ++ assemblySettings ++ Seq(
+    Dependencies.scalaXmlModule,
     mainClass in assembly := Some("spray.examples.Main"),
     jarName in assembly := "benchmark.jar",
     test in assembly := {},
     javaOptions in Revolver.reStart ++= Seq("-verbose:gc", "-XX:+PrintCompilation")
   )
 
-  import com.github.siasia.WebPlugin._
+  import com.earldouglas.xsbtwebplugin.WebPlugin._
   lazy val jettyExampleSettings = exampleSettings ++ webSettings // ++ disableJettyLogSettings
 
-  import com.github.siasia.PluginKeys._
+  import com.earldouglas.xsbtwebplugin.PluginKeys._
   lazy val disableJettyLogSettings = inConfig(container.Configuration) {
     seq(
       start <<= (state, port, apps, customConfiguration, configurationFiles, configurationXml) map {
         (state, port, apps, cc, cf, cx) =>
-          state.get(container.attribute).get.start(port, None, Utils.NopLogger, apps, cc, cf, cx)
+          state.get(container.attribute).get.start(new java.net.InetSocketAddress(port),
+            None, Utils.NopLogger, apps, cc, cf, cx)
       }
     )
   }
