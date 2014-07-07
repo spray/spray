@@ -45,7 +45,7 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T])(implicit ec: ExecutionCont
           authContext.close()
           config.createUserObject(entry)
         case Left(ex) ⇒
-          log.info("Could not authenticate credentials '{}'/'{}': {}", entry.fullName, pass, ex)
+          log.info("Could not authenticate user '{}': {}", entry.fullName, ex)
           None
       }
     }
@@ -73,7 +73,7 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T])(implicit ec: ExecutionCont
           searchContext.close()
           result
         case Left(ex) ⇒
-          log.warning("Could not authenticate with search credentials '{}'/'{}': {}", searchUser, searchPass, ex)
+          log.warning("Could not authenticate with search user '{}': {}", searchUser, ex)
           None
       }
     }
