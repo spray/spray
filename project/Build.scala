@@ -128,9 +128,12 @@ object Build extends Build {
     sprayRoutingProject("spray-routing-shapeless2", file("spray-routing-shapeless2"))
       .settings(
         addShapeless2,
-        managedSources in Compile <++= managedSources in Compile in sprayRouting,
+        managedSourceDirectories in Compile <<= managedSourceDirectories in Compile in sprayRouting,
+        managedSources in Compile <<= managedSources in Compile in sprayRouting,
+        mappings in packageSrc in Compile <<= mappings in packageSrc in Compile in sprayRouting,
         unmanagedResourceDirectories in Compile <++= (unmanagedResourceDirectories in Compile in sprayRouting),
-        unmanagedSources in Compile <++= (unmanagedSources in Compile in sprayRouting).map {
+        unmanagedSourceDirectories in Compile <++= (unmanagedSourceDirectories in Compile in sprayRouting),
+        unmanagedSources in Compile ~= {
           _.filter { f =>
             val isExcluded = sourceWithShapeless2Changes(f.getName.toLowerCase)
             !(isExcluded && f.getAbsolutePath.contains("spray-routing/"))
