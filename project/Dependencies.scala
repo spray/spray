@@ -47,7 +47,7 @@ object Dependencies {
   }
 
   val addScalaReflect = libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided")
-  val addSpecs2 = libraryDependencies <+= scalaVersion(version => "org.specs2" %% "specs2" % specs2VersionPerScala(version))
+  def addSpecs2(config: String) = libraryDependencies <+= scalaVersion(version => "org.specs2" %% "specs2" % specs2VersionPerScala(version) % config)
 
   def specs2VersionPerScala(version: String): String = CrossVersion.partialVersion(version) match {
     case Some((2, 11)) => "2.3.12"
