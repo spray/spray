@@ -522,13 +522,14 @@ object Uri {
         if (q.isEmpty) map else append(map.updated(q.key, q.value :: map.getOrElse(q.key, Nil)), q.tail)
       append(Map.empty, this)
     }
+    def keep: Int = Query.keep
     def render[R <: Rendering](r: R): r.type = render(r, UTF8)
     def render[R <: Rendering](r: R, charset: Charset): r.type = {
-      def enc(s: String): Unit = encode(r, s, charset, QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS | SEMI_COLON), replaceSpaces = true)
+      def enc(s: String): Unit = encode(r, s, charset, keep, replaceSpaces = true)
       @tailrec def append(q: Query): r.type =
         q match {
           case Query.Empty ⇒ r
-          case Query.Cons(key, value, tail) ⇒
+          case Query.Cons(key, value, tail, _) ⇒
             if (q ne this) r ~~ '&'
             enc(key)
             if (value ne Query.EmptyValue) r ~~ '='
@@ -543,6 +544,9 @@ object Uri {
   object Query {
     /** A special empty String value which will be rendered without a '=' after the key. */
     val EmptyValue: String = new String(Array.empty[Char])
+
+    /** The default set of characters to not encode */
+    def keep: Int = QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS | SEMI_COLON)
 
     /**
      * Parses the given String into a Query instance.
@@ -565,6 +569,9 @@ object Uri {
       kvp.foldRight(Query.Empty: Query) { case ((key, value), acc) ⇒ Cons(key, value, acc) }
     def apply(map: Map[String, String]): Query = apply(map.toSeq: _*)
 
+    def asBodyData(kvp: Seq[(String, String)], charset: Charset = UTF8): Query =
+      kvp.foldRight(Query.Empty: Query) { case ((key, value), acc) ⇒ Cons(key, value, acc, UNRESERVED) }
+
     def newBuilder: mutable.Builder[(String, String), Query] = new mutable.Builder[(String, String), Query] {
       val b = mutable.ArrayBuffer.newBuilder[(String, String)]
       def +=(elem: (String, String)): this.type = { b += elem; this }
@@ -580,7 +587,7 @@ object Uri {
       override def head = throw new NoSuchElementException("head of empty list")
       override def tail = throw new UnsupportedOperationException("tail of empty query")
     }
-    case class Cons(key: String, value: String, override val tail: Query) extends Query {
+    case class Cons(key: String, value: String, override val tail: Query, override val keep: Int = keep) extends Query {
       def isRaw = false
       override def isEmpty = false
       override def head = (key, value)
