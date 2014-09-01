@@ -79,6 +79,9 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
             pathPrefix("_images") {
               getFromResourceDirectory("sphinx/json/_images")
             } ~
+            pathPrefix("files") {
+              getFromDirectory("/opt/spray.io/files")
+            } ~
             logRequest(showRequest _) {
               pathSingleSlash {
                 complete(page(home()))
