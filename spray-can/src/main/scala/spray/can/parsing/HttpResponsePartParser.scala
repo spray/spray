@@ -83,7 +83,7 @@ private[can] class HttpResponsePartParser(_settings: ParserSettings)(_headerPars
             emit(ChunkedResponseStart(message(headers, HttpEntity.Empty)), closeAfterResponseCompletion) {
               parseChunk(input, bodyStart, closeAfterResponseCompletion)
             }
-          } else fail("A chunked request must not contain a Content-Length header.")
+          } else fail("A chunked response must not contain a Content-Length header.")
 
         case Some(te) ⇒ fail(te.toString + " is not supported by this client")
 
