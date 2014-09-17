@@ -29,7 +29,7 @@ are mapped to rejections:
 ========================== ============
 Left(exception)            Rejection
 -------------------------- ------------
-``ContentExpected``        ``RequestEntityExoectedRejection``
+``ContentExpected``        ``RequestEntityExpectedRejection``
 ``UnsupportedContentType`` ``UnsupportedRequestContentTypeRejection``, which lists the supported types
 ``MaformedContent``        ``MalformedRequestContentRejection``, with an error message and cause
 ========================== ============
