@@ -24,28 +24,13 @@ object Build extends Build {
     .settings(noPublishing: _*)
     .settings(unidocSettings: _*)
     .settings(
-      excludedProjects in unidoc in ScalaUnidoc ++= Seq(
-        "docs", "echo-server", "examples", "on-jetty", "on-spray-can", "server-benchmark", "simple-http-client",
-        "simple-http-server", "simple-routing-app", "simple-spray-client", "simple-spray-servlet-server", "site",
-        "spray-can-examples", "spray-client-examples", "spray-io-examples", "spray-routing-examples",
-        "spray-servlet-examples"
-      ),
-      target in (ScalaUnidoc, unidoc) <<= (resourceManaged in Compile in site, version) { (path, version) =>
-        (path / "api" / version)
-      },
-      /* Use this task to generate list to paste into above excludedProjects list.
-         We could do it directly if excludedProjects were a Task
-      TaskKey[Unit]("print-aggregated", "") <<= state map { state =>
-        val ps =
-          Set(
-            docs, site, examples
-          ).flatMap(Utils.aggregatedProjects(Project.structure(state)))
-        println(ps.toSeq.sorted.map("\"" + _ + "\"").mkString(", "))
-      },*/
-      scalacOptions in (ScalaUnidoc, unidoc) += "-Ymacro-no-expand"
-    )
-
-
+      unidocProjectFilter in (ScalaUnidoc, unidoc) := inAnyProject -- inProjects(docs, examples, site, sprayCanTests,
+        sprayClient, sprayHttp, sprayHttpx, sprayIO, sprayRouting, sprayServlet, sprayTestKit, sprayUtil,
+        sprayCanExamples, sprayClientExamples, sprayIOExamples, sprayRoutingExamples, sprayServletExamples,
+        serverBenchmark, simpleHttpClient, simpleHttpServer, simpleSprayClient, echoServerExample, onJetty, onSprayCan,
+        simpleRoutingApp, simpleSprayServletServer),
+      target in (ScalaUnidoc, unidoc) := (resourceManaged in Compile in site).value / "api" / version.value,
+      scalacOptions in (ScalaUnidoc, unidoc) += "-Ymacro-no-expand")
 
   // -------------------------------------------------------------------------------------------------------------------
   // Modules
@@ -192,6 +177,7 @@ object Build extends Build {
   // -------------------------------------------------------------------------------------------------------------------
   lazy val site = Project("site", file("site"))
     .dependsOn(sprayCaching, sprayCan, sprayRouting)
+    .enablePlugins(play.twirl.sbt.SbtTwirl)
     .settings(siteSettings: _*)
     .settings(SphinxSupport.settings: _*)
     .settings(libraryDependencies ++=

@@ -43,7 +43,7 @@ object Utils {
   }
 
   def resourceContent(resource: String) =
-    new StreamCopier().emptyToString(getClass.getClassLoader.getResourceAsStream(resource))
+    new StreamCopier(512).emptyToString(getClass.getClassLoader.getResourceAsStream(resource))
 
   def sudoCreateFile(file: String, input: CommandInput) = {
     val cmd = createFile(file, input)
@@ -94,15 +94,5 @@ object Utils {
     def trace(t: => Throwable): Unit = {}
     def success(message: => String): Unit = {}
     def log(level: Level.Value, message: => String): Unit = {}
-  }
-
-  def aggregatedProjects(structure: BuildStructure)(project: ProjectDefinition[_ <: ProjectReference]): Set[String] = {
-    def resolve(p: ProjectReference): ResolvedProject = p match {
-      case LocalProject(projectId) => structure.allProjects.find(_.id == projectId).get
-      case ProjectRef(uri, p) => structure.units(uri).defined(p)
-      case x => throw new IllegalStateException("Can't handle "+x)
-    }
-
-    Set(project.id) ++ project.aggregate.map(resolve).flatMap(aggregatedProjects(structure))
   }
 }

@@ -341,7 +341,7 @@ object Tcp extends ExtensionKey[TcpExt] {
         def next(): SimpleWriteCommand =
           current match {
             case null                  ⇒ Iterator.empty.next()
-            case CompoundWrite(h, t)   ⇒ current = t; h
+            case CompoundWrite(h, t)   ⇒ { current = t; h }
             case x: SimpleWriteCommand ⇒ current = null; x
           }
       }

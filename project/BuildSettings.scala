@@ -8,7 +8,6 @@ import sbtassembly.Plugin._
 import sbtunidoc.Plugin._
 import sbtunidoc.Plugin.UnidocKeys._
 import spray.revolver.RevolverPlugin.Revolver
-import twirl.sbt.TwirlPlugin.Twirl
 import com.typesafe.sbt.osgi.SbtOsgi
 import SbtOsgi._
 
@@ -100,12 +99,12 @@ object BuildSettings {
     }
   )
 
-  lazy val siteSettings = basicSettings ++ formatSettings ++ noPublishing ++ Twirl.settings ++ Revolver.settings ++
+  lazy val siteSettings = basicSettings ++ formatSettings ++ noPublishing ++ Revolver.settings ++
     SiteSupport.settings ++ seq(
       resourceGenerators in Compile <+= (target in ScalaUnidoc in unidoc in LocalRootProject){ docsLocation =>
         constant(Seq(docsLocation)).map(_.flatMap(_.***.get))
       },
-      assembly <<= assembly.dependsOn(unidoc in LocalRootProject)
+      assembly <<= assembly.dependsOn(unidoc in Compile in LocalRootProject)
     )
 
   lazy val docsSettings = basicSettings ++ noPublishing ++ seq(
@@ -122,18 +121,7 @@ object BuildSettings {
     javaOptions in Revolver.reStart ++= Seq("-verbose:gc", "-XX:+PrintCompilation")
   )
 
-  import com.github.siasia.WebPlugin._
-  lazy val jettyExampleSettings = exampleSettings ++ webSettings // ++ disableJettyLogSettings
-
-  import com.github.siasia.PluginKeys._
-  lazy val disableJettyLogSettings = inConfig(container.Configuration) {
-    seq(
-      start <<= (state, port, apps, customConfiguration, configurationFiles, configurationXml) map {
-        (state, port, apps, cc, cf, cx) =>
-          state.get(container.attribute).get.start(port, None, Utils.NopLogger, apps, cc, cf, cx)
-      }
-    )
-  }
+  lazy val jettyExampleSettings = exampleSettings ++ com.earldouglas.xwp.XwpPlugin.jetty()
 
   lazy val formatSettings = SbtScalariform.scalariformSettings ++ Seq(
     ScalariformKeys.preferences in Compile := formattingPreferences,

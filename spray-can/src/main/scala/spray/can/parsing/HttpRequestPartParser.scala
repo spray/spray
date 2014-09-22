@@ -50,7 +50,7 @@ private[can] class HttpRequestPartParser(_settings: ParserSettings, rawRequestUr
         byteChar(input, cursor + ix) match {
           case ' ' ⇒
             HttpMethods.getForKey(sb.toString) match {
-              case Some(m) ⇒ method = m; cursor + ix + 1
+              case Some(m) ⇒ { method = m; cursor + ix + 1 }
               case None    ⇒ parseCustomMethod(Int.MaxValue, sb)
             }
           case c ⇒ parseCustomMethod(ix + 1, sb.append(c))

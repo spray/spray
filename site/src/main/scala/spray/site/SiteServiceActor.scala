@@ -20,7 +20,7 @@ import akka.event.Logging._
 import shapeless._
 import spray.routing.directives.{ DirectoryListing, LogEntry }
 import spray.httpx.marshalling.Marshaller
-import spray.httpx.TwirlSupport._
+import spray.httpx.PlayTwirlSupport._
 import spray.http._
 import spray.routing._
 import html._
