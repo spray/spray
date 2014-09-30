@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>akka-http: spray &amp; akka-http - Q&amp;A webinar</title>
+
+		<meta name="description" content="akka-http: spray &amp; akka-http - 'Ask the Experts' webinar">
+		<meta name="author" content="Mathias Doenitz">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="stylesheet" href="css/reveal.min.css">
+		<link rel="stylesheet" href="css/theme/sirthias.css" id="theme">
+		<link rel="stylesheet" href="lib/font-awesome/css/font-awesome.css">
+
+		<!-- For syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- If the query includes 'print-pdf', include the PDF print sheet -->
+		<script>
+			if( window.location.search.match( /print-pdf/gi ) ) {
+				var link = document.createElement( 'link' );
+				link.rel = 'stylesheet';
+				link.type = 'text/css';
+				link.href = 'css/print/pdf.css';
+				document.getElementsByTagName( 'head' )[0].appendChild( link );
+			}
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+		<div class="reveal">
+			<div class="slides">
+
+			<!-- *************************************************************** -->
+
+			<section>
+        <p style="top: -30px; position: relative">
+          <img style="width: 64%" src="lib/akka-mountains.svg" alt="akka">
+        </p>
+        <h3 style="top: -30px; position: relative">spray &amp; akka-http</h3>
+        <p>
+          <span>webinar / Q&amp;A</span>
+          <span style="font-size: 0.8em">@ 2014-09-30</span>
+        </p>
+        <p>
+          <small>Mathias Doenitz &nbsp;
+            <a href="mailto:mathias(at)spray(dot)io"><i class="fa fa-envelope-square"></i></a> /
+            <a href="https://github.com/sirthias"><i class="fa fa-github-square"></i></a> /
+            <a href="http://twitter.com/sirthias"><i class="fa fa-twitter-square"></i></a><br/><br/>
+            This presentation: <a href="http://spray.io/webinar2014/">http://spray.io/webinar2014/</a>
+          </small>
+        </p>
+      </section>
+
+      <section>
+        <h2>Survey: How well do you know spray?</h2>
+        <ul class="survey">
+          <li>I have a spray app in production,</br>which I'll probably want to upgrade to akka-http.</li>
+          <li>I have or have had a spray app in production,</br>probably no upgrade necessary though.</li>
+          <li>I've played will spray somewhat,</br>but never deployed it to production.</li>
+          <li>I've never really worked with spray,</br>but already written some Akka code.</li>
+          <li>So far I've neither worked with spray nor Akka.</li>
+        </ul>
+      </section>
+
+			<section>
+			  <h2>akka-http origin: spray.io</h2>
+			  <ul>
+          <li>Embeddable HTTP stack<br/>entirely built on Akka actors</li>
+          <li>Focus: HTTP integration layers<br/>
+            rather than web applications</li>
+          <li>Server- and client-side</li>
+          <li>Fully integrated into Typesafe stack<br/>(threadpools, config, debugging, etc.)</li>
+        </ul> 
+			</section>
+
+			<section>
+        <h2>spray features</h2>
+        <ul>
+          <li>Immutable, case-class-based HTTP model</li>
+          <li>Fast, lightweight HTTP client and server</li>
+          <li>Powerful DSL for server-side API definition</li>
+          <li>Fully async &amp; non-blocking,<br/>
+          actor-friendly, modular, testable</li>
+          <li>Scala &amp; actors "all the way through"</li>
+        </ul> 
+      </section>
+
+      <section>
+			  <h2>spray weaknesses</h2>
+			  <ul>
+          <li>Handling of chunked requests is clunky, incomplete</li>
+          <li>Dealing with large message entities can be difficult</li>
+          <li>High-level routing DSL sometimes unintuitive,</br>
+          some mistakes not caught at compile-time</li>
+          <li>Deep implicit structures, sometimes hard to debug</li>
+          <li>Missing features (e.g. websocket support)</li>
+        </ul> 
+			</section>
+
+			<section>
+			  <h2>akka-http is spray 2.0</h2>
+			  <ul>
+          <li>Across-the-board polishing,</br>addressing of weaknesses</li>
+          <li>Java APIs</li>
+          <li>Simplified module structure</li>
+          <li>Core improvement:<br/>
+          	Now based on <a href="http://www.reactive-streams.org/">Reactive Streams</a>
+          </li>
+        </ul> 
+			</section>
+
+      <section>
+        <h2>Survey: "Reactive Streams"</h2>
+        <ul class="survey">
+          <li>I understand the problem they solve and</br>know how they work (in principle).</li>
+          <li>I kind of have an idea of what</br>"Reactive Streams" are all about.</li>
+          <li>I've heard about "Reactive Streams" but</br>couldn't really explain them.</li>
+          <li>Never heard of "Reactive Streams" so far.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Reactive Streams: Motivation</h2>
+        <img style="width:90%" src="lib/proxy0-7.svg" alt="Backpressure needed">
+      </section>
+
+      <section>
+        <h2>Reactive Streams: Motivation</h2>
+        <img style="width:90%" src="lib/proxy0-8.svg" alt="Backpressure needed">
+      </section>
+
+			<section>
+        <h2>Reactive Streams: Motivation</h2>
+        <img style="width:90%" src="lib/proxy0-9.svg" alt="Backpressure needed">
+      </section>
+
+      <section>
+        <h2>Reactive Streams: Motivation (2)</h2>
+        <img style="width:90%" src="lib/pipeline0.svg" alt="Backpressure needed">
+      </section>
+
+      <section>
+        <h2>Reactive Streams: Motivation (2)</h2>
+        <img style="width:90%" src="lib/pipeline0-1.svg" alt="Backpressure needed">
+      </section>
+
+      <section>
+        <h2>Reactive Streams: Motivation (2)</h2>
+        <img style="width:90%" src="lib/pipeline0-2.svg" alt="Backpressure needed">
+      </section>
+
+      <section>
+        <h2>Reactive Streams: Motivation (2)</h2>
+        <img style="width:90%" src="lib/pipeline0-3.svg" alt="Backpressure needed">
+      </section>
+
+      <section>
+        <h2>Reactive Streams: Motivation (2)</h2>
+        <img style="width:90%" src="lib/pipeline0-4.svg" alt="Backpressure needed">
+      </section>
+
+      <section>
+        <h2>Reactive Streams: Motivation (2)</h2>
+        <img style="width:90%" src="lib/pipeline0-5.svg" alt="Backpressure needed">
+      </section>
+
+      <section>
+        <h2>Async Boundary</h2>
+        <img style="width:90%" src="lib/async-boundary0-1.svg" alt="Async Boundary">
+      </section>
+
+      <section>
+        <h2>Async Boundary</h2>
+        <img style="width:90%" src="lib/async-boundary0-2.svg" alt="Async Boundary">
+      </section>
+
+      <section>
+        <h2>Async Boundary</h2>
+        <img style="width:90%" src="lib/async-boundary0-3.svg" alt="Async Boundary">
+      </section>
+
+      <section>
+        <h2>Async Boundary</h2>
+        <img style="width:90%" src="lib/async-boundary0-4.svg" alt="Async Boundary">
+      </section>
+
+      <section>
+        <h2>Async Boundary</h2>
+        <img style="width:90%" src="lib/async-boundary0-5.svg" alt="Async Boundary">
+      </section>
+
+      <section>
+        <h2>Async Boundary</h2>
+        <img style="width:90%" src="lib/async-boundary0-6.svg" alt="Async Boundary">
+      </section>
+
+      <section>
+        <h2>Async Boundary</h2>
+        <img style="width:90%" src="lib/async-boundary0-7.svg" alt="Async Boundary">
+      </section>
+
+      <section>
+        <h2>Async Boundary</h2>
+        <img style="width:90%" src="lib/async-boundary0-8.svg" alt="Async Boundary">
+      </section>
+
+      <section>
+        <h2>Pipeline Processing Done Right</h2>
+        <img style="width:90%" src="lib/right0.svg" alt="Pipeline Done Right">
+      </section>
+
+     <section>
+        <h2>Pipeline Processing Done Right</h2>
+        <img style="width:90%" src="lib/right0-1.svg" alt="Pipeline Done Right">
+      </section>
+
+     <section>
+        <h2>Pipeline Processing Done Right</h2>
+        <img style="width:90%" src="lib/right0-2.svg" alt="Pipeline Done Right">
+      </section>
+
+     <section>
+        <h2>Pipeline Processing Done Right</h2>
+        <img style="width:90%" src="lib/right0-3.svg" alt="Pipeline Done Right">
+      </section>
+
+     <section>
+        <h2>Pipeline Processing Done Right</h2>
+        <img style="width:90%" src="lib/right0-4.svg" alt="Pipeline Done Right">
+      </section>
+
+     <section>
+        <h2>Pipeline Processing Done Right</h2>
+        <img style="width:90%" src="lib/right0-5.svg" alt="Pipeline Done Right">
+      </section>
+
+     <section>
+        <h2>Pipeline Processing Done Right</h2>
+        <img style="width:90%" src="lib/right0-6.svg" alt="Pipeline Done Right">
+      </section>
+
+     <section>
+        <h2>Pipeline Processing Done Right</h2>
+        <img style="width:90%" src="lib/right0-7.svg" alt="Pipeline Done Right">
+      </section>
+
+			<section>
+			  <h2>Continuous Pipelines across Machines</h2>
+			  <img style="width:90%" src="lib/network0.svg" alt="Multi-machine Pipeline">
+			</section>
+
+			<section>
+        <h2>Reactive Streams</h2>
+        <ul>
+          <li>Pipelined processing "done right"</li>
+          <li>Focus: define passing of data<br/>across an async boundary</li>
+          <li>Implementations provide DSLs for <br/>composable stream transformations</li>
+          <li>Many use cases</li>
+          <li>Joint effort of Netflix, Twitter,<br/>Red Hat, Pivotal and Typesafe</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Streams in akka-http</h2>
+        <ul>
+          <li>Requests on one HTTP connection</li>
+          <li>Responses on one HTTP connection</li>
+          <li>Chunks of a chunked message</li>
+          <li>Bytes of a message entity</li>
+        </ul>
+      </section>
+
+      <section>
+			  <h2>HTTP Stream Interfaces</h2>
+			  <img style="width:100%" src="lib/http-streams.svg" alt="Reactive HTTP Streams">
+			</section>
+
+      <section>
+        <h2>HTTP Server API</h2>
+        <pre style="width: 75%"><code data-trim>
+case class Bind(
+  connectionSink: Sink[IncomingTcpConnection], 
+  localAddress: InetSocketAddress, ...)
+
+case class IncomingConnection(
+  remoteAddress: InetSocketAddress,
+  requestSource: Source[HttpRequest],
+  responseSink: Sink[HttpResponse])
+				</code></pre>
+      </section>
+
+      <section>
+        <h2>Simple HTTP Server</h2>
+        <pre style="width: 95%"><code data-trim>
+val handler =
+  ForeachSink[IncomingTcpConnection] { conn =>
+    conn.requestSource.map {
+      case HttpRequest(GET, Uri.Path("/ping"), _, _, _) ⇒
+        HttpResponse(entity = "PONG!")
+      case _ ⇒ HttpResponse(404, entity = "Unknown resource!")
+    }.produceTo(connection.responseSink).run()
+  }
+
+IO(Http) ! Http.Bind(handler, "localhost", 8080)
+				</code></pre>
+      </section>
+
+      <section>
+        <h2>Basic HTTP Client API</h2>
+        <pre style="width: 80%"><code data-trim>
+case class Connect(
+  remoteAddress: InetSocketAddress, ...)
+
+case class OutgoingConnection(
+  remoteAddress: InetSocketAddress,
+  localAddress: InetSocketAddress,
+  processor: HttpClientFlow[Any])
+
+trait HttpClientFlow[T]
+  extends Flow[(HttpRequest, T), (HttpResponse, T)]
+				</code></pre>
+      </section>
+
+      <section>
+        <h2>HTTP Request</h2>
+        <pre style="width: 90%"><code data-trim>
+case class HttpRequest(
+  method: HttpMethod = HttpMethods.GET,
+  uri: Uri = Uri./,
+  headers: immutable.Seq[HttpHeader] = Nil,
+  entity: RequestEntity = HttpEntity.Empty,
+  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
+) extends HttpMessage
+				</code></pre>
+      </section>
+
+      <section>
+        <h2>HTTP Response</h2>
+        <pre style="width: 90%"><code data-trim>
+case class HttpResponse(
+  status: StatusCode = StatusCodes.OK,
+  headers: immutable.Seq[HttpHeader] = Nil,
+  entity: ResponseEntity = HttpEntity.Empty,
+  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
+) extends HttpMessage
+				</code></pre>
+      </section>
+
+      <section>
+        <h2>HTTP Entity in spray</h2>
+        <pre style="width: 120%"><code data-trim>
+sealed trait HttpEntity
+object HttpEntity {
+  case object Empty extends HttpEntity
+  case class NonEmpty(contentType: ContentType,
+    data: HttpData.NonEmpty) extends HttpEntity
+}
+
+sealed trait HttpData
+object HttpData {
+  case object Empty extends HttpData
+  sealed trait NonEmpty extends HttpData
+  sealed trait SimpleNonEmpty extends NonEmpty
+  case class Bytes(bytes: ByteString) extends SimpleNonEmpty
+  case class FileBytes(fileName: String, ...) extends SimpleNonEmpty
+  case class Compound(head: SimpleNonEmpty, tail: NonEmpty) extends NonEmpty
+}
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>HTTP Entity in Akka (1/2)</h2>
+        <pre style="width: 80%"><code data-trim>
+sealed trait HttpEntity
+
+sealed trait ResponseEntity extends HttpEntity
+
+sealed trait RequestEntity extends ResponseEntity
+
+// can be used for any message (request or response)
+type MessageEntity = RequestEntity
+
+sealed trait BodyPartEntity extends HttpEntity
+
+// can be used for messages as well as bodyparts
+sealed trait UniversalEntity extends HttpEntity
+        </code></pre>
+      </section>      
+
+			<section>
+        <h2>HTTP Entity in Akka (2/2)</h2>
+        <pre style="width: 105%"><code data-trim>
+object HttpEntity {
+  case class Strict(contentType: ContentType,
+    data: ByteString) extends UniversalEntity
+
+  case class Default(contentType: ContentType, contentLength: Long,
+    data: Source[ByteString]) extends UniversalEntity
+
+  case class Chunked(contentType: ContentType,
+    chunks: Source[ChunkStreamPart]) extends MessageEntity
+
+  case class CloseDelimited(contentType: ContentType,
+    data: Source[ByteString]) extends ResponseEntity
+  
+  case class IndefiniteLength(contentType: ContentType,
+    data: Source[ByteString]) extends BodyPartEntity                         
+}
+				</code></pre>
+      </section>      
+
+      <section>
+        <h2>Benefits over spray design</h2>
+        <ul>
+          <li>Properly typed model for requests,</br>
+          responses and nested entities</li>
+          <li>Entities can have arbitrary size</li>
+          <li>Chunks now on an inner level,</br>below the messages</li>
+          <li>Can now receive message headers</br>before the entity</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>akka-http Module Structure</h2>
+        <ul>
+          <li><emph>akka-http-core</emph>
+            <ul>
+              <li>HTTP Model (<emph>spray-http</emph>)</li>
+              <li>Low-level stack (<emph>spray-can</emph>)</li>
+            </ul>
+          </li>
+          <li><emph>akka-http</emph>
+            <ul>
+              <li>(Un)marshalling, (De)compression (<emph>spray-httpx</emph>)</li>
+              <li>Routing DSLs (<emph>spray-routing</emph>)</li>
+            </ul>
+          </li>
+          <li><emph>akka-http-testkit</emph> (<emph>spray-testkit</emph>)</li>
+          <li>No more <emph>spray-servlet</emph> (for now)</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>akka-http Roadmap</h2>
+        <ul class="roadmap">
+          <li class="C75">Agree and specify <emph>Reactive Streams</emph> API</li>
+          <li class="C50">Finish initial release of new akka modules
+            <ul class="roadmap">
+              <li class="C75">akka-stream</li>
+              <li class="C75">akka-http-core (client- &amp; server-side)</li>
+              <li class="C50">akka-http (server-side)</li>
+              <li>akka-http (client-side)</li>
+            </ul>
+          </li>
+          <li>Add websockets support (client- &amp; server-side)</li>
+          <li class="C25">Move Play onto <emph>akka-http</emph> (incrementally)</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Q &amp; A</h2>
+      </section>
+
+      <section>
+        <h2>Questions</h2>
+        <ul>
+          <li>How will routing work with chunked requests?</li>
+          <li>Can I set `chunkless-streaming` per request?</li>
+          <li>If I adopt <emph>spray</emph> now, how hard will the uprade be?</li>
+          <li>Support for Swagger, ApiGee, etc.?</li>
+          <li>Support for HATEOAS and reverse routing?</li>
+          <li>Support for JSON? spray-json? Other libs?</li>
+          <li>Akka HTTP vs. Play? What to choose when?</li>
+          <li>Websockets and Play Iteratees: What's coming?</li>
+        </ul>
+      </section>
+
+			<!-- *************************************************************** -->				
+
+			</div>
+
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.min.js"></script>
+
+		<script>
+
+			// Full list of configuration options available here:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				theme: Reveal.getQueryHash().theme || 'sirthias', // available themes are in /css/theme
+				transition: Reveal.getQueryHash().transition || 'none',
+				transitionSpeed: 'fast',
+
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
