@@ -648,17 +648,18 @@ object Uri {
 
   private[http] def encode(r: Rendering, string: String, charset: Charset, keep: Int,
                            replaceSpaces: Boolean = false): r.type = {
+    val asciiCompatible = isAsciiCompatible(charset)
     @tailrec def rec(ix: Int = 0): r.type = {
       def appendEncoded(byte: Byte): Unit = r ~~ '%' ~~ hexDigit(byte >>> 4) ~~ hexDigit(byte)
       if (ix < string.length) {
         val charSize = string.charAt(ix) match {
-          case c if is(c, keep)     ⇒ r ~~ c.toChar; 1
-          case ' ' if replaceSpaces ⇒ r ~~ '+'; 1
-          case c if c <= 127        ⇒ appendEncoded(c.toByte); 1
+          case c if is(c, keep)                 ⇒ { r ~~ c; 1 }
+          case ' ' if replaceSpaces             ⇒ { r ~~ '+'; 1 }
+          case c if c <= 127 && asciiCompatible ⇒ { appendEncoded(c.toByte); 1 }
           case c ⇒
             def append(s: String) = s.getBytes(charset).foreach(appendEncoded)
-            if (Character.isHighSurrogate(c)) { append(new String(Array(string.codePointAt(ix)), 0, 1)); 2 }
-            else append(c.toString); 1
+            if (Character.isHighSurrogate(c)) { append(new String(Array(string codePointAt ix), 0, 1)); 2 }
+            else { append(c.toString); 1 }
         }
         rec(ix + charSize)
       } else r
@@ -697,13 +698,12 @@ object Uri {
             decodeBytes(i + 1, oredBytes | byte)
           } else oredBytes
 
-        if ((decodeBytes() >> 7) != 0) { // if non-ASCII chars are present we need to involve the charset for decoding
-          sb.append(new String(bytes, charset))
-        } else {
+        // if we have only ASCII chars and the charset is ASCII compatible we don't need to involve it in decoding
+        if (((decodeBytes() >> 7) == 0) && isAsciiCompatible(charset)) {
           @tailrec def appendBytes(i: Int = 0): Unit =
             if (i < bytesCount) { sb.append(bytes(i).toChar); appendBytes(i + 1) }
           appendBytes()
-        }
+        } else sb.append(new String(bytes, charset))
         decode(string, charset, lastPercentSignIndexPlus3)(sb)
 
       case x ⇒ decode(string, charset, ix + 1)(sb.append(x))
@@ -775,4 +775,6 @@ object Uri {
                            fragment: Option[String]): Uri =
     if (path.isEmpty && scheme.isEmpty && authority.isEmpty && query.isEmpty && fragment.isEmpty) Empty
     else new Uri(scheme, authority, path, query, fragment) { def isEmpty = false }
+
+  private def isAsciiCompatible(cs: Charset) = cs == UTF8 || cs == ISO88591 || cs == US_ASCII
 }
