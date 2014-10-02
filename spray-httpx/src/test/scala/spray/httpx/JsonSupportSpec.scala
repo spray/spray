@@ -14,16 +14,16 @@ case class Employee(fname: String, name: String, age: Int, id: Long, boardMember
 
 object Employee {
   val simple = Employee("Frank", "Smith", 42, 12345, false)
-  val json = """{"fname":"Frank","name":"Smith","age":42,"id":12345,"boardMember":false}"""
+  val json = """{"name":"Smith","boardMember":false,"fname":"Frank","age":42,"id":12345}"""
 
   val utf8 = Employee("Fränk", "Smi√", 42, 12345, false)
   val utf8json =
     """{
-      |  "fname": "Fränk",
       |  "name": "Smi√",
+      |  "boardMember": false,
+      |  "fname": "Fränk",
       |  "age": 42,
-      |  "id": 12345,
-      |  "boardMember": false
+      |  "id": 12345
       |}""".stripMargin.getBytes(HttpCharsets.`UTF-8`.nioCharset)
 
   val illegalEmployeeJson = """{"fname":"Little Boy","name":"Smith","age":7,"id":12345,"boardMember":true}"""
