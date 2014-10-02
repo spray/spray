@@ -34,12 +34,14 @@ class ExpiringLruCacheSpec extends Specification with NoTimeConversions {
     "be initially empty" in {
       lruCache().store.toString === "{}"
       lruCache().size === 0
+      lruCache().keys === Set()
     }
     "store uncached values" in {
       val cache = lruCache[String]()
       cache(1)("A").await === "A"
       cache.store.toString === "{1=A}"
       cache.size === 1
+      cache.keys === Set(1)
     }
     "return stored values upon cache hit on existing values" in {
       val cache = lruCache[String]()
@@ -75,6 +77,7 @@ class ExpiringLruCacheSpec extends Specification with NoTimeConversions {
       Thread.sleep(10)
       cache.store.toString === "{2=B, 3=C, 4=D}"
       cache.size === 3
+      cache.keys === Set(2, 3, 4)
     }
     "expire old entries" in {
       val cache = lruCache[String](timeToLive = 75 millis span)

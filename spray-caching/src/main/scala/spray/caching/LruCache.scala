@@ -18,6 +18,7 @@ package spray.caching
 
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import scala.annotation.tailrec
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ Promise, ExecutionContext, Future }
 import scala.util.{ Failure, Success }
@@ -86,6 +87,8 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
   def remove(key: Any) = Option(store.remove(key))
 
   def clear(): Unit = { store.clear() }
+
+  def keys: Set[Any] = store.keySet().asScala.toSet
 
   def size = store.size
 }
@@ -165,6 +168,8 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
   }
 
   def clear(): Unit = { store.clear() }
+
+  def keys: Set[Any] = store.keySet().asScala.toSet
 
   def size = store.size
 

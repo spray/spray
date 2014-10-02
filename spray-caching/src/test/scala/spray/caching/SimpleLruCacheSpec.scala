@@ -29,6 +29,7 @@ class SimpleLruCacheSpec extends Specification with NoTimeConversions {
     val cache = new SimpleLruCache[String](10, 10)
     cache(1)((throw new RuntimeException("Naa")): String).await must throwA[RuntimeException]("Naa")
     cache(1)("A").await === "A"
+    cache.keys === Set(1)
   }
 
 }
