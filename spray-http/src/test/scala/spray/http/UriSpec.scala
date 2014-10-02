@@ -281,6 +281,18 @@ class UriSpec extends Specification {
       Query() === Empty
       Query("k" -> "v") === ("k" -> "v") +: Empty
     }
+    "encode sub-delims used as query parameter values" in {
+      Query("a" -> "b=c").toString() === "a=b%3Dc"
+      Query("a" -> "b&c").toString() === "a=b%26c"
+      Query("a" -> "b+c").toString() === "a=b%2Bc"
+      Query("a" -> "b;c").toString() === "a=b%3Bc"
+    }
+    "encode sub-delims used as query parameter names" in {
+      Query("a=b" -> "c").toString() === "a%3Db=c"
+      Query("a&b" -> "c").toString() === "a%26b=c"
+      Query("a+b" -> "c").toString() === "a%2Bb=c"
+      Query("a;b" -> "c").toString() === "a%3Bb=c"
+    }
   }
 
   "URIs" should {

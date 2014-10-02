@@ -524,7 +524,7 @@ object Uri {
     }
     def render[R <: Rendering](r: R): r.type = render(r, UTF8)
     def render[R <: Rendering](r: R, charset: Charset): r.type = {
-      def enc(s: String): Unit = encode(r, s, charset, QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS), replaceSpaces = true)
+      def enc(s: String): Unit = encode(r, s, charset, QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS | SUB_DELIM), replaceSpaces = true)
       @tailrec def append(q: Query): r.type =
         q match {
           case Query.Empty ⇒ r
