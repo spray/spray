@@ -14,16 +14,16 @@ case class Employee(fname: String, name: String, age: Int, id: Long, boardMember
 
 object Employee {
   val simple = Employee("Frank", "Smith", 42, 12345, false)
-  val json = """{"name":"Smith","boardMember":false,"fname":"Frank","age":42,"id":12345}"""
+  val json = """{"fname":"Frank","name":"Smith","age":42,"id":12345,"boardMember":false}"""
 
   val utf8 = Employee("Fränk", "Smi√", 42, 12345, false)
   val utf8json =
     """{
-      |  "name": "Smi√",
-      |  "boardMember": false,
       |  "fname": "Fränk",
+      |  "name": "Smi√",
       |  "age": 42,
-      |  "id": 12345
+      |  "id": 12345,
+      |  "boardMember": false
       |}""".stripMargin.getBytes(HttpCharsets.`UTF-8`.nioCharset)
 
   val illegalEmployeeJson = """{"fname":"Little Boy","name":"Smith","age":7,"id":12345,"boardMember":true}"""
@@ -60,7 +60,14 @@ class SprayJsonSupportSpec extends Specification with SprayJsonSupport with Json
   }
   import MyJsonProtocol._
 
-  def marshaller: Marshaller[Employee] = sprayJsonMarshaller(implicitly[RootJsonWriter[Employee]], CompactPrinter)
+  val fixedOrderPrinter = new CompactPrinter {
+    override protected def printSeq[A](iterable: Iterable[A], printSeparator: ⇒ Unit)(f: A ⇒ Unit): Unit = {
+      val members = iterable.toSeq.asInstanceOf[Seq[(String, JsValue)]].sortBy(t ⇒ Employee.json.indexOf(t._1))
+      super.printSeq(members, printSeparator)(f.asInstanceOf[((String, JsValue)) ⇒ Unit])
+    }
+  }
+
+  def marshaller: Marshaller[Employee] = sprayJsonMarshaller(implicitly[RootJsonWriter[Employee]], fixedOrderPrinter)
   def unmarshaller: Unmarshaller[Employee] = sprayJsonUnmarshaller[Employee]
 }
 
