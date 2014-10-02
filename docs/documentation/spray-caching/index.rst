@@ -104,7 +104,7 @@ limits the maximum time an entry is kept without having been accessed. If both v
 has to be strictly greater than the time-to-idle.
 
 .. note:: Expired entries are only evicted upon next access (or by being thrown out by the capacity constraint), so
-   they might prevent gargabe collection of their values for longer than expected.
+   they might prevent garbage collection of their values for longer than expected.
 
 
 .. _Cache: https://github.com/spray/spray/blob/master/spray-caching/src/main/scala/spray/caching/Cache.scala
