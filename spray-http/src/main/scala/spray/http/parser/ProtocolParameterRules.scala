@@ -34,7 +34,9 @@ private[parser] trait ProtocolParameterRules {
 
   /* 3.3.1 Full Date */
 
-  def HttpDate: Rule1[DateTime] = rule { (`RFC1123/RFC850 Date` | ASCTimeDate) ~ OptWS }
+  def HttpDate: Rule1[DateTime] = rule {
+    (`RFC1123/RFC850 Date` | ASCTimeDate | ch('0') ~ push(DateTime.MinValue)) ~ OptWS
+  }
 
   // we are a bit more lenient than the spec since we also allow a mixture of RFC1123 and RFC850 dates
   def `RFC1123/RFC850 Date` = rule {
