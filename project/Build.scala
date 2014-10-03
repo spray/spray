@@ -25,7 +25,6 @@ object Build extends Build {
     .settings(unidocSettings: _*)
     .settings(
       unidocProjectFilter in (ScalaUnidoc, unidoc) := inAnyProject -- inProjects(docs, examples, site, sprayCanTests,
-        sprayClient, sprayHttp, sprayHttpx, sprayIO, sprayRouting, sprayServlet, sprayTestKit, sprayUtil,
         sprayCanExamples, sprayClientExamples, sprayIOExamples, sprayRoutingExamples, sprayServletExamples,
         serverBenchmark, simpleHttpClient, simpleHttpServer, simpleSprayClient, echoServerExample, onJetty, onSprayCan,
         simpleRoutingApp, simpleSprayServletServer),
