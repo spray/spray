@@ -30,6 +30,18 @@ class SimpleLruCacheSpec extends Specification with NoTimeConversions {
     cache(1)((throw new RuntimeException("Naa")): String).await must throwA[RuntimeException]("Naa")
     cache(1)("A").await === "A"
     cache.keys === Set(1)
+    cache.ascendingKeys().toList === List(1)
   }
 
+  "return ascendingKeys in order of least access first" in {
+    val cache = new SimpleLruCache[String](10, 10)
+    cache(1)("A").await === "A"
+    cache(2)("B").await === "B"
+    Thread sleep 1
+    cache(1)("C").await === "A" // 1 accessed more recently, should get cached value
+
+    cache.keys === Set(1, 2)
+    cache.ascendingKeys().toList === List(2, 1)
+    cache.ascendingKeys(Some(1)).toList === List(2)
+  }
 }

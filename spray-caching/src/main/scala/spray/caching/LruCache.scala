@@ -90,6 +90,11 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
 
   def keys: Set[Any] = store.keySet().asScala.toSet
 
+  def ascendingKeys(limit: Option[Int] = None) =
+    limit.map { lim ⇒ store.ascendingKeySetWithLimit(lim) }
+      .getOrElse(store.ascendingKeySet())
+      .iterator().asScala
+
   def size = store.size
 }
 
@@ -170,6 +175,11 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
   def clear(): Unit = { store.clear() }
 
   def keys: Set[Any] = store.keySet().asScala.toSet
+
+  def ascendingKeys(limit: Option[Int] = None) =
+    limit.map { lim ⇒ store.ascendingKeySetWithLimit(lim) }
+      .getOrElse(store.ascendingKeySet())
+      .iterator().asScala
 
   def size = store.size
 
