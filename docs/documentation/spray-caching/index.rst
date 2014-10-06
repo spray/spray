@@ -40,7 +40,7 @@ The `Cache` Interface
 ---------------------
 
 All *spray-caching* cache implementations implement the Cache_ trait, which allows you to interact with the cache
-through six methods:
+through nine methods:
 
 .. rst-class:: wide
 
@@ -61,6 +61,12 @@ through six methods:
   Returns the removed item if it was found (and removed).
 
 - ``def clear()`` clears the cache by removing all entries.
+
+- ``def size(): Int`` returns the number of entries.
+
+- ``def keys(): Set[Any]`` returns the current keys as an unordered set.
+
+- ``def ascendingKeys(limit: Option[Int]): Iterator[Any]`` allows one to iterate through the keys in order from the least recently used to the most recently used.
 
 Note that the ``apply`` overloads require an implicit ``ExecutionContext`` to be in scope.
 
