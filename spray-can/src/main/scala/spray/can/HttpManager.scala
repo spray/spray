@@ -164,6 +164,8 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
     }
 
   def connectorForUri(uri: Uri) = {
+    require(uri.scheme == "http" || uri.scheme == "https",
+      s"Not a valid HTTP URI scheme: '${uri.scheme}' in '$uri'. (Did you forget http:// ?)")
     val host = uri.authority.host
     connectorFor(HostConnectorSetup(host.toString, uri.effectivePort, sslEncryption = uri.scheme == "https"))
   }
