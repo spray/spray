@@ -133,6 +133,19 @@ class FormDataUnmarshallersSpec extends Specification {
             part.name.get + ": " + entity.as[String].get + part.filename.map(",filename: " + _).getOrElse("")
         }.mkString("|") === "email: test@there.com|userfile: filecontent,filename: test.dat"
     }
+    "correctly unmarshal 'multipart/form-data' content with illegal headers" in (
+      HttpEntity(`multipart/form-data` withBoundary "XYZABC",
+        """--XYZABC
+          |Content-Length: unknown
+          |content-disposition: form-data; name=email
+          |
+          |test@there.com
+          |--XYZABC--""".stripMargin).as[MultipartFormData] === Right {
+          MultipartFormData(
+            Map("email" -> BodyPart(
+              HttpEntity(ContentTypes.`text/plain(UTF-8)`, "test@there.com"),
+              List(RawHeader("Content-Length", "unknown")))))
+        })
     "reject illegal multipart content" in {
       val Left(MalformedContent(msg, _)) = HttpEntity(`multipart/form-data` withBoundary "XYZABC", "--noboundary--").as[MultipartFormData]
       msg === "Missing start boundary"
