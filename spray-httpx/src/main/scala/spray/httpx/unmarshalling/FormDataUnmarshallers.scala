@@ -46,7 +46,7 @@ trait FormDataUnmarshallers {
         .getOrElse(ContentType(`text/plain`, defaultCharset)) // RFC 2046 section 5.1
       val outputStream = new ByteArrayOutputStream
       FileUtils.copyAll(part.readOnce(), outputStream)
-      BodyPart(HttpEntity(contentType, outputStream.toByteArray), headers)
+      BodyPart(HttpEntity(contentType, outputStream.toByteArray), headers.filterNot(_.isInstanceOf[`Content-Type`]))
     }(collection.breakOut)
   }
 
