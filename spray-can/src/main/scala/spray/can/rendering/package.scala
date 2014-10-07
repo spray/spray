@@ -22,7 +22,7 @@ import spray.http.HttpData
 
 package object rendering {
   private[can] def toTcpWriteCommand(data: HttpData, ack: Tcp.Event): Tcp.WriteCommand = {
-    @tailrec def rec(data: HttpData, ack: Tcp.Event, result: Seq[Tcp.WriteCommand]): Tcp.WriteCommand =
+    @tailrec def rec(data: HttpData, ack: Tcp.Event, result: Vector[Tcp.WriteCommand]): Tcp.WriteCommand =
       data match {
         case HttpData.Empty                ⇒ Tcp.WriteCommand(result)
         case x: HttpData.SimpleNonEmpty    ⇒ result ++: toTcpWriteCommand(x, ack)
