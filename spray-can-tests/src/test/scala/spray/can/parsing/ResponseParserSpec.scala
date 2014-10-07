@@ -104,6 +104,14 @@ class ResponseParserSpec extends Specification {
         rawParse(newParser())(response.toCharArray.map(_.toString)(collection.breakOut): _*) ===
           Seq(OK, "ABCD", List(`Content-Length`(4)), `HTTP/1.1`, 'dontClose)
       }
+      "a response with a body and a `Transfer-Encoding: identity` header" in {
+        parse("""HTTP/1.1 200 Ok
+                |Content-Length: 5
+                |Transfer-Encoding: identity
+                |
+                |Foobs""", "") ===
+          Seq(OK, "Foobs", List(`Transfer-Encoding`("identity"), `Content-Length`(5)), `HTTP/1.1`, 'dontClose)
+      }
     }
 
     "properly parse a chunked" in {
