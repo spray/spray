@@ -36,14 +36,16 @@ trait Encoder {
 
   def startEncoding[T <: HttpMessage](message: T): Option[(T#Self, Compressor)] =
     if (messageFilter(message) && !message.headers.exists(Encoder.isContentEncodingHeader))
-      message.entity match {
-        case HttpEntity.Empty ⇒ None
-        case HttpEntity.NonEmpty(contentType, data) ⇒ Some {
-          val compressor = newCompressor
-          message.withHeadersAndEntity(
-            headers = `Content-Encoding`(encoding) :: message.headers,
-            entity = HttpEntity(contentType, compressor.compress(data.toByteArray).flush())) -> compressor
+      Some {
+        val compressor = newCompressor
+        val newEntity = message.entity match {
+          case HttpEntity.Empty                       ⇒ HttpEntity.Empty
+          case HttpEntity.NonEmpty(contentType, data) ⇒ HttpEntity(contentType, compressor.compress(data.toByteArray).flush())
         }
+
+        message.withHeadersAndEntity(
+          headers = `Content-Encoding`(encoding) :: message.headers,
+          entity = newEntity) -> compressor
       }
     else None
 
