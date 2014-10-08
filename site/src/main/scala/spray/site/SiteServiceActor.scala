@@ -126,8 +126,8 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
                 } ~
                 requestUri { uri =>
                   val path = uri.path.toString
-                  "(?:-RC[1234])|(?:.0)/".r.findFirstIn(path) match {
-                    case Some(found) => redirect(uri.withPath(Uri.Path(path.replace(found, ".1/"))), MovedPermanently)
+                  "(?:-RC[1234])|(?:.[01])/".r.findFirstIn(path) match {
+                    case Some(found) => redirect(uri.withPath(Uri.Path(path.replace(found, ".2/"))), MovedPermanently)
                     case None => reject
                   }
                 } ~

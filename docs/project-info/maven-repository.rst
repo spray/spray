@@ -3,7 +3,8 @@
 Maven Repository
 ================
 
-Currently the artifacts for all *spray* releases (including milestones and RCs) are hosted in this repository:
+The latest *spray* releases are available from `Maven Central`_, so no special resolver should be required to be able
+to pull them in. In addition, older artifacts (including milestones and RCs) are hosted in this repository:
 
   http://repo.spray.io
 
