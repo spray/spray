@@ -81,6 +81,19 @@ class RequestParserSpec extends Specification {
           `User-Agent`("curl/7.19.7 xyz")), "Shake your BOODY!", 'dontClose)
       }
 
+      "with a body and a `Transfer-Encoding: identity` header" in {
+        parse {
+          """|POST /resource/yes HTTP/1.1
+            |Transfer-Encoding: identity
+            |Content-length:    17
+            |Host: example.com
+            |
+            |Shake your BOODY!"""
+        } === Seq(POST, Uri("/resource/yes"), `HTTP/1.1`,
+          List(Host("example.com"), `Content-Length`(17), `Transfer-Encoding`("identity")),
+          "Shake your BOODY!", 'dontClose)
+      }
+
       "with 3 headers, a body and remaining content" in {
         parse {
           """POST /resource/yes HTTP/1.0

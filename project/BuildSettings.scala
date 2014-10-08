@@ -10,7 +10,7 @@ import com.typesafe.sbt.osgi.SbtOsgi
 import SbtOsgi._
 
 object BuildSettings {
-  val VERSION = "1.3.1"
+  val VERSION = "1.3.2"
 
   lazy val basicSettings = seq(
     version               := NightlyBuildSupport.buildVersion(VERSION),
@@ -112,19 +112,7 @@ object BuildSettings {
     javaOptions in Revolver.reStart ++= Seq("-verbose:gc", "-XX:+PrintCompilation")
   )
 
-  import com.earldouglas.xsbtwebplugin.WebPlugin._
-  lazy val jettyExampleSettings = exampleSettings ++ webSettings // ++ disableJettyLogSettings
-
-  import com.earldouglas.xsbtwebplugin.PluginKeys._
-  lazy val disableJettyLogSettings = inConfig(container.Configuration) {
-    seq(
-      start <<= (state, port, apps, customConfiguration, configurationFiles, configurationXml) map {
-        (state, port, apps, cc, cf, cx) =>
-          state.get(container.attribute).get.start(new java.net.InetSocketAddress(port),
-            None, Utils.NopLogger, apps, cc, cf, cx)
-      }
-    )
-  }
+  lazy val jettyExampleSettings = exampleSettings ++ com.earldouglas.xwp.XwpPlugin.jetty()
 
   lazy val formatSettings = SbtScalariform.scalariformSettings ++ Seq(
     ScalariformKeys.preferences in Compile := formattingPreferences,

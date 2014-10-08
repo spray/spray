@@ -23,6 +23,9 @@ import MediaTypes._
 
 /**
  * A trait providing Marshallers for the Twirl template result types.
+ *
+ * Import this support for use with the old spray Twirl plugin ("io.spray" % "sbt-twirl" % "0.7.0").
+ * For the new Play Twirl plugin use ``PlayTwirlSupport`` instead.
  */
 trait TwirlSupport {
 
@@ -35,7 +38,7 @@ trait TwirlSupport {
   implicit val twirlXmlMarshaller =
     twirlMarshaller[Xml](`text/xml`)
 
-  protected def twirlMarshaller[T](marshalTo: ContentType*): Marshaller[T] =
+  protected[httpx] def twirlMarshaller[T](marshalTo: ContentType*): Marshaller[T] =
     Marshaller.delegate[T, String](marshalTo: _*)(_.toString)
 }
 

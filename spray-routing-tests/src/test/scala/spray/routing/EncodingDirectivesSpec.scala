@@ -157,6 +157,23 @@ class EncodingDirectivesSpec extends RoutingSpec {
         Gzip.newDecompressor.decompress(bytes) must readAs(text)
       }
     }
+    "correctly encode the chunk stream produced by a chunked response if ChunkedResponseStart contains no data" in {
+      val text = "This is a somewhat lengthy text that is being chunked by the autochunk directive!"
+      Get() ~> `Accept-Encoding`(gzip) ~> {
+        encodeResponse(Gzip) {
+          ctx ⇒
+            ctx.responder ! ChunkedResponseStart(HttpResponse(headers = List(HttpHeaders.`Content-Type`(MediaTypes.`text/plain`))))
+            ctx.responder ! MessageChunk(text.take(10))
+            ctx.responder ! MessageChunk(text.drop(10))
+            ctx.responder ! ChunkedMessageEnd
+        }
+      } ~> check {
+        response must haveContentEncoding(gzip)
+        chunks must haveSize(3)
+        val bytes = chunks.foldLeft(entity.data.toByteArray)(_ ++ _.data.toByteArray)
+        Gzip.newDecompressor.decompress(bytes) must readAs(text)
+      }
+    }
   }
 
   "the encodeResponse(NoEncoding) directive" should {

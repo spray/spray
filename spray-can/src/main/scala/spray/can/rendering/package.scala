@@ -16,16 +16,20 @@
 
 package spray.can
 
-import spray.http.HttpData
+import scala.annotation.tailrec
 import akka.io.Tcp
+import spray.http.HttpData
 
 package object rendering {
-  private[can] def toTcpWriteCommand(data: HttpData, ack: Tcp.Event): Tcp.WriteCommand =
-    data match {
-      case HttpData.Empty                ⇒ Tcp.Write.empty
-      case HttpData.Compound(head, tail) ⇒ toTcpWriteCommand(head, Tcp.NoAck) +: toTcpWriteCommand(tail, ack)
-      case x: HttpData.SimpleNonEmpty    ⇒ toTcpWriteCommand(x, ack)
-    }
+  private[can] def toTcpWriteCommand(data: HttpData, ack: Tcp.Event): Tcp.WriteCommand = {
+    @tailrec def rec(data: HttpData, ack: Tcp.Event, result: Vector[Tcp.WriteCommand]): Tcp.WriteCommand =
+      data match {
+        case HttpData.Empty                ⇒ Tcp.WriteCommand(result)
+        case x: HttpData.SimpleNonEmpty    ⇒ result ++: toTcpWriteCommand(x, ack)
+        case HttpData.Compound(head, tail) ⇒ rec(tail, ack, result :+ toTcpWriteCommand(head, Tcp.NoAck))
+      }
+    rec(data, ack, Vector.empty)
+  }
 
   private[can] def toTcpWriteCommand(data: HttpData.SimpleNonEmpty, ack: Tcp.Event): Tcp.SimpleWriteCommand =
     data match {

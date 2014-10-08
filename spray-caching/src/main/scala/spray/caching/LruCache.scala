@@ -18,6 +18,7 @@ package spray.caching
 
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import scala.annotation.tailrec
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ Promise, ExecutionContext, Future }
 import scala.util.{ Failure, Success }
@@ -76,7 +77,7 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
         future.onComplete { value ⇒
           promise.complete(value)
           // in case of exceptions we remove the cache entry (i.e. try again later)
-          if (value.isFailure) store.remove(key, promise)
+          if (value.isFailure) store.remove(key, promise.future)
         }
         future
       case existingFuture ⇒ existingFuture
@@ -86,6 +87,13 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
   def remove(key: Any) = Option(store.remove(key))
 
   def clear(): Unit = { store.clear() }
+
+  def keys: Set[Any] = store.keySet().asScala.toSet
+
+  def ascendingKeys(limit: Option[Int] = None) =
+    limit.map { lim ⇒ store.ascendingKeySetWithLimit(lim) }
+      .getOrElse(store.ascendingKeySet())
+      .iterator().asScala
 
   def size = store.size
 }
@@ -165,6 +173,13 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
   }
 
   def clear(): Unit = { store.clear() }
+
+  def keys: Set[Any] = store.keySet().asScala.toSet
+
+  def ascendingKeys(limit: Option[Int] = None) =
+    limit.map { lim ⇒ store.ascendingKeySetWithLimit(lim) }
+      .getOrElse(store.ascendingKeySet())
+      .iterator().asScala
 
   def size = store.size
 

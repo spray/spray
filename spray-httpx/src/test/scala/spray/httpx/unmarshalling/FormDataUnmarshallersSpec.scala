@@ -45,9 +45,7 @@ class FormDataUnmarshallersSpec extends Specification {
             Seq(
               BodyPart(
                 HttpEntity(ContentTypes.`text/plain(UTF-8)`, "test@there.com"),
-                List(
-                  `Content-Disposition`("form-data", Map("name" -> "email")),
-                  `Content-Type`(ContentTypes.`text/plain(UTF-8)`)))))
+                List(`Content-Disposition`("form-data", Map("name" -> "email"))))))
         }
     }
     "correctly unmarshal multipart content with two different parts" in {
@@ -67,9 +65,7 @@ class FormDataUnmarshallersSpec extends Specification {
               BodyPart(HttpEntity(ContentTypes.`text/plain(UTF-8)`, "first part, with a trailing newline\r\n")),
               BodyPart(
                 HttpEntity(`application/octet-stream`, "filecontent"),
-                List(
-                  RawHeader("Content-Transfer-Encoding", "binary"),
-                  `Content-Type`(ContentTypes.`application/octet-stream`)))))
+                List(RawHeader("Content-Transfer-Encoding", "binary")))))
         }
     }
     "reject illegal multipart content" in {
@@ -96,10 +92,10 @@ class FormDataUnmarshallersSpec extends Specification {
             Seq(
               BodyPart(
                 HttpEntity(ContentTypes.`text/plain`, "ABC"),
-                List(`Content-Type`(ContentTypes.`text/plain`), `Content-Range`(ContentRange(0, 2, 26)))),
+                List(`Content-Range`(ContentRange(0, 2, 26)))),
               BodyPart(
                 HttpEntity(ContentTypes.`text/plain`, "XYZ"),
-                List(`Content-Type`(ContentTypes.`text/plain`), `Content-Range`(ContentRange(23, 25, 26))))))
+                List(`Content-Range`(ContentRange(23, 25, 26))))))
         }
     }
   }
@@ -133,6 +129,19 @@ class FormDataUnmarshallersSpec extends Specification {
             part.name.get + ": " + entity.as[String].get + part.filename.map(",filename: " + _).getOrElse("")
         }.mkString("|") === "email: test@there.com|userfile: filecontent,filename: test.dat"
     }
+    "correctly unmarshal 'multipart/form-data' content with illegal headers" in (
+      HttpEntity(`multipart/form-data` withBoundary "XYZABC",
+        """--XYZABC
+          |Content-Length: unknown
+          |content-disposition: form-data; name=email
+          |
+          |test@there.com
+          |--XYZABC--""".stripMargin).as[MultipartFormData] === Right {
+          MultipartFormData(
+            Map("email" -> BodyPart(
+              HttpEntity(ContentTypes.`text/plain(UTF-8)`, "test@there.com"),
+              List(RawHeader("Content-Length", "unknown")))))
+        })
     "reject illegal multipart content" in {
       val Left(MalformedContent(msg, _)) = HttpEntity(`multipart/form-data` withBoundary "XYZABC", "--noboundary--").as[MultipartFormData]
       msg === "Missing start boundary"
@@ -145,6 +154,13 @@ class FormDataUnmarshallersSpec extends Specification {
            |test@there.com
            |--XYZABC--""".stripMargin).as[MultipartFormData]
       msg === "Illegal multipart/form-data content: unnamed body part (no Content-Disposition header or no 'name' parameter)"
+    }
+
+    "round-trip a non-empty multipart message" in {
+      val parts = MultipartFormData(Map("message" -> BodyPart(HttpEntity(ContentTypes.`text/plain(UTF-8)`, "x"))))
+      val entity = spray.httpx.marshalling.marshalUnsafe(parts)
+      val roundtrippedParts = entity.as[MultipartFormData].right.get
+      roundtrippedParts === parts
     }
   }
 

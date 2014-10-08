@@ -30,8 +30,7 @@ private[parser] trait CacheControlHeader {
   def `*Cache-Control` = rule(zeroOrMore(cacheDirective, separator = ListSep) ~ EOI ~~> (`Cache-Control`(_)))
 
   def cacheDirective = rule(
-    "no-cache" ~ push(`no-cache`)
-      | "no-store" ~ push(`no-store`)
+    "no-store" ~ push(`no-store`)
       | "no-transform" ~ push(`no-transform`)
       | "max-age=" ~ DeltaSeconds ~~> (`max-age`(_))
 
@@ -41,14 +40,17 @@ private[parser] trait CacheControlHeader {
 
       | "public" ~ push(`public`)
       | "private" ~ optional("=" ~ FieldNames) ~~> (fn ⇒ `private`((fn getOrElse Nil): _*))
-      | "no-cache" ~ optional("=" ~ FieldNames) ~~> (fn ⇒ `no-cache`((fn getOrElse Nil): _*))
+      | "no-cache" ~ ("=" ~ FieldNames ~~> (`no-cache`(_: _*)) | push(`no-cache`))
       | "must-revalidate" ~ push(`must-revalidate`)
       | "proxy-revalidate" ~ push(`proxy-revalidate`)
       | "s-maxage=" ~ DeltaSeconds ~~> (`s-maxage`(_))
 
       | Token ~ optional("=" ~ (Token | QuotedString)) ~~> (CacheDirective.custom(_, _)))
 
-  def FieldNames = rule { oneOrMore(QuotedString, separator = ListSep) }
+  def FieldNames = rule { QuotedTokens | Token ~~> (Seq(_)) }
+
+  def QuotedTokens: Rule1[Seq[String]] =
+    "\"" ~ oneOrMore(push(new java.lang.StringBuilder) ~ zeroOrMore(QDText(anyOf("\","))) ~~> (_.toString), separator = ListSep) ~ "\""
 
   def OpaqueTagDef = rule { OpaqueTag ~~> (http.EntityTag(_, weak = false)) }
 

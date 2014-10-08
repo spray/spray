@@ -89,7 +89,7 @@ object Build extends Build {
     .settings(scalaXmlModule)
     .settings(libraryDependencies ++=
       compile(mimepull) ++
-      provided(akkaActor, sprayJson, json4sNative, json4sJackson, twirlApi, playJson, liftJson),
+      provided(akkaActor, sprayJson, json4sNative, json4sJackson, twirlApi, playTwirlApi, playJson, liftJson),
       addSpecs2("test")
     )
 
@@ -115,10 +115,13 @@ object Build extends Build {
         sprayHttp, sprayHttpx, sprayUtil)
       .settings(sprayModuleSettings: _*)
       .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
-      .settings(osgiSettings(exports = Seq("spray.routing"), imports = Seq("shapeless.*;resolution:=optional")): _*)
-      .settings(libraryDependencies ++=
-        provided(akkaActor)
-      )
+      .settings(osgiSettings(exports = Seq("spray.routing"), imports = Seq(
+        "spray.caching.*;resolution:=optional",
+        "spray.can.*;resolution:=optional",
+        "spray.io.*;resolution:=optional"
+      )): _*)
+      .settings(libraryDependencies ++= provided(akkaActor))
+
   lazy val sprayRouting =
     sprayRoutingProject("spray-routing", file("spray-routing"))
       .settings(libraryDependencies ++= compile(shapeless))

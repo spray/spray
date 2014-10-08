@@ -35,6 +35,7 @@ package object util {
   val EOL = System.getProperty("line.separator") // TODO: remove since not used anymore
   val UTF8 = Charset.forName("UTF8")
   val US_ASCII = Charset.forName("US-ASCII")
+  val ISO88591 = Charset.forName("ISO-8859-1")
   val EmptyByteArray = Array.empty[Byte]
 
   private[this] val _identityFunc: Any ⇒ Any = x ⇒ x

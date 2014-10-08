@@ -104,8 +104,8 @@ class RangeDirectivesSpec extends RoutingSpec {
         headers must not(contain(like[HttpHeader] { case `Content-Range`(_, _) ⇒ ok }))
         responseAs[MultipartByteRanges] must beLike {
           case MultipartByteRanges(
-            BodyPart(HttpEntity.NonEmpty(_, _), _ +: `Content-Range`(RangeUnit.Bytes, ContentRange.Default(5, 10, Some(39))) +: _) +:
-              BodyPart(HttpEntity.NonEmpty(_, _), _ +: `Content-Range`(RangeUnit.Bytes, ContentRange.Default(0, 2, Some(39))) +: _) +:
+            BodyPart(HttpEntity.NonEmpty(_, _), `Content-Range`(RangeUnit.Bytes, ContentRange.Default(5, 10, Some(39))) +: _) +:
+              BodyPart(HttpEntity.NonEmpty(_, _), `Content-Range`(RangeUnit.Bytes, ContentRange.Default(0, 2, Some(39))) +: _) +:
               Seq()
             ) ⇒ ok
         }

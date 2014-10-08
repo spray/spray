@@ -460,7 +460,8 @@ private[http] object UriParser {
   final val AMP = 0x20000
   final val EQUAL = 0x40000
   final val SPACE = 0x80000
-  final val SUB_DELIM = SUB_DELIM_BASE | AMP | EQUAL | PLUS
+  final val SEMI_COLON = 0x800000
+  final val SUB_DELIM = SUB_DELIM_BASE | AMP | EQUAL | PLUS | SEMI_COLON
   final val HASH = 0x100000
   final val RESERVED = GEN_DELIM | SUB_DELIM | QUESTIONMARK | COLON | SLASH | HASH | AT
 
@@ -496,7 +497,7 @@ private[http] object UriParser {
   mark(UPPER_HEX_LETTER, 'A' to 'F')
   mark(UNRESERVED_SPECIALS, '.', '_', '~')
   mark(GEN_DELIM, '[', ']')
-  mark(SUB_DELIM_BASE, '!', '$', '\'', '(', ')', '*', ',', ';')
+  mark(SUB_DELIM_BASE, '!', '$', '\'', '(', ')', '*', ',')
   mark(AT, '@')
   mark(COLON, ':')
   mark(SLASH, '/')
@@ -509,6 +510,7 @@ private[http] object UriParser {
   mark(SPACE, ' ')
   mark(HASH, '#')
   mark(PERCENT, '%')
+  mark(SEMI_COLON, ';')
 
   mark(OTHER_VCHAR, '<', '>', '\\', '^', '`', '{', '|', '}')
 

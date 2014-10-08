@@ -440,6 +440,17 @@ class SprayCanClientSpec extends Specification with NoTimeConversions {
       probe.expectMsgType[Status.Failure].cause.getMessage must startWith("Cannot establish effective request URI")
     }
 
+    "produce an error if the request is missing a scheme" in {
+      val probe = TestProbe()
+      probe.send(IO(Http), Get("example.com:8080/abc"))
+      probe.expectMsgType[Status.Failure].cause.getMessage must startWith("requirement failed: Not a valid HTTP URI scheme: 'example.com'")
+    }
+    "produce an error if the request URI scheme isn't 'http' or 'https' one" in {
+      val probe = TestProbe()
+      probe.send(IO(Http), Get("blub:example.com:8080/abc"))
+      probe.expectMsgType[Status.Failure].cause.getMessage must startWith("requirement failed: Not a valid HTTP URI scheme: 'blub'")
+    }
+
     "produce an error if the request was not completed within the configured timeout" in new TestSetup {
       val probe = TestProbe()
       probe.send(IO(Http), Get("/abc") ~> Host(hostname, port))
