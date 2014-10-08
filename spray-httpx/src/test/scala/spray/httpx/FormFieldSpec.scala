@@ -49,6 +49,11 @@ class FormFieldSpec extends Specification {
         .flatMap(_.field("name").as[String]) === Right("Smith&Wesson")
     }
 
+    "properly encode the fields of www-urlencoded forms containing special chars" in {
+      marshal(FormData(Map("name" -> "Smith+Wesson; hopefully!")))
+        .right.map(_.asString) === Right("name=Smith%2BWesson%3B+hopefully%21")
+    }
+
     "properly allow access to the fields of multipart/form-data forms" in {
       marshal(multipartFormData)
         .flatMap(_.as[HttpForm])

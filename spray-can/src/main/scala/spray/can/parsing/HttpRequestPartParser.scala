@@ -50,7 +50,7 @@ private[can] class HttpRequestPartParser(_settings: ParserSettings, rawRequestUr
         byteChar(input, cursor + ix) match {
           case ' ' ⇒
             HttpMethods.getForKey(sb.toString) match {
-              case Some(m) ⇒ method = m; cursor + ix + 1
+              case Some(m) ⇒ { method = m; cursor + ix + 1 }
               case None    ⇒ parseCustomMethod(Int.MaxValue, sb)
             }
           case c ⇒ parseCustomMethod(ix + 1, sb.append(c))
@@ -112,16 +112,14 @@ private[can] class HttpRequestPartParser(_settings: ParserSettings, rawRequestUr
                   closeAfterResponseCompletion: Boolean): Result =
     if (hostHeaderPresent || protocol == HttpProtocols.`HTTP/1.0`) {
       teh match {
-        case Some(te) if te.encodings.size == 1 && te.hasChunked ⇒
+        case Some(`Transfer-Encoding`(Seq("chunked"))) ⇒
           if (clh.isEmpty)
             emit(chunkStartMessage(headers), closeAfterResponseCompletion) {
               parseChunk(input, bodyStart, closeAfterResponseCompletion)
             }
           else fail("A chunked request must not contain a Content-Length header.")
 
-        case Some(te) ⇒ fail(NotImplemented, s"$te is not supported by this server")
-
-        case None ⇒
+        case None | Some(`Transfer-Encoding`(Seq("identity"))) ⇒
           val contentLength = clh match {
             case Some(`Content-Length`(len)) ⇒ len
             case None                        ⇒ 0
@@ -134,6 +132,8 @@ private[can] class HttpRequestPartParser(_settings: ParserSettings, rawRequestUr
             parseFixedLengthBody(headers, input, bodyStart, contentLength, cth, closeAfterResponseCompletion)
           else fail(RequestEntityTooLarge, s"Request Content-Length $contentLength exceeds the configured limit of " +
             settings.maxContentLength)
+
+        case Some(te) ⇒ fail(NotImplemented, s"$te is not supported by this server")
       }
     } else fail("Request is missing required `Host` header")
 

@@ -111,18 +111,7 @@ object BuildSettings {
     javaOptions in Revolver.reStart ++= Seq("-verbose:gc", "-XX:+PrintCompilation")
   )
 
-  import com.github.siasia.WebPlugin._
-  lazy val jettyExampleSettings = exampleSettings ++ webSettings // ++ disableJettyLogSettings
-
-  import com.github.siasia.PluginKeys._
-  lazy val disableJettyLogSettings = inConfig(container.Configuration) {
-    seq(
-      start <<= (state, port, apps, customConfiguration, configurationFiles, configurationXml) map {
-        (state, port, apps, cc, cf, cx) =>
-          state.get(container.attribute).get.start(port, None, Utils.NopLogger, apps, cc, cf, cx)
-      }
-    )
-  }
+  lazy val jettyExampleSettings = exampleSettings ++ com.earldouglas.xwp.XwpPlugin.jetty()
 
   lazy val formatSettings = SbtScalariform.scalariformSettings ++ Seq(
     ScalariformKeys.preferences in Compile := formattingPreferences,

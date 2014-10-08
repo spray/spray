@@ -39,14 +39,10 @@ class DeflateCompressor extends Compressor {
   private val outputBuf = new Array[Byte](1024) // use a working buffer of size 1 KB)
 
   def compress(buffer: Array[Byte]) = {
-    @tailrec
-    def doCompress(offset: Int = 0): Unit = {
-      deflater.setInput(buffer, offset, math.min(outputBuf.length, buffer.length - offset))
+    if (buffer.length > 0) {
+      deflater.setInput(buffer)
       drain()
-      val nextOffset = offset + outputBuf.length
-      if (nextOffset < buffer.length) doCompress(nextOffset)
     }
-    if (buffer.length > 0) doCompress()
     this
   }
 
@@ -81,25 +77,18 @@ class DeflateDecompressor extends Decompressor {
   protected lazy val inflater = new Inflater()
   private val outputBuf = new Array[Byte](1024) // use a working buffer of size 1 KB)
 
-  protected def decompress(buffer: Array[Byte], offset: Int) = {
-    @tailrec
-    def doDecompress(off: Int): Int = {
-      val length = math.min(1024, buffer.length - off)
-      inflater.setInput(buffer, off, length)
-      drain()
-      if (inflater.needsDictionary) throw new ZipException("ZLIB dictionary missing")
-      val nextOffset = off + 1024
-      if (nextOffset < buffer.length && !inflater.finished()) doDecompress(nextOffset)
-      else off + length - inflater.getRemaining
-    }
+  protected def decompress(buffer: Array[Byte], offset: Int) =
     try {
-      if (buffer.length > 0) doDecompress(offset)
-      else 0
+      if (buffer.length > offset) {
+        inflater.setInput(buffer, offset, buffer.length - offset)
+        drain()
+        if (inflater.needsDictionary) throw new ZipException("ZLIB dictionary missing")
+        buffer.length - inflater.getRemaining
+      } else 0
     } catch {
       case e: DataFormatException ⇒
         throw new ZipException(e.getMessage.toOption getOrElse "Invalid ZLIB data format")
     }
-  }
 
   @tailrec
   private def drain(): Unit = {

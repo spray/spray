@@ -295,8 +295,8 @@ object HttpData {
         def hasNext: Boolean = nxt.nonEmpty
         def next(): SimpleNonEmpty =
           nxt match {
-            case x: SimpleNonEmpty ⇒ nxt = Empty; x
-            case Compound(h, t)    ⇒ nxt = t; h
+            case x: SimpleNonEmpty ⇒ { nxt = Empty; x }
+            case Compound(h, t)    ⇒ { nxt = t; h }
             case Empty             ⇒ throw new NoSuchElementException("next on empty iterator")
           }
       }

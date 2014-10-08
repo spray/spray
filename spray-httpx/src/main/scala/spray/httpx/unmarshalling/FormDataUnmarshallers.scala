@@ -41,16 +41,12 @@ trait FormDataUnmarshallers {
     mimeMsg.getAttachments.asScala.map { part ⇒
       val rawHeaders: List[HttpHeader] =
         part.getAllHeaders.asScala.map(h ⇒ RawHeader(h.getName, h.getValue))(collection.breakOut)
-      HttpParser.parseHeaders(rawHeaders) match {
-        case (Nil, headers) ⇒
-          val contentType = headers.mapFind { case `Content-Type`(t) ⇒ Some(t); case _ ⇒ None }
-            .getOrElse(ContentType(`text/plain`, defaultCharset)) // RFC 2046 section 5.1
-          val outputStream = new ByteArrayOutputStream
-          FileUtils.copyAll(part.readOnce(), outputStream)
-          BodyPart(HttpEntity(contentType, outputStream.toByteArray), headers)
-        case (errors, _) ⇒ sys.error("Multipart part contains %s illegal header(s):\n%s"
-          .format(errors.size, errors.mkString("\n")))
-      }
+      val (_, headers) = HttpParser.parseHeaders(rawHeaders)
+      val contentType = headers.mapFind { case `Content-Type`(t) ⇒ Some(t); case _ ⇒ None }
+        .getOrElse(ContentType(`text/plain`, defaultCharset)) // RFC 2046 section 5.1
+      val outputStream = new ByteArrayOutputStream
+      FileUtils.copyAll(part.readOnce(), outputStream)
+      BodyPart(HttpEntity(contentType, outputStream.toByteArray), headers.filterNot(_.isInstanceOf[`Content-Type`]))
     }(collection.breakOut)
   }
 

@@ -182,7 +182,7 @@ class BasicDirectivesExamplesSpec extends DirectivesSpec {
   "mapRouteResponsePF" in {
     case object MyCustomRejection extends Rejection
     val rejectRejections = // not particularly useful directive
-      mapRouteResponse {
+      mapRouteResponsePF {
         case Rejected(_) => Rejected(List(AuthorizationFailedRejection))
       }
     val route =

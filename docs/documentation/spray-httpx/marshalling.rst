@@ -107,7 +107,7 @@ Deriving Marshallers
 --------------------
 
 Sometimes you can save yourself some work by reusing existing Marshallers for your custom ones.
-The idea is to "wrap" an existing ``Marshaller`` with come logic to "re-target" it to your type.
+The idea is to "wrap" an existing ``Marshaller`` with some logic to "re-target" it to your type.
 
 In this regard wrapping a ``Marshaller`` can mean one or both of the following two things:
 

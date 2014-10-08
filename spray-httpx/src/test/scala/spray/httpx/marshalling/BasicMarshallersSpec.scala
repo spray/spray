@@ -43,9 +43,13 @@ class BasicMarshallersSpec extends Specification {
   }
 
   "The FormDataMarshaller" should {
+    "Properly marshall FormData instances to application/x-www-form-urlencoded bodies with UTF-8 % URL encoding" in {
+      marshal(FormData(Map("unicode" -> "中国扬声器可以阅读本"))) ===
+        Right(HttpEntity(ContentType(`application/x-www-form-urlencoded`, `UTF-8`), "unicode=%E4%B8%AD%E5%9B%BD%E6%89%AC%E5%A3%B0%E5%99%A8%E5%8F%AF%E4%BB%A5%E9%98%85%E8%AF%BB%E6%9C%AC"))
+    }
     "properly marshal FormData instances to application/x-www-form-urlencoded entity bodies" in {
       marshal(FormData(Map("name" -> "Bob", "pass" -> "hällo", "admin" -> ""))) ===
-        Right(HttpEntity(ContentType(`application/x-www-form-urlencoded`, `UTF-8`), "name=Bob&pass=h%E4llo&admin="))
+        Right(HttpEntity(ContentType(`application/x-www-form-urlencoded`, `UTF-8`), "name=Bob&pass=h%C3%A4llo&admin="))
     }
   }
 

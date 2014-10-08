@@ -522,13 +522,14 @@ object Uri {
         if (q.isEmpty) map else append(map.updated(q.key, q.value :: map.getOrElse(q.key, Nil)), q.tail)
       append(Map.empty, this)
     }
+    def keep: Int = Query.keep
     def render[R <: Rendering](r: R): r.type = render(r, UTF8)
     def render[R <: Rendering](r: R, charset: Charset): r.type = {
-      def enc(s: String): Unit = encode(r, s, charset, QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS), replaceSpaces = true)
+      def enc(s: String): Unit = encode(r, s, charset, keep, replaceSpaces = true)
       @tailrec def append(q: Query): r.type =
         q match {
           case Query.Empty ⇒ r
-          case Query.Cons(key, value, tail) ⇒
+          case Query.Cons(key, value, tail, _) ⇒
             if (q ne this) r ~~ '&'
             enc(key)
             if (value ne Query.EmptyValue) r ~~ '='
@@ -543,6 +544,9 @@ object Uri {
   object Query {
     /** A special empty String value which will be rendered without a '=' after the key. */
     val EmptyValue: String = new String(Array.empty[Char])
+
+    /** The default set of characters to not encode */
+    def keep: Int = QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS | SEMI_COLON)
 
     /**
      * Parses the given String into a Query instance.
@@ -565,6 +569,9 @@ object Uri {
       kvp.foldRight(Query.Empty: Query) { case ((key, value), acc) ⇒ Cons(key, value, acc) }
     def apply(map: Map[String, String]): Query = apply(map.toSeq: _*)
 
+    def asBodyData(kvp: Seq[(String, String)], charset: Charset = UTF8): Query =
+      kvp.foldRight(Query.Empty: Query) { case ((key, value), acc) ⇒ Cons(key, value, acc, UNRESERVED) }
+
     def newBuilder: mutable.Builder[(String, String), Query] = new mutable.Builder[(String, String), Query] {
       val b = mutable.ArrayBuffer.newBuilder[(String, String)]
       def +=(elem: (String, String)): this.type = { b += elem; this }
@@ -580,7 +587,7 @@ object Uri {
       override def head = throw new NoSuchElementException("head of empty list")
       override def tail = throw new UnsupportedOperationException("tail of empty query")
     }
-    case class Cons(key: String, value: String, override val tail: Query) extends Query {
+    case class Cons(key: String, value: String, override val tail: Query, override val keep: Int = keep) extends Query {
       def isRaw = false
       override def isEmpty = false
       override def head = (key, value)
@@ -648,16 +655,20 @@ object Uri {
 
   private[http] def encode(r: Rendering, string: String, charset: Charset, keep: Int,
                            replaceSpaces: Boolean = false): r.type = {
+    val asciiCompatible = isAsciiCompatible(charset)
     @tailrec def rec(ix: Int = 0): r.type = {
       def appendEncoded(byte: Byte): Unit = r ~~ '%' ~~ hexDigit(byte >>> 4) ~~ hexDigit(byte)
       if (ix < string.length) {
-        string.charAt(ix) match {
-          case c if is(c, keep)     ⇒ r ~~ c
-          case ' ' if replaceSpaces ⇒ r ~~ '+'
-          case c if c <= 127        ⇒ appendEncoded(c.toByte)
-          case c                    ⇒ c.toString.getBytes(charset).foreach(appendEncoded)
+        val charSize = string.charAt(ix) match {
+          case c if is(c, keep)                 ⇒ { r ~~ c; 1 }
+          case ' ' if replaceSpaces             ⇒ { r ~~ '+'; 1 }
+          case c if c <= 127 && asciiCompatible ⇒ { appendEncoded(c.toByte); 1 }
+          case c ⇒
+            def append(s: String) = s.getBytes(charset).foreach(appendEncoded)
+            if (Character.isHighSurrogate(c)) { append(new String(Array(string codePointAt ix), 0, 1)); 2 }
+            else { append(c.toString); 1 }
         }
-        rec(ix + 1)
+        rec(ix + charSize)
       } else r
     }
     rec()
@@ -694,13 +705,12 @@ object Uri {
             decodeBytes(i + 1, oredBytes | byte)
           } else oredBytes
 
-        if ((decodeBytes() >> 7) != 0) { // if non-ASCII chars are present we need to involve the charset for decoding
-          sb.append(new String(bytes, charset))
-        } else {
+        // if we have only ASCII chars and the charset is ASCII compatible we don't need to involve it in decoding
+        if (((decodeBytes() >> 7) == 0) && isAsciiCompatible(charset)) {
           @tailrec def appendBytes(i: Int = 0): Unit =
             if (i < bytesCount) { sb.append(bytes(i).toChar); appendBytes(i + 1) }
           appendBytes()
-        }
+        } else sb.append(new String(bytes, charset))
         decode(string, charset, lastPercentSignIndexPlus3)(sb)
 
       case x ⇒ decode(string, charset, ix + 1)(sb.append(x))
@@ -772,4 +782,6 @@ object Uri {
                            fragment: Option[String]): Uri =
     if (path.isEmpty && scheme.isEmpty && authority.isEmpty && query.isEmpty && fragment.isEmpty) Empty
     else new Uri(scheme, authority, path, query, fragment) { def isEmpty = false }
+
+  private def isAsciiCompatible(cs: Charset) = cs == UTF8 || cs == ISO88591 || cs == US_ASCII
 }

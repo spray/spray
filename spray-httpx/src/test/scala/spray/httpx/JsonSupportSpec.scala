@@ -60,7 +60,14 @@ class SprayJsonSupportSpec extends Specification with SprayJsonSupport with Json
   }
   import MyJsonProtocol._
 
-  def marshaller: Marshaller[Employee] = sprayJsonMarshaller(implicitly[RootJsonWriter[Employee]], CompactPrinter)
+  val fixedOrderPrinter = new CompactPrinter {
+    override protected def printSeq[A](iterable: Iterable[A], printSeparator: ⇒ Unit)(f: A ⇒ Unit): Unit = {
+      val members = iterable.toSeq.asInstanceOf[Seq[(String, JsValue)]].sortBy(t ⇒ Employee.json.indexOf(t._1))
+      super.printSeq(members, printSeparator)(f.asInstanceOf[((String, JsValue)) ⇒ Unit])
+    }
+  }
+
+  def marshaller: Marshaller[Employee] = sprayJsonMarshaller(implicitly[RootJsonWriter[Employee]], fixedOrderPrinter)
   def unmarshaller: Unmarshaller[Employee] = sprayJsonUnmarshaller[Employee]
 }
 

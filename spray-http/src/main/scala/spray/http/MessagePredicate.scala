@@ -41,10 +41,11 @@ object MessagePredicate {
     case x: HttpResponse ⇒ f(x.status)
     case _: HttpRequest  ⇒ false
   }
-  def isCompressible: MessagePredicate = apply {
-    _.entity match {
+  def isCompressible: MessagePredicate = apply { msg ⇒
+    msg.entity match {
       case HttpEntity.NonEmpty(contentType, _) ⇒ contentType.mediaType.compressible
-      case _                                   ⇒ false
+      case HttpEntity.Empty ⇒
+        msg.header[HttpHeaders.`Content-Type`].exists(_.contentType.mediaType.compressible)
     }
   }
 }

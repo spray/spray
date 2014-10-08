@@ -121,7 +121,7 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
           }
         }
       } ~
-      path("documentation") {
+      pathPrefix("documentation") {
         // cache responses to GET requests
         cache(simpleCache) {
           // optionally compresses the response with Gzip or Deflate

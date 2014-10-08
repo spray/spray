@@ -21,8 +21,8 @@ class RangeDirectivesExamplesSpec extends DirectivesSpec {
       headers must not(contain(like[HttpHeader] { case `Content-Range`(_, _) ⇒ ok }))
       responseAs[MultipartByteRanges] must beLike {
         case MultipartByteRanges(
-          BodyPart(entity1, _ +: `Content-Range`(RangeUnit.Bytes, range1) +: _) +:
-          BodyPart(entity2, _ +: `Content-Range`(RangeUnit.Bytes, range2) +: _) +: Seq()
+          BodyPart(entity1, `Content-Range`(RangeUnit.Bytes, range1) +: _) +:
+          BodyPart(entity2, `Content-Range`(RangeUnit.Bytes, range2) +: _) +: Seq()
         ) ⇒ entity1.asString === "ABC" and range1 === ContentRange(0, 2, 8) and
           entity2.asString === "GH" and range2 === ContentRange(6, 7, 8)
       }

@@ -86,7 +86,7 @@ object Build extends Build {
     )): _*)
     .settings(libraryDependencies ++=
       compile(mimepull) ++
-      provided(akkaActor, sprayJson, twirlApi, liftJson, json4sNative, json4sJackson, playJson) ++
+      provided(akkaActor, sprayJson, twirlApi, playTwirlApi, liftJson, json4sNative, json4sJackson, playJson) ++
       test(specs2)
     )
 
@@ -107,12 +107,16 @@ object Build extends Build {
 
   lazy val sprayRouting = Project("spray-routing", file("spray-routing"))
     .dependsOn(
-      sprayCaching % "provided", // for the CachingDirectives trait
+      sprayCaching % "provided", // for the CachingDirectives trait and CachedUserPassAuthenticator object
       sprayCan % "provided",  // for the SimpleRoutingApp trait
       sprayHttp, sprayHttpx, sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
-    .settings(osgiSettings(exports = Seq("spray.routing"), imports = Seq("shapeless.*;resolution:=optional")): _*)
+    .settings(osgiSettings(exports = Seq("spray.routing"), imports = Seq(
+      "spray.caching.*;resolution:=optional",
+      "spray.can.*;resolution:=optional",
+      "spray.io.*;resolution:=optional"
+    )): _*)
     .settings(libraryDependencies ++=
       compile(shapeless) ++
       provided(akkaActor)
