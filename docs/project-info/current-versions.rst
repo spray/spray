@@ -24,17 +24,17 @@ Please choose |1.0|, |1.1|, |1.2| or |1.3| depending on what Scala/Akka version 
 .. rst-class:: wide
 
 - | *spray* |1.0| is built against Scala 2.9.3 and Akka 2.0.5.
-  | It's sources live in the `release/1.0`_ branch of the *spray* repository.
+  | Its sources live in the `release/1.0`_ branch of the *spray* repository.
 
 - | *spray* |1.1| is built against Scala 2.10.4 and Akka 2.1.4.
-  | It's sources live in the `release/1.1`_ branch of the *spray* repository.
+  | Its sources live in the `release/1.1`_ branch of the *spray* repository.
 
 - | *spray* |1.2| is built against Scala 2.10.4 and Akka 2.2.4.
-  | It's sources live in the `release/1.2`_ branch of the *spray* repository.
+  | Its sources live in the `release/1.2`_ branch of the *spray* repository.
   | (Please note that Akka 2.2.3 or later is *required*, earlier Akka versions will *not* work!)
 
 - | *spray* |1.3| is built against Scala 2.10.4 and Akka 2.3.6 as well as Scala 2.11.2 and Akka 2.3.6.
-  | It's sources live in the `release/1.3`_ branch of the *spray* repository.
+  | Its sources live in the `release/1.3`_ branch of the *spray* repository.
   | **Note**: Contrary to version 1.1.2 and 1.2.2 the 1.3.2 release is published with **crosspaths enabled**
   | since it targets two Scala versions at the same time!
 
