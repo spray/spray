@@ -99,7 +99,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
         context.parent ! DemandIdleShutdown
         context.become { // after having initiated our shutdown we must be bounce all requests
           case request: HttpRequest ⇒ context.parent.forward(request -> normalizedSetup)
-          case _: Http.CloseAll     ⇒ sender ! Http.ClosedAll; context.stop(self)
+          case _: Http.CloseAll     ⇒ { sender ! Http.ClosedAll; context.stop(self) }
           case _: Terminated        ⇒ // ignore, can happen if the last slot has sent us a `DemandIdleShutdown` and
           // a `ReceiveTimeout` is coming in before the `Terminated` event from the last slot
         }

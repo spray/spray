@@ -40,7 +40,7 @@ The `Cache` Interface
 ---------------------
 
 All *spray-caching* cache implementations implement the Cache_ trait, which allows you to interact with the cache
-through six methods:
+through nine methods:
 
 .. rst-class:: wide
 
@@ -61,6 +61,12 @@ through six methods:
   Returns the removed item if it was found (and removed).
 
 - ``def clear()`` clears the cache by removing all entries.
+
+- ``def size(): Int`` returns the number of entries.
+
+- ``def keys(): Set[Any]`` returns the current keys as an unordered set.
+
+- ``def ascendingKeys(limit: Option[Int]): Iterator[Any]`` allows one to iterate through the keys in order from the least recently used to the most recently used.
 
 Note that the ``apply`` overloads require an implicit ``ExecutionContext`` to be in scope.
 
@@ -104,7 +110,7 @@ limits the maximum time an entry is kept without having been accessed. If both v
 has to be strictly greater than the time-to-idle.
 
 .. note:: Expired entries are only evicted upon next access (or by being thrown out by the capacity constraint), so
-   they might prevent gargabe collection of their values for longer than expected.
+   they might prevent garbage collection of their values for longer than expected.
 
 
 .. _Cache: https://github.com/spray/spray/blob/master/spray-caching/src/main/scala/spray/caching/Cache.scala

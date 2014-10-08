@@ -68,6 +68,22 @@ trait Cache[V] { cache ⇒
   def clear()
 
   /**
+   * Returns the set of keys in the cache, in no particular order
+   * Should return in roughly constant time.
+   * Note that this number might not reflect the exact keys of active, unexpired
+   * cache entries, since expired entries are only evicted upon next access
+   * (or by being thrown out by a capacity constraint).
+   */
+  def keys: Set[Any]
+
+  /**
+   * Returns a snapshot view of the keys as an iterator, traversing the keys from the least likely
+   * to be retained to the most likely.  Note that this is not constant time.
+   * @param limit No more than limit keys will be returned
+   */
+  def ascendingKeys(limit: Option[Int] = None): Iterator[Any]
+
+  /**
    * Returns the upper bound for the number of currently cached entries.
    * Note that this number might not reflect the exact number of active, unexpired
    * cache entries, since expired entries are only evicted upon next access

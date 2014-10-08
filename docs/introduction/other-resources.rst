@@ -1,6 +1,25 @@
 Other Resources
 ===============
 
+June 2014: "akka-http: (un)REST your actors" talk from `ScalaDays 2014`__
+  | Video: http://www.parleys.com/play/53a7d2c3e4b0543940d9e539/chapter0/about
+  | Slides: `/scaladays2014/`__
+
+__ http://scaladays.org/
+__ /scaladays2014/
+
+May 2014: "Actors, HTTP and Reactive Streams" talk from `JAX 2014`__
+  | Slides: `/jax14/`__
+
+__ http://jax.de/2014/
+__ /jax14/
+
+Apr 2014: "Introduction to *Akka* and *spray*" at the `Zurich Scala Enthusiasts Meetup`__
+  | Slides: `/zse/`__
+
+__ http://www.meetup.com/Zurich-Scala/events/175778012/
+__ /zse/
+
 Dec 2013: Introductory live-coding session at `Scala eXchange 2013`__
   | Recording: http://skillsmatter.com/podcast/scala/mathias-doenitz
 

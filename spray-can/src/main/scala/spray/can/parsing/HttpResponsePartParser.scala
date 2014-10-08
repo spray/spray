@@ -78,16 +78,14 @@ private[can] class HttpResponsePartParser(_settings: ParserSettings)(_headerPars
                   closeAfterResponseCompletion: Boolean): Result =
     if (statusCode.allowsEntity && (requestMethodForCurrentResponse ne HttpMethods.HEAD)) {
       teh match {
-        case Some(te) if te.encodings.size == 1 && te.hasChunked ⇒
+        case Some(`Transfer-Encoding`(Seq("chunked"))) ⇒
           if (clh.isEmpty) {
             emit(ChunkedResponseStart(message(headers, HttpEntity.Empty)), closeAfterResponseCompletion) {
               parseChunk(input, bodyStart, closeAfterResponseCompletion)
             }
-          } else fail("A chunked request must not contain a Content-Length header.")
+          } else fail("A chunked response must not contain a Content-Length header.")
 
-        case Some(te) ⇒ fail(te.toString + " is not supported by this client")
-
-        case None ⇒ clh match {
+        case None | Some(`Transfer-Encoding`(Seq("identity"))) ⇒ clh match {
           case Some(`Content-Length`(contentLength)) ⇒
             if (contentLength == 0) {
               emit(message(headers, HttpEntity.Empty), closeAfterResponseCompletion) {
@@ -100,6 +98,8 @@ private[can] class HttpResponsePartParser(_settings: ParserSettings)(_headerPars
 
           case None ⇒ parseToCloseBody(headers, input, bodyStart, cth)
         }
+
+        case Some(te) ⇒ fail(te.toString + " is not supported by this client")
       }
     } else emit(message(headers, HttpEntity.Empty), closeAfterResponseCompletion) {
       parseMessageSafe(input, bodyStart)

@@ -20,7 +20,7 @@ import akka.event.Logging._
 import shapeless._
 import spray.routing.directives.{ DirectoryListing, LogEntry }
 import spray.httpx.marshalling.Marshaller
-import spray.httpx.TwirlSupport._
+import spray.httpx.PlayTwirlSupport._
 import spray.http._
 import spray.routing._
 import html._
@@ -59,19 +59,29 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
         host(_.endsWith("pegdown.org")) {
           redirect("https://github.com/sirthias/pegdown", Found)
         } ~
+        host(x => x.endsWith("waves.io") | x.endsWith("streamed.io")) {
+          redirect("https://github.com/sirthias/waves", Found)
+        } ~
         host("spray.io", "localhost", "127.0.0.1") {
           path("favicon.ico") {
             complete(NotFound) // fail early in order to prevent error response logging
           } ~
           logRequestResponse(showErrorResponses _) {
+            talkCharts("jax14") ~
             talkCharts("scala.io") ~
-            talkCharts("wjax") ~
+            talkCharts("scaladays2014") ~
             talkCharts("webinar") ~
+            talkCharts("webinar2014") ~
+            talkCharts("wjax") ~
+            talkCharts("zse") ~
             searchRoute("spray.io") ~
             path("webinar" / "video" /) { redirect("http://www.youtube.com/watch?v=7MqD7_YvZ8Q", Found) } ~
             getFromResourceDirectory("theme") ~
             pathPrefix("_images") {
               getFromResourceDirectory("sphinx/json/_images")
+            } ~
+            pathPrefix("files") {
+              getFromDirectory("/opt/spray.io/files")
             } ~
             logRequest(showRequest _) {
               pathSingleSlash {
@@ -116,8 +126,8 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
                 } ~
                 requestUri { uri =>
                   val path = uri.path.toString
-                  "-RC[1234]/".r.findFirstIn(path) match {
-                    case Some(found) => redirect(uri.withPath(Uri.Path(path.replace(found, ".0/"))), MovedPermanently)
+                  "(?:-RC[1234])|(?:.0)/".r.findFirstIn(path) match {
+                    case Some(found) => redirect(uri.withPath(Uri.Path(path.replace(found, ".1/"))), MovedPermanently)
                     case None => reject
                   }
                 } ~

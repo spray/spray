@@ -24,28 +24,12 @@ object Build extends Build {
     .settings(noPublishing: _*)
     .settings(unidocSettings: _*)
     .settings(
-      excludedProjects in unidoc in ScalaUnidoc ++= Seq(
-        "docs", "echo-server", "examples", "on-jetty", "on-spray-can", "server-benchmark", "simple-http-client",
-        "simple-http-server", "simple-routing-app", "simple-spray-client", "simple-spray-servlet-server", "site",
-        "spray-can-examples", "spray-client-examples", "spray-io-examples", "spray-routing-examples",
-        "spray-servlet-examples"
-      ),
-      target in (ScalaUnidoc, unidoc) <<= (resourceManaged in Compile in site, version) { (path, version) =>
-        (path / "api" / version)
-      },
-      /* Use this task to generate list to paste into above excludedProjects list.
-         We could do it directly if excludedProjects were a Task
-      TaskKey[Unit]("print-aggregated", "") <<= state map { state =>
-        val ps =
-          Set(
-            docs, site, examples
-          ).flatMap(Utils.aggregatedProjects(Project.structure(state)))
-        println(ps.toSeq.sorted.map("\"" + _ + "\"").mkString(", "))
-      },*/
-      scalacOptions in (ScalaUnidoc, unidoc) += "-Ymacro-no-expand"
-    )
-
-
+      unidocProjectFilter in (ScalaUnidoc, unidoc) := inAnyProject -- inProjects(docs, examples, site, sprayCanTests,
+        sprayCanExamples, sprayClientExamples, sprayIOExamples, sprayRoutingExamples, sprayServletExamples,
+        serverBenchmark, simpleHttpClient, simpleHttpServer, simpleSprayClient, echoServerExample, onJetty, onSprayCan,
+        simpleRoutingApp, simpleSprayServletServer),
+      target in (ScalaUnidoc, unidoc) := (resourceManaged in Compile in site).value / "api" / version.value,
+      scalacOptions in (ScalaUnidoc, unidoc) += "-Ymacro-no-expand")
 
   // -------------------------------------------------------------------------------------------------------------------
   // Modules
@@ -113,7 +97,7 @@ object Build extends Build {
     )): _*)
     .settings(libraryDependencies ++=
       compile(mimepull) ++
-      provided(akkaActor, sprayJson, twirlApi, liftJson, json4sNative, json4sJackson, playJson) ++
+      provided(akkaActor, sprayJson, twirlApi, playTwirlApi, liftJson, json4sNative, json4sJackson, playJson) ++
       test(specs2)
     )
 
@@ -134,13 +118,17 @@ object Build extends Build {
 
   lazy val sprayRouting = Project("spray-routing", file("spray-routing"))
     .dependsOn(
-      sprayCaching % "provided", // for the CachingDirectives trait
+      sprayCaching % "provided", // for the CachingDirectives trait  and CachedUserPassAuthenticator object
       sprayCan % "provided",  // for the SimpleRoutingApp trait
       sprayHttp, sprayHttpx, sprayUtil,
       sprayIO) // for access to akka.io.Tcp, can go away after upgrade to Akka 2.2
     .settings(sprayModuleSettings: _*)
     .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
-    .settings(osgiSettings(exports = Seq("spray.routing"), imports = Seq("shapeless.*;resolution:=optional")): _*)
+    .settings(osgiSettings(exports = Seq("spray.routing"), imports = Seq(
+      "spray.caching.*;resolution:=optional",
+      "spray.can.*;resolution:=optional",
+      "spray.io.*;resolution:=optional"
+    )): _*)
     .settings(libraryDependencies ++=
       compile(shapeless) ++
       provided(akkaActor)
@@ -192,6 +180,7 @@ object Build extends Build {
   // -------------------------------------------------------------------------------------------------------------------
   lazy val site = Project("site", file("site"))
     .dependsOn(sprayCaching, sprayCan, sprayRouting)
+    .enablePlugins(play.twirl.sbt.SbtTwirl)
     .settings(siteSettings: _*)
     .settings(SphinxSupport.settings: _*)
     .settings(libraryDependencies ++=

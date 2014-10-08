@@ -27,10 +27,17 @@ private[parser] trait AcceptLanguageHeader {
   def `*Accept-Language` = rule(
     oneOrMore(LanguageRangeDef, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Accept-Language`(_)))
 
-  def LanguageRangeDef = rule { (LanguageTag | "*" ~ push(`*`)) ~ optional(LanguageQuality) }
+  def LanguageRangeDef = rule {
+    (LanguageTag | "*" ~ push(`*`)) ~ optional(LanguageQuality) ~~> { (range, optQ) ⇒
+      optQ match {
+        case None    ⇒ range
+        case Some(q) ⇒ range withQValue q
+      }
+    }
+  }
 
   def LanguageQuality = rule {
-    ";" ~ "q" ~ "=" ~ oneOrMore(Digit | ".") // TODO: support language quality
+    ";" ~ "q" ~ "=" ~ QValue
   }
 
 }

@@ -62,6 +62,29 @@ class HttpHeaderSpec extends Specification {
           "ISO-8859-1, UTF-16;q=0.0, *;q=0.8")
     }
 
+    "Accept-Ranges" in {
+      "Accept-Ranges: bytes" =!= `Accept-Ranges`(RangeUnit.Bytes)
+      "Accept-Ranges: bytes, sausages" =!= `Accept-Ranges`(RangeUnit.Bytes, RangeUnit.Other("sausages"))
+      "Accept-Ranges: none" =!= `Accept-Ranges`(Nil)
+    }
+
+    "Accept-Encoding" in {
+      "Accept-Encoding: compress, gzip, fancy" =!=
+        `Accept-Encoding`(compress, gzip, HttpEncoding.custom("fancy"))
+      "Accept-Encoding: gzip, identity;q=0.5, *;q=0.0" =!=
+        `Accept-Encoding`(gzip, identity withQValue 0.5, HttpEncodingRange.`*` withQValue 0)
+        .renderedTo("gzip, identity;q=0.5, *;q=0.0")
+      "Accept-Encoding: " =!= `Accept-Encoding`(identity).renderedTo("identity")
+    }
+
+    "Accept-Language" in {
+      "Accept-Language: da, en-gb;q=0.8, en;q=0.7" =!=
+        `Accept-Language`(Language("da"), Language("en", "gb") withQValue 0.8f, Language("en") withQValue 0.7f)
+      "Accept-Language: de-CH-1901, *;q=0.0" =!=
+        `Accept-Language`(Language("de", "CH", "1901"), LanguageRanges.`*` withQValue 0f)
+      "Accept-Language: es-419, es" =!= `Accept-Language`(Language("es", "419"), Language("es"))
+    }
+
     "Access-Control-Allow-Credentials" in {
       "Access-Control-Allow-Credentials: true" =!= `Access-Control-Allow-Credentials`(allow = true)
     }
@@ -94,29 +117,6 @@ class HttpHeaderSpec extends Specification {
 
     "Access-Control-Request-Method" in {
       "Access-Control-Request-Method: POST" =!= `Access-Control-Request-Method`(POST)
-    }
-
-    "Accept-Ranges" in {
-      "Accept-Ranges: bytes" =!= `Accept-Ranges`(RangeUnit.Bytes)
-      "Accept-Ranges: bytes, sausages" =!= `Accept-Ranges`(RangeUnit.Bytes, RangeUnit.Other("sausages"))
-      "Accept-Ranges: none" =!= `Accept-Ranges`(Nil)
-    }
-
-    "Accept-Encoding" in {
-      "Accept-Encoding: compress, gzip, fancy" =!=
-        `Accept-Encoding`(compress, gzip, HttpEncoding.custom("fancy"))
-      "Accept-Encoding: gzip, identity;q=0.5, *;q=0.0" =!=
-        `Accept-Encoding`(gzip, identity withQValue 0.5, HttpEncodingRange.`*` withQValue 0)
-        .renderedTo("gzip, identity;q=0.5, *;q=0.0")
-      "Accept-Encoding: " =!= `Accept-Encoding`(identity).renderedTo("identity")
-    }
-
-    "Accept-Language" in {
-      "Accept-Language: da, en-gb ;q=0.8, en;q=0.7" =!=
-        `Accept-Language`(Language("da"), Language("en", "gb"), Language("en")).renderedTo("da, en-gb, en")
-      "Accept-Language: de-CH-1901, *;q=0" =!=
-        `Accept-Language`(Language("de", "CH", "1901"), LanguageRanges.`*`).renderedTo("de-CH-1901, *")
-      "Accept-Language: es-419, es" =!= `Accept-Language`(Language("es", "419"), Language("es"))
     }
 
     "Allow" in {
@@ -152,6 +152,13 @@ class HttpHeaderSpec extends Specification {
         `Cache-Control`(`no-cache`, `max-age`(0))
       "Cache-Control: private=\"Some-Field\"" =!=
         `Cache-Control`(`private`("Some-Field"))
+      "Cache-Control: private, no-cache, no-cache=Set-Cookie, proxy-revalidate" =!=
+        `Cache-Control`(`private`(), `no-cache`, `no-cache`("Set-Cookie"), `proxy-revalidate`).renderedTo(
+          "private, no-cache, no-cache=\"Set-Cookie\", proxy-revalidate")
+      "Cache-Control: no-cache=Set-Cookie" =!=
+        `Cache-Control`(`no-cache`("Set-Cookie")).renderedTo("no-cache=\"Set-Cookie\"")
+      "Cache-Control: private=\"a,b\", no-cache" =!=
+        `Cache-Control`(`private`("a", "b"), `no-cache`)
       "Cache-Control: private, community=\"<UCI>\"" =!=
         `Cache-Control`(`private`(), CacheDirective.custom("community", Some("<UCI>")))
     }
@@ -205,6 +212,7 @@ class HttpHeaderSpec extends Specification {
       "Cookie: a=1;b=2" =!= Cookie(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
       "Cookie: a=1 ;b=2" =!= Cookie(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
       "Cookie: a=1; b=2" =!= Cookie(HttpCookie("a", "1"), HttpCookie("b", "2"))
+      "Cookie: a=1,b=2" =!= Cookie(HttpCookie("a", "1"), HttpCookie("b", "2")).renderedTo("a=1; b=2")
       Cookie(HttpCookie("SID", "31d4d96e407aad42",
         domain = Some("example.com"),
         expires = Some(DateTime(2021, 6, 9, 10, 18, 14)),
@@ -246,6 +254,7 @@ class HttpHeaderSpec extends Specification {
 
     "If-Modified-Since" in {
       "If-Modified-Since: Wed, 13 Jul 2011 08:12:31 GMT" =!= `If-Modified-Since`(DateTime(2011, 7, 13, 8, 12, 31))
+      "If-Modified-Since: 0" =!= `If-Modified-Since`(DateTime.MinValue).renderedTo("Wed, 01 Jan 1800 00:00:00 GMT")
     }
 
     "If-None-Match" in {

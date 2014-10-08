@@ -239,6 +239,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           `HTTP/1.0` ! NONE ! NONE ! NONE ! true |
           `HTTP/1.0` ! Some("close") ! NONE ! NONE ! true |
           `HTTP/1.0` ! Some("Keep-Alive") ! NONE ! Some("Keep-Alive") ! false |
+          `HTTP/1.1` ! Some("Upgrade") ! Some("Upgrade") ! Some("Upgrade") ! false |
           `HTTP/1.1` ! NONE ! Some("close") ! Some("close") ! true |> {
             (reqProto, reqCH, resCH, renCH, close) ⇒
               render(

@@ -31,8 +31,8 @@ private[parser] trait LinkHeader {
   def `*Link` = rule { oneOrMore(`link-value`, separator = ListSep) ~ EOI ~~> (Link(_)) }
 
   def `link-value` = rule(
-
     UriReference('<', '>') ~ oneOrMore(";" ~ `link-param`) ~~> ((uri, params) ⇒ Link.Value(uri, sanitize(params))))
+
   def `link-param` = rule(
     "rel" ~ "=" ~ `relation-types` ~~> Link.rel
       | "anchor" ~ "=" ~ UriReferencePotentiallyQuoted ~~> Link.anchor

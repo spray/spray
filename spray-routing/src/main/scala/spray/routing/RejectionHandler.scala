@@ -41,7 +41,7 @@ object RejectionHandler {
         case CredentialsMissing  ⇒ "The resource requires authentication, which was not supplied with the request"
         case CredentialsRejected ⇒ "The supplied authentication is invalid"
       }
-      ctx ⇒ ctx.complete(Unauthorized, challengeHeaders, rejectionMessage)
+      { ctx ⇒ ctx.complete(Unauthorized, challengeHeaders, rejectionMessage) }
 
     case AuthorizationFailedRejection :: _ ⇒
       complete(Forbidden, "The supplied authentication is not authorized to access this resource")

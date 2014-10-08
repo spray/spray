@@ -30,7 +30,7 @@ private[parser] trait CookieHeaders {
   }
 
   def `*Cookie` = rule {
-    oneOrMore(CookiePair, separator = ";") ~ EOI ~~> (HttpHeaders.`Cookie`(_))
+    oneOrMore(CookiePair, separator = ";" | ",") ~ EOI ~~> (HttpHeaders.`Cookie`(_))
   }
 
   def CookiePair = rule {

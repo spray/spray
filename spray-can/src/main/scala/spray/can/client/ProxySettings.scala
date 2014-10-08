@@ -36,9 +36,9 @@ case class ProxySettings(host: String, port: Int, nonProxyHosts: List[String]) {
         case pattern :: remaining ⇒
           val check: String ⇒ Boolean =
             (pattern endsWith '*', pattern startsWith '*') match {
-              case (true, true)  ⇒ val p = pattern.drop(1).dropRight(1); _.contains(p)
-              case (true, false) ⇒ val p = pattern.dropRight(1); _.startsWith(p)
-              case (false, true) ⇒ val p = pattern.drop(1); _.endsWith(p)
+              case (true, true)  ⇒ { val p = pattern.drop(1).dropRight(1); _.contains(p) }
+              case (true, false) ⇒ { val p = pattern.dropRight(1); _.startsWith(p) }
+              case (false, true) ⇒ { val p = pattern.drop(1); _.endsWith(p) }
               case _             ⇒ _ == pattern
             }
           rec(remaining, host ⇒ !check(host) && result(host))

@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>akka-http: (un)REST for your Actors</title>
+
+		<meta name="description" content="Introduction to akka-http">
+		<meta name="author" content="Mathias Doenitz">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="stylesheet" href="css/reveal.min.css">
+		<link rel="stylesheet" href="css/theme/sirthias.css" id="theme">
+		<link rel="stylesheet" href="lib/font-awesome/css/font-awesome.css">
+
+		<!-- For syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- If the query includes 'print-pdf', include the PDF print sheet -->
+		<script>
+			if( window.location.search.match( /print-pdf/gi ) ) {
+				var link = document.createElement( 'link' );
+				link.rel = 'stylesheet';
+				link.type = 'text/css';
+				link.href = 'css/print/pdf.css';
+				document.getElementsByTagName( 'head' )[0].appendChild( link );
+			}
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+		<div class="reveal">
+			<div class="slides">
+
+			<!-- *************************************************************** -->
+
+			<section>
+        <p style="top: -30px; position: relative">
+          <img style="width: 64%" src="lib/akka-mountains.svg" alt="akka">
+        </p>
+        <h3 style="top: -30px; position: relative">akka-http: (un)REST your actors</h3>
+        <p>
+          <span>ScalaDays</span>
+          <span style="font-size: 0.8em">2014-06-17@Berlin</span>
+        </p>
+        <p>
+          <small>Mathias Doenitz &nbsp;
+            <a href="mailto:mathias(at)spray(dot)io"><i class="fa fa-envelope-square"></i></a> /
+            <a href="https://github.com/sirthias"><i class="fa fa-github-square"></i></a> /
+            <a href="http://twitter.com/sirthias"><i class="fa fa-twitter-square"></i></a><br/><br/>
+            This presentation: <a href="http://spray.io/scaladays2014/">http://spray.io/scaladays2014/</a>
+          </small>
+        </p>
+      </section>
+
+      <section>
+        <h2>Why does Akka need an HTTP module?</h2>
+        <p class="fragment">Isn't this "feature creep"?</p>
+        <p class="fragment">Too high-level?</p>
+        <p class="fragment">Where is the connection to its "actor heart"?</p>
+      </section>
+
+      <section>
+        <h2>Akka</h2>
+        <p>
+          "A toolkit and runtime for building<br/>
+          highly concurrent, distributed, and fault-tolerant<br/>
+          event-driven applications on the JVM"
+        </p>
+        <small>Source: <a href="http://akka.io">http://akka.io</a></small>
+      </section>
+
+      <section>
+        <h2>Akka's Promise</h2>
+        <div style="position: relative">
+	        <p>
+	          "Build powerful
+	          <span style="display:inline-block;position:relative">
+	            concurrent
+	            <span style="position:absolute;display:inline-block;padding:4px;border-radius:10px;top:-4px;left:-4px;background-color:#eee8d5;color:#1B2C3D;font-weight:bold" class="fragment">concurrent</span>
+	            <img class="fragment" style="position: absolute;max-width:none;max-height:none;left:-70%;top:50%" src="lib/callout1.svg" alt="Traditionally hard">            
+	          </span>
+	          &amp;
+	          <span style="display:inline-block;position:relative">
+	            distributed
+	            <span style="position:absolute;display:inline-block;padding:4px;border-radius:10px;top:-4px;left:-4px;background-color:#eee8d5;color:#1B2C3D;font-weight:bold" class="fragment">distributed</span>
+	            <img class="fragment" style="position: absolute;max-width:none;max-height:none;left:30%;top:40%" src="lib/callout2.svg" alt="Even harder!">
+	          </span><br/>
+	          applications more easily"
+	        </p>	        
+	      </div>
+        <small>Source: <a href="http://akka.io">http://akka.io</a></small>
+      </section>
+
+      <section>
+			  <h2>Distribution implies Integration</h2>
+			  <ul>
+					<li class="fragment">Between your own (sub-)systems<br>
+						<span class="fragment"><i class="fa fa-long-arrow-right"></i> <emph>akka-remoting</emph> &amp; <emph>akka-cluster</emph></span>
+					</li>
+					<li class="fragment">With other (external) systems<br>
+						<span class="fragment"><i class="fa fa-long-arrow-right"></i>  <emph>akka-http</emph></span>
+					</li>
+					<li class="fragment">HTTP is the most successful<br/>integration protocol to date!</li>
+				</ul>
+			</section>
+
+			<section>
+			  <h2>akka-http origin: spray.io</h2>
+			  <ul>
+          <li>Embeddable HTTP stack<br/>entirely built on Akka actors</li>
+          <li>Focus: HTTP integration layers<br/>
+            rather than web applications</li>
+          <li>Server- and client-side</li>
+          <li>Fully integrated into Typesafe stack<br/>(threadpools, config, debugging, etc.)</li>
+        </ul> 
+			</section>
+
+			<section>
+			  <h2>spray features</h2>
+			  <ul>
+          <li>Immutable, case-class-based HTTP model</li>
+          <li>Fast, lightweight HTTP client and server</li>
+          <li>Powerful DSL for server-side API definition</li>
+          <li>Fully async &amp; non-blocking,<br/>
+          actor-friendly, modular, testable</li>
+          <li>Scala &amp; actors "all the way through"</li>
+        </ul> 
+			</section>
+
+			<section>
+			  <h2>akka-http is spray++</h2>
+			  <ul>
+          <li>Across-the-board polishing</li>
+          <li>Java APIs</li>
+          <li>Simplified module structure</li>
+          <li>Core improvement:<br/>
+          	Now based on 
+            <span style="display:inline-block;position:relative">
+	            <a href="http://www.reactive-streams.org/">Reactive Streams</a>
+	            <span style="position:absolute;display:inline-block;padding:2px 12px;border-radius:10px;top:-4px;left:-4px;background-color:#eee8d5;color:#1B2C3D;font-weight:bold;width:110%" class="fragment">Reactive Streams</span>	           
+	          	<div class="fragment" style="position:absolute; top: -100%; left:50%"><i class="fa fa-arrow-down"></i></div>
+	          	<div class="fragment" style="position:absolute; top: 100%; left:50%"><i class="fa fa-arrow-up"></i></div>
+	          	<div class="fragment" style="position:absolute; top: -100%; left:30%"><i class="fa fa-arrow-down"></i></div>
+	          	<div class="fragment" style="position:absolute; top: 100%; left:30%"><i class="fa fa-arrow-up"></i></div>
+	          	<div class="fragment" style="position:absolute; top: -100%; left:70%"><i class="fa fa-arrow-down"></i></div>
+	          	<div class="fragment" style="position:absolute; top: 100%; left:70%"><i class="fa fa-arrow-up"></i></div>
+	          	<div class="fragment" style="position:absolute; top: -100%; left:90%"><i class="fa fa-arrow-down"></i></div>
+	          	<div class="fragment" style="position:absolute; top: 100%; left:90%"><i class="fa fa-arrow-up"></i></div>
+	          	<div class="fragment" style="position:absolute; top: 100%; left:10%"><i class="fa fa-arrow-up"></i></div>
+	          	<div class="fragment" style="position:absolute; top: 0; left:120%"><i class="fa fa-arrow-left"></i></div>
+	          	<div class="fragment" style="position:absolute; top: -200%; left:40%; font-size:2em"><i class="fa fa-arrow-down"></i></div>
+	          	<div class="fragment" style="position:absolute; top: -200%; left:10%; font-size:2em"><i class="fa fa-arrow-down"></i></div>
+	          	<div class="fragment" style="position:absolute; top: -200%; left:70%; font-size:2em"><i class="fa fa-arrow-down"></i></div>
+	          	<div class="fragment" style="position:absolute; top: 0; left:-25%; font-size:2em"><i class="fa fa-arrow-right"></i></div>
+	          	<div class="fragment" style="position:absolute; top: -430%; left:35%; font-size:5em"><i class="fa fa-arrow-down"></i></div>
+	          	<div class="fragment" style="position:absolute; top: -430%; left:-20%; font-size:5em"><i class="fa fa-arrow-down"></i></div>
+	          	<div class="fragment" style="position:absolute; top: -430%; left:90%; font-size:5em"><i class="fa fa-arrow-down"></i></div>
+	          	<div class="fragment" style="position:absolute; top: 0; left:-80%; font-size:5em"><i class="fa fa-arrow-right"></i></div>
+	          </span>
+          </li>
+
+        </ul> 
+			</section>
+
+			<section>
+			  <h2>Reactive Streams: Motivation</h2>
+			  <img class="fragment" style="width:90%" src="lib/proxy0.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy1.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy2.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy3.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy4.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy5.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy6.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy7.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy8.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy9.svg" alt="Backpressure needed">
+			</section>
+
+			<section>
+			  <h2>Reactive Streams: Motivation (2)</h2>
+			  <img class="fragment" style="width:90%" src="lib/pipeline0.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/pipeline1.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/pipeline2.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/pipeline3.svg" alt="Backpressure needed">
+			</section>
+
+			<section>
+        <h2>Async Boundary</h2>
+        <img style="width:90%" src="lib/async-boundary0.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary1.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary2.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary3.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary4.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary5.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary6.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary7.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary8.svg" alt="Async Boundary">
+      </section>
+
+      <section>
+			  <h2>Pipeline Processing Done Right</h2>
+			  <img style="width:90%" src="lib/right0.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right1.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right2.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right3.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right4.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right5.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right6.svg" alt="Pipeline Done Right">
+			</section>
+
+			<section>
+			  <h2>Continuous Pipelines across Machines</h2>
+			  <img style="width:90%" src="lib/network0.svg" alt="Multi-machine Pipeline">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/network1.svg" alt="Multi-machine Pipeline">
+			</section>
+
+			<section>
+        <h2>Reactive Streams</h2>
+        <ul>
+          <li>Pipelined processing "done right"</li>
+          <li>Focus: define passing of data<br/>across an async boundary</li>
+          <li>Implementations provide DSLs<br/>for stream transformations</li>
+          <li>Many use cases</li>
+          <li>Joint effort of Netflix, Twitter,<br/>Red Hat, Pivotal and Typesafe</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Streams in akka-http</h2>
+        <ul>
+          <li>Requests on one HTTP connection</li>
+          <li>Responses on one HTTP connection</li>
+          <li>Chunks of a chunked message</li>
+          <li>Bytes of a message entity</li>
+        </ul>
+      </section>
+
+      <section>
+			  <h2>HTTP Stream Interfaces</h2>
+			  <img style="width:100%" src="lib/http-streams.svg" alt="Reactive HTTP Streams">
+			</section>
+
+      <section>
+        <h2>HTTP Server API</h2>
+        <pre style="width: 75%"><code data-trim>
+case class ServerBinding(
+  localAddress: InetSocketAddress,
+  connectionStream: Producer[IncomingConnection])
+
+case class IncomingConnection(
+  remoteAddress: InetSocketAddress,
+  requestProducer: Producer[HttpRequest],
+  responseConsumer: Consumer[HttpResponse])
+				</code></pre>
+      </section>
+
+      <section>
+        <h2>Simple HTTP Server</h2>
+        <pre style="width: 100%"><code data-trim>
+val bindingFuture = IO(Http) ? Http.Bind("localhost", 8080)
+
+bindingFuture foreach { binding ⇒
+  Flow(binding.connectionStream) foreach { connection ⇒
+    Flow(connection.requestProducer).map {
+      case HttpRequest(GET, Uri.Path("/ping"), _, _, _) ⇒
+        HttpResponse(entity = "PONG!")
+      case _ ⇒ HttpResponse(404, entity = "Unknown resource!")      
+    }.produceTo(connection.responseOut)
+  }
+}
+				</code></pre>
+      </section>
+
+      <section>
+        <h2>Basic HTTP Client API</h2>
+        <pre style="width: 75%"><code data-trim>
+case class OutgoingConnection(
+  remoteAddress: InetSocketAddress,
+  localAddress: InetSocketAddress,
+  processor: HttpClientProcessor[Any])
+
+trait HttpClientProcessor[T]
+  extends Consumer[(HttpRequest, T)]
+  with Producer[(HttpResponse, T)]
+				</code></pre>
+      </section>
+
+      <section>
+        <h2>HTTP Request</h2>
+        <pre style="width: 90%"><code data-trim>
+case class HttpRequest(
+  method: HttpMethod = HttpMethods.GET,
+  uri: Uri = Uri./,
+  headers: immutable.Seq[HttpHeader] = Nil,
+  entity: HttpEntity.Regular = HttpEntity.Empty,
+  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
+) extends HttpMessage
+				</code></pre>
+      </section>
+
+      <section>
+        <h2>HTTP Response</h2>
+        <pre style="width: 90%"><code data-trim>
+case class HttpResponse(
+  status: StatusCode = StatusCodes.OK,
+  headers: immutable.Seq[HttpHeader] = Nil,
+  entity: HttpEntity = HttpEntity.Empty,
+  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
+) extends HttpMessage
+				</code></pre>
+      </section>
+
+			<section>
+        <h2>HTTP Entity</h2>
+        <pre style="width: 112%"><code data-trim>
+sealed trait HttpEntity
+object HttpEntity {
+  sealed trait Regular extends HttpEntity
+
+  case class Strict(contentType: ContentType,
+                    data: ByteString) extends Regular
+
+  case class Default(contentType: ContentType, contentLength: Long,
+                     data: Producer[ByteString]) extends Regular
+
+  case class Chunked(contentType: ContentType,
+                     chunks: Producer[ChunkStreamPart]) extends Regular
+
+  case class CloseDelimited(contentType: ContentType,
+                            data: Producer[ByteString]) extends HttpEntity                         
+}
+				</code></pre>
+      </section>      
+
+      <section>
+        <h2>akka-http Module Structure</h2>
+        <ul>
+          <li><emph>akka-http-core</emph>
+            <ul>
+		          <li>HTTP Model (<emph>spray-http</emph>)</li>
+		          <li>Low-level stack (<emph>spray-can</emph>)</li>
+            </ul>
+          </li>
+          <li><emph>akka-http</emph>
+            <ul>
+		          <li>(Un)marshalling, (De)compression (<emph>spray-httpx</emph>)</li>
+		          <li>Routing DSLs (<emph>spray-routing</emph>)</li>
+		          <li>Testkit (<emph>spray-testkit</emph>)</li>
+            </ul>
+          </li>
+          <li>No more <emph>spray-servlet</emph> (for now)</li>
+        </ul>
+      </section>
+
+            <section>
+                <h2>akka-http Roadmap</h2>
+                <ul>
+                    <li><emph>akka-http-core</emph> pre-release (almost) out</li>
+                    <li>Complete <emph>akka-http-core</emph> on top of<br/>
+                        latest Reactive Streams API / <emph>akka-stream</emph></li>
+                    <li>Add <emph>akka-http</emph> module</li>
+                    <li>Add websockets <i class="fa fa-smile-o"></i></li>
+                    <li>Move Play onto <emph>akka-http</emph> (incrementally)</li>
+                </ul>
+            </section>
+
+			<section>
+				  <h2>Resources</h2>
+				  <ul>
+						<li>Main sites &amp; documentation:<br/>
+              <a href="http://akka.io">http://akka.io</a><br/>
+              <a href="http://spray.io">http://spray.io</a><br/>
+							<a href="http://www.reactive-streams.org/">http://www.reactive-streams.org/</a>
+            </li>
+						<li>Mailing lists:<br/>
+              <a href="http://groups.google.com/group/akka-user"> http://groups.google.com/group/akka-user</a><br/>
+							<a href="http://groups.google.com/group/spray-user"> http://groups.google.com/group/spray-user</a>
+            </li>
+						<li>Twitter: <br/>
+							<a href="https://twitter.com/akkateam">@akkateam</a>, <a href="https://twitter.com/sprayio">@sprayio</a></li>
+					</ul>
+				</section>
+
+			<section>
+					<h2>THANK YOU!</h2>
+				</section>
+
+				<section>
+					<h2>Q &amp; A</h2>
+				</section>
+
+
+			<!-- *************************************************************** -->				
+
+			</div>
+
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.min.js"></script>
+
+		<script>
+
+			// Full list of configuration options available here:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				theme: Reveal.getQueryHash().theme || 'sirthias', // available themes are in /css/theme
+				transition: Reveal.getQueryHash().transition || 'fade',
+				transitionSpeed: 'fast',
+
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+				]
+			});
+
+		</script>
+
+	</body>
+</html>

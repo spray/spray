@@ -93,7 +93,7 @@ Unmarshaller.delegate
 ~~~~~~~~~~~~~~~~~~~~~
 
 Sometimes you can save yourself some work by reusing existing Unmarshallers for your custom ones.
-The idea is to "wrap" an existing ``Unmarshaller`` with come logic to "re-target" it to your type.
+The idea is to "wrap" an existing ``Unmarshaller`` with some logic to "re-target" it to your type.
 
 In this regard "wrapping" a ``Unmarshaller`` can mean one or both of the following two things:
 

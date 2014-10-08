@@ -16,8 +16,10 @@
 
 package spray.http
 
+import org.specs2.matcher.{ MatchResult, Expectable, Matcher }
 import org.specs2.mutable.Specification
 import spray.util.UTF8
+import java.nio.charset.Charset
 import Uri._
 
 class UriSpec extends Specification {
@@ -166,21 +168,35 @@ class UriSpec extends Specification {
   "Uri.Path instances" should {
     import Path.Empty
     "be parsed and rendered correctly" in {
-      Path("") === Empty
-      Path("/") === Path./
-      Path("a") === "a" :: Empty
-      Path("//") === Path./ / ""
-      Path("a/") === "a" :: Path./
-      Path("/a") === Path / "a"
-      Path("/abc/de/f") === Path / "abc" / "de" / "f"
-      Path("abc/de/f/") === "abc" :: '/' :: "de" :: '/' :: "f" :: Path./
-      Path("abc///de") === "abc" :: '/' :: '/' :: '/' :: "de" :: Empty
-      Path("/abc%2F") === Path / "abc/"
-      Path("H%C3%A4ll%C3%B6") === """Hällö""" :: Empty
-      Path("/%2F%5C") === Path / """/\"""
-      Path("/:foo:/") === Path / ":foo:" / ""
-      Path("%2520").head === "%20"
-      Path("/foo%20bar") === Path / "foo bar"
+      def roundTripTo(p: Path, cs: Charset = UTF8): Matcher[String] =
+        new Matcher[String] {
+          def apply[S <: String](s: Expectable[S]): MatchResult[S] = {
+            val rendering = p.render(new StringRendering, cs, false).get
+            if (rendering != s.value) failure(s"The path rendered to '$rendering' rather than '${s.value}'", s)
+            else if (Path(s.value, cs) != p) failure(s"The string parsed to '${Path(s.value, cs)}' rather than '$p'", s)
+            else success("<?>", s)
+          }
+        }
+
+      "" must roundTripTo(Empty)
+      "/" must roundTripTo(Path./)
+      "a" must roundTripTo("a" :: Empty)
+      "//" must roundTripTo(Path./ / "")
+      "a/" must roundTripTo("a" :: Path./)
+      "/a" must roundTripTo(Path / "a")
+      "/abc/de/f" must roundTripTo(Path / "abc" / "de" / "f")
+      "abc/de/f/" must roundTripTo("abc" :: '/' :: "de" :: '/' :: "f" :: Path./)
+      "abc///de" must roundTripTo("abc" :: '/' :: '/' :: '/' :: "de" :: Empty)
+      "/abc%2F" must roundTripTo(Path / "abc/")
+      "/:foo:/" must roundTripTo(Path / ":foo:" / "")
+      "/%2520" must roundTripTo(Path / "%20")
+      "/foo%20bar" must roundTripTo(Path / "foo bar")
+      "H%C3%A4ll%C3%B6" must roundTripTo("Hällö" :: Empty)
+      "/%2F%5C" must roundTripTo(Path / """/\""")
+      "/foo%F0%9F%92%A9bar" must roundTripTo(Path / "foo\ud83d\udca9bar")
+      "/%C3%89g%20get%20eti%C3%B0%20gler%20%C3%A1n%20%C3%BEess%20a%C3%B0%20mei%C3%B0a%20mig" must
+        roundTripTo(Path / "Ég get etið gler án þess að meiða mig")
+      "/%00%E4%00%F6%00%FC" must roundTripTo(Path / "äöü", Charset.forName("UTF-16BE"))
     }
     "support the `startsWith` predicate" in {
       Empty startsWith Empty must beTrue
@@ -264,6 +280,18 @@ class UriSpec extends Specification {
       Query(pairs: _*).toList.diff(pairs) === Nil
       Query() === Empty
       Query("k" -> "v") === ("k" -> "v") +: Empty
+    }
+    "encode sub-delims used as query parameter values" in {
+      Query("a" -> "b=c").toString() === "a=b%3Dc"
+      Query("a" -> "b&c").toString() === "a=b%26c"
+      Query("a" -> "b+c").toString() === "a=b%2Bc"
+      Query("a" -> "b;c").toString() === "a=b%3Bc"
+    }
+    "encode sub-delims used as query parameter names" in {
+      Query("a=b" -> "c").toString() === "a%3Db=c"
+      Query("a&b" -> "c").toString() === "a%26b=c"
+      Query("a+b" -> "c").toString() === "a%2Bb=c"
+      Query("a;b" -> "c").toString() === "a%3Bb=c"
     }
   }
 
