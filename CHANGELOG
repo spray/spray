@@ -1,3 +1,51 @@
+Version 1.1.2 (2014-10-08)
+--------------------------
+
+- spray-caching:
+
+  + add API for accessing cache key set
+
+- spray-can:
+
+  + add support for rendering of 'Connection: Upgrade' response header
+  + fix incorrect error message in response parser
+  + prevent URIs with non-http scheme earlier in request-level client API (#879)
+  + add support for `Transfer-Encoding: identity` in server and client (#861)
+  + fix StackOverflowException in spray.can.rendering.toTcpWriteCommand (#877)
+
+- spray-http:
+
+  + fix URI encoding of non-BMP chars
+  + fix `Cache-Control` directives parser (#862)
+  + change Uri.Query rendering to also encode semicolons
+  + add missing alias for `US-ASCII` charset
+  + add q-Value to LanguageRange (#838)
+  + accept comma as cookie separator (#869)
+  + allow `0` as special value `If-Modified-Since` and similar headers (#942)
+  + remove obsolete `LinkDirective` model
+
+- spray-httpx:
+
+  + unwrap `MalformedContent` error in `ResponseTransformation`
+  + add support for new Play twirl with `PlayTwirlSupport` (#887)
+  + change default charset for FormData marshalling to UTF-8
+  + improve encoding of FormData fields
+  + allow encoding of chunked message with empty-entity Chunked*Start (#852)
+  + accept illegal headers in multipart parts as `RawHeader` instances (#859)
+  + make multipart unmarshaller strip Content-Type header (#875)
+
+- spray-routing:
+
+  + fix `listDirectoryContents` not rendering line separators (#831)
+  + fix logging users LDAP passwords on error
+  + fix OSGi import package statement (wrt. spray-caching, spray-can, spray-io and shapeless)
+  + fix UnsupportedOperationException in `PathMatchers.valueMap2PathMatcher`
+
+- spray-util:
+
+  + remove unnecessary reflection in `PimpedRegex::groupCount`
+
+
 Version 1.1.1 (2014-03-14)
 --------------------------
 
