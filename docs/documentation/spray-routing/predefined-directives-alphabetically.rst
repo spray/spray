@@ -114,7 +114,7 @@ Directive                              Description
 :ref:`-onSuccess-`                     "Unwraps" a ``Future[T]`` and runs its inner route after future completion with
                                        the future's value as an extraction of type ``T``
 :ref:`-optionalAuthenticate-`          Tries to authenticate the user with a given authenticator and either extract a
-                                       an object representing the optional user context or rejects
+                                       an object representing the user context, extract `None`, or rejects
 :ref:`-optionalCookie-`                Extracts an ``HttpCookie`` with a given name, if the cookie is not present in the
                                        request extracts ``None``
 :ref:`-optionalHeaderValue-`           Extracts an optional HTTP header value using a given function

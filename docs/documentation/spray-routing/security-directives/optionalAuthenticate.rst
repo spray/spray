@@ -4,7 +4,7 @@ optionalAuthenticate
 ====================
 
 Authenticates a request by checking credentials supplied in the request and extracts a value
-representing the authenticated principal.
+representing the authenticated principal, or `None` if no credentials were supplied.
 
 Signature
 ---------
