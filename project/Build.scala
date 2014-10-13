@@ -182,7 +182,7 @@ object Build extends Build {
       sprayUtil
     )
     .settings(sprayModuleSettings: _*)
-    .settings(libraryDependencies ++= akkaTestKit +: provided(akkaActor, scalatest), addSpecs2("compile"))
+    .settings(libraryDependencies ++= akkaTestKit +: provided(akkaActor, scalatest), addSpecs2("provided"))
 
 
   lazy val sprayUtil = Project("spray-util", file("spray-util"))
