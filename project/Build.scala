@@ -206,7 +206,7 @@ object Build extends Build {
                sprayServlet, sprayTestKit, sprayUtil)
     .settings(SphinxSupport.settings: _*)
     .settings(docsSettings: _*)
-    .settings(libraryDependencies ++= test(akkaActor, sprayJson)) // , json4sNative))
+    .settings(libraryDependencies ++= test(akkaActor, sprayJson), addSpecs2("test")) // , json4sNative))
 
 
   // -------------------------------------------------------------------------------------------------------------------
