@@ -178,7 +178,7 @@ object Build extends Build {
       sprayHttp % "provided",
       sprayHttpx % "provided",
       sprayIO % "provided",
-      sprayRouting % "provided",
+      sprayRoutingShapeless2 % "provided",
       sprayUtil
     )
     .settings(sprayModuleSettings: _*)
@@ -202,7 +202,7 @@ object Build extends Build {
   // -------------------------------------------------------------------------------------------------------------------
 
   lazy val docs = Project("docs", file("docs"))
-    .dependsOn(sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx, sprayIO, sprayRouting,
+    .dependsOn(sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx, sprayIO, sprayRoutingShapeless2,
                sprayServlet, sprayTestKit, sprayUtil)
     .settings(SphinxSupport.settings: _*)
     .settings(docsSettings: _*)
@@ -274,7 +274,7 @@ object Build extends Build {
     .settings(exampleSettings: _*)
 
   lazy val onJetty = Project("on-jetty", file("examples/spray-routing/on-jetty"))
-    .dependsOn(sprayCaching, sprayServlet, sprayRouting, sprayTestKit % "test")
+    .dependsOn(sprayCaching, sprayServlet, sprayRoutingShapeless2, sprayTestKit % "test")
     .settings(jettyExampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
@@ -284,7 +284,7 @@ object Build extends Build {
     )
 
   lazy val onSprayCan = Project("on-spray-can", file("examples/spray-routing/on-spray-can"))
-    .dependsOn(sprayCaching, sprayCan, sprayRouting, sprayTestKit % "test")
+    .dependsOn(sprayCaching, sprayCan, sprayRoutingShapeless2, sprayTestKit % "test")
     .settings(standaloneServerExampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
@@ -293,7 +293,7 @@ object Build extends Build {
     )
 
   lazy val simpleRoutingApp = Project("simple-routing-app", file("examples/spray-routing/simple-routing-app"))
-    .dependsOn(sprayCan, sprayRouting)
+    .dependsOn(sprayCan, sprayRoutingShapeless2)
     .settings(standaloneServerExampleSettings: _*)
     .settings(libraryDependencies ++= compile(akkaActor))
 
