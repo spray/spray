@@ -69,7 +69,8 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
           logRequestResponse(showErrorResponses _) {
             talkCharts("jax14") ~
             talkCharts("msug") ~
-            talkCharts("scala.io") ~
+            talkCharts("scala.io/2013") ~
+            talkCharts("scala.io/2014") ~
             talkCharts("scaladays2014") ~
             talkCharts("webinar") ~
             talkCharts("webinar2014") ~
@@ -181,7 +182,7 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
     }(DirectoryListing.DefaultMarshaller)
 
   def talkCharts(talk: String) =
-    pathPrefix(talk) {
+    pathPrefix(PathMatchers.separateOnSlashes(talk)) {
       pathEnd {
         redirect(s"/$talk/", MovedPermanently)
       } ~
