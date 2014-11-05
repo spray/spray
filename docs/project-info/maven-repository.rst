@@ -16,6 +16,8 @@ Nightly builds are available from http://nightlies.spray.io, to use them add thi
 
   resolvers += "spray nightlies repo" at "http://nightlies.spray.io"
 
+.. _Maven Central: http://search.maven.org/
+
 
 Artifact Naming
 ---------------
