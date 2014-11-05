@@ -17,7 +17,6 @@
 package spray.routing
 package directives
 
-import java.lang.IllegalStateException
 import shapeless._
 
 trait ParameterDirectives extends ToNameReceptaclePimps {
