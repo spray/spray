@@ -20,20 +20,19 @@ import scala.collection.immutable.Queue
 import scala.concurrent.duration.Duration
 import akka.actor.ActorRef
 import akka.spray.RefUtils
+import akka.io.Tcp.NoAck
+import akka.io.Tcp
 import spray.can.rendering.ResponsePartRenderingContext
+import spray.can.server.ServerFrontend.Context
+import spray.util.Timestamp
 import spray.io._
 import spray.http._
-import spray.can.Http
-import spray.can.server.ServerFrontend.Context
-import akka.io.Tcp
-import spray.util.Timestamp
-import akka.io.Tcp.NoAck
 
 private sealed trait OpenRequest {
   def context: ServerFrontend.Context
   def isEmpty: Boolean
   def request: HttpRequest
-  def appendToEndOfChain(openRequest: OpenRequest): OpenRequest
+  def appendToEndOfChain(openRequest: OpenRequest)
   def dispatchInitialRequestPartToHandler(handler: ActorRef)
   def dispatchNextQueuedResponse()
   def checkForTimeout(now: Timestamp)
@@ -72,10 +71,9 @@ private trait OpenRequestComponent { component ⇒
     def context: Context = component.context
     def isEmpty = false
 
-    def appendToEndOfChain(openRequest: OpenRequest): OpenRequest = {
-      nextInChain = nextInChain appendToEndOfChain openRequest
-      this
-    }
+    def appendToEndOfChain(openRequest: OpenRequest) =
+      if (nextInChain.isEmpty) nextInChain = openRequest
+      else nextInChain.appendToEndOfChain(openRequest)
 
     def dispatchInitialRequestPartToHandler(handler: ActorRef): Unit = {
       val requestToDispatch =
@@ -230,11 +228,11 @@ private trait OpenRequestComponent { component ⇒
   }
 
   object EmptyOpenRequest extends OpenRequest {
-    def appendToEndOfChain(openRequest: OpenRequest) = openRequest
+    def appendToEndOfChain(openRequest: OpenRequest) = throw new IllegalStateException
     def context: Context = component.context
     def isEmpty = true
     def request = throw new IllegalStateException
-    def dispatchInitialRequestPartToHandler(handler: ActorRef): Unit = { throw new IllegalStateException }
+    def dispatchInitialRequestPartToHandler(handler: ActorRef): Unit = throw new IllegalStateException
     def dispatchNextQueuedResponse(): Unit = {}
     def checkForTimeout(now: Timestamp): Unit = {}
     def nextIfNoAcksPending = throw new IllegalStateException

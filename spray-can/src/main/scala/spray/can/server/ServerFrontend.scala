@@ -163,9 +163,12 @@ private object ServerFrontend {
 
           def openNewRequest(request: HttpRequest, closeAfterResponseCompletion: Boolean, state: RequestState): Unit = {
             val nextOpenRequest = new DefaultOpenRequest(request, closeAfterResponseCompletion, state)
-            firstOpenRequest = firstOpenRequest appendToEndOfChain nextOpenRequest
+            if (firstOpenRequest.isEmpty) {
+              firstOpenRequest = nextOpenRequest
+              if (firstUnconfirmed.isEmpty) firstUnconfirmed = nextOpenRequest
+              else firstUnconfirmed.appendToEndOfChain(nextOpenRequest)
+            } else firstOpenRequest.appendToEndOfChain(nextOpenRequest)
             nextOpenRequest.dispatchInitialRequestPartToHandler(context.sender)
-            if (firstUnconfirmed.isEmpty) firstUnconfirmed = firstOpenRequest
           }
         }
     }
