@@ -17,8 +17,6 @@
 package spray.routing
 package directives
 
-import java.lang.IllegalStateException
-
 trait ParameterDirectives extends ToNameReceptaclePimps {
 
   /**
