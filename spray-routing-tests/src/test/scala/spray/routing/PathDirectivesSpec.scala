@@ -100,6 +100,18 @@ class PathDirectivesSpec extends RoutingSpec with NoAutoHtmlLinkFragments {
     "reject [/abc]" in test()
     "reject [/2147483648]" in test() // > Int.MaxValue
   }
+  "pathPrefix(CustomShortNumber)" should {
+    object CustomShortNumber extends NumberMatcher[Short](Short.MaxValue, 10) {
+      def fromChar(c: Char) = fromDecimalChar(c)
+    }
+
+    val test = testFor(pathPrefix(CustomShortNumber) { echoCaptureAndUnmatchedPath })
+    "accept [/23]" in test("23:")
+    "accept [/12345yes]" in test("12345:yes")
+    "reject [/]" in test()
+    "reject [/abc]" in test()
+    "reject [/33000]" in test() // > Short.MaxValue
+  }
 
   "pathPrefix(JavaUUID)" should {
     val test = testFor(pathPrefix(JavaUUID) { echoCaptureAndUnmatchedPath })
