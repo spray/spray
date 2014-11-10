@@ -90,8 +90,8 @@ class ResponseParserSpec extends Specification {
             |Content-Length: 17
             |
             |Shake your BOODY!HTTP/1."""
-        } === Seq(InternalServerError, "Shake your BOODY!", List(`Content-Length`(17), Connection("close"),
-          `User-Agent`("curl/7.19.7 xyz")), `HTTP/1.1`, 'close)
+        } === Seq(InternalServerError, "Shake your BOODY!", List(`User-Agent`("curl/7.19.7 xyz"), Connection("close"),
+          `Content-Length`(17)), `HTTP/1.1`, 'close)
       }
 
       "a split response (parsed byte-by-byte)" in {
@@ -104,13 +104,50 @@ class ResponseParserSpec extends Specification {
         rawParse(newParser())(response.toCharArray.map(_.toString)(collection.breakOut): _*) ===
           Seq(OK, "ABCD", List(`Content-Length`(4)), `HTTP/1.1`, 'dontClose)
       }
+
+      "keep the order of possibly duplicated headers" in {
+        parse {
+          """HTTP/1.1 200 OK
+            |Set-Cookie: test=cookie1
+            |Content-Length: 4
+            |Set-Cookie: test=cookie2
+            |User-Agent: curl/7.19.7 xyz
+            |Set-Cookie: test=cookie3
+            |
+            |BODY"""
+        } === Seq(OK, "BODY", List(
+          `Set-Cookie`(HttpCookie("test", "cookie1")),
+          `Content-Length`(4),
+          `Set-Cookie`(HttpCookie("test", "cookie2")),
+          `User-Agent`("curl/7.19.7 xyz"),
+          `Set-Cookie`(HttpCookie("test", "cookie3"))),
+          `HTTP/1.1`, 'dontClose)
+
+        parse {
+          """HTTP/1.1 200 OK
+            |Set-Cookie: test=cookie3
+            |User-Agent: curl/7.19.7 xyz
+            |Set-Cookie: test=cookie2
+            |Content-Length: 4
+            |Set-Cookie: test=cookie1
+            |
+            |BODY"""
+        } === Seq(OK, "BODY", List(
+          `Set-Cookie`(HttpCookie("test", "cookie3")),
+          `User-Agent`("curl/7.19.7 xyz"),
+          `Set-Cookie`(HttpCookie("test", "cookie2")),
+          `Content-Length`(4),
+          `Set-Cookie`(HttpCookie("test", "cookie1"))),
+          `HTTP/1.1`, 'dontClose)
+      }
+
       "a response with a body and a `Transfer-Encoding: identity` header" in {
         parse("""HTTP/1.1 200 Ok
                 |Content-Length: 5
                 |Transfer-Encoding: identity
                 |
                 |Foobs""", "") ===
-          Seq(OK, "Foobs", List(`Transfer-Encoding`("identity"), `Content-Length`(5)), `HTTP/1.1`, 'dontClose)
+          Seq(OK, "Foobs", List(`Content-Length`(5), `Transfer-Encoding`("identity")), `HTTP/1.1`, 'dontClose)
       }
     }
 
@@ -121,7 +158,7 @@ class ResponseParserSpec extends Specification {
           |Server: spray-can
           |
           |"""
-      val startMatch = Seq(OK, List(Server("spray-can"), `Transfer-Encoding`("chunked")), `HTTP/1.1`, 'dontClose)
+      val startMatch = Seq(OK, List(`Transfer-Encoding`("chunked"), Server("spray-can")), `HTTP/1.1`, 'dontClose)
 
       "response start" in {
         parse(start + "rest") === startMatch :+ "Illegal character 'r' in chunk start"
@@ -166,7 +203,7 @@ class ResponseParserSpec extends Specification {
            |"""
       def startMatch(content: String = null)(len: Int = content.length) =
         (if (content == null) List(OK) else List(OK, content)) :::
-          List(List(Server("spray-can"), `Content-Length`(len)), `HTTP/1.1`, 'dontClose)
+          List(List(`Content-Length`(len), Server("spray-can")), `HTTP/1.1`, 'dontClose)
 
       "full response if size < incoming-auto-chunking-threshold-size" in {
         parse(start(1) + "rH") === startMatch("r")()

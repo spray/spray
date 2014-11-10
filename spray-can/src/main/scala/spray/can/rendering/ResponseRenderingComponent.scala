@@ -61,9 +61,9 @@ private[can] trait ResponseRenderingComponent {
               renderHeaders(tail, contentLengthDefined, userContentType = userCT, connHeader)
 
             case x: `Content-Length` ⇒
-              if (contentLengthDefined) { suppressionWarning(x, "another `Content-Length` header was already rendered"); true }
-              else { render(x); true }
-              renderHeaders(tail, true, userContentType, connHeader)
+              if (contentLengthDefined) suppressionWarning(x, "another `Content-Length` header was already rendered")
+              else render(x)
+              renderHeaders(tail, contentLengthDefined = true, userContentType, connHeader)
 
             case `Transfer-Encoding`(_) | Date(_) | Server(_) ⇒
               suppressionWarning(head)
