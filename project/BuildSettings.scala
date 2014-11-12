@@ -130,7 +130,14 @@ object BuildSettings {
   def osgiSettings(exports: Seq[String], imports: Seq[String] = Seq.empty) =
     SbtOsgi.osgiSettings ++ Seq(
       OsgiKeys.exportPackage := exports map { pkg => pkg + ".*;version=\"${Bundle-Version}\"" },
-      OsgiKeys.importPackage <<= scalaVersion { sv => Seq("""scala.*;version="$<range;[==,=+);%s>"""".format(sv)) },
+      OsgiKeys.importPackage <<= scalaVersion { sv =>
+        Seq(CrossVersion.partialVersion(sv) match {
+        case Some((2, scalaMinor)) if scalaMinor >= 11 =>
+          """scala.xml.*;version="$<range;[==,=+);1.0.2>",scala.*;version="$<range;[==,=+);%s>""""
+        case _ =>
+          """scala.*;version="$<range;[==,=+);%s>""""
+        }) map (_.format(sv))
+      },
       OsgiKeys.importPackage ++= imports,
       OsgiKeys.importPackage += "akka.spray.*;version=\"${Bundle-Version}\"",
       OsgiKeys.importPackage += """akka.*;version="$<range;[==,=+);$<@>>"""",
