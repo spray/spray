@@ -32,7 +32,7 @@ All *spray* artifacts follow this naming scheme:
 So, for expressing a dependency on a *spray* module with SBT_ you'll want to add something like this
 to your project settings::
 
-  libraryDependencies += "io.spray" % "spray-can" % "1.0"
+  libraryDependencies += "io.spray" %% "spray-can" % "1.0"
 
 Make sure to replace the artifact name and version number with the one you are targeting! (see :ref:`Current Versions`)
 
