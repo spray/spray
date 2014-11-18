@@ -140,7 +140,7 @@ object BuildSettings {
       },
       OsgiKeys.importPackage ++= imports,
       OsgiKeys.importPackage += "akka.spray.*;version=\"${Bundle-Version}\"",
-      OsgiKeys.importPackage += """akka.*;version="$<range;[==,=+);$<@>>"""",
+      OsgiKeys.importPackage += """akka.*;version="$<range;[==,=+)>"""",
       OsgiKeys.importPackage += "*",
       OsgiKeys.additionalHeaders := Map("-removeheaders" -> "Include-Resource,Private-Package")
     )
