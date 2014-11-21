@@ -82,8 +82,8 @@ class PathDirectivesSpec extends RoutingSpec with NoAutoHtmlLinkFragments {
     val test = testFor(pathPrefix("ab(cd)+".r) { echoCaptureAndUnmatchedPath })
     "reject [/bar]" in test()
     "reject [/ab/cd]" in test()
-    "reject [/abcdef]" in test("cd:ef")
-    "reject [/abcde/fg]" in test("cd:e/fg")
+    "accept [/abcdef]" in test("cd:ef")
+    "accept [/abcde/fg]" in test("cd:e/fg")
   }
 
   "pathPrefix(regex)" should {
@@ -152,40 +152,47 @@ class PathDirectivesSpec extends RoutingSpec with NoAutoHtmlLinkFragments {
     val test = testFor(pathPrefix(separateOnSlashes("a/b")) { echoUnmatchedPath })
     "accept [/a/b]" in test("")
     "accept [/a/b/]" in test("/")
-    "accept [/a/c]" in test()
+    "reject [/a/c]" in test()
   }
   """pathPrefix(separateOnSlashes("abc"))""" should {
     val test = testFor(pathPrefix(separateOnSlashes("abc")) { echoUnmatchedPath })
     "accept [/abc]" in test("")
     "accept [/abcdef]" in test("def")
-    "accept [/ab]" in test()
+    "reject [/ab]" in test()
   }
 
   """pathPrefixTest("a" / Segment ~ Slash)""" should {
     val test = testFor(pathPrefixTest("a" / Segment ~ Slash) { echoCaptureAndUnmatchedPath })
     "accept [/a/bc/]" in test("bc:/a/bc/")
-    "accept [/a/bc]" in test()
-    "accept [/a/]" in test()
+    "reject [/a/bc]" in test()
+    "reject [/a/]" in test()
   }
 
   """pathSuffix("edit" / Segment)""" should {
     val test = testFor(pathSuffix("edit" / Segment) { echoCaptureAndUnmatchedPath })
     "accept [/orders/123/edit]" in test("123:/orders/")
-    "accept [/orders/123/ed]" in test()
-    "accept [/edit]" in test()
+    "reject [/orders/123/ed]" in test()
+    "reject [/edit]" in test()
   }
 
   """pathSuffix("foo" / "bar" ~ "baz")""" should {
     val test = testFor(pathSuffix("foo" / "bar" ~ "baz") { echoUnmatchedPath })
     "accept [/orders/barbaz/foo]" in test("/orders/")
-    "accept [/orders/bazbar/foo]" in test()
+    "reject [/orders/bazbar/foo]" in test()
   }
 
   "pathSuffixTest(Slash)" should {
     val test = testFor(pathSuffixTest(Slash) { echoUnmatchedPath })
     "accept [/]" in test("/")
     "accept [/foo/]" in test("/foo/")
-    "accept [/foo]" in test()
+    "reject [/foo]" in test()
+  }
+
+  """pathSuffixTest(".foo")""" should {
+    val test = testFor(pathSuffixTest(".foo") { echoUnmatchedPath })
+    "reject [/]" in test()
+    "reject [/.foo/]" in test()
+    "accept [/bar/.foo]" in test("/bar/.foo")
   }
 
   """pathPrefix("foo" | "bar")""" in {
