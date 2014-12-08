@@ -1,6 +1,12 @@
 Other Resources
 ===============
 
+Oct 2014: "*Akka HTTP*: Connect to the world" talk from `Scala eXchange 2014`__
+  | Slides: `/scalax/2014/`__
+
+__ http://skillsmatter.com/event/scala/scala-exchange-2014
+__ /scalax/2014/
+
 Oct 2014: "*Akka HTTP*: Connect to the world" talk from `scala.io`__ 2014
   | Slides: `/scala.io/2014/`__
 
