@@ -1,7 +1,13 @@
 Other Resources
 ===============
 
-Oct 2014: "*Akka HTTP*: Connect to the world" talk from `Scala eXchange 2014`__
+Dec 2014: "*Reactive Streams* and *Akka HTTP*" at the `Dutch Scala Enthusiasts`__
+  | Slides: `/duse/`__
+
+__ http://www.meetup.com/Dutch-Scala-Enthusiasts/events/218602810/
+__ /duse/
+
+Dec 2014: "*Akka HTTP*: Connect to the world" talk from `Scala eXchange 2014`__
   | Slides: `/scalax/2014/`__
 
 __ http://skillsmatter.com/event/scala/scala-exchange-2014

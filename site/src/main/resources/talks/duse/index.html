@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Reactive Streams &amp; Akka HTTP</title>
+
+		<meta name="description" content="Reactive Streams &amp; Akka HTTP">
+		<meta name="author" content="Mathias Doenitz">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="stylesheet" href="css/reveal.min.css">
+		<link rel="stylesheet" href="css/theme/sirthias.css" id="theme">
+		<link rel="stylesheet" href="lib/font-awesome/css/font-awesome.css">
+
+		<!-- For syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+		<div class="reveal">
+			<div class="slides">
+
+			<!-- *************************************************************** -->
+
+      <section>
+        <p style="top: -30px; position: relative">
+          <img style="width: 38%" src="lib/akka-logo.svg" alt="akka">
+        </p>
+        <h3 style="top: -20px; position: relative">Reactive Streams &nbsp; &amp; &nbsp; Akka HTTP</h3>
+        <p style="font-size: 0.8em; top: -20px; position: relative">DuSE &mdash; 2014-12-10@Amsterdam</p>
+        <p style="top: -10px; position: relative">
+          <small>Mathias Doenitz &nbsp;
+            <a href="mailto:mathias(at)spray(dot)io"><i class="fa fa-envelope-square"></i></a> /
+            <a href="https://github.com/sirthias"><i class="fa fa-github-square"></i></a> /
+            <a href="http://twitter.com/sirthias"><i class="fa fa-twitter-square"></i></a><br/><br/>
+            This presentation: <a href="http://spray.io/msug/">http://spray.io/duse/</a>
+          </small>
+        </p>
+      </section>
+
+      <section>
+        <h2>PART 1:<br/>Reactive Streams</h2>
+      </section>
+
+      <section>
+        <h2>Our Hardware base is changing!</h2>
+        <div class="fragment">
+          <img style="margin-top: -1em" src="lib/moore.svg" alt="35 years of CPU trends">
+          <div style="position: absolute; margin: -59% 0 0 12%; background-color: #1B2C3D">
+            <span>CPU trends over 35 years</span><br/>
+            <small>Source: <a href="http://www.lanl.gov/orgs/hpc/salishan/salishan2011/3moore.pdf">Chuck Moore</a></small>
+          </div>
+        </div>
+        <div class="fragment" style="position: absolute; margin: -40% 0 0 28%; padding: 0.4em; border: 1px solid #eee8d5; background-color: #1B2C3D">
+          <a href="http://www.gotw.ca/publications/concurrency-ddj.htm">"The free lunch is over!"</a>
+        </div>
+      </section>
+
+      <section>
+        <h2>The new opponent: Amdahl's Law</h2>
+        <img class="fragment" style="width: 70%; margin-top: -1em" src="lib/amdahl.svg" alt="Amdahl's Law">
+        <div class="fragment" style="position: absolute; margin: -43% 0 0 32%; padding: 0.4em; color: #1B2C3D; background-color: #eee8d5; font-weight: bold">
+          Parallelisation is key!
+        </div>
+      </section>
+
+      <section>
+        <h2>Our old tools don't cut it</h2>
+        <ul>
+          <li class="fragment">Threads (programmed directly)
+            <ul>
+              <li>high memory overhead</li>
+              <li>starting/stopping is expensive</li>
+              <li>inter-thread communication entirely left to the user</li>
+            </ul>
+          </li>
+          <li class="fragment">Locks/Mutexes/Semaphores/`synchronized`/`volatile`
+            <ul>
+              <li>too little sync: race conditions, wrong results</li>
+              <li>too much sync: deadlocks, poor performance</li>
+              <li>very hard to use correctly</li>
+            </ul>
+          </li>
+          <h3 class="fragment" style="position: absolute; margin: -30% 0 0 30%; padding: 0.4em; border-top: 2px solid white; border-bottom: 2px solid white; background-color: #1B2C3D; -webkit-transform:rotate(30deg); -moz-transform:rotate(30deg)">Too low-level!</h3>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Selected concurrency abstractions</h2>
+        <img style="width:100%" src="lib/concurrency-abstractions0.svg" alt="Concurrency Abstractions Overview">
+        <img class="fragment" style="position: absolute; width:100%; margin-left: -90%" src="lib/concurrency-abstractions1.svg" alt="Concurrency Abstractions Overview">
+      </section>
+
+      <section>
+        <h2>Reactive Streams Basics</h2>
+        <ul>
+          <li class="no-bullet">What is a stream?</li>
+          <li>Ephemeral flow of data items, commands,<br/>other elements of any kind</li>
+          <li>Focused on describing transformation<br/>and combination/composition</li>
+          <li>Possibly unbounded in size</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Common Uses of Streams</h2>
+        <ul>
+          <li>Bulk data transfer</li>
+          <li>Real-time data sources</li>
+          <li>Batch processing of large data sets</li>
+          <li>Monitoring and analytics</li>
+          <li><strong>Structuring and Scaling Business Logic</strong></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Example: Scaling Logic</h2>
+        <img class="fragment" style="width:90%" src="lib/scaling0.svg" alt="scaling">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/scaling1.svg" alt="scaling">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/scaling2.svg" alt="scaling">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/scaling3.svg" alt="scaling">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/scaling4.svg" alt="scaling">
+        <div class="fragment" style="position: absolute; margin: -28% 0 0 20%; padding: 0.4em; color: #1B2C3D; background-color: #eee8d5; font-weight: bold">
+          Fine-grained Parallelisation is key!
+        </div>
+      </section>
+
+      <section>
+        <h2>Common problem: Backpressure</h2>
+        <img class="fragment" style="width:90%" src="lib/pipeline0.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/pipeline1.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/pipeline2.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/pipeline3.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/pipeline4.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/pipeline5.svg" alt="Backpressure needed">
+      </section>
+
+      <section>
+        <h2>Critical Point: Async Boundary</h2>
+        <img style="width:90%" src="lib/async-boundary0.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary1.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary2.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary3.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary4.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary5.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary6.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary7.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary8.svg" alt="Async Boundary">
+      </section>
+
+      <section>
+        <h2>Async Boundary</h2>
+        <ul>
+          <li>Data elements flow downstream</li>
+          <li>Demand flows upstream</li>
+          <li>Data items flow only when there is demand</li>
+          <li>Recipient is in control of incoming data rate</li>
+          <li>Data in flight is bounded by signaled demand</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Dynamic Push/Pull</h2>
+        <ul>
+          <li>“Push” behavior when consumer is faster</li>
+          <li>“Pull” behavior when producer is faster</li>
+          <li>Switches automatically between these</li>
+          <li>Batching demand allows batching data</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Async Boundaries are Everywhere</h2>
+        <ul>
+          <li>Between actors</li>
+          <li>Between threads</li>
+          <li>Between CPUs</li>
+          <li>Between network nodes</li>
+          <li>Between applications</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Pipeline Processing Done Right</h2>
+        <img style="width:90%" src="lib/right0.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right1.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right2.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right3.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right4.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right5.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right6.svg" alt="Pipeline Done Right">
+      </section>
+
+      <section>
+        <h2>Continuous Pipelines across Machines</h2>
+        <img style="width:90%" src="lib/network0.svg" alt="Multi-machine Pipeline">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/network1.svg" alt="Multi-machine Pipeline">
+      </section>
+
+      <section>
+        <h2>The Reactive Streams Project</h2>
+        <ul>
+          <li class="no-bullet">Participants: Engineers from</li>
+          <li>Netflix</li>
+          <li>Twitter</li>
+          <li>Red Hat</li>
+          <li>Pivotal</li>
+          <li>Typesafe</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Goals</h2>
+        <ul>
+          <li>An common, minimal standard interface<br/>for handing data across async boundaries</li>
+          <li>Complete freedom for many idiomatic APIs</li>
+          <li>Interoperability to make best use of efforts</li>
+          <li>You should be able to say:
+          <pre><code data-trim>
+  twitterStream
+    .produceTo(rxjavaObservable)
+    .produceTo(reactorStream)
+    .produceTo(akkaStream)
+        </code></pre></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Reactive Stream API</h2>
+        <pre style="width: 80%"><code data-trim>
+public interface Publisher&lt;T&gt; {
+  public void subscribe(Subscriber&lt;? super T&gt; s);
+}
+public interface Subscription {
+  public void request(long n);
+  public void cancel();
+}
+public interface Subscriber&lt;T&gt; {
+  public void onSubscribe(Subscription s);
+  public void onNext(T t);
+  public void onError(Throwable t);
+  public void onComplete();
+}
+        </code></pre>
+        <h3 class="fragment" style="position: absolute; margin: -28% 0 0 20%; padding: 0.4em; border-top: 2px solid white; border-bottom: 2px solid white; background-color: #1B2C3D; -webkit-transform:rotate(30deg); -moz-transform:rotate(20deg)">
+          Not for user consumption!<br/>
+          (Use RS Impl Library instead)
+        </h3>
+      </section>
+
+      <section>
+        <h2>akka-stream: basic concepts</h2>
+        <ul>
+          <li>`Source[T]`: the open end of a pipeline producing `T`s</li>
+          <li>`Sink[T]`: an "end-piece" for taking in `T`s</li>
+          <li>`Flow[A, B]`: an unconnected piece of pipeline</li>
+          <li>Generally, all abstractions are re-useable</li>
+          <li>"Materialization":<br/>The process of starting an actual stream instance</li>
+        </ul>
+      </section>
+
+
+      <section>
+        <h2>akka-stream: simple stream example</h2>
+        <pre style="width: 125%;margin-left: -12%"><code data-trim>
+Source(stockTickerPublisher)                 // Source[Tick]
+  .filter(_.symbol == "AAPL")                // Source[Tick]       
+  .buffer(100000, OverflowStrategy.DropHead) // Source[Tick]
+  .splitWhen(x => isNewDay(x.timeStamp))     // Source[Source[Tick]]
+  .headAndTail                               // Source[(Tick, Source[Tick])]
+  .map { case (head, tail) =>
+     head -> tail.groupedWithin(1000, 1.second)
+  }                                          // Source[(Tick, Source[Seq[[Tick]]])]
+  .via(someFlow: Flow[Tick, RichTick])       // Source[RichTick]
+  .map(toCandleStickChart)                   // Source[CandleStickChart]
+  .to(candleStickChartSink)                  // RunnableFlow
+  .run()                                     // MaterializedMap
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>akka-stream: flow graph example</h2>
+        <img style="width:90%" src="lib/flowgraph.svg" alt="Flowgraph">
+        <pre style="width: 80%"><code data-trim>
+FlowGraph { implicit b ⇒
+  val bcast = Broadcast[T]
+  val merge = Merge[T]
+
+  source ~> f1 ~> bcast ~> f2 ~> merge ~> f3 ~> sink
+  bcast ~> f4 ~> merge
+}.run()
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>Reactive Streams: Status</h2>
+        <ul>
+          <li>Reactive Streams API Spec 1.0 almost complete</li>
+          <li>TCK (Technology Compatibility Kit) available</li>
+          <li>Several implementations in various states of progress</li>
+          <li>For Scala: <emph>akka-stream</emph> currently the most idiomatic</li>
+          <li>APIs becoming more stable,<br/>a lot of new ground had to be broken</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>More Q &amp; A</h2>
+      </section>
+
+      <!-- *************************************************************** -->
+
+      <section>
+        <h2>PART 2:<br/>Akka HTTP</h2>
+      </section>
+
+            <section>
+        <h2>Why does Akka need an HTTP module?</h2>
+        <p class="fragment">Isn't this "feature creep"?</p>
+        <p class="fragment">Too high-level?</p>
+        <p class="fragment">Where is the connection to its "actor heart"?</p>
+      </section>
+
+      <section>
+        <h2>Akka</h2>
+        <p>
+          "A toolkit and runtime for building<br/>
+          highly concurrent, distributed, and fault-tolerant<br/>
+          event-driven applications on the JVM"
+        </p>
+        <small>Source: <a href="http://akka.io">http://akka.io</a></small>
+      </section>
+
+      <section>
+        <h2>Akka's Promise</h2>
+        <div style="position: relative">
+          <p>
+            "Build powerful
+            <span style="display:inline-block;position:relative">
+              concurrent
+              <span style="position:absolute;display:inline-block;padding:4px;border-radius:10px;top:-4px;left:-4px;background-color:#eee8d5;color:#1B2C3D;font-weight:bold" class="fragment">concurrent</span>
+              <img class="fragment" style="position: absolute;max-width:none;max-height:none;left:-70%;top:50%" src="lib/callout1.svg" alt="Traditionally hard">            
+            </span>
+            &amp;
+            <span style="display:inline-block;position:relative">
+              distributed
+              <span style="position:absolute;display:inline-block;padding:4px;border-radius:10px;top:-4px;left:-4px;background-color:#eee8d5;color:#1B2C3D;font-weight:bold" class="fragment">distributed</span>
+              <img class="fragment" style="position: absolute;max-width:none;max-height:none;left:30%;top:40%" src="lib/callout2.svg" alt="Even harder!">
+            </span><br/>
+            applications more easily"
+          </p>          
+        </div>
+        <small>Source: <a href="http://akka.io">http://akka.io</a></small>
+      </section>
+
+      <section>
+        <h2>Distribution implies Integration</h2>
+        <ul>
+          <li class="fragment">Between your own (sub-)systems<br>
+            <span class="fragment"><i class="fa fa-long-arrow-right"></i> <emph>akka-remoting</emph> &amp; <emph>akka-cluster</emph></span>
+          </li>
+          <li class="fragment">With other (external) systems<br>
+            <span class="fragment"><i class="fa fa-long-arrow-right"></i>  <emph>akka-http</emph></span>
+          </li>
+          <li class="fragment">HTTP is the most successful<br/>integration protocol to date!</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>akka-http origin: spray.io</h2>
+        <ul>
+          <li>Embeddable HTTP stack<br/>entirely built on Akka actors</li>
+          <li>Focus: HTTP integration layers<br/>
+            rather than web applications</li>
+          <li>Server- and client-side</li>
+          <li>Fully integrated into Typesafe stack<br/>(threadpools, config, debugging, etc.)</li>
+        </ul> 
+      </section>
+
+      <section>
+        <h2>spray features</h2>
+        <ul>
+          <li>Immutable, case-class-based HTTP model</li>
+          <li>Fast, lightweight HTTP client and server</li>
+          <li>Powerful DSL for server-side API definition</li>
+          <li>Fully async &amp; non-blocking,<br/>
+          actor-friendly, modular, testable</li>
+          <li>Scala &amp; actors "all the way through"</li>
+        </ul> 
+      </section>
+
+      <section>
+        <h2>spray weaknesses</h2>
+        <ul>
+          <li>Handling of chunked requests is clunky, incomplete</li>
+          <li>Dealing with large message entities can be difficult</li>
+          <li>High-level routing DSL sometimes unintuitive,</br>
+          some mistakes not caught at compile-time</li>
+          <li>Deep implicit structures, sometimes hard to debug</li>
+          <li>Missing features (e.g. websocket support)</li>
+        </ul> 
+      </section>
+
+      <section>
+        <h2>Proxying Large Responses</h2>
+        <img class="fragment" style="width:90%" src="lib/proxy0.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy1.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy2.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy3.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy4.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy5.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy6.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy7.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy8.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/proxy9.svg" alt="Backpressure needed">
+      </section>
+
+      <section>
+        <h2>akka-http is spray 2.0</h2>
+        <ul>
+          <li>Across-the-board polishing,</br>addressing of weaknesses</li>
+          <li>Java APIs</li>
+          <li>Simplified module structure</li>
+          <li>Core improvement:<br/>
+            Now based on <a href="http://www.reactive-streams.org/">Reactive Streams</a>
+          </li>
+        </ul> 
+      </section>
+
+      <section>
+        <h2>Streams in akka-http</h2>
+        <ul>
+          <li>Requests on one HTTP connection</li>
+          <li>Responses on one HTTP connection</li>
+          <li>Chunks of a chunked message</li>
+          <li>Bytes of a message entity</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>HTTP Stream Interfaces</h2>
+        <img style="width:100%" src="lib/http-streams.svg" alt="Reactive HTTP Streams">
+      </section>
+
+      <section>
+        <h2>HTTP Server API (1/3)</h2>
+        <pre style="width: 105%"><code data-trim>
+def bind(endpoint: InetSocketAddress, ...): Http.ServerBinding
+  
+object Http {
+  trait ServerBinding {
+    def connections: Source[IncomingConnection]
+
+    def localAddress(mm: MaterializedMap): Future[InetSocketAddress]
+
+    def unbind(mm: MaterializedMap): Future[Unit]
+
+    /* ... plus `startHandlingWithXXX(...)` sugar ... */
+  }
+}
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>HTTP Server API (2/3)</h2>
+        <pre style="width: 105%"><code data-trim>
+object Http {
+  trait IncomingConnection {
+    def localAddress: InetSocketAddress
+    def remoteAddress: InetSocketAddress
+
+    def handleWith
+      (handler: Flow[HttpRequest, HttpResponse]): MaterializedMap
+
+    def handleWithSyncHandler
+      (handler: HttpRequest ⇒ HttpResponse): MaterializedMap
+
+    def handleWithAsyncHandler
+      (handler: HttpRequest ⇒ Future[HttpResponse]): MaterializedMap
+  }
+}
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>HTTP Server API (3/3)</h2>
+        <pre style="width: 70%"><code data-trim>
+/**
+ * Transforms a given HTTP-level server Flow
+ * into a lower-level TCP transport flow.
+ */
+def serverFlowToTransport(
+  serverFlow: Flow[HttpRequest, HttpResponse],
+  ...): Flow[ByteString, ByteString]
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>Simple HTTP Server</h2>
+        <pre style="width: 85%"><code data-trim>
+val binding = Http().bind("localhost", 8080)
+
+binding startHandlingWithSyncHandler {
+
+  case HttpRequest(GET, Uri.Path("/ping"), _, _, _) ⇒
+    HttpResponse(entity = "PONG!")
+
+  case _ ⇒ // catch all
+    HttpResponse(404, entity = "Unknown resource!")
+}
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>Basic HTTP Client API (1/2)</h2>
+        <pre style="width: 105%"><code data-trim>
+def outgoingConnection(endpoint: InetSocketAddress, ...)
+  : Http.OutgoingConnection
+
+object Http {
+  trait OutgoingConnection {
+    def remoteAddress: InetSocketAddress
+    def localAddress(mm: MaterializedMap): Future[InetSocketAddress]
+    def flow: Flow[HttpRequest, HttpResponse]
+  }
+}
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>Basic HTTP Client API (2/2)</h2>
+        <pre style="width: 80%"><code data-trim>
+/**
+ * Transforms the given low-level TCP client transport
+ * Flow into a higher-level HTTP client flow.
+ */
+  def transportToConnectionClientFlow(
+    transport: Flow[ByteString, ByteString],
+    ...): Flow[HttpRequest, HttpResponse]
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>HTTP model</h2>
+        <ul>
+          <li>`case class`-based data model</li>
+          <li>High-level abstractions for most things HTTP</li>
+          <li>Fully immutable, little logic</li>
+          <li>Predefines common media types, status codes, encodings, charsets, cache-control directives, etc.</li>
+          <li>Open for extension (e.g. custom media types)</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>HTTP Request</h2>
+        <pre style="width: 75%"><code data-trim>
+case class HttpRequest(
+  method: HttpMethod = HttpMethods.GET,
+  uri: Uri = Uri./,
+  headers: immutable.Seq[HttpHeader] = Nil,
+  entity: RequestEntity = HttpEntity.Empty,
+  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
+) extends HttpMessage
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>HTTP Response</h2>
+        <pre style="width: 75%"><code data-trim>
+case class HttpResponse(
+  status: StatusCode = StatusCodes.OK,
+  headers: immutable.Seq[HttpHeader] = Nil,
+  entity: ResponseEntity = HttpEntity.Empty,
+  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
+) extends HttpMessage
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>HTTP model: Uri</h2>
+        <pre style="width: 70%"><code data-trim>
+case class Uri(             // proper RFC 3986
+  scheme: String,           // compliant,
+  authority: Authority,     // immutable
+  path: Path,               // URI model
+  query: Query,             // with a fast,
+  fragment: Option[String]) // custom parser
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>HTTP Entity (1/2)</h2>
+        <pre style="width: 80%"><code data-trim>
+sealed trait HttpEntity
+
+sealed trait ResponseEntity extends HttpEntity
+
+sealed trait RequestEntity extends ResponseEntity
+
+// can be used for any message (request or response)
+type MessageEntity = RequestEntity
+
+sealed trait BodyPartEntity extends HttpEntity
+
+// can be used for messages as well as bodyparts
+sealed trait UniversalEntity extends HttpEntity
+        </code></pre>
+      </section>      
+
+      <section>
+        <h2>HTTP Entity (2/2)</h2>
+        <pre style="width: 105%"><code data-trim>
+object HttpEntity {
+  case class Strict(contentType: ContentType,
+    data: ByteString) extends UniversalEntity
+
+  case class Default(contentType: ContentType, contentLength: Long,
+    data: Source[ByteString]) extends UniversalEntity
+
+  case class Chunked(contentType: ContentType,
+    chunks: Source[ChunkStreamPart]) extends MessageEntity
+
+  case class CloseDelimited(contentType: ContentType,
+    data: Source[ByteString]) extends ResponseEntity
+  
+  case class IndefiniteLength(contentType: ContentType,
+    data: Source[ByteString]) extends BodyPartEntity                         
+}
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>Exemplary HTTP Headers</h2>
+        <pre style="width: 115%"><code data-trim>
+case class `Accept-Charset`(charsetRanges: immutable.Seq[HttpCharsetRange])
+  extends HttpHeader
+
+case class `Cache-Control`(directives: immutable.Seq[CacheDirective])
+  extends HttpHeader
+
+case class `Set-Cookie`(cookie: HttpCookie)
+  extends HttpHeader
+
+case class RawHeader(name: String, value: String)
+  extends HttpHeader
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>The Application Stack</h2>
+        <img width="50%" src="lib/io-stack.svg" alt="stack">
+      </section>
+
+      <section>
+        <h2>akka-io</h2>
+        <ul>
+          <li>Bridges the gap between Java NIO<br/>and Akka actors / streams</li>
+          <li>Provides both msg-based<br/>as well as stream-based API</li>
+          <li>Supports TCP, UDP and SSL/TLS</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>akka-http-core</h2>
+        <ul>
+          <li>Directly sits on top of Akka IO</li>
+          <li>Performs TCP <i class="fa fa-arrows-h"></i> HTTP "translation"</li>
+          <li>Cleanly separated layer of stream trans-<br/>
+            formations provided as an Akka Extension</li>
+          <li>Implements HTTP "essentials",<br/>
+            no higher-level features (like file serving)</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>akka-http</h2>
+        <ul>
+          <li class="no-bullet">Provides higher-level server- and client-side APIs</li>
+          <li>"Unmarshalling" custom types from HttpEntities</li>
+          <li>"Marshalling" custom types to HttpEntities</li>
+          <li>(De)compression (GZip / Deflate)</li>
+          <li>Routing DSLs</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Server-Side Routing DSL</h2>
+        <ul>
+          <li>Internal DSL for the interface<br/>layer to the application</li>
+          <li>Type-safe, yet flexible</li>
+          <li>Much more than just routing:<br/>behavior definition</li>
+          <li>Small and simple building blocks: directives</li>
+          <li>Highly composable</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Server-Side API Layer: Overview</h2>
+        <img class="fragment" style="width:80%" src="lib/api0.svg" alt="application">
+        <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="lib/api1.svg" alt="API layer">
+        <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="lib/api2.svg" alt="API layer">
+        <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="lib/api3.svg" alt="API layer">
+        <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="lib/api4.svg" alt="API layer">
+        <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="lib/api5.svg" alt="API layer">
+        <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="lib/api6.svg" alt="API layer">
+      </section>
+
+      <section>
+        <h2>API Layer Responsibilities</h2>
+        <ul>
+          <li>Request routing based on method, path, query, entity</li>
+          <li>(Un)marshalling to / from domain objects</li>
+          <li>Encoding / decoding (compression)</li>
+          <li>Authentication / authorization</li>
+          <li>Caching and serving static content</li>
+          <li>RESTful error handling</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Routing DSL: show me code</h2>
+        <pre style="width: 70%"><code data-trim>
+import Directives._
+
+val binding = Http().bind("localhost", 8080)
+
+binding startHandlingWith {
+  path("order" / HexIntNumber) { id =>
+    get {
+      complete(s"Received GET for order $id")
+    } ~
+    put {
+      complete(s"Received PUT for order $id")
+    }
+  }
+}
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>Predefined Directives (1.0-M1)</h2>
+        <p style="font-size: 55%">authorize, cancelRejection, cancelRejections, complete, completeOrRecoverWith, completeWith, compressResponse, compressResponseIfRequested, conditional, cookie, decodeRequest, decompressRequest, delete, deleteCookie, deleteCookie, encodeResponse, entity, extract, extractExecutionContext, extractFlowMaterializer, extractHost, extractLog, extractRequest, extractScheme, extractSettings, extractUnmatchedPath, extractUri, failWith, formField, formFields, get, getFromBrowseableDirectories, getFromBrowseableDirectory, getFromDirectory, getFromFile, getFromResource, getFromResourceDirectory, handleExceptions, handleRejections, handleWith, head, headerValue, headerValueByName, headerValueByType, headerValuePF, host, listDirectoryContents, logRequest, logRequestResult, logResult, mapInnerRoute, mapRejections, mapRequest, mapRequestContext, mapResponse, mapResponseEntity, mapResponseHeaders, mapRouteResult, mapRouteResultFuture, mapRouteResultPF, mapRouteResultWith, mapRouteResultWithPF, mapSettings, mapUnmatchedPath, method, onComplete, onSuccess, optionalCookie, optionalHeaderValue, optionalHeaderValueByName, optionalHeaderValueByType, optionalHeaderValuePF, options, overrideMethodWithParameter, overrideStatusCode, parameter, parameterMap, parameterMultiMap, parameters, parameterSeq, pass, patch, path, pathEnd, pathEndOrSingleSlash, pathPrefix, pathPrefixTest, pathSingleSlash, pathSuffix, pathSuffixTest, post, provide, put, rawPathPrefix, rawPathPrefixTest, recoverRejections, recoverRejectionsWith, redirect, reject, reject, requestEncodedWith, respondWithDefaultHeader, respondWithDefaultHeaders, respondWithHeader, respondWithHeaders, responseEncodingAccepted, scheme, setCookie, textract, tprovide, withExecutionContext, withFlowMaterializer, withLog, withRangeSupport, withSettings</p>
+      </section>
+
+      <section>
+        <h2>Real-World Example (spray)</h2>
+        <pre style="font-size: 45%"><code data-trim>
+lazy val route =
+  encodeResponse(Gzip) {
+    pathEndOrSingleSlash {
+      get {
+        redirect("/doc")
+      }
+    } ~
+    pathPrefix("api") {
+      path("top-articles") {
+        get {
+          parameter("max".as[Int]) { max =>
+            validate(max >= 0, "query parameter 'max' must be >= 0") {
+              complete {
+                (topArticlesService ? max).mapTo[Seq[Article]]
+              }
+            }
+          }
+        }
+      } ~
+      tokenAuthenticate { user =>
+        path("ranking") {
+          get {
+            countAndTime(user, "ranking") {
+              parameters("fixed" ? 0, "mobile" ? 0, "sms" ? 0, "mms" ? 0,
+                         "data" ? 0).as(RankingDescriptor) { descr =>
+                complete {
+                  (rankingService ? Ranking(descr)).mapTo[RankingResult]
+                }
+              }
+            }
+          }
+        } ~
+        path("accounts") {
+          post {
+            authorize(user.isAdmin) {
+              entity(as[AccountDetails]) { details =>
+                complete {
+                  (accountService ? NewAccount(details)).mapTo[OpResult]
+                }
+              }
+            }
+          }
+        } ~
+        path("account" / IntNumber) { accountId =>
+          get { ... } ~
+          put { ... } ~
+          delete { ... }
+        }
+      }
+    } ~
+    pathPrefix("v1") {
+      proxyToDjango
+    } ~
+    pathPrefix("doc") {
+      respondWithHeader(`Cache-Control`(`max-age`(3600))) {
+        transformResponse(_.withContentTransformed(markdown2Html)) {
+          getFromResourceDirectory("doc/root",
+                                   pathRewriter = appendFileExt)
+        }
+      }
+    } ~
+  } ~
+  cacheIfEnabled {
+    encodeResponse(Gzip) {
+      getFromResourceDirectory("public")
+    }
+  }
+      </code></pre>
+      </section>
+
+      <section>
+        <h2>Best Practices</h2>
+        <ul>
+          <li>Keep route structure clean and readable, <br/>
+            pull out all logic into custom directives</li>
+          <li>Don’t let API layer leak into application</li>
+          <li>Use (Un)marshalling infrastructure</li>
+          <li>Think about error handling/reporting<br/>right from the start</li>
+          <li>Use <a href="https://github.com/spray/sbt-revolver‎">sbt-revolver</a> for fast dev turn-around</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>There is more...</h2>
+        <ul>
+          <li>Testing routes</li>
+          <li>client-side APIs</li>
+          <li>JSON support</li>
+          <li>...</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>akka-http Roadmap</h2>
+        <ul class="roadmap">
+          <li><b class="c315"></b>Agree and specify <emph>Reactive Streams</emph> API</li>
+          <li><b class="c315"></b>Finish initial release of new akka modules
+            <ul class="roadmap">
+              <li><b class="c315"></b>akka-stream</li>
+              <li><b class="c315"></b>akka-http-core (client- &amp; server-side)</li>
+              <li><b class="c315"></b>akka-http (server-side)</li>
+              <li><b class="c045"></b>akka-http (client-side)</li>
+            </ul>
+          </li>
+          <li><b class="c000"></b>Add websockets support (client- &amp; server-side)</li>
+          <li><b class="c090"></b>Move Play onto <emph>akka-http</emph> (incrementally)</li>
+        </ul>
+      </section>
+
+      
+      <section>
+        <h2>Thank You!</h2>
+      </section>
+
+      <section>
+        <h2>More Q &amp; A</h2>
+      </section>
+
+      <!-- *************************************************************** -->
+
+			</div>
+
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.min.js"></script>
+
+		<script>
+
+			// Full list of configuration options available here:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				theme: Reveal.getQueryHash().theme || 'sirthias', // available themes are in /css/theme
+				transition: Reveal.getQueryHash().transition || 'fade',
+				transitionSpeed: 'fast',
+
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
