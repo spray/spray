@@ -8,6 +8,7 @@ __ http://www.meetup.com/Dutch-Scala-Enthusiasts/events/218602810/
 __ /duse/
 
 Dec 2014: "*Akka HTTP*: Connect to the world" talk from `Scala eXchange 2014`__
+  | Video: https://skillsmatter.com/skillscasts/5852-rest-on-akka-connect-to-the-world
   | Slides: `/scalax/2014/`__
 
 __ http://skillsmatter.com/event/scala/scala-exchange-2014
