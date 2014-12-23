@@ -11,8 +11,8 @@ Signature
 
 ::
 
-    def encoderResponse(encoder: Encoder)(implicit refFactory: ActorRefFactory): Directive0
-    def encoderResponse(encoder: Encoder, threshold: Long, maxChunkSize: Long)
+    def encodeResponse(encoder: Encoder)(implicit refFactory: ActorRefFactory): Directive0
+    def encodeResponse(encoder: Encoder, threshold: Long, maxChunkSize: Long)
                        (implicit refFactory: ActorRefFactory): Directive0
 
 The signature shown is simplified, the real signature uses magnets. [1]_
