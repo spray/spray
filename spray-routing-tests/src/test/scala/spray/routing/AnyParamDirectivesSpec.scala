@@ -69,6 +69,28 @@ class AnyParamDirectivesSpec extends RoutingSpec {
     }
   }
 
+  "when used with a single parameter with default value" should {
+    val route = anyParam("x" ? "default") { echoComplete }
+
+    "extract the parameter from query parameters" in {
+      Get("/test?x=specified") ~> route ~> check {
+        responseAs[String] === "specified"
+      }
+    }
+
+    "extract the parameter from form" in {
+      Post("/test", FormData(Map("x" -> "specified"))) ~> route ~> check {
+        responseAs[String] === "specified"
+      }
+    }
+
+    "extract default parameter value" in {
+      Get("/test") ~> route ~> check {
+        responseAs[String] === "default"
+      }
+    }
+  }
+
   "when used with two required parameters" should {
     val route = (path("test") & anyParam("x", "y")) { echoComplete2 }
 
