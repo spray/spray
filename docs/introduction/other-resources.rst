@@ -1,6 +1,26 @@
 Other Resources
 ===============
 
+Feb 2015: "*REST on Akka: Connect to the World*" at `Jfokus 2015`__
+  | Slides: `/jfokus/`__
+
+__ http://jfokus.se/
+__ /jfokus/
+
+
+Jan 2015: "*Akka HTTP — The What, Why and How*" at `NEScala 2015`__
+  | Slides: `/nescala2015/`__
+
+__ http://nescala.org/
+__ /nescala2015/
+
+Jan 2015: "*Reactive Streams* and *Akka HTTP*" at the `Vienna Scala User Group`__
+  | Slides: `/vienna/`__
+
+__ http://www.meetup.com/scala-vienna/
+__ /vienna/
+
+
 Dec 2014: "*Reactive Streams* and *Akka HTTP*" at the `Dutch Scala Enthusiasts`__
   | Slides: `/duse/`__
 

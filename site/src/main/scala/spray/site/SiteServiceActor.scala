@@ -69,11 +69,15 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
           logRequestResponse(showErrorResponses _) {
             talkCharts("jax14") ~
             talkCharts("duse") ~
+            talkCharts("jfokus") ~
             talkCharts("msug") ~
+            talkCharts("nescala2015") ~
+            talkCharts("nescala2015/rs") ~
             talkCharts("scala.io/2013") ~
             talkCharts("scala.io/2014") ~
             talkCharts("scaladays2014") ~
             talkCharts("scalax/2014") ~
+            talkCharts("vienna") ~
             talkCharts("webinar") ~
             talkCharts("webinar2014") ~
             talkCharts("wjax") ~
