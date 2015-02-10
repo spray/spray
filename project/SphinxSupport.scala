@@ -93,7 +93,7 @@ object SphinxSupport {
       DirectivesGroup(name, directives)
     }
     def directivesGroupName(name: String): String =
-      name.split("(?=[A-Z])").drop(1).dropRight(1).map(_.toLowerCase).mkString("-")
+      name.split("(?=[A-Z])").filter(_.nonEmpty).dropRight(1).map(_.toLowerCase).mkString("-")
 
     def writeGroup(group: DirectivesGroup): Unit = {
       fw.write("  {\n    \"group\": \"")
