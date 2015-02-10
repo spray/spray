@@ -206,12 +206,12 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
             response = ChunkedResponseStart(HttpResponse(entity = "Yahoooo", headers = List(`Content-Length`(1000))))) === result {
               // no Connection: close header
               """HTTP/1.1 200 OK
-              |Server: spray-can/1.0.0
-              |Date: Thu, 25 Aug 2011 09:10:29 GMT
-              |Content-Length: 1000
-              |Content-Type: text/plain; charset=UTF-8
-              |
-              |Yahoooo"""
+                |Server: spray-can/1.0.0
+                |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                |Content-Length: 1000
+                |Content-Type: text/plain; charset=UTF-8
+                |
+                |Yahoooo"""
             } -> false
           // but connection will still have to be closed afterwards
           render(ChunkedMessageEnd) === result("") -> true
@@ -219,9 +219,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
 
       "a chunkless response chunk" in new TestSetup(chunklessStreaming = true) {
         render(response = MessageChunk(HttpData("body123".getBytes),
-          """key=value;another="tl;dr"""")) === result {
-          "body123"
-        } -> false
+          """key=value;another="tl;dr"""")) === result("body123") -> false
       }
 
       "a chunkless final response chunk" in new TestSetup(chunklessStreaming = true) {
