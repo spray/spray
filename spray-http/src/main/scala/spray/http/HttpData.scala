@@ -378,7 +378,10 @@ object HttpData {
           append(x)
       }
 
-    def clear(): Unit = b.clear()
+    def clear(): Unit = {
+      b.clear()
+      _byteCount = 0
+    }
 
     def result(): HttpData =
       b.result().foldRight(Empty: HttpData) {
