@@ -45,28 +45,10 @@ trait AnyParamDefMagnet {
 }
 
 object AnyParamDefMagnet {
-  private type APDM2Tuple1[T] = AnyParamDefMagnet2[Tuple1[T]]
-
-  private def apply[T](value: T)(implicit apdm2Tuple1: APDM2Tuple1[T]) =
+  implicit def apply[T](value: T)(implicit apdm2: AnyParamDefMagnet2[T]) =
     new AnyParamDefMagnet {
-      type Out = apdm2Tuple1.Out
-      def apply() = apdm2Tuple1(Tuple1(value))
-    }
-
-  implicit def forString[T <: String](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
-  implicit def forSymbol[T <: Symbol](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
-  implicit def forNR[T <: NameReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
-  implicit def forNDesR[T <: NameDeserializerReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
-  implicit def forNDefR[T <: NameDefaultReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
-  implicit def forNDesDefR[T <: NameDeserializerDefaultReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
-
-  implicit def forRVR[T <: RequiredValueReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
-  implicit def forRVDR[T <: RequiredValueDeserializerReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
-
-  implicit def forTuple[T <: Product](value: T)(implicit apdm21: AnyParamDefMagnet2[T]) =
-    new AnyParamDefMagnet {
-      type Out = apdm21.Out
-      def apply() = apdm21(value)
+      type Out = apdm2.Out
+      def apply() = apdm2(value)
     }
 }
 
@@ -79,33 +61,65 @@ object AnyParamDefMagnet2 {
   import FieldDefMagnet2.FieldDefMagnetAux
   import ParamDefMagnet2.ParamDefMagnetAux
 
-  implicit def forTuple[T <: Product, L <: HList, Out](implicit hla: HListerAux[T, L],
-                                                       apdma: AnyParamDefMagnet2[L]) =
-    new AnyParamDefMagnet2[T] {
-      def apply(value: T) = apdma(hla(value))
-      type Out = apdma.Out
-    }
+  private type FDMA[A, B] = FieldDefMagnetAux[A, B]
+  private type PDMA[A, B] = ParamDefMagnetAux[A, B]
+  private type APDM[A, B] = AnyParamDefMagnet2[A] { type Out = B }
+  def APDM[A, B](f: A ⇒ B) = new AnyParamDefMagnet2[A] { type Out = B; def apply(a: A) = f(a) }
+
+  private def extractAnyParam[A, B](f: A ⇒ Directive1[B]) = APDM[A, Directive1[B]](f)
+
+  private def anyParamWrapper[A, B](a: A)(implicit fdma: FDMA[A, Directive1[B]], pdma: PDMA[A, Directive1[B]]): Directive1[B] = {
+    // handle optional params
+    // see https://groups.google.com/forum/?fromgroups=#!topic/spray-user/HGEEdVajpUw
+    fdma(a).hflatMap {
+      case None :: HNil ⇒ pdma(a)
+      case x            ⇒ BasicDirectives.hprovide(x)
+    } | pdma(a)
+  }
+
+  private def anyParamDefaultWrapper[A, B](a: A, default: ⇒ B)(implicit fdma: FDMA[A, Directive1[B]], pdma: PDMA[A, Directive1[B]]): Directive1[B] =
+    anyParamWrapper(a).hflatMap {
+      case None :: HNil ⇒ BasicDirectives.provide(default)
+      case x            ⇒ BasicDirectives.hprovide(x)
+    } | BasicDirectives.provide(default)
+
+  implicit def forString(implicit fdma: FDMA[String, Directive1[String]],
+                         pdma: PDMA[String, Directive1[String]]) = extractAnyParam[String, String](anyParamWrapper(_))
+
+  implicit def forSymbol(implicit fdma: FDMA[Symbol, Directive1[String]],
+                         pdma: PDMA[Symbol, Directive1[String]]) = extractAnyParam[Symbol, String](anyParamWrapper(_))
+
+  implicit def forNR[T](implicit fdma: FDMA[NameReceptacle[T], Directive1[T]],
+                        pdma: PDMA[NameReceptacle[T], Directive1[T]]) = extractAnyParam[NameReceptacle[T], T](anyParamWrapper(_))
+
+  implicit def forNDefR[T](implicit fdma: FDMA[NameReceptacle[T], Directive1[T]],
+                           pdma: PDMA[NameReceptacle[T], Directive1[T]]) =
+    extractAnyParam[NameDefaultReceptacle[T], T](t ⇒ anyParamDefaultWrapper(NameReceptacle[T](t.name), t.default))
+
+  implicit def forNDesR[T](implicit fdma: FDMA[NameDeserializerReceptacle[T], Directive1[T]],
+                           pdma: PDMA[NameDeserializerReceptacle[T], Directive1[T]]) =
+    extractAnyParam[NameDeserializerReceptacle[T], T](anyParamWrapper(_))
+
+  implicit def forNDesDefR[T](implicit fdma: FDMA[NameDeserializerReceptacle[T], Directive1[T]],
+                              pdma: PDMA[NameDeserializerReceptacle[T], Directive1[T]]) =
+    extractAnyParam[NameDeserializerDefaultReceptacle[T], T](t ⇒ anyParamDefaultWrapper(NameDeserializerReceptacle[T](t.name, t.deserializer), t.default))
+
+  implicit def forRVR[T](implicit fdma: FDMA[RequiredValueReceptacle[T], Directive1[T]],
+                         pdma: PDMA[RequiredValueReceptacle[T], Directive1[T]]) =
+    extractAnyParam[RequiredValueReceptacle[T], T](anyParamWrapper(_))
+
+  implicit def forRVDR[T](value: T)(implicit fdma: FDMA[RequiredValueDeserializerReceptacle[T], Directive1[T]],
+                                    pdma: PDMA[RequiredValueDeserializerReceptacle[T], Directive1[T]]) =
+    extractAnyParam[RequiredValueDeserializerReceptacle[T], T](anyParamWrapper(_))
+
+  implicit def forTuple[T <: Product, L <: HList, Out0](implicit hla: HListerAux[T, L], pdma: APDM[L, Out0]) =
+    APDM[T, Out0](tuple ⇒ pdma(hla(tuple)))
 
   implicit def forHList[L <: HList](implicit f: LeftFolder[L, Directive0, MapReduce.type]) =
-    new AnyParamDefMagnet2[L] {
-      type Out = f.Out
-      def apply(value: L) = {
-        value.foldLeft(BasicDirectives.noop)(MapReduce)
-      }
-    }
+    APDM[L, f.Out](_.foldLeft(BasicDirectives.noop)(MapReduce))
 
   object MapReduce extends Poly2 {
-    implicit def from[T, LA <: HList, LB <: HList, Out <: HList](implicit fdma: FieldDefMagnetAux[T, Directive[LB]],
-                                                                 pdma: ParamDefMagnetAux[T, Directive[LB]],
-                                                                 ev: PrependAux[LA, LB, Out]) = {
-
-      // see https://groups.google.com/forum/?fromgroups=#!topic/spray-user/HGEEdVajpUw
-      def fdmaWrapper(t: T): Directive[LB] = fdma(t).hflatMap {
-        case None :: HNil ⇒ pdma(t)
-        case x            ⇒ BasicDirectives.hprovide(x)
-      }
-
-      at[Directive[LA], T] { (a, t) ⇒ a & (fdmaWrapper(t) | pdma(t)) }
-    }
+    implicit def from[T, LA <: HList, LB <: HList, Out <: HList](implicit pdma: APDM[T, Directive[LB]], ev: PrependAux[LA, LB, Out]) =
+      at[Directive[LA], T] { (a, t) ⇒ a & pdma(t) }
   }
 }

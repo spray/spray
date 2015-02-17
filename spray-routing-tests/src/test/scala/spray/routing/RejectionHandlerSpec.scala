@@ -30,7 +30,7 @@ class RejectionHandlerSpec extends RoutingSpec {
   val wrap = handleRejections(RejectionHandler.Default)
 
   "The default RejectionHandler" should {
-    "respond with Forbidden for requests resulting in an AuthenticationFailedRejection" in {
+    "respond with Unauthorized for requests resulting in an AuthenticationFailedRejection" in {
       Get() ~> Authorization(BasicHttpCredentials("bob", "")) ~> wrap {
         authenticate(BasicAuth()) { _ ⇒ completeOk }
       } ~> check {

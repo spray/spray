@@ -59,8 +59,8 @@ the majority of which are defined in the `spray.can.Http`_ object.
 .. _spray.can.Http: https://github.com/spray/spray/blob/release/1.2/spray-can/src/main/scala/spray/can/Http.scala#L31
 
 
-Starting and Stopping
----------------------
+Starting
+--------
 
 A *spray-can* HTTP server is started by sending an ``Http.Bind`` command to the ``Http`` extension:
 
@@ -75,9 +75,24 @@ The sender of the ``Http.Bind`` command (e.g. an actor you have written) will re
 the HTTP layer has successfully started the server at the respective endpoint. In case the bind fails (e.g. because
 the port is already busy) an ``Http.CommandFailed`` message is dispatched instead.
 
-The sender of the ``Http.Bound`` confirmation event is *spray-can*'s ``HttpListener`` instance, which you can dispatch
-an ``Http.Unbind`` command to if you'd like to explicitly stop the server at some later point. In analogy to the bind
-an ``Http.Unbind`` command is confirmed with a subsequent ``Http.Unbound`` event after successful completion.
+The sender of the ``Http.Bound`` confirmation event is *spray-can*'s ``HttpListener`` instance. You will need this
+``ActorRef`` if you want to stop the server later.
+
+
+Stopping
+--------
+
+To explicitly stop the server, send an ``Http.Unbind`` command to the ``HttpListener`` instance (the ``ActorRef``
+for this instance is available as the sender of the ``Http.Bound`` confirmation event from when the server
+was started).
+
+The listener will reply with an ``Http.Unbound`` event after successfully unbinding from the port (or with
+an ``Http.CommandFailed`` in the case of error). At that point no further requests will be accepted by the
+server.
+
+Any requests which were in progress at the time will proceed to completion. When the last request has terminated,
+the ``HttpListener`` instance will exit. You can monitor for this (e.g. so that you can shutdown the ``ActorSystem``)
+by watching the listener actor and awaiting a ``Terminated`` message.
 
 
 Message Protocol

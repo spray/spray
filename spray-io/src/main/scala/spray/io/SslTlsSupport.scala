@@ -310,8 +310,13 @@ object SslTlsSupport {
                     engine.closeOutbound() // when the inbound side is done we immediately close the outbound side as well
                     encrypt(tempBuf) // and continue pumping (until both sides are done or we have a BUFFER_UNDERFLOW)
                   }
-                case BUFFER_UNDERFLOW ⇒ // too few inbound data, stop "pumping"
-                case BUFFER_OVERFLOW  ⇒ throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
+                case BUFFER_UNDERFLOW ⇒
+                  result.getHandshakeStatus match {
+                    case FINISHED | NEED_WRAP          ⇒ encrypt(tempBuf)
+                    case NOT_HANDSHAKING | NEED_UNWRAP ⇒ // too few inbound data, stop "pumping"
+                    case NEED_TASK                     ⇒ runDelegatedTasks(); apply(tempBuf)
+                  }
+                case BUFFER_OVERFLOW ⇒ throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
               }
             }
           }

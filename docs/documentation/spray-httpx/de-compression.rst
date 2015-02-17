@@ -6,8 +6,13 @@ The `HTTP spec`_ defines a ``Content-Encoding`` header, which signifies whether 
 text), are compression algorithms.
 
 Currently *spray* supports the compression and decompression of HTTP requests and responses with the ``gzip`` or
-``deflate`` encodings. The core logic for this, which is shared by the :ref:`spray-client` and :ref:`spray-routing`
+``deflate`` encodings.
+The core logic for this, which is shared by the :ref:`spray-client` and :ref:`spray-routing`
 modules for the client- and server-side (respectively), lives in the `spray.httpx.encoding`_ package.
+
+The support is not enabled by default, but must be explicitly requested.
+For server configuration, see :ref:`WhenToUseWhichDecompressRequestDirective`.
+For client configuration, see ``spray.client.pipelining.decode`` and ``spray.httpx.ResponseTransformation``.
 
 .. _HTTP spec: http://www.w3.org/Protocols/rfc2616/rfc2616.html
 .. _spray.httpx.encoding: https://github.com/spray/spray/tree/release/1.2/spray-httpx/src/main/scala/spray/httpx/encoding

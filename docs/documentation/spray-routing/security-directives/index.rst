@@ -8,6 +8,7 @@ SecurityDirectives
 
    authenticate
    authorize
+   optionalAuthenticate
 
 Authentication vs. Authorization
 --------------------------------

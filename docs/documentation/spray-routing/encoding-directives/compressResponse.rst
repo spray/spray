@@ -47,7 +47,7 @@ Example
 This example shows the behavior of ``compressResponse`` without any encoders specified:
 
 .. includecode:: ../code/docs/directives/EncodingDirectivesExamplesSpec.scala
-   :snippet: compressResponse-1
+   :snippet: compressResponse-0
 
 This example shows the behaviour of ``compressResponse(Gzip)``:
 

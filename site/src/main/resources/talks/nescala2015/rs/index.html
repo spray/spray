@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Introduction to Reactive Streams</title>
+
+		<meta name="description" content="Introduction to Reactive Streams">
+		<meta name="author" content="Mathias Doenitz">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="stylesheet" href="css/reveal.min.css">
+		<link rel="stylesheet" href="css/theme/sirthias.css" id="theme">
+		<link rel="stylesheet" href="lib/font-awesome/css/font-awesome.css">
+
+		<!-- For syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+		<div class="reveal">
+			<div class="slides">
+
+			<!-- *************************************************************** -->
+
+      <section>
+        <p style="top: -30px; position: relative">
+          <img style="width: 38%" src="lib/akka-logo.svg" alt="akka">
+        </p>
+        <h3 style="top: -20px; position: relative">Introduction to Reactive Streams</h3>
+        <p style="top: -10px; position: relative; font-size: 0.8em">
+          <span style="font-weight: 800; font-size: 1.5em">
+            <span style="font-size: 1.5em">⇗</span>
+            ne<span style="color: #D34C65">scala</span>
+          </span> &nbsp; &nbsp; 2015-01-31@boston
+        </p>
+        <p style="top: -10px; position: relative">
+          <small>Mathias Doenitz &nbsp;
+            <a href="mailto:mathias(at)spray(dot)io"><i class="fa fa-envelope-square"></i></a> /
+            <a href="https://github.com/sirthias"><i class="fa fa-github-square"></i></a> /
+            <a href="http://twitter.com/sirthias"><i class="fa fa-twitter-square"></i></a><br/><br/>
+            This presentation: <a href="http://spray.io/nescala2015/rs/">http://spray.io/nescala2015/rs/</a>
+          </small>
+        </p>
+      </section>
+
+      <section>
+        <h2>Our Hardware base is changing!</h2>
+        <div class="fragment">
+          <img style="margin-top: -1em" src="lib/moore.svg" alt="35 years of CPU trends">
+          <div style="position: absolute; margin: -59% 0 0 12%; background-color: #1B2C3D">
+            <span>CPU trends over 35 years</span><br/>
+            <small>Source: <a href="http://www.lanl.gov/orgs/hpc/salishan/salishan2011/3moore.pdf">Chuck Moore</a></small>
+          </div>
+        </div>
+        <div class="fragment" style="position: absolute; margin: -40% 0 0 28%; padding: 0.4em; border: 1px solid #eee8d5; background-color: #1B2C3D">
+          <a href="http://www.gotw.ca/publications/concurrency-ddj.htm">"The free lunch is over!"</a>
+        </div>
+      </section>
+
+      <section>
+        <h2>The new opponent: Amdahl's Law</h2>
+        <img class="fragment" style="width: 70%; margin-top: -1em" src="lib/amdahl.svg" alt="Amdahl's Law">
+        <div class="fragment" style="position: absolute; margin: -43% 0 0 32%; padding: 0.4em; color: #1B2C3D; background-color: #eee8d5; font-weight: bold">
+          Parallelisation is key!
+        </div>
+      </section>
+
+      <section>
+        <h2>Our old tools don't cut it</h2>
+        <ul>
+          <li class="fragment">Threads (programmed directly)
+            <ul>
+              <li>high memory overhead</li>
+              <li>starting/stopping is expensive</li>
+              <li>inter-thread communication entirely left to the user</li>
+            </ul>
+          </li>
+          <li class="fragment">Locks/Mutexes/Semaphores/`synchronized`/`volatile`
+            <ul>
+              <li>too little sync: race conditions, wrong results</li>
+              <li>too much sync: deadlocks, poor performance</li>
+              <li>very hard to use correctly</li>
+            </ul>
+          </li>
+          <h3 class="fragment" style="position: absolute; margin: -30% 0 0 30%; padding: 0.4em; border-top: 2px solid white; border-bottom: 2px solid white; background-color: #1B2C3D; -webkit-transform:rotate(30deg); -moz-transform:rotate(30deg)">Too low-level!</h3>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Selected concurrency abstractions</h2>
+        <img style="width:100%" src="lib/concurrency-abstractions0.svg" alt="Concurrency Abstractions Overview">
+        <img class="fragment" style="position: absolute; width:100%; margin-left: -90%" src="lib/concurrency-abstractions1.svg" alt="Concurrency Abstractions Overview">
+      </section>
+
+      <section>
+        <h2>Reactive Streams Basics</h2>
+        <ul>
+          <li class="no-bullet">What is a stream?</li>
+          <li>Ephemeral flow of data items, commands,<br/>other elements of any kind</li>
+          <li>Focused on describing transformation<br/>and combination/composition</li>
+          <li>Possibly unbounded in size</li>
+          <li><strong>NOT a data structure!</strong></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Common Uses of Streams</h2>
+        <ul>
+          <li>Bulk data transfer</li>
+          <li>Real-time data sources</li>
+          <li>Batch processing of large data sets</li>
+          <li>Monitoring and analytics</li>
+          <li><strong>Structuring and Scaling Business Logic</strong></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Example: Scaling Logic</h2>
+        <img class="fragment" style="width:90%" src="lib/scaling0.svg" alt="scaling">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/scaling1.svg" alt="scaling">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/scaling2.svg" alt="scaling">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/scaling3.svg" alt="scaling">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/scaling4.svg" alt="scaling">
+      </section>
+
+      <section>
+        <h2>Taking things further</h2>
+        <img class="fragment" style="width:95%" src="lib/finegrained0.svg" alt="scaling">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="lib/finegrained1.svg" alt="scaling">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="lib/finegrained2.svg" alt="scaling">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="lib/finegrained3.svg" alt="scaling">
+        <div class="fragment" style="position: absolute; margin: -32% 0 0 16%; padding: 0.4em; color: #1B2C3D; background-color: #eee8d5; font-weight: bold">
+          Fine-grained Parallelisation is key!
+        </div>
+      </section>
+
+      <section>
+        <h2>Common problem: Backpressure</h2>
+        <img class="fragment" style="width:90%" src="lib/pipeline0.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/pipeline1.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/pipeline2.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/pipeline3.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/pipeline4.svg" alt="Backpressure needed">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/pipeline5.svg" alt="Backpressure needed">
+      </section>
+
+      <section>
+        <h2>Critical Point: Async Boundary</h2>
+        <img style="width:90%" src="lib/async-boundary0.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary1.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary2.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary3.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary4.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary5.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary6.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary7.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/async-boundary8.svg" alt="Async Boundary">
+      </section>
+
+      <section>
+        <h2>Async Boundary</h2>
+        <ul>
+          <li>Data elements flow downstream</li>
+          <li>Demand flows upstream</li>
+          <li>Data items flow only when there is demand</li>
+          <li>Recipient is in control of incoming data rate</li>
+          <li>Data in flight is bounded by signaled demand</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Dynamic Push/Pull</h2>
+        <ul>
+          <li>“Push” behavior when consumer is faster</li>
+          <li>“Pull” behavior when producer is faster</li>
+          <li>Switches automatically between these</li>
+          <li>Batching demand allows batching data</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Async Boundaries are Everywhere</h2>
+        <ul>
+          <li>Between actors</li>
+          <li>Between threads</li>
+          <li>Between CPUs</li>
+          <li>Between network nodes</li>
+          <li>Between applications</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Pipeline Processing Done Right</h2>
+        <img style="width:90%" src="lib/right0.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right1.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right2.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right3.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right4.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right5.svg" alt="Pipeline Done Right">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/right6.svg" alt="Pipeline Done Right">
+      </section>
+
+      <section>
+        <h2>Continuous Pipelines across Machines</h2>
+        <img style="width:90%" src="lib/network0.svg" alt="Multi-machine Pipeline">
+        <img class="fragment" style="position: absolute; width:90%; margin-left: -90%" src="lib/network1.svg" alt="Multi-machine Pipeline">
+      </section>
+
+      <section>
+        <h2>The Reactive Streams Project</h2>
+        <ul>
+          <li class="no-bullet">Participants: Engineers from</li>
+          <li>Netflix</li>
+          <li>Twitter</li>
+          <li>Red Hat</li>
+          <li>Pivotal</li>
+          <li>Typesafe</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Goals</h2>
+        <ul>
+          <li>An common, minimal standard interface<br/>for handing data across async boundaries</li>
+          <li>Complete freedom for many idiomatic APIs</li>
+          <li>Interoperability to make best use of efforts</li>
+          <li>You should be able to say:
+          <pre><code data-trim>
+  twitterStream
+    .produceTo(rxjavaObservable)
+    .produceTo(reactorStream)
+    .produceTo(akkaStream)
+        </code></pre></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Reactive Stream API</h2>
+        <pre style="width: 80%"><code data-trim>
+public interface Publisher&lt;T&gt; {
+  public void subscribe(Subscriber&lt;? super T&gt; s);
+}
+public interface Subscription {
+  public void request(long n);
+  public void cancel();
+}
+public interface Subscriber&lt;T&gt; {
+  public void onSubscribe(Subscription s);
+  public void onNext(T t);
+  public void onError(Throwable t);
+  public void onComplete();
+}
+        </code></pre>
+        <h3 class="fragment" style="position: absolute; margin: -28% 0 0 20%; padding: 0.4em; border-top: 2px solid white; border-bottom: 2px solid white; background-color: #1B2C3D; -webkit-transform:rotate(30deg); -moz-transform:rotate(20deg)">
+          Not for user consumption!<br/>
+          (Use RS Impl Library instead)
+        </h3>
+      </section>
+
+      <section>
+        <h2>akka-stream: basic concepts</h2>
+        <ul>
+          <li>`Source[T]`: the open end of a pipeline producing `T`s</li>
+          <li>`Sink[T]`: an "end-piece" for taking in `T`s</li>
+          <li>`Flow[A, B]`: an unconnected piece of pipeline</li>
+          <li>Generally, all abstractions are re-useable</li>
+          <li>"Materialization":<br/>The process of starting an actual stream instance</li>
+        </ul>
+      </section>
+
+
+      <section>
+        <h2>akka-stream: simple stream example</h2>
+        <pre style="width: 125%;margin-left: -12%"><code data-trim>
+Source(stockTickerPublisher)                 // Source[Tick]
+  .filter(_.symbol == "AAPL")                // Source[Tick]       
+  .buffer(100000, OverflowStrategy.DropHead) // Source[Tick]
+  .splitWhen(x => isNewDay(x.timeStamp))     // Source[Source[Tick]]
+  .headAndTail                               // Source[(Tick, Source[Tick])]
+  .map { case (head, tail) =>
+     head -> tail.groupedWithin(1000, 1.second)
+  }                                          // Source[(Tick, Source[Seq[[Tick]]])]
+  .via(someFlow)                             // Source[RichTick]
+  .map(toCandleStickChartColumn)             // Source[CandleStickChartColumn]
+  .to(candleStickChartSink)                  // RunnableFlow
+  .run()                                     // MaterializedMap
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>akka-stream: flow graph example</h2>
+        <img style="width:90%" src="lib/flowgraph.svg" alt="Flowgraph">
+        <pre style="width: 80%"><code data-trim>
+FlowGraph { implicit b ⇒
+  val bcast = Broadcast[T]
+  val merge = Merge[T]
+
+  source ~> f1 ~> bcast ~> f2 ~> merge ~> f3 ~> sink
+  bcast ~> f4 ~> merge
+}.run()
+        </code></pre>
+      </section>
+
+      <section>
+        <h2>Reactive Streams: Status</h2>
+        <ul>
+          <li>Reactive Streams API Spec 1.0 almost complete</li>
+          <li>TCK (Technology Compatibility Kit) available</li>
+          <li>Several implementations in various states of progress</li>
+          <li>For Scala: <emph>akka-stream</emph> currently the most idiomatic</li>
+          <li>APIs becoming more stable,<br/>a lot of new ground had to be broken</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>More Q &amp; A</h2>
+      </section>
+
+      <!-- *************************************************************** -->
+
+			</div>
+
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.min.js"></script>
+
+		<script>
+
+			// Full list of configuration options available here:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				theme: Reveal.getQueryHash().theme || 'sirthias', // available themes are in /css/theme
+				transition: Reveal.getQueryHash().transition || 'fade',
+				transitionSpeed: 'fast',
+
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
