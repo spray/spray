@@ -83,3 +83,8 @@ to be listed here (along with a backlink) please provide us with the following d
   Our web application is running on *spray-can*. We have a couple of static HTML web pages, images etc. served by simple
   spray routing Directive, but the most of the content is loaded via AJAX/REST/JSON. We use a Postgresql database with
   Prequel (enhanced a little bit).
+
+`TXOdds <http://txodds.com>`_
+  We're using spray.io for a REST interface for our fixtures management toolkit.  Our experiences so far have been very
+  promising and we are considering using it for the development of our new real-time single page web application.
+  It is very easy to deploy and integrates very well with our existing scala codebase (akka etc.)
