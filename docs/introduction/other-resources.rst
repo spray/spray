@@ -1,6 +1,13 @@
 Other Resources
 ===============
 
+Feb 2015: "*Reactive Streams & Akka HTTP*" at `Scala User Group - Berlin Brandenburg`__
+  | Slides: `/berlin/`__
+
+__ http://www.meetup.com/Scala-Berlin-Brandenburg/
+__ /berlin/
+
+
 Feb 2015: "*REST on Akka: Connect to the World*" at `Jfokus 2015`__
   | Slides: `/jfokus/`__
 

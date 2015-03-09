@@ -67,8 +67,9 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
             complete(NotFound) // fail early in order to prevent error response logging
           } ~
           logRequestResponse(showErrorResponses _) {
-            talkCharts("jax14") ~
+            talkCharts("berlin") ~
             talkCharts("duse") ~
+            talkCharts("jax14") ~
             talkCharts("jfokus") ~
             talkCharts("msug") ~
             talkCharts("nescala2015") ~
