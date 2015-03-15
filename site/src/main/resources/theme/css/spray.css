@@ -157,6 +157,7 @@ table.footnote td { vertical-align: top; }
 
 span.twitter-typeahead input[type=text] { width: 200px; margin: -5px 46px 0 0; }
 .tt-suggestion { white-space: nowrap; }
+.tt-empty-message { padding: 5px 10px; text-align: center; }
 
 @media (max-width: 979px) {
     #talk-link { display: none; }
