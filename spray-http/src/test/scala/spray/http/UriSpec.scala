@@ -26,6 +26,10 @@ class UriSpec extends Specification {
 
   "Uri.Host instances" should {
 
+    "correctly parse empty hosts" in {
+      Host("") === Host.Empty
+    }
+
     "parse correctly from IPv4 literals" in {
       Host("192.0.2.16") === IPv4Host("192.0.2.16")
       Host("255.0.0.0") === IPv4Host("255.0.0.0")
@@ -324,7 +328,7 @@ class UriSpec extends Specification {
         Uri.from(scheme = "urn", path = "oasis:names:specification:docbook:dtd:xml:4.1.2")
 
       // more examples
-      Uri("http://") === Uri(scheme = "http", authority = Authority(host = NamedHost("")))
+      Uri("http://") === Uri(scheme = "http", authority = Authority(host = Host.Empty))
       Uri("http:?") === Uri.from(scheme = "http", query = Query(""))
       Uri("?a+b=c%2Bd") === Uri.from(query = ("a b", "c+d") +: Query.Empty)
 
@@ -342,6 +346,10 @@ class UriSpec extends Specification {
       // render
       Uri("https://server.com/path/to/here?st=12345").toString === "https://server.com/path/to/here?st=12345"
       Uri("/foo/?a#b").toString === "/foo/?a#b"
+
+      // empty host
+      Uri("http://:8000/foo") === Uri("http", Authority(Host.Empty, 8000), Path / "foo")
+      Uri("http://:80/foo") === Uri("http", Authority.Empty, Path / "foo")
     }
 
     "properly complete a normalization cycle" in {
@@ -358,8 +366,12 @@ class UriSpec extends Specification {
       normalize("Http://Localhost") === "http://localhost"
       normalize("hTtP://localHost") === "http://localhost"
       normalize("https://:443") === "https://"
+      normalize("https://:444") === "https://:444"
+      normalize("http://:80/foo") === "http:///foo"
+      normalize("http://:8080/foo") === "http://:8080/foo"
       normalize("ftp://example.com:21") === "ftp://example.com"
-      normalize("example.com:21") === "example.com:21"
+      normalize("example.com:21") === "example.com:21" // example.com is parsed as the SCHEME (which is correct)
+      normalize("//example.com:21") === "//example.com:21"
       normalize("ftp://example.com:22") === "ftp://example.com:22"
 
       normalize("//user:pass@[::1]:80/segment/index.html?query#frag") === "//user:pass@[::1]:80/segment/index.html?query#frag"
@@ -376,7 +388,7 @@ class UriSpec extends Specification {
       normalize("http://sourceforge.net/projects/uriparser/") === "http://sourceforge.net/projects/uriparser/"
       normalize("http://sourceforge.net/project/platformdownload.php?group_id=182840") === "http://sourceforge.net/project/platformdownload.php?group_id=182840"
       normalize("mailto:test@example.com") === "mailto:test@example.com"
-      normalize("file:///bin/bash") === "file:///bin/bash"
+      normalize("file:/bin/bash") === "file:///bin/bash"
       normalize("http://www.example.com/name%20with%20spaces/") === "http://www.example.com/name%20with%20spaces/"
       normalize("http://examp%4Ce.com/") === "http://example.com/"
       normalize("http://example.com/a/b/%2E%2E/") === "http://example.com/a/"

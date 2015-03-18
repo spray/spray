@@ -158,10 +158,9 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
    */
   def renderWithoutFragment[R <: Rendering](r: R, charset: Charset): r.type = {
     if (isAbsolute) r ~~ scheme ~~ ':'
-    authority.render(r, scheme, charset)
+    authority.render(r, scheme, path, charset)
     path.render(r, charset, encodeFirstSegmentColons = isRelative)
-    if (!query.isEmpty) query.render(r ~~ '?', charset)
-    r
+    if (query.nonEmpty) query.render(r ~~ '?', charset) else r
   }
 
   /**
@@ -330,18 +329,19 @@ object Uri {
   def httpScheme(securedConnection: Boolean = false) = if (securedConnection) "https" else "http"
 
   case class Authority(host: Host, port: Int = 0, userinfo: String = "") extends ToStringRenderable {
-    def isEmpty = host.isEmpty
-    def render[R <: Rendering](r: R): r.type = render(r, "", UTF8)
-    def render[R <: Rendering](r: R, scheme: String, charset: Charset): r.type =
-      if (isEmpty) r else {
+    def isEmpty = equals(Authority.Empty)
+    def nonEmpty = !isEmpty
+    def render[R <: Rendering](r: R): r.type = render(r, "", Path.Empty, UTF8)
+    def render[R <: Rendering](r: R, scheme: String, charset: Charset): r.type = render(r, scheme, Path.Empty, charset)
+    def render[R <: Rendering](r: R, scheme: String, path: Path, charset: Charset): r.type =
+      if (nonEmpty) {
         r ~~ '/' ~~ '/'
         if (!userinfo.isEmpty) encode(r, userinfo, charset, UNRESERVED | SUB_DELIM | COLON) ~~ '@'
         r ~~ host
-        if (port != 0) normalizePort(port, scheme) match {
-          case 0 ⇒ r
-          case x ⇒ r ~~ ':' ~~ port
-        }
-        else r
+        if (port != 0) r ~~ ':' ~~ port else r
+      } else scheme match {
+        case "" | "mailto" ⇒ r
+        case _             ⇒ if (path.isEmpty || path.startsWithSlash) r ~~ '/' ~~ '/' else r
       }
     def normalizedForHttp(encrypted: Boolean = false) =
       normalizedFor(httpScheme(encrypted))
