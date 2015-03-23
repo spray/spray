@@ -93,8 +93,8 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
     } catch {
       case e: ParserRuntimeException ⇒ e.getCause match {
         case e: IllegalUriException ⇒ Left(e.info)
-        case _: ParsingException    ⇒ Left(ErrorInfo.fromCompoundString(e.getCause.getMessage))
-        case x                      ⇒ throw x
+        case e @ (_: ParsingException | _: IllegalArgumentException) ⇒ Left(ErrorInfo.fromCompoundString(e.getMessage))
+        case x ⇒ throw x
       }
     }
   }
