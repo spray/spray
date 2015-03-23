@@ -39,7 +39,7 @@ trait MultipartMarshallers {
   implicit def multipartByterangesMarshaller = multipartPartsMarshaller[MultipartByteRanges](`multipart/byteranges`)
   implicit def multipartContentMarshaller = multipartPartsMarshaller[MultipartContent](`multipart/mixed`)
 
-  private def multipartPartsMarshaller[T <: MultipartParts](mediatype: MultipartMediaType): Marshaller[T] = {
+  def multipartPartsMarshaller[T <: MultipartParts](mediatype: MultipartMediaType): Marshaller[T] = {
     val boundary = randomBoundary
     Marshaller.of[T](mediatype withBoundary boundary) { (value, contentType, ctx) ⇒
       if (!value.parts.isEmpty) {
