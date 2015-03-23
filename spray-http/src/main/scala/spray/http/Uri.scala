@@ -196,7 +196,7 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
 }
 
 object Uri {
-  case object Empty extends Uri("", Authority.Empty, Path.Empty, Query.Empty, None) {
+  object Empty extends Uri("", Authority.Empty, Path.Empty, Query.Empty, None) {
     def isEmpty = true
   }
 

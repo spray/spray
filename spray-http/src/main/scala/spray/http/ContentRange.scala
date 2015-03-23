@@ -49,7 +49,7 @@ object ContentRange {
       if (instanceLength.isDefined) r ~~ instanceLength.get else r ~~ '*'
     }
   }
-  case object Unsatisfiable extends Unsatisfiable(None) {
+  object Unsatisfiable extends Unsatisfiable(None) {
     def apply(instanceLength: Long): Unsatisfiable = apply(Some(instanceLength))
   }
 }

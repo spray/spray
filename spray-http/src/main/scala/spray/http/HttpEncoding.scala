@@ -28,7 +28,7 @@ object HttpEncodingRange {
     def withQValue(qValue: Float) =
       if (qValue == 1.0f) `*` else if (qValue != this.qValue) `*`(qValue.toFloat) else this
   }
-  case object `*` extends `*`(1.0f)
+  object `*` extends `*`(1.0f)
 
   case class One(encoding: HttpEncoding, qValue: Float) extends HttpEncodingRange {
     def matches(encoding: HttpEncoding) = this.encoding.value.equalsIgnoreCase(encoding.value)
