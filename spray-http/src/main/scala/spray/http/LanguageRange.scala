@@ -38,7 +38,7 @@ case class Language(primaryTag: String, subTags: Seq[String], qValue: Float = 1.
 }
 
 object LanguageRanges {
-  object `*` extends `*`(1.0f)
+  case object `*` extends `*`(1.0f)
 
   case class `*`(qValue: Float) extends LanguageRange {
     def primaryTag = "*"

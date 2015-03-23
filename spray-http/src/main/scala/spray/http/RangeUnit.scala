@@ -19,7 +19,7 @@ package spray.http
 sealed trait RangeUnit extends ValueRenderable
 
 object RangeUnit {
-  object Bytes extends RangeUnit {
+  case object Bytes extends RangeUnit {
     def render[R <: Rendering](r: R): r.type = r ~~ "bytes"
   }
 
