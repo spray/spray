@@ -145,6 +145,12 @@ class HttpHeaderSpec extends Specification {
         Authorization(GenericHttpCredentials("NoParamScheme", Map.empty[String, String]))
       "Authorization: OAuth sf_v1a-stg;V5DrRS1KfA=" =!=
         Authorization(GenericHttpCredentials("OAuth", "sf_v1a-stg;V5DrRS1KfA="))
+      "Authorization: QVFJQzV3TTJMWTRTZmN3Zk=" =!=
+        ErrorInfo("Illegal HTTP header 'Authorization'",
+          """Invalid input '=', expected TokenChar, LWS or EOI (line 1, pos 23):
+            |QVFJQzV3TTJMWTRTZmN3Zk=
+            |                      ^
+            |""".stripMargin)
     }
 
     "Cache-Control" in {

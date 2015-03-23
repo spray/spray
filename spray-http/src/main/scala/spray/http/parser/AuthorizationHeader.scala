@@ -54,10 +54,10 @@ private[parser] trait AuthorizationHeader {
   }
 
   def GenericHttpCredentialsDef = rule(
-    AuthScheme ~ (
-      CredentialParams ~~> ((scheme: String, params) ⇒ GenericHttpCredentials(scheme, params))
-      | RelaxedToken ~ (
-        CredentialParams ~~> ((scheme: String, token: String, params) ⇒ GenericHttpCredentials(scheme, token, params))
+    Token ~ (
+      LWS ~ CredentialParams ~~> ((scheme: String, params) ⇒ GenericHttpCredentials(scheme, params))
+      | LWS ~ RelaxedToken ~ (
+        LWS ~ CredentialParams ~~> ((scheme: String, token: String, params) ⇒ GenericHttpCredentials(scheme, token, params))
         | EMPTY ~~> ((scheme: String, token: String) ⇒ GenericHttpCredentials(scheme, token)))
         | EMPTY ~~> ((scheme: String) ⇒ GenericHttpCredentials(scheme, ""))))
 
