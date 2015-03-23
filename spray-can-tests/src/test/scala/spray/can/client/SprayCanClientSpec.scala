@@ -434,6 +434,12 @@ class SprayCanClientSpec extends Specification with NoTimeConversions {
       verifyServerSideRequestAndReply(s"http://$hostname:$port/", probe)
     }
 
+    "support absolute request URIs with a double slash path component" in new TestSetup {
+      val probe = TestProbe()
+      probe.send(IO(Http), Get(s"http://$hostname:$port//foo"))
+      verifyServerSideRequestAndReply(s"http://$hostname:$port//foo", probe)
+    }
+
     "produce an error if the request does not contain a Host-header or an absolute URI" in {
       val probe = TestProbe()
       probe.send(IO(Http), Get("/abc"))

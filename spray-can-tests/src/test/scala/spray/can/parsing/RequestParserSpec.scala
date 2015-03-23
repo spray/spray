@@ -153,6 +153,7 @@ class RequestParserSpec extends Specification {
             |"""
         } === Seq(PUT, Uri("/resource/yes"), `HTTP/1.1`, List(`Content-Length`(2147483649L), Host("x")), 'dontClose)
       }
+
       "with several identical `Content-Type` headers" in {
         parse {
           """GET /data HTTP/1.1
@@ -168,6 +169,16 @@ class RequestParserSpec extends Specification {
           `HTTP/1.1`,
           List(Host("x"), `Content-Type`(`application/pdf`), `Content-Length`(0)),
           "", 'dontClose)
+      }
+
+      "with a request target starting with a double-slash" in {
+        parse {
+          """GET //foo?query=yes HTTP/1.0
+            |
+            |"""
+        } should beLike {
+          case Seq(GET, uri, `HTTP/1.0`, Nil, "", 'close) ⇒ uri.toString === "//foo?query=yes"
+        }
       }
     }
 
