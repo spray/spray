@@ -105,7 +105,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         } -> false
       }
 
-      "a response to a HEAD request" in new TestSetup() {
+      "a response to a transparent HEAD request" in new TestSetup() {
         render(requestMethod = HEAD,
           response = HttpResponse(
             headers = List(RawHeader("Age", "30"), Connection("Keep-Alive")),
@@ -118,6 +118,21 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
               |Content-Length: 23
               |
               |"""
+          } -> false
+      }
+
+      "a response to a non-transparent HEAD request" in new TestSetup(transparentHeadRequests = false) {
+        render(requestMethod = HEAD,
+          response = HttpResponse(headers = List(RawHeader("Age", "30"),
+            `Content-Type`(ContentTypes.`text/plain(UTF-8)`), `Content-Length`(100)))) === result {
+            """HTTP/1.1 200 OK
+            |Server: spray-can/1.0.0
+            |Date: Thu, 25 Aug 2011 09:10:29 GMT
+            |Age: 30
+            |Content-Type: text/plain; charset=UTF-8
+            |Content-Length: 100
+            |
+            |"""
           } -> false
       }
 

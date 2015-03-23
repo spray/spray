@@ -27,6 +27,7 @@ private object ResponseRendering {
     new PipelineStage with ResponseRenderingComponent {
       def serverHeaderValue: String = settings.serverHeader
       def chunklessStreaming: Boolean = settings.chunklessStreaming
+      def transparentHeadRequests: Boolean = settings.transparentHeadRequests
 
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
