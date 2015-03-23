@@ -71,7 +71,8 @@ private[can] object RequestParsing {
             }
 
           def handleError(status: StatusCode, info: ErrorInfo): Unit = {
-            log.warning("Illegal request, responding with status '{}': {}", status, info.formatPretty)
+            log.warning("Illegal request, responding with status '{}': {}", status,
+              if (settings.verboseErrorLogging) info.formatPretty else info.summary)
             val msg = if (settings.verboseErrorMessages) info.formatPretty else info.summary
             commandPL(ResponsePartRenderingContext(HttpResponse(status, msg), closeAfterResponseCompletion = true))
 
