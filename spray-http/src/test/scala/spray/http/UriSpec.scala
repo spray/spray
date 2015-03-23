@@ -603,5 +603,10 @@ class UriSpec extends Specification {
       4450 === Uri("https://host/").withPort(4450).effectivePort
       4450 === Uri("https://host:3030/").withPort(4450).effectivePort
     }
+
+    "properly render as HTTP request target origin forms" in {
+      Uri("http://example.com/foo/bar?query=1#frag").toHttpRequestTargetOriginForm.toString === "/foo/bar?query=1"
+      Uri("http://example.com//foo/bar?query=1#frag").toHttpRequestTargetOriginForm.toString === "//foo/bar?query=1"
+    }
   }
 }

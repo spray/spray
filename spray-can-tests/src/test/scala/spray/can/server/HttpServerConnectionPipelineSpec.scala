@@ -356,6 +356,19 @@ private class HttpServerConnectionPipelineSpec extends Specification with RawSpe
         "Please try again in a short while!"
       commands.expectMsg(Tcp.Close)
     }
+
+    "dispatch a request with a non-RFC3986 request-target to the service actor" in new MyFixture() {
+      val raw = prep {
+        """|GET //foo HTTP/1.1
+          |Host: test.com
+          |
+          |"""
+      }
+      connectionActor ! Tcp.Received(ByteString(raw))
+      commands.expectMsgPF() {
+        case Pipeline.Tell(`handlerRef`, msg, _) ⇒ msg
+      } === HttpRequest(uri = "http://test.com//foo", headers = List(`Host`("test.com")))
+    }
   }
 
   ///////////////////////// SUPPORT ////////////////////////
