@@ -28,6 +28,7 @@ import RenderSupport._
 private[can] trait ResponseRenderingComponent {
   def serverHeaderValue: String
   def chunklessStreaming: Boolean
+  def transparentHeadRequests: Boolean
 
   private[this] val serverHeaderPlusDateColonSP =
     serverHeaderValue match {
@@ -107,11 +108,12 @@ private[can] trait ResponseRenderingComponent {
       import response._
       val close = renderResponseStart(response,
         allowUserContentType = entity.isEmpty && ctx.requestMethod == HttpMethods.HEAD,
-        contentLengthDefined = true)
+        contentLengthDefined = ctx.requestMethod != HttpMethods.HEAD || transparentHeadRequests)
       renderConnectionHeader(close)
 
-      // don't set a Content-Length header for non-keep-alive HTTP/1.0 responses (rely on body end by connection close)
-      if (response.protocol == `HTTP/1.1` || !close || ctx.requestMethod == HttpMethods.HEAD)
+      // don't set a Content-Length header for non-keep-alive HTTP/1.0 responses (rely on body end by connection close),
+      // however, for non-transparent HEAD requests let the user manage the header
+      if ((response.protocol == `HTTP/1.1` || !close) && (ctx.requestMethod != HttpMethods.HEAD || transparentHeadRequests))
         r ~~ `Content-Length` ~~ entity.data.length ~~ CrLf
       r ~~ CrLf
       if (entity.nonEmpty && ctx.requestMethod != HttpMethods.HEAD) r ~~ entity.data
