@@ -2,7 +2,6 @@ package spray.routing
 package directives
 
 import spray.http._
-import java.lang.IllegalStateException
 import shapeless._
 import ops.hlist._
 

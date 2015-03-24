@@ -1,3 +1,42 @@
+Version 1.3.3 (2015-03-24)
+--------------------------
+
+- spray-can:
+
+  + fix server-side IllegalStateException when pipelining-limit > 1 (#958)
+  + preserve order of headers during message parsing (#961)
+  + introduce `spray.can.server.verbose-error-logging` settings (#977)
+  + allow user-specified `Content-Length` for unchunked responses to non-transparent HEAD requests (#965)
+  + fix chunked response to non-transparent HEAD request rendering `Content-Length: 0` (#964)
+
+- spray-http:
+
+  + fix handling of empty authority in Uris (#1014)
+  + make `spray.http.RangeUnit.Bytes` a `case object` (#954)
+  + add `Uri::toHttpRequestTargetOriginForm` (#1019)
+  + catch `IllegalArgumentException`s early when parsing headers (#992)
+  + fix bug in `Authentication` header parser rules (#1006)
+
+- spray-httpx:
+
+  + switch XML parser to safer default settings to prevent XXE attacks
+  + make MultipartsMarshallers.multipartPartsMarshaller public (#998)
+  + fix NoEncodingCompressor (#936)
+
+- spray-io:
+
+  + fix SSL/TLS encryption stopping processing in certain renegotiation scenarios (#1010)
+  + fix unnecessary reverse DNS query when connecting by IP with SSL/TLS (#993)
+
+- spray-routing:
+
+  + replace usages of `asInstanceOf` in NumberMatcher (#959)
+  + fix incorrect behavior of anyParam(s) directive with default values (#981)
+
+- upgraded to latest versions of all dependencies where easily possible
+- smaller fixes and improvements across the board (e.g. error messages and scaladocs)
+
+
 Version 1.3.2 (2014-10-08)
 --------------------------
 

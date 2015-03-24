@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -378,7 +378,10 @@ object HttpData {
           append(x)
       }
 
-    def clear(): Unit = b.clear()
+    def clear(): Unit = {
+      b.clear()
+      _byteCount = 0
+    }
 
     def result(): HttpData =
       b.result().foldRight(Empty: HttpData) {

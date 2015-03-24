@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -93,8 +93,8 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
     } catch {
       case e: ParserRuntimeException ⇒ e.getCause match {
         case e: IllegalUriException ⇒ Left(e.info)
-        case _: ParsingException    ⇒ Left(ErrorInfo.fromCompoundString(e.getCause.getMessage))
-        case x                      ⇒ throw x
+        case e @ (_: ParsingException | _: IllegalArgumentException) ⇒ Left(ErrorInfo.fromCompoundString(e.getMessage))
+        case x ⇒ throw x
       }
     }
   }

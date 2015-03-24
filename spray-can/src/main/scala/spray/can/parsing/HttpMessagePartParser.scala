@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package spray.can.parsing
 
 import scala.annotation.tailrec
+import scala.collection.mutable.ListBuffer
 import akka.util.ByteString
 import spray.http._
 import StatusCodes._
@@ -57,7 +58,8 @@ private[parsing] abstract class HttpMessagePartParser(val settings: ParserSettin
 
   def badProtocol: Nothing
 
-  @tailrec final def parseHeaderLines(input: ByteString, lineStart: Int, headers: List[HttpHeader] = Nil,
+  @tailrec final def parseHeaderLines(input: ByteString, lineStart: Int,
+                                      headers: ListBuffer[HttpHeader] = ListBuffer[HttpHeader](),
                                       headerCount: Int = 0, ch: Option[Connection] = None,
                                       clh: Option[`Content-Length`] = None, cth: Option[`Content-Type`] = None,
                                       teh: Option[`Transfer-Encoding`] = None, e100: Boolean = false,
@@ -76,37 +78,37 @@ private[parsing] abstract class HttpMessagePartParser(val settings: ParserSettin
     else headerParser.resultHeader match {
       case HttpHeaderParser.EmptyHeader ⇒
         val close = HttpMessage.connectionCloseExpected(protocol, ch)
-        val next = parseEntity(headers, input, lineEnd, clh, cth, teh, hh, close)
+        val next = parseEntity(headers.toList, input, lineEnd, clh, cth, teh, hh, close)
         if (e100) Result.Expect100Continue(() ⇒ next) else next
 
       case h: Connection ⇒
-        parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, Some(h), clh, cth, teh, e100, hh)
+        parseHeaderLines(input, lineEnd, headers += h, headerCount + 1, Some(h), clh, cth, teh, e100, hh)
 
       case h: `Content-Length` ⇒
-        if (clh.isEmpty) parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, Some(h), cth, teh, e100, hh)
+        if (clh.isEmpty) parseHeaderLines(input, lineEnd, headers += h, headerCount + 1, ch, Some(h), cth, teh, e100, hh)
         else fail("HTTP message must not contain more than one Content-Length header")
 
       case h: `Content-Type` ⇒
-        if (cth.isEmpty) parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, clh, Some(h), teh, e100, hh)
+        if (cth.isEmpty) parseHeaderLines(input, lineEnd, headers += h, headerCount + 1, ch, clh, Some(h), teh, e100, hh)
         else if (cth.get == h) parseHeaderLines(input, lineEnd, headers, headerCount, ch, clh, cth, teh, e100, hh)
         else fail("HTTP message must not contain more than one Content-Type header")
 
       case h: `Transfer-Encoding` ⇒
-        parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, clh, cth, Some(h), e100, hh)
+        parseHeaderLines(input, lineEnd, headers += h, headerCount + 1, ch, clh, cth, Some(h), e100, hh)
 
       case h: Expect ⇒
-        if (h.has100continue) parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, clh, cth, teh, e100 = true, hh)
+        if (h.has100continue) parseHeaderLines(input, lineEnd, headers += h, headerCount + 1, ch, clh, cth, teh, e100 = true, hh)
         else fail(ExpectationFailed, s"Expectation '$h' is not supported by this server")
 
       case h if headerCount < settings.maxHeaderCount ⇒
-        parseHeaderLines(input, lineEnd, h :: headers, headerCount + 1, ch, clh, cth, teh, e100, hh || h.isInstanceOf[Host])
+        parseHeaderLines(input, lineEnd, headers += h, headerCount + 1, ch, clh, cth, teh, e100, hh || h.isInstanceOf[Host])
 
       case _ ⇒ fail(s"HTTP message contains more than the configured limit of ${settings.maxHeaderCount} headers")
     }
   }
 
   // work-around for compiler bug complaining about non-tail-recursion if we inline this method
-  def parseHeaderLinesAux(input: ByteString, lineStart: Int, headers: List[HttpHeader], headerCount: Int,
+  def parseHeaderLinesAux(input: ByteString, lineStart: Int, headers: ListBuffer[HttpHeader], headerCount: Int,
                           ch: Option[Connection], clh: Option[`Content-Length`], cth: Option[`Content-Type`],
                           teh: Option[`Transfer-Encoding`], e100: Boolean, hh: Boolean): Result =
     parseHeaderLines(input, lineStart, headers, headerCount, ch, clh, cth, teh, e100, hh)

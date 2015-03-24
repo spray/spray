@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -432,6 +432,12 @@ class SprayCanClientSpec extends Specification with NoTimeConversions {
       val probe = TestProbe()
       probe.send(IO(Http), Get(s"http://$hostname:$port"))
       verifyServerSideRequestAndReply(s"http://$hostname:$port/", probe)
+    }
+
+    "support absolute request URIs with a double slash path component" in new TestSetup {
+      val probe = TestProbe()
+      probe.send(IO(Http), Get(s"http://$hostname:$port//foo"))
+      verifyServerSideRequestAndReply(s"http://$hostname:$port//foo", probe)
     }
 
     "produce an error if the request does not contain a Host-header or an absolute URI" in {

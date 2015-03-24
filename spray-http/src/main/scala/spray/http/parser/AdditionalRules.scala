@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,14 +29,10 @@ private[parser] trait AdditionalRules {
   }
 
   def Challenge = rule {
-    AuthScheme ~ zeroOrMore(AuthParam, separator = ListSep) ~~> { (scheme, params) ⇒
+    Token ~ OptWS ~ zeroOrMore(AuthParam, separator = ListSep) ~~> { (scheme, params) ⇒
       val (realms, otherParams) = params.partition(_._1 equalsIgnoreCase "realm")
       HttpChallenge(scheme, realms.headOption.map(_._2).getOrElse(""), otherParams.toMap)
     }
-  }
-
-  def AuthScheme = rule {
-    Token ~ OptWS
   }
 
   def AuthParam = rule {

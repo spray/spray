@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package spray.http
 sealed trait RangeUnit extends ValueRenderable
 
 object RangeUnit {
-  object Bytes extends RangeUnit {
+  case object Bytes extends RangeUnit {
     def render[R <: Rendering](r: R): r.type = r ~~ "bytes"
   }
 

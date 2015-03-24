@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,17 +49,17 @@ object TestSupport {
   def response = HttpResponse(
     status = 200,
     headers = List(
-      `Content-Length`(0),
+      `Server`("spray/1.0"),
       `Date`(DateTime(2011, 8, 25, 9, 10, 29)),
-      `Server`("spray/1.0")))
+      `Content-Length`(0)))
 
   def response(content: String, additionalHeaders: HttpHeader*) = HttpResponse(
     status = 200,
-    headers = additionalHeaders.toList ::: List(
-      `Content-Type`(ContentTypes.`text/plain(UTF-8)`),
-      `Content-Length`(content.length),
+    headers = List(
+      `Server`("spray/1.0"),
       `Date`(DateTime(2011, 8, 25, 9, 10, 29)),
-      `Server`("spray/1.0")),
+      `Content-Length`(content.length),
+      `Content-Type`(ContentTypes.`text/plain(UTF-8)`)) ::: additionalHeaders.toList,
     entity = content)
 
   def rawResponse = prep {

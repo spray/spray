@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ class RejectionHandlerSpec extends RoutingSpec {
   val wrap = handleRejections(RejectionHandler.Default)
 
   "The default RejectionHandler" should {
-    "respond with Forbidden for requests resulting in an AuthenticationFailedRejection" in {
+    "respond with Unauthorized for requests resulting in an AuthenticationFailedRejection" in {
       Get() ~> Authorization(BasicHttpCredentials("bob", "")) ~> wrap {
         authenticate(BasicAuth()) { _ ⇒ completeOk }
       } ~> check {

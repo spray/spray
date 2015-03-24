@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package spray.httpx.encoding
 
-import java.lang.IllegalStateException
 import spray.http._
 
 /**
@@ -30,17 +29,15 @@ object NoEncoding extends Decoder with Encoder {
 
   val messageFilter: HttpMessage ⇒ Boolean = _ ⇒ false
 
-  def newCompressor = NoEncodingCompressor
+  def newCompressor = new NoEncodingCompressor
   def newDecompressor = NoEncodingDecompressor
 }
 
-class NoEncodingCompressor(private var buffer: Array[Byte]) extends Compressor {
-  def compress(buffer: Array[Byte]) = { this.buffer = buffer; this }
-  def flush() = buffer
-  def finish() = buffer
+class NoEncodingCompressor extends Compressor {
+  def compress(buffer: Array[Byte]) = { output.write(buffer); this }
+  def flush() = getBytes
+  def finish() = getBytes
 }
-
-object NoEncodingCompressor extends NoEncodingCompressor(spray.util.EmptyByteArray)
 
 object NoEncodingDecompressor extends Decompressor {
   override def decompress(buffer: Array[Byte]) = buffer

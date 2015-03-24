@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
         val req = request.withEffectiveUri(securedConnection = false)
         val connector = connectorForUri(req.uri)
         // never render absolute URIs here and we also drop any potentially existing fragment
-        connector.forward(req.copy(uri = req.uri.toRelative.withoutFragment))
+        connector.forward(req.copy(uri = req.uri.toHttpRequestTargetOriginForm))
       } catch {
         case NonFatal(e) ⇒
           log.error("Illegal request: {}", e.getMessage)
@@ -56,7 +56,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
     case ctx @ RequestContext(req, _, _, commander) ⇒
       val connector = connectorForUri(req.uri)
       // never render absolute URIs here and we also drop any potentially existing fragment
-      val newReq = req.copy(uri = req.uri.toRelative.withoutFragment)
+      val newReq = req.copy(uri = req.uri.toHttpRequestTargetOriginForm)
       connector.tell(ctx.copy(request = newReq), commander)
 
     case (request: HttpRequest, setup: HostConnectorSetup) ⇒
