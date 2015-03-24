@@ -32,7 +32,7 @@ object Dependencies {
   val json4sJackson = "org.json4s"                              %%  "json4s-jackson"              % "3.2.11"
   val playJson      = "com.typesafe.play"                       %%  "play-json"                   % "2.3.8"
 
-  import Keys.{libraryDependencies, scalaVersion}
+  import Keys.{libraryDependencies, scalaVersion, scalaBinaryVersion}
   /*
    * Add scala-xml dependency when needed (for Scala 2.11 and newer) in a robust way
    * This mechanism supports cross-version publishing
@@ -48,16 +48,21 @@ object Dependencies {
   }
 
   val addScalaReflect = libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ % "provided")
-  def addSpecs2(config: String) = libraryDependencies <+= scalaVersion(version => "org.specs2" %% "specs2" % specs2VersionPerScala(version) % config)
+  def addSpecs2(config: String) = libraryDependencies <+= scalaVersion(v => "org.specs2" %% "specs2-core" % specs2VersionPerScala(v) % config)
 
   def specs2VersionPerScala(version: String): String = CrossVersion.partialVersion(version) match {
     case Some((2, 11)) => "2.3.13"
     case _ => "2.3.10"
   }
 
-  val addShapeless2 = libraryDependencies <+= scalaVersion {
-    case x if x startsWith "2.11." => "com.chuusai" %% "shapeless" % "2.0.0"
-    case "2.10.5" => "com.chuusai" %% "shapeless" % "2.0.0" cross CrossVersion.full
-  }
+  val addShapeless2 = Seq(
+    libraryDependencies <+= scalaVersion {
+      case x if x startsWith "2.11." => "com.chuusai" %% "shapeless" % "2.1.0"
+      case "2.10.5" => "com.chuusai" % "shapeless_2.10.4" % "2.1.0"
+    },
+    libraryDependencies ++= {
+      if (scalaBinaryVersion.value startsWith "2.10") Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full)) else Nil
+    }
+  )
 }
 

@@ -129,8 +129,8 @@ object Build extends Build {
   val sourceWithShapeless2Changes = Set("Prepender.scala", "ShapelessSupport.scala").map(_.toLowerCase)
   lazy val sprayRoutingShapeless2 =
     sprayRoutingProject("spray-routing-shapeless2", file("spray-routing-shapeless2"))
+      .settings(addShapeless2 :_*)
       .settings(
-        addShapeless2,
         managedSourceDirectories in Compile <<= managedSourceDirectories in Compile in sprayRouting,
         managedSources in Compile <<= managedSources in Compile in sprayRouting,
         mappings in packageSrc in Compile <<= mappings in packageSrc in Compile in sprayRouting,
@@ -141,6 +141,9 @@ object Build extends Build {
             val isExcluded = sourceWithShapeless2Changes(f.getName.toLowerCase)
             !(isExcluded && f.getAbsolutePath.contains("spray-routing/"))
           }
+        },
+        libraryDependencies ++= {
+          if (scalaBinaryVersion.value startsWith "2.10") Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full)) else Nil
         }
       )
 
@@ -158,6 +161,7 @@ object Build extends Build {
   lazy val sprayRoutingShapeless2Tests =
     sprayRoutingTestProject("spray-routing-shapeless2-tests", file("spray-routing-shapeless2-tests"))
       .dependsOn(sprayRoutingShapeless2)
+      .settings(addShapeless2 :_*)
       .settings(
         unmanagedResourceDirectories in Test <++= (unmanagedResourceDirectories in Test in sprayRoutingTests),
         unmanagedSourceDirectories in Test <<= (unmanagedSourceDirectories in Test in sprayRoutingTests)
@@ -206,6 +210,7 @@ object Build extends Build {
                sprayServlet, sprayTestKit, sprayUtil)
     .settings(SphinxSupport.settings: _*)
     .settings(docsSettings: _*)
+    .settings(addShapeless2 :_*)
     .settings(libraryDependencies ++= test(akkaActor, sprayJson), addSpecs2("test")) // , json4sNative))
 
 

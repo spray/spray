@@ -17,9 +17,13 @@ object AnyParamDefMagnet2 {
   implicit def forHList[T, L <: HList](implicit hla: Generic.Aux[T, L], f: LeftFolder[L, Directive0, MapReduce.type]) =
     new AnyParamDefMagnet2[T] {
       type Out = f.Out
-      def apply(value: T) = {
-        hla.to(value).foldLeft(BasicDirectives.noop)(MapReduce)
-      }
+      def apply(value: T) = hla.to(value).foldLeft(BasicDirectives.noop)(MapReduce)
+    }
+
+  implicit def forIdentityHList[L <: HList](implicit f: LeftFolder[L, Directive0, MapReduce.type]) =
+    new AnyParamDefMagnet2[L] {
+      type Out = f.Out
+      def apply(value: L) = value.foldLeft(BasicDirectives.noop)(MapReduce)
     }
 
   object MapReduce extends Poly2 {
@@ -50,6 +54,9 @@ trait LowLevelFieldDefMagnet2 {
 
   implicit def forHList[T, L <: HList](implicit hla: Generic.Aux[T, L], f: LeftFolder[L, Directive0, MapReduce.type]) =
     FieldDefMagnetAux[T, f.Out](t ⇒ hla.to(t).foldLeft(BasicDirectives.noop)(MapReduce))
+
+  implicit def forIdentityHList[L <: HList](implicit f: LeftFolder[L, Directive0, MapReduce.type]) =
+    FieldDefMagnetAux[L, f.Out](t ⇒ t.foldLeft(BasicDirectives.noop)(MapReduce))
 
   object MapReduce extends Poly2 {
     implicit def from[T, LA <: HList, LB <: HList, Out <: HList](implicit fdma: FieldDefMagnetAux[T, Directive[LB]], ev: Prepend.Aux[LA, LB, Out]) =
@@ -119,6 +126,9 @@ trait LowLevelParamDefMagnet2 {
   /************ HList/tuple support ******************/
   implicit def forHList[T, L <: HList](implicit hla: Generic.Aux[T, L], f: LeftFolder[L, Directive0, MapReduce.type]) =
     ParamDefMagnetAux[T, f.Out](t ⇒ hla.to(t).foldLeft(BasicDirectives.noop)(MapReduce))
+
+  implicit def forIdentityHList[L <: HList](implicit f: LeftFolder[L, Directive0, MapReduce.type]) =
+    ParamDefMagnetAux[L, f.Out](l ⇒ l.foldLeft(BasicDirectives.noop)(MapReduce))
 
   object MapReduce extends Poly2 {
     implicit def from[T, LA <: HList, LB <: HList, Out <: HList](implicit pdma: ParamDefMagnetAux[T, Directive[LB]], ev: Prepend.Aux[LA, LB, Out]) =
