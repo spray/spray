@@ -26,6 +26,7 @@ case class SiteSettings(
     devMode: Boolean,
     repoDirs: List[String],
     nightliesDir: String,
+    currentVersion: String,
     otherVersions: Seq[String]) {
 
   require(interface.nonEmpty, "interface must be non-empty")
@@ -39,5 +40,6 @@ object SiteSettings extends SettingsCompanion[SiteSettings]("spray.site") {
     c getBoolean "dev-mode",
     c getString "repo-dirs" split ':' toList,
     c getString "nightlies-dir",
+    c getString "current-version",
     c.getStringList("other-versions").asScala)
 }

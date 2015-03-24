@@ -1,7 +1,7 @@
 resolvers += "spray repo" at "http://repo.spray.io"
 
 libraryDependencies ++= Seq(
-  "com.decodified" %% "scala-ssh" % "0.7.0",
+  "com.decodified" %% "scala-ssh" % "0.6.4",
   "org.bouncycastle" % "bcprov-jdk16" % "1.46",
   "com.jcraft" % "jzlib" % "1.1.3"
 )

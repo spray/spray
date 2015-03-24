@@ -89,22 +89,22 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
             pathPrefix("_images") {
               getFromResourceDirectory("sphinx/json/_images")
             } ~
-            pathPrefix("files") {
-              getFromDirectory("/opt/spray.io/files")
+            pathPrefix("documentation" / Segment / "api") { version =>
+              val dir = s"api/$version/"
+              pathEnd {
+                redirect(s"/documentation/$version/api/", MovedPermanently)
+              } ~
+                pathSingleSlash {
+                  getFromResource(dir + "index.html")
+                } ~
+                getFromResourceDirectory(dir)
             } ~
             logRequest(showRequest _) {
               pathSingleSlash {
                 complete(page(home()))
               } ~
-              pathPrefix("documentation" / Segment / "api") { version =>
-                val dir = s"api/$version/"
-                pathEnd {
-                  redirect(s"/documentation/$version/api/", MovedPermanently)
-                } ~
-                pathSingleSlash {
-                  getFromResource(dir + "index.html")
-                } ~
-                getFromResourceDirectory(dir)
+              pathPrefix("files") {
+                getFromDirectory("/opt/spray.io/files")
               } ~
               pathSuffixTest(Slash) {
                 path("home" /) {

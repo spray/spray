@@ -102,7 +102,7 @@ object SubNode {
           }
         }
       val children: Seq[ContentNode] = {
-        val nodes = Main.settings.otherVersions map { v ⇒
+        val other = Main.settings.otherVersions map { v ⇒
           val vv = v.takeWhile(_ != ' ')
           SphinxDoc.load(s"documentation-$vv/index/") match {
             case Some(d) ⇒
@@ -113,6 +113,7 @@ object SubNode {
             case None ⇒ sys.error(s"index.fjson for documentation version $vv not found")
           }
         }
+        val nodes = other ++ APIDocNode.findFor(_parent, Main.settings.currentVersion)
         nodes.sorted(versionNodeOrdering)
       }
     }
