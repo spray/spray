@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@ import spray.http.HttpData
 import spray.util._
 import SSLEngineResult.Status._
 import SSLEngineResult.HandshakeStatus._
+import java.net.InetSocketAddress
+import scala.util.control.NonFatal
 
 trait SslTlsContext extends PipelineContext {
   /**
@@ -400,6 +402,15 @@ object SslTlsSupport {
 
   private val EmptyByteBuffer = ByteBuffer.wrap(spray.util.EmptyByteArray)
 
+  private[io] val hostString: InetSocketAddress ⇒ String =
+    try {
+      // Retrieve the original host string that was given (IP or DNS name) if running Java 7 or later
+      // using the getHostString() method. This avoids a reverse DNS query from calling getHostName()
+      // if the original host string is an IP address.
+      val method = classOf[InetSocketAddress].getMethod("getHostString")
+      address ⇒ method.invoke(address).asInstanceOf[String]
+    } catch { case NonFatal(_) ⇒ _.getHostName }
+
   /** Event dispatched upon successful SSL handshaking. */
   case class SSLSessionEstablished(info: SSLSessionInfo) extends Event
 }
@@ -416,7 +427,7 @@ private[io] sealed abstract class SSLEngineProviderCompanion(protected val clien
     fromFunc { plc ⇒
       cp(plc) map { sslContext ⇒
         val address = plc.remoteAddress
-        val engine = sslContext.createSSLEngine(address.getHostName, address.getPort)
+        val engine = sslContext.createSSLEngine(SslTlsSupport.hostString(address), address.getPort)
         engine.setUseClientMode(clientMode)
         engine
       }

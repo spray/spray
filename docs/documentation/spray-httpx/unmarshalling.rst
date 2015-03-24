@@ -83,7 +83,7 @@ As another example, here is an ``Unmarshaller`` definition for a custom type ``P
 As can be seen in this example you best define the ``Unmarshaller`` for ``T`` in the companion object of ``T``.
 This way your unmarshaller is always in-scope, without any `import tax`_.
 
-.. _import tax: http://eed3si9n.com/revisiting-implicits-without-import-tax
+.. _import tax: http://vimeo.com/20308847
 
 
 Deriving Unmarshallers

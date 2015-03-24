@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ trait MultipartMarshallers {
   implicit def multipartByterangesMarshaller = multipartPartsMarshaller[MultipartByteRanges](`multipart/byteranges`)
   implicit def multipartContentMarshaller = multipartPartsMarshaller[MultipartContent](`multipart/mixed`)
 
-  private def multipartPartsMarshaller[T <: MultipartParts](mediatype: MultipartMediaType): Marshaller[T] = {
+  def multipartPartsMarshaller[T <: MultipartParts](mediatype: MultipartMediaType): Marshaller[T] = {
     val boundary = randomBoundary
     Marshaller.of[T](mediatype withBoundary boundary) { (value, contentType, ctx) ⇒
       if (!value.parts.isEmpty) {

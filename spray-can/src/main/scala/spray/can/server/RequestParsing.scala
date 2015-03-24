@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,7 +71,8 @@ private[can] object RequestParsing {
             }
 
           def handleError(status: StatusCode, info: ErrorInfo): Unit = {
-            log.warning("Illegal request, responding with status '{}': {}", status, info.formatPretty)
+            log.warning("Illegal request, responding with status '{}': {}", status,
+              if (settings.verboseErrorLogging) info.formatPretty else info.summary)
             val msg = if (settings.verboseErrorMessages) info.formatPretty else info.summary
             commandPL(ResponsePartRenderingContext(HttpResponse(status, msg), closeAfterResponseCompletion = true))
 

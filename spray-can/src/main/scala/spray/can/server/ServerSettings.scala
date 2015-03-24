@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ case class ServerSettings(
     timeoutHandler: String,
     chunklessStreaming: Boolean,
     verboseErrorMessages: Boolean,
+    verboseErrorLogging: Boolean,
     requestChunkAggregationLimit: Int,
     responseHeaderSizeHint: Int,
     maxEncryptionChunkSize: Int,
@@ -99,6 +100,7 @@ object ServerSettings extends SettingsCompanion[ServerSettings]("spray.can.serve
     c getString "timeout-handler",
     c getBoolean "chunkless-streaming",
     c getBoolean "verbose-error-messages",
+    c getBoolean "verbose-error-logging",
     c getIntBytes "request-chunk-aggregation-limit",
     c getIntBytes "response-header-size-hint",
     c getIntBytes "max-encryption-chunk-size",

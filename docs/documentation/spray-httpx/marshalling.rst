@@ -100,7 +100,7 @@ As another example, here is a ``Marshaller`` definition for a custom type ``Pers
 As can be seen in this example you best define the ``Marshaller`` for ``T`` in the companion object of ``T``.
 This way your marshaller is always in-scope, without any `import tax`_.
 
-.. _import tax: http://eed3si9n.com/revisiting-implicits-without-import-tax
+.. _import tax: http://vimeo.com/20308847
 
 
 Deriving Marshallers

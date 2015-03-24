@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -355,6 +355,19 @@ private class HttpServerConnectionPipelineSpec extends Specification with RawSpe
       } + "Ooops! The server was not able to produce a timely response to your request.\n" +
         "Please try again in a short while!"
       commands.expectMsg(Tcp.Close)
+    }
+
+    "dispatch a request with a non-RFC3986 request-target to the service actor" in new MyFixture() {
+      val raw = prep {
+        """|GET //foo HTTP/1.1
+          |Host: test.com
+          |
+          |"""
+      }
+      connectionActor ! Tcp.Received(ByteString(raw))
+      commands.expectMsgPF() {
+        case Pipeline.Tell(`handlerRef`, msg, _) ⇒ msg
+      } === HttpRequest(uri = "http://test.com//foo", headers = List(`Host`("test.com")))
     }
   }
 

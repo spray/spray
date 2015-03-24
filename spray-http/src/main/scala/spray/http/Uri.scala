@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -158,10 +158,9 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
    */
   def renderWithoutFragment[R <: Rendering](r: R, charset: Charset): r.type = {
     if (isAbsolute) r ~~ scheme ~~ ':'
-    authority.render(r, scheme, charset)
+    authority.render(r, scheme, path, charset)
     path.render(r, charset, encodeFirstSegmentColons = isRelative)
-    if (!query.isEmpty) query.render(r ~~ '?', charset)
-    r
+    if (query.nonEmpty) query.render(r ~~ '?', charset) else r
   }
 
   /**
@@ -178,6 +177,16 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
    */
   def toRelative =
     Uri(path = if (path.isEmpty) Uri.Path./ else path, query = query, fragment = fragment)
+
+  /**
+   * Converts this URI into an HTTP request target "origin-form" as defined by
+   * https://tools.ietf.org/html/rfc7230#section-5.3.
+   *
+   * Note that the resulting URI instance is not necessarily a valid RFC 3986 URI!
+   * (As it might be a "relative" URI with a part component starting with a double slash.)
+   */
+  def toHttpRequestTargetOriginForm =
+    create("", Authority.Empty, if (path.isEmpty) Uri.Path./ else path, query, None)
 
   /**
    * Drops the fragment from this URI
@@ -330,18 +339,19 @@ object Uri {
   def httpScheme(securedConnection: Boolean = false) = if (securedConnection) "https" else "http"
 
   case class Authority(host: Host, port: Int = 0, userinfo: String = "") extends ToStringRenderable {
-    def isEmpty = host.isEmpty
-    def render[R <: Rendering](r: R): r.type = render(r, "", UTF8)
-    def render[R <: Rendering](r: R, scheme: String, charset: Charset): r.type =
-      if (isEmpty) r else {
+    def isEmpty = equals(Authority.Empty)
+    def nonEmpty = !isEmpty
+    def render[R <: Rendering](r: R): r.type = render(r, "", Path.Empty, UTF8)
+    def render[R <: Rendering](r: R, scheme: String, charset: Charset): r.type = render(r, scheme, Path.Empty, charset)
+    def render[R <: Rendering](r: R, scheme: String, path: Path, charset: Charset): r.type =
+      if (nonEmpty) {
         r ~~ '/' ~~ '/'
         if (!userinfo.isEmpty) encode(r, userinfo, charset, UNRESERVED | SUB_DELIM | COLON) ~~ '@'
         r ~~ host
-        if (port != 0) normalizePort(port, scheme) match {
-          case 0 ⇒ r
-          case x ⇒ r ~~ ':' ~~ port
-        }
-        else r
+        if (port != 0) r ~~ ':' ~~ port else r
+      } else scheme match {
+        case "" | "mailto" ⇒ r
+        case _             ⇒ if (path.isEmpty || path.startsWithSlash) r ~~ '/' ~~ '/' else r
       }
     def normalizedForHttp(encrypted: Boolean = false) =
       normalizedFor(httpScheme(encrypted))
