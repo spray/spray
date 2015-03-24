@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,10 +45,10 @@ class RequestRendererSpec extends Specification {
       "GET request with a URI that requires encoding" in new TestSetup() {
         HttpRequest(GET, "/abc<def") must beRenderedTo {
           """|GET /abc%3Cdef HTTP/1.1
-            |Host: test.com:8080
-            |User-Agent: spray-can/1.0.0
-            |
-            |"""
+             |Host: test.com:8080
+             |User-Agent: spray-can/1.0.0
+             |
+             |"""
         }
       }
 
@@ -134,13 +134,13 @@ class RequestRendererSpec extends Specification {
             uri = "/abc/xyz",
             headers = List(RawHeader("Age", "30"), `Content-Type`(`text/plain`), `Content-Length`(1000)))) must beRenderedTo {
             """POST /abc/xyz HTTP/1.0
-            |Age: 30
-            |Content-Type: text/plain
-            |Content-Length: 1000
-            |Host: test.com:8080
-            |User-Agent: spray-can/1.0.0
-            |
-            |"""
+              |Age: 30
+              |Content-Type: text/plain
+              |Content-Length: 1000
+              |Host: test.com:8080
+              |User-Agent: spray-can/1.0.0
+              |
+              |"""
           }
       }
       "POST request start (chunkless chunk) without Content-Length must throw" in new TestSetup(chunklessStreaming = true) {

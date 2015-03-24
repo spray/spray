@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,32 @@ class EncoderSpec extends Specification with CodecSpecSupport {
       val encoded = DummyEncoder.encode(request)
       encoded.headers === List(`Content-Encoding`(DummyEncoder.encoding))
       encoded.entity === HttpEntity(dummyCompress(smallText))
+    }
+  }
+
+  "NoEncodingCompressor" should {
+    "work for multiple chunks of input" in {
+      val comp = NoEncoding.newCompressor
+
+      comp.compress("abc".getBytes("ASCII"))
+      comp.compress("def".getBytes("ASCII"))
+
+      comp.flush() === "abcdef".getBytes("ASCII")
+
+      comp.compress("ghi".getBytes("ASCII"))
+      comp.compress("jkl".getBytes("ASCII"))
+
+      comp.finish() === "ghijkl".getBytes("ASCII")
+    }
+    "work for two concurrently active compressors" in {
+      val comp1 = NoEncoding.newCompressor
+      val comp2 = NoEncoding.newCompressor
+
+      comp1.compress("abc".getBytes("ASCII"))
+      comp2.compress("def".getBytes("ASCII"))
+
+      comp1.finish() === "abc".getBytes("ASCII")
+      comp2.finish() === "def".getBytes("ASCII")
     }
   }
 

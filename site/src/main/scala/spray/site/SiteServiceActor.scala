@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,11 +67,18 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
             complete(NotFound) // fail early in order to prevent error response logging
           } ~
           logRequestResponse(showErrorResponses _) {
+            talkCharts("berlin") ~
+            talkCharts("duse") ~
             talkCharts("jax14") ~
+            talkCharts("jfokus") ~
             talkCharts("msug") ~
+            talkCharts("nescala2015") ~
+            talkCharts("nescala2015/rs") ~
             talkCharts("scala.io/2013") ~
             talkCharts("scala.io/2014") ~
             talkCharts("scaladays2014") ~
+            talkCharts("scalax/2014") ~
+            talkCharts("vienna") ~
             talkCharts("webinar") ~
             talkCharts("webinar2014") ~
             talkCharts("wjax") ~

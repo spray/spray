@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ package directives
 import scala.concurrent.{ ExecutionContext, Future }
 import shapeless.HNil
 import spray.routing.authentication._
+import AuthenticationFailedRejection.CredentialsMissing
 import BasicDirectives._
 import FutureDirectives._
 import MiscDirectives._
@@ -32,6 +33,12 @@ trait SecurityDirectives {
    * Can be called either with a ``Future[Authentication[T]]`` or ``ContextAuthenticator[T]``.
    */
   def authenticate[T](magnet: AuthMagnet[T]): Directive1[T] = magnet.directive
+
+  /**
+   * Wraps its inner Route with optional authentication support.
+   * Can be called either with a ``Future[Authentication[T]]`` or ``ContextAuthenticator[T]``.
+   */
+  def optionalAuthenticate[T](magnet: AuthMagnet[T]): Directive1[Option[T]] = magnet.optionalDirective
 
   /**
    * Applies the given authorization check to the request.
@@ -51,6 +58,11 @@ trait SecurityDirectives {
 class AuthMagnet[T](authDirective: Directive1[Authentication[T]])(implicit executor: ExecutionContext) {
   val directive: Directive1[T] = authDirective.flatMap {
     case Right(user)     ⇒ provide(user)
+    case Left(rejection) ⇒ reject(rejection)
+  }
+  val optionalDirective: Directive1[Option[T]] = authDirective.flatMap {
+    case Right(user) ⇒ provide(Some(user))
+    case Left(AuthenticationFailedRejection(CredentialsMissing, _)) ⇒ provide(None)
     case Left(rejection) ⇒ reject(rejection)
   }
 }

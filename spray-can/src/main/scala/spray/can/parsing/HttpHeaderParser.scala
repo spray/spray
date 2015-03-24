@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -482,7 +482,7 @@ private object HttpHeaderParser {
           if (isWhitespace(byteChar(input, ix + 2))) scanHeaderValue(input, start, maxHeaderValueEndIx)(spaceAppended, ix + 3)
           else (if (sb != null) sb.toString else asciiString(input, start, ix), ix + 2)
         case c if c >= ' ' ⇒ scanHeaderValue(input, start, maxHeaderValueEndIx)(if (sb != null) sb.append(c) else sb, ix + 1)
-        case c             ⇒ fail(s"Illegal character '${escape(c)}' in header name")
+        case c             ⇒ fail(s"Illegal character '${escape(c)}' in header value")
       }
     else fail(s"HTTP header value exceeds the configured limit of ${maxHeaderValueEndIx - start} characters")
   }

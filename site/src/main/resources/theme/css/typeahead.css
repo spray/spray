@@ -1,4 +1,4 @@
-.twitter-typeahead .tt-query,
+.twitter-typeahead .tt-input,
 .twitter-typeahead .tt-hint {
   margin-bottom: 0;
 }
@@ -28,7 +28,7 @@
   padding: 3px 20px;
 }
 
-.tt-suggestion.tt-is-under-cursor {
+.tt-suggestion.tt-cursor {
   color: #fff;
   background-color: #0081c2;
   background-image: -moz-linear-gradient(top, #0088cc, #0077b3);
@@ -40,7 +40,7 @@
   filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff0088cc', endColorstr='#ff0077b3', GradientType=0)
 }
 
-.tt-suggestion.tt-is-under-cursor a {
+.tt-suggestion.tt-cursor a {
   color: #fff;
 }
 

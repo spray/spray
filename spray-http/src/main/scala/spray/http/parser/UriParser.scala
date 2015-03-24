@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -239,8 +239,8 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
     while (matches(UNRESERVED & ~UPPER_ALPHA | SUB_DELIM) || UpperAlpha || `pct-encoded`) mark = cursor
     reset(mark)
     // host is always decoded using UTF-8 (http://tools.ietf.org/html/rfc3986#section-3.2.2)
-    _host = NamedHost {
-      if (cursor > start) {
+    _host = if (cursor > start) {
+      NamedHost {
         firstUpper -= start
         firstPercent -= start
         val s = slice(start, cursor)
@@ -248,8 +248,8 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
           if (firstPercent >= 0) toLowerIfNeeded(decodeIfNeeded(s, firstPercent, charset), math.min(firstPercent, firstUpper))
           else toLowerIfNeeded(s, firstUpper)
         else if (firstPercent >= 0) toLowerIfNeeded(decodeIfNeeded(s, firstPercent, charset), firstPercent) else s
-      } else ""
-    }
+      }
+    } else Host.Empty
     true
   }
 

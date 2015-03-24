@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -360,12 +360,12 @@ trait PathMatchers {
 
     def fromChar(c: Char): T
 
-    def fromDecimalChar(c: Char): T = if ('0' <= c && c <= '9') (c - '0').asInstanceOf[T] else minusOne
+    def fromDecimalChar(c: Char): T = if ('0' <= c && c <= '9') x.fromInt(c - '0') else minusOne
 
     def fromHexChar(c: Char): T =
-      if ('0' <= c && c <= '9') (c - '0').asInstanceOf[T] else {
+      if ('0' <= c && c <= '9') x.fromInt(c - '0') else {
         val cn = c | 0x20 // normalize to lowercase
-        if ('a' <= cn && cn <= 'f') (cn - 'a' + 10).asInstanceOf[T] else
+        if ('a' <= cn && cn <= 'f') x.fromInt(cn - 'a' + 10) else
           minusOne
       }
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,6 +65,28 @@ class AnyParamDirectivesSpec extends RoutingSpec {
     "extract None if no form" in {
       Post("/test", FormData(Seq())) ~> route ~> check {
         responseAs[String] === "None"
+      }
+    }
+  }
+
+  "when used with a single parameter with default value" should {
+    val route = anyParam("x" ? "default") { echoComplete }
+
+    "extract the parameter from query parameters" in {
+      Get("/test?x=specified") ~> route ~> check {
+        responseAs[String] === "specified"
+      }
+    }
+
+    "extract the parameter from form" in {
+      Post("/test", FormData(Map("x" -> "specified"))) ~> route ~> check {
+        responseAs[String] === "specified"
+      }
+    }
+
+    "extract default parameter value" in {
+      Get("/test") ~> route ~> check {
+        responseAs[String] === "default"
       }
     }
   }

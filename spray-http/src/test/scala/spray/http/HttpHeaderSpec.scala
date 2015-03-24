@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -145,6 +145,12 @@ class HttpHeaderSpec extends Specification {
         Authorization(GenericHttpCredentials("NoParamScheme", Map.empty[String, String]))
       "Authorization: OAuth sf_v1a-stg;V5DrRS1KfA=" =!=
         Authorization(GenericHttpCredentials("OAuth", "sf_v1a-stg;V5DrRS1KfA="))
+      "Authorization: QVFJQzV3TTJMWTRTZmN3Zk=" =!=
+        ErrorInfo("Illegal HTTP header 'Authorization'",
+          """Invalid input '=', expected TokenChar, LWS or EOI (line 1, pos 23):
+            |QVFJQzV3TTJMWTRTZmN3Zk=
+            |                      ^
+            |""".stripMargin)
     }
 
     "Cache-Control" in {
@@ -243,6 +249,7 @@ class HttpHeaderSpec extends Specification {
       "Host: [2001:db8::1]:8080" =!= Host("[2001:db8::1]", 8080)
       "Host: [2001:db8::1]" =!= Host("[2001:db8::1]")
       "Host: [::FFFF:129.144.52.38]" =!= Host("[::FFFF:129.144.52.38]")
+      "Host: spray.io:80000" =!= ErrorInfo("Illegal HTTP header 'Host': requirement failed", "Illegal port: 80000")
     }
 
     "If-Match" in {

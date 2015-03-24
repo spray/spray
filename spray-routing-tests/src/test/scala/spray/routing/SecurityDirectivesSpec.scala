@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,8 +83,6 @@ class SecurityDirectivesSpec extends RoutingSpec {
   }
 
   "the 'authenticate(<Future>)' directive" should {
-    case object AuthenticationRejection extends Rejection
-
     var i = 0
     def nextInt() = { i += 1; i }
     def myAuthenticator: Future[Authentication[Int]] = Future.successful(Right(nextInt()))
@@ -96,6 +94,68 @@ class SecurityDirectivesSpec extends RoutingSpec {
         check { responseAs[String] === "1" }
       Get() ~> Host("spray.io") ~> route ~>
         check { responseAs[String] === "2" }
+    }
+  }
+
+  "the 'optionalAuthenticate(BasicAuth())' directive" should {
+    "extract None from requests without Authorization header" in {
+      Get() ~> {
+        optionalAuthenticate(dontAuth) { echoComplete }
+      } ~> check { responseAs[String] === "None" }
+    }
+    "extract None from requests with Authorization header using a different scheme" in {
+      Get() ~> RawHeader("Authorization", "bob alice") ~> {
+        optionalAuthenticate(dontAuth) { echoComplete }
+      } ~> check { responseAs[String] === "None" }
+    }
+    "reject unauthenticated requests with Authorization header with an AuthenticationFailedRejection" in {
+      Get() ~> Authorization(BasicHttpCredentials("Bob", "")) ~> {
+        optionalAuthenticate(dontAuth) { echoComplete }
+      } ~> check { rejection === AuthenticationFailedRejection(CredentialsRejected, List(challenge)) }
+    }
+    "extract Some(object) representing the user identity created by successful authentication" in {
+      Get() ~> Authorization(BasicHttpCredentials("Alice", "")) ~> {
+        optionalAuthenticate(doAuth) { echoComplete }
+      } ~> check { responseAs[String] === "Some(BasicUserContext(Alice))" }
+    }
+    "properly handle exceptions thrown in its inner route" in {
+      object TestException extends spray.util.SingletonException
+      Get() ~> Authorization(BasicHttpCredentials("Alice", "")) ~> {
+        handleExceptions(ExceptionHandler.default) {
+          optionalAuthenticate(doAuth) { _ ⇒ throw TestException }
+        }
+      } ~> check { status === StatusCodes.InternalServerError }
+    }
+  }
+
+  "the 'optionalAuthenticate(<ContextAuthenticator>)' directive" should {
+    case object AuthenticationRejection extends Rejection
+
+    val myAuthenticator: ContextAuthenticator[Int] = ctx ⇒ Future {
+      Either.cond(ctx.request.uri.authority.host == Uri.NamedHost("spray.io"), 42, AuthenticationRejection)
+    }
+    "reject requests not satisfying the filter condition" in {
+      Get() ~> optionalAuthenticate(myAuthenticator) { echoComplete } ~>
+        check { rejection === AuthenticationRejection }
+    }
+    "pass on the authenticator extraction if the filter conditions is met" in {
+      Get() ~> Host("spray.io") ~> optionalAuthenticate(myAuthenticator) { echoComplete } ~>
+        check { responseAs[String] === "Some(42)" }
+    }
+  }
+
+  "the 'optionalAuthenticate(<Future>)' directive" should {
+    var i = 0
+    def nextInt() = { i += 1; i }
+    def myAuthenticator: Future[Authentication[Int]] = Future.successful(Right(nextInt()))
+
+    val route = optionalAuthenticate(myAuthenticator) { echoComplete }
+
+    "pass on the authenticator extraction if the filter conditions is met" in {
+      Get() ~> Host("spray.io") ~> route ~>
+        check { responseAs[String] === "Some(1)" }
+      Get() ~> Host("spray.io") ~> route ~>
+        check { responseAs[String] === "Some(2)" }
     }
   }
 }

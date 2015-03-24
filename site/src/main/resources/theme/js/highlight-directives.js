@@ -55,15 +55,36 @@ $(function() {
         });
     }
 
-    $('.typeahead')
-        .typeahead({
-            name: "documentation",
-            remote: "/search/documentation/typeahead?terms=%QUERY",
-            engine: Hogan,
-            limit: 10,
-            template: "<div>{{extra.parent}}:&nbsp;<strong>{{name}}</strong></div>"
-        })
-        .bind("typeahead:selected", function(event, datum) {
-            window.location = datum.url;
-        });
+    var suggestionsEngine = new Bloodhound({
+        datumTokenizer: function(d) {
+          return Bloodhound.tokenizers.whitespace(d.num);
+        },
+        queryTokenizer: Bloodhound.tokenizers.whitespace,
+        name: "documentation",
+        limit: 10,
+        remote: "/search/documentation/typeahead?terms=%QUERY"
+    });
+
+    suggestionsEngine.initialize();
+
+    $('.typeahead').typeahead(
+    	  { minLength: 3 },
+    	  {
+    		    source: suggestionsEngine.ttAdapter(),
+    		    templates: {
+      			    empty: function(data) {
+                    return [
+        			          '<span class="tt-empty-message">',
+        			          'Could not find results for: <strong>'+data.query+'</strong>',
+        			          '</span>'].join('\n')
+                },
+      			    suggestion: function(data) {
+                    return '<div>'+data.extra.parent+':&nbsp;<strong>'+data.name+'</strong></div>'
+                }
+      		  }
+    	  }
+    )
+    .bind("typeahead:selected", function(event, datum) {
+        window.location = datum.url;
+    });
 });

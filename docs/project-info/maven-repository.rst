@@ -16,6 +16,8 @@ Nightly builds are available from http://nightlies.spray.io, to use them add thi
 
   resolvers += "spray nightlies repo" at "http://nightlies.spray.io"
 
+.. _Maven Central: http://search.maven.org/
+
 
 Artifact Naming
 ---------------
@@ -30,7 +32,11 @@ All *spray* artifacts follow this naming scheme:
 So, for expressing a dependency on a *spray* module with SBT_ you'll want to add something like this
 to your project settings::
 
-  libraryDependencies += "io.spray" % "spray-can" % "1.0"
+    libraryDependencies += "io.spray" % "spray-can" % "1.x.x" // versions 1.1.x and 1.2.x
+
+or (note the ``%%``)::
+
+    libraryDependencies += "io.spray" %% "spray-can" % "1.3.x"
 
 Make sure to replace the artifact name and version number with the one you are targeting! (see :ref:`Current Versions`)
 

@@ -13,7 +13,7 @@ Signature
 ::
 
     def withRangeSupport(): Directive0
-    def withRangeSupport(rangeCountLimit: Int, rangeCoalescingThreshold): Directive0
+    def withRangeSupport(rangeCountLimit: Int, rangeCoalescingThreshold:Long): Directive0
 
 The signature shown is simplified, the real signature uses magnets. [1]_
 

@@ -1,6 +1,46 @@
 Other Resources
 ===============
 
+Feb 2015: "*Reactive Streams & Akka HTTP*" at `Scala User Group - Berlin Brandenburg`__
+  | Slides: `/berlin/`__
+
+__ http://www.meetup.com/Scala-Berlin-Brandenburg/
+__ /berlin/
+
+
+Feb 2015: "*REST on Akka: Connect to the World*" at `Jfokus 2015`__
+  | Slides: `/jfokus/`__
+
+__ http://jfokus.se/
+__ /jfokus/
+
+
+Jan 2015: "*Akka HTTP — The What, Why and How*" at `NEScala 2015`__
+  | Slides: `/nescala2015/`__
+
+__ http://nescala.org/
+__ /nescala2015/
+
+Jan 2015: "*Reactive Streams* and *Akka HTTP*" at the `Vienna Scala User Group`__
+  | Slides: `/vienna/`__
+
+__ http://www.meetup.com/scala-vienna/
+__ /vienna/
+
+
+Dec 2014: "*Reactive Streams* and *Akka HTTP*" at the `Dutch Scala Enthusiasts`__
+  | Slides: `/duse/`__
+
+__ http://www.meetup.com/Dutch-Scala-Enthusiasts/events/218602810/
+__ /duse/
+
+Dec 2014: "*Akka HTTP*: Connect to the world" talk from `Scala eXchange 2014`__
+  | Video: https://skillsmatter.com/skillscasts/5852-rest-on-akka-connect-to-the-world
+  | Slides: `/scalax/2014/`__
+
+__ http://skillsmatter.com/event/scala/scala-exchange-2014
+__ /scalax/2014/
+
 Oct 2014: "*Akka HTTP*: Connect to the world" talk from `scala.io`__ 2014
   | Slides: `/scala.io/2014/`__
 

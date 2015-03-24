@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,20 +77,20 @@ class RequestParserSpec extends Specification {
              |Content-length:    17
              |
              |Shake your BOODY!"""
-        } === Seq(POST, Uri("/resource/yes"), `HTTP/1.0`, List(`Content-Length`(17), Connection("keep-alive"),
-          `User-Agent`("curl/7.19.7 xyz")), "Shake your BOODY!", 'dontClose)
+        } === Seq(POST, Uri("/resource/yes"), `HTTP/1.0`, List(`User-Agent`("curl/7.19.7 xyz"), Connection("keep-alive"),
+          `Content-Length`(17)), "Shake your BOODY!", 'dontClose)
       }
 
       "with a body and a `Transfer-Encoding: identity` header" in {
         parse {
           """|POST /resource/yes HTTP/1.1
-            |Transfer-Encoding: identity
-            |Content-length:    17
-            |Host: example.com
-            |
-            |Shake your BOODY!"""
+             |Transfer-Encoding: identity
+             |Content-length:    17
+             |Host: example.com
+             |
+             |Shake your BOODY!"""
         } === Seq(POST, Uri("/resource/yes"), `HTTP/1.1`,
-          List(Host("example.com"), `Content-Length`(17), `Transfer-Encoding`("identity")),
+          List(`Transfer-Encoding`("identity"), `Content-Length`(17), Host("example.com")),
           "Shake your BOODY!", 'dontClose)
       }
 
@@ -104,8 +104,8 @@ class RequestParserSpec extends Specification {
             |Shake your BOODY!GET / HTTP/1.0
             |
             |"""
-        } === Seq(POST, Uri("/resource/yes"), `HTTP/1.0`, List(`Content-Length`(17), Connection("keep-alive"),
-          `User-Agent`("curl/7.19.7 xyz")), "Shake your BOODY!", 'dontClose, GET, Uri("/"), `HTTP/1.0`, Nil, "", 'close)
+        } === Seq(POST, Uri("/resource/yes"), `HTTP/1.0`, List(`User-Agent`("curl/7.19.7 xyz"), Connection("keep-alive"),
+          `Content-Length`(17)), "Shake your BOODY!", 'dontClose, GET, Uri("/"), `HTTP/1.0`, Nil, "", 'close)
       }
 
       "with multi-line headers" in {
@@ -120,8 +120,8 @@ class RequestParserSpec extends Specification {
             |Content-type: application/json
             |
             |"""
-        } === Seq(DELETE, Uri("/abc"), `HTTP/1.0`, List(`Content-Type`(`application/json`), Connection("close", "fancy"),
-          Accept(MediaRanges.`*/*`), `User-Agent`("curl/7.19.7 abc xyz")), "", 'close)
+        } === Seq(DELETE, Uri("/abc"), `HTTP/1.0`, List(`User-Agent`("curl/7.19.7 abc xyz"), Accept(MediaRanges.`*/*`),
+          Connection("close", "fancy"), `Content-Type`(`application/json`)), "", 'close)
       }
 
       "byte-by-byte" in {
@@ -133,7 +133,7 @@ class RequestParserSpec extends Specification {
             |ABCDPATCH"""
         }
         rawParse(newParser)(request.toCharArray.map(_.toString)(collection.breakOut): _*) ===
-          Seq(PUT, Uri("/resource/yes"), `HTTP/1.1`, List(Host("x"), `Content-Length`(4)), "ABCD", 'dontClose)
+          Seq(PUT, Uri("/resource/yes"), `HTTP/1.1`, List(`Content-Length`(4), Host("x")), "ABCD", 'dontClose)
       }
 
       "with a custom HTTP method" in {
@@ -151,8 +151,9 @@ class RequestParserSpec extends Specification {
             |Host: x
             |
             |"""
-        } === Seq(PUT, Uri("/resource/yes"), `HTTP/1.1`, List(Host("x"), `Content-Length`(2147483649L)), 'dontClose)
+        } === Seq(PUT, Uri("/resource/yes"), `HTTP/1.1`, List(`Content-Length`(2147483649L), Host("x")), 'dontClose)
       }
+
       "with several identical `Content-Type` headers" in {
         parse {
           """GET /data HTTP/1.1
@@ -166,8 +167,18 @@ class RequestParserSpec extends Specification {
           GET,
           Uri("/data"),
           `HTTP/1.1`,
-          List(`Content-Length`(0), `Content-Type`(`application/pdf`), Host("x")),
+          List(Host("x"), `Content-Type`(`application/pdf`), `Content-Length`(0)),
           "", 'dontClose)
+      }
+
+      "with a request target starting with a double-slash" in {
+        parse {
+          """GET //foo?query=yes HTTP/1.0
+            |
+            |"""
+        } should beLike {
+          case Seq(GET, uri, `HTTP/1.0`, Nil, "", 'close) ⇒ uri.toString === "//foo?query=yes"
+        }
       }
     }
 
@@ -180,8 +191,8 @@ class RequestParserSpec extends Specification {
           |Host: ping
           |
           |"""
-      val startMatch = Seq(PATCH, Uri("/data"), `HTTP/1.1`, List(Host("ping"),
-        `Content-Type`(`application/pdf`), Connection("lalelu"), `Transfer-Encoding`("chunked")), 'dontClose)
+      val startMatch = Seq(PATCH, Uri("/data"), `HTTP/1.1`, List(`Transfer-Encoding`("chunked"),
+        Connection("lalelu"), `Content-Type`(`application/pdf`), Host("ping")), 'dontClose)
 
       "request start" in {
         parse(start + "rest") === startMatch ++ Seq(400: StatusCode, "Illegal character 'r' in chunk start")
@@ -235,7 +246,7 @@ class RequestParserSpec extends Specification {
            |
            |"""
       def startMatch(contentSize: Int) =
-        Seq(GET, Uri("/data"), `HTTP/1.1`, List(`Content-Length`(contentSize), Host("ping"), `Content-Type`(`application/pdf`)))
+        Seq(GET, Uri("/data"), `HTTP/1.1`, List(`Content-Type`(`application/pdf`), Host("ping"), `Content-Length`(contentSize)))
 
       "full request if size < incoming-auto-chunking-threshold-size" in {
         parse(start(1) + "r") === startMatch(1) ++ Seq("r", 'dontClose)

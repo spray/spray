@@ -1,5 +1,5 @@
 /*
- * Copyright © 2011-2013 the spray project <http://spray.io>
+ * Copyright © 2011-2015 the spray project <http://spray.io>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -105,7 +105,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         } -> false
       }
 
-      "a response to a HEAD request" in new TestSetup() {
+      "an unchunked response to a transparent HEAD request" in new TestSetup() {
         render(requestMethod = HEAD,
           response = HttpResponse(
             headers = List(RawHeader("Age", "30"), Connection("Keep-Alive")),
@@ -118,6 +118,51 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
               |Content-Length: 23
               |
               |"""
+          } -> false
+      }
+
+      "an unchunked response to a non-transparent HEAD request" in new TestSetup(transparentHeadRequests = false) {
+        render(requestMethod = HEAD,
+          response = HttpResponse(headers = List(RawHeader("Age", "30"),
+            `Content-Type`(ContentTypes.`text/plain(UTF-8)`), `Content-Length`(100)))) === result {
+            """HTTP/1.1 200 OK
+            |Server: spray-can/1.0.0
+            |Date: Thu, 25 Aug 2011 09:10:29 GMT
+            |Age: 30
+            |Content-Type: text/plain; charset=UTF-8
+            |Content-Length: 100
+            |
+            |"""
+          } -> false
+      }
+
+      "a chunked response to a transparent HEAD request" in new TestSetup() {
+        render(requestMethod = HEAD,
+          response = ChunkedResponseStart(HttpResponse(
+            headers = List(RawHeader("Age", "30"), `Content-Type`(ContentTypes.`text/plain(UTF-8)`))))) === result {
+            """HTTP/1.1 200 OK
+            |Server: spray-can/1.0.0
+            |Date: Thu, 25 Aug 2011 09:10:29 GMT
+            |Age: 30
+            |Content-Type: text/plain; charset=UTF-8
+            |Transfer-Encoding: chunked
+            |
+            |"""
+          } -> false
+      }
+
+      "a chunked response to a non-transparent HEAD request" in new TestSetup(transparentHeadRequests = false) {
+        render(requestMethod = HEAD,
+          response = ChunkedResponseStart(HttpResponse(
+            headers = List(RawHeader("Age", "30"), `Content-Type`(ContentTypes.`text/plain(UTF-8)`))))) === result {
+            """HTTP/1.1 200 OK
+            |Server: spray-can/1.0.0
+            |Date: Thu, 25 Aug 2011 09:10:29 GMT
+            |Age: 30
+            |Content-Type: text/plain; charset=UTF-8
+            |Transfer-Encoding: chunked
+            |
+            |"""
           } -> false
       }
 
@@ -206,12 +251,12 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
             response = ChunkedResponseStart(HttpResponse(entity = "Yahoooo", headers = List(`Content-Length`(1000))))) === result {
               // no Connection: close header
               """HTTP/1.1 200 OK
-              |Server: spray-can/1.0.0
-              |Date: Thu, 25 Aug 2011 09:10:29 GMT
-              |Content-Length: 1000
-              |Content-Type: text/plain; charset=UTF-8
-              |
-              |Yahoooo"""
+                |Server: spray-can/1.0.0
+                |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                |Content-Length: 1000
+                |Content-Type: text/plain; charset=UTF-8
+                |
+                |Yahoooo"""
             } -> false
           // but connection will still have to be closed afterwards
           render(ChunkedMessageEnd) === result("") -> true
@@ -219,9 +264,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
 
       "a chunkless response chunk" in new TestSetup(chunklessStreaming = true) {
         render(response = MessageChunk(HttpData("body123".getBytes),
-          """key=value;another="tl;dr"""")) === result {
-          "body123"
-        } -> false
+          """key=value;another="tl;dr"""")) === result("body123") -> false
       }
 
       "a chunkless final response chunk" in new TestSetup(chunklessStreaming = true) {
