@@ -131,7 +131,8 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
                   }
                 } ~
                 pathPrefixTest("documentation" / !IntNumber ~ !PathEnd ~ Rest) { subUri =>
-                  redirect("/documentation/" + Main.settings.mainVersion + '/' + subUri, MovedPermanently)
+                  val latestVersion = Main.settings.otherVersions.last.takeWhile(_ != ' ')
+                  redirect("/documentation/" + latestVersion + '/' + subUri, MovedPermanently)
                 } ~
                 requestUri { uri =>
                   val path = uri.path.toString

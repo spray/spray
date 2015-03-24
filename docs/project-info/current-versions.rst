@@ -12,38 +12,55 @@ Since *spray* heavily depends on Akka_ its releases are usually closely tied to 
 This version targets Scala 2.9.x and Akka 1.3.x and is therefore not recommended for new projects anymore.
 Its documentation doesn't live here but in the (old) `github wiki`_.
 
+1.0.1
+-----
 
-1.0.1 / 1.1.2 / 1.2.2 / 1.3.2
------------------------------
+This is the latest version targeting Scala 2.9.3 and Akka 2.0.5.
+Its sources live in the `release/1.0`_ branch of the *spray* repository.
 
-The current and stable *spray* release is a quadrupel release,
-targeting Scala 2.9, Scala 2.10 and Scala 2.11 as well as four Akka versions at the same time.
 
-Please choose |1.0|, |1.1|, |1.2| or |1.3| depending on what Scala/Akka version you are targeting:
+1.1.3 / 1.2.3 / 1.3.3
+---------------------
+
+The current and stable *spray* release is a triple release,
+targeting both Scala 2.10 and Scala 2.11 as well as three Akka versions at the same time.
+
+Please choose |1.1|, |1.2| or |1.3| depending on what Scala/Akka version you are targeting:
 
 .. rst-class:: wide
 
-- | *spray* |1.0| is built against Scala 2.9.3 and Akka 2.0.5.
-  | Its sources live in the `release/1.0`_ branch of the *spray* repository.
-
-- | *spray* |1.1| is built against Scala 2.10.4 and Akka 2.1.4.
+- | *spray* |1.1| is built against Scala 2.10.5 and Akka 2.1.4.
   | Its sources live in the `release/1.1`_ branch of the *spray* repository.
 
-- | *spray* |1.2| is built against Scala 2.10.4 and Akka 2.2.4.
+- | *spray* |1.2| is built against Scala 2.10.5 and Akka 2.2.5.
   | Its sources live in the `release/1.2`_ branch of the *spray* repository.
   | (Please note that Akka 2.2.3 or later is *required*, earlier Akka versions will *not* work!)
 
-- | *spray* |1.3| is built against Scala 2.10.4 and Akka 2.3.6 as well as Scala 2.11.2 and Akka 2.3.6.
+- | *spray* |1.3| is built against Scala 2.10.5 and Akka 2.3.9 as well as Scala 2.11.6 and Akka 2.3.9.
   | Its sources live in the `release/1.3`_ branch of the *spray* repository.
-  | **Note**: Contrary to version 1.1.2 and 1.2.2 the 1.3.2 release is published with **crosspaths enabled**
+  | **Note**: Contrary to version 1.1.3 and 1.2.3 the 1.3.3 release is published with **crosspaths enabled**
   | since it targets two Scala versions at the same time!
 
 For information about where to find the *spray* artifacts please check out the :ref:`maven-repo` chapter.
 
-.. |1.0| replace:: **1.0.1**
-.. |1.1| replace:: **1.1.2**
-.. |1.2| replace:: **1.2.2**
-.. |1.3| replace:: **1.3.2**
+.. |1.1| replace:: **1.1.3**
+.. |1.2| replace:: **1.2.3**
+.. |1.3| replace:: **1.3.3**
+
+
+Shapeless Versions
+------------------
+
+If you want to use shapeless_ as well as :ref:`spray-routing` in your application you need to select the version of
+*spray(-routing)* that was built against the shapeless_ release which you'd like to use.
+
+- For shapeless_ 1.2.4 you should use *spray* |1.1|, |1.2| or |1.3| and the *spray-routing* module.
+- For shapeless_ 2.0.0 you should use *spray* **1.3.2** (Scala 2.10 or Scala 2.11) and
+  the *spray-routing-shapeless2* module instead of *spray-routing*.
+- For shapeless_ 2.1.0 you should use *spray* **1.3.3** (Scala 2.10 or Scala 2.11) and
+  the *spray-routing-shapeless2* module instead of *spray-routing*.
+
+.. _shapeless: https://github.com/milessabin/shapeless
 
 
 Nightly Builds
