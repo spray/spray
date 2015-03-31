@@ -122,6 +122,13 @@ class ParameterDirectivesSpec extends RoutingSpec {
         }
       } ~> check { responseAs[String] === "EllenParsons" }
     }
+    "extract the value of given parameters (with designated unmarshaller)" in {
+      Get("/?x=on&y=off") ~> {
+        parameters('x.as[Boolean], 'y.as[Boolean]) { (x, y) ⇒
+          complete(x.toString + y)
+        }
+      } ~> check { responseAs[String] === "truefalse" }
+    }
     "correctly extract an optional parameter" in {
       Get("/?foo=bar") ~> parameters('foo ?) { echoComplete } ~> check { responseAs[String] === "Some(bar)" }
       Get("/?foo=bar") ~> parameters('baz ?) { echoComplete } ~> check { responseAs[String] === "None" }
