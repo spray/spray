@@ -47,7 +47,7 @@ object RejectionHandler {
       complete(Forbidden, "The supplied authentication is not authorized to access this resource")
 
     case CorruptRequestEncodingRejection(msg) :: _ ⇒
-      complete(BadRequest, "The requests encoding is corrupt:\n" + msg)
+      complete(BadRequest, "The request's encoding is corrupt:\n" + msg)
 
     case MalformedFormFieldRejection(name, msg, _) :: _ ⇒
       complete(BadRequest, "The form field '" + name + "' was malformed:\n" + msg)
@@ -104,11 +104,11 @@ object RejectionHandler {
 
     case rejections @ (UnsupportedRequestContentTypeRejection(_) :: _) ⇒
       val supported = rejections.collect { case UnsupportedRequestContentTypeRejection(supported) ⇒ supported }
-      complete(UnsupportedMediaType, "There was a problem with the requests Content-Type:\n" + supported.mkString(" or "))
+      complete(UnsupportedMediaType, "There was a problem with the request's Content-Type:\n" + supported.mkString(" or "))
 
     case rejections @ (UnsupportedRequestEncodingRejection(_) :: _) ⇒
       val supported = rejections.collect { case UnsupportedRequestEncodingRejection(supported) ⇒ supported }
-      complete(BadRequest, "The requests Content-Encoding must be one the following:\n" + supported.map(_.value).mkString("\n"))
+      complete(BadRequest, "The request's Content-Encoding must be one the following:\n" + supported.map(_.value).mkString("\n"))
 
     case ValidationRejection(msg, _) :: _ ⇒
       complete(BadRequest, msg)
