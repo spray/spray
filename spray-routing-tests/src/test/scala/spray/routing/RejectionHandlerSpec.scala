@@ -60,7 +60,7 @@ class RejectionHandlerSpec extends RoutingSpec {
         decodeRequest(Gzip) { completeOk }
       } ~> check {
         status === BadRequest
-        responseAs[String] === "The requests encoding is corrupt:\nNot in GZIP format"
+        responseAs[String] === "The request's encoding is corrupt:\nNot in GZIP format"
       }
     }
     "respond with BadRequest for requests resulting in a MalformedFormFieldRejection" in {
@@ -154,7 +154,7 @@ class RejectionHandlerSpec extends RoutingSpec {
         entity(as[NodeSeq]) { _ ⇒ completeOk }
       } ~> check {
         status === UnsupportedMediaType
-        responseAs[String] === "There was a problem with the requests Content-Type:\n" +
+        responseAs[String] === "There was a problem with the request's Content-Type:\n" +
           "Expected 'text/xml' or 'application/xml' or 'text/html' or 'application/xhtml+xml'"
       }
     }
@@ -163,7 +163,7 @@ class RejectionHandlerSpec extends RoutingSpec {
         (decodeRequest(Gzip) | decodeRequest(Deflate)) { completeOk }
       } ~> check {
         status === BadRequest
-        responseAs[String] === "The requests Content-Encoding must be one the following:\ngzip\ndeflate"
+        responseAs[String] === "The request's Content-Encoding must be one the following:\ngzip\ndeflate"
       }
     }
     "respond with BadRequest for requests resulting in a ValidationRejection" in {
