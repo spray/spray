@@ -1,6 +1,12 @@
 Other Resources
 ===============
 
+June 2015: "Reactive Streams - The Now" talk from `ScalaDays 2015`__
+  | Slides: `/scaladays/2015/`__
+
+__ http://scaladays.org/
+__ /scaladays/2015/
+
 Feb 2015: "*Reactive Streams & Akka HTTP*" at `Scala User Group - Berlin Brandenburg`__
   | Slides: `/berlin/`__
 
@@ -55,10 +61,10 @@ __ /msug/
 
 June 2014: "akka-http: (un)REST your actors" talk from `ScalaDays 2014`__
   | Video: http://www.parleys.com/play/53a7d2c3e4b0543940d9e539/chapter0/about
-  | Slides: `/scaladays2014/`__
+  | Slides: `/scaladays/2014/`__
 
 __ http://scaladays.org/
-__ /scaladays2014/
+__ /scaladays/2014/
 
 May 2014: "Actors, HTTP and Reactive Streams" talk from `JAX 2014`__
   | Slides: `/jax14/`__

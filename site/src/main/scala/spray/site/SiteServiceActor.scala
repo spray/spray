@@ -76,7 +76,8 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
             talkCharts("nescala2015/rs") ~
             talkCharts("scala.io/2013") ~
             talkCharts("scala.io/2014") ~
-            talkCharts("scaladays2014") ~
+            talkCharts("scaladays/2014") ~
+            talkCharts("scaladays/2015") ~
             talkCharts("scalax/2014") ~
             talkCharts("vienna") ~
             talkCharts("webinar") ~

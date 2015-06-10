@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Reactive Streams &ndash; Status Quo</title>
+
+		<meta name="description" content="Reactive Streams &ndash; The Now">
+		<meta name="author" content="Mathias Doenitz">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/sirthias.css" id="theme">
+		<link rel="stylesheet" href="lib/font-awesome/css/font-awesome.css">
+
+		<!-- Code syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+		<div class="reveal">
+			<div class="slides">
+
+			<!-- *************************************************************** -->
+			
+      <section data-background="img/pipes4.jpg">
+        <h1>Reactive Streams</h1>
+        <h2>The Now</h2>
+        <p style="font-weight: bold">
+          <span>ScalaDays &nbsp;&nbsp; 2015-06-10@Amsterdam</span>
+        </p>
+        <p style="font-weight: bold">
+          <small>Mathias Doenitz &nbsp;
+            <a href="mailto:mathias(at)spray(dot)io"><i class="fa fa-envelope-square"></i></a> /
+            <a href="https://github.com/sirthias"><i class="fa fa-github-square"></i></a> /
+            <a href="http://twitter.com/sirthias"><i class="fa fa-twitter-square"></i></a><br/><br/>
+            This presentation: <a href="http://spray.io/scaladays/2015/">http://spray.io/scaladays/2015/</a>
+          </small>
+        </p>
+      </section>
+
+			<section>
+        <h2>Stream-based logic is all the rage</h2>
+        <img class="fragment" style="width:95%" src="img/rage0.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage1.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage2.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage3.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage4.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage5.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage6.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage7.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage8.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage9.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage10.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage11.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage12.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage13.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage14.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage15.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage15.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage16.svg" alt="Streaming Rage">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/rage17.svg" alt="Streaming Rage">
+			</section>
+
+			<section>
+        <h2>Why stream-based programming is cool</h2>
+        <img style="width:100%" src="img/processing-graph.svg" alt="A simple processing graph">
+        <ul>
+          <li>Intuitive, expressive and type-safe</li>
+          <li>Scales well across levels of abstraction</li>
+          <li>Well suited for today's (and tomorrow's) hardware</li>
+        </ul>
+      </section>
+
+			<section>
+			  <h2>&ldquo;Reactive Streams are the<br/>hottest kid on the block&rdquo;</h2>
+			  <p><small>Someone on the Internet</small></p>
+			</section>
+
+      <section>
+      	<h2>What Reactive Streams (RS) are</h2>
+				<p><small>First and foremost:</small></p>
+				<p style="font-size: 120%">
+					<span>Protocol</span>
+					<span>for efficiently passing data<br/>
+					  between two independent units of execution<br/></span>
+					<span>in an <emph>async</emph>, <emph>non-blocking</emph> &amp; <emph>bounded</emph> fashion</span>
+      	</p`>
+			</section>
+
+      <section>
+        <h2>RS defuse async boundaries</h2>
+        <img class="fragment" style="width:80%" src="img/async-boundary0.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="img/async-boundary1.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="img/async-boundary2.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="img/async-boundary3.svg" alt="Async Boundary">
+        <img class="fragment current-visible" style="position: absolute; width:80%; margin-left: -80%" src="img/async-boundary4.svg" alt="Async Boundary">
+        <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="img/async-boundary5.svg" alt="Async Boundary">
+			</section>
+
+			<section>
+        <h2>Reactive Streams are contagious</h2>
+        <img class="fragment" style="width:95%" src="img/contagious0.svg" alt="Contagiousness">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/contagious1.svg" alt="Contagiousness">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/contagious2.svg" alt="Contagiousness">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/contagious3.svg" alt="Contagiousness">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/contagious4.svg" alt="Contagiousness">
+        <img class="fragment" style="position: absolute; width:95%; margin-left: -95%" src="img/contagious5.svg" alt="Contagiousness">
+			</section>
+
+			<section>
+        <h2>RS can scale across the full stack</h2>
+        <img class="fragment" style="width:80%" src="img/stack0.svg" alt="RS Stack">
+        <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="img/stack1.svg" alt="RS Stack">
+        <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="img/stack2.svg" alt="RS Stack">
+        <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="img/stack3.svg" alt="RS Stack">
+        <img class="fragment" style="position: absolute; width:80%; margin-left: -80%" src="img/stack4.svg" alt="RS Stack">
+			</section>
+
+			<section>
+      	<h2>RS are more than a protocol</h2>
+        <ul>
+          <li>Java interface definitions (i.e. a JAR to depend on)</li>
+          <li>Growing number of implementations</li>
+          <li>TCK (Technology Compatibility Kit)</li>
+          <li>Nascent sub projects (net, io, js, ...)</li>
+          <li>Public Domain (CC0) License</li>
+        </ul>
+			</section>
+
+			<section>
+        <h2>Reactive Stream Java API</h2>
+        <pre style="width: 75%"><code data-trim>
+public interface Publisher&lt;T&gt; {
+  public void subscribe(Subscriber&lt;? super T&gt; s);
+}
+
+public interface Subscription {
+  public void request(long n);
+  public void cancel();
+}
+
+public interface Subscriber&lt;T&gt; {
+  public void onSubscribe(Subscription s);
+  public void onNext(T t);
+  public void onError(Throwable t);
+  public void onComplete();
+}
+        </code></pre>
+        <h3 class="fragment" style="position: absolute; margin: -32% 0 0 20%; padding: 0.4em; border-top: 2px solid white; border-bottom: 2px solid white; background-color: #1B2C3D; -webkit-transform:rotate(30deg); -moz-transform:rotate(20deg)">
+          Not for user consumption!<br/>
+          (Use RS Impl Library instead)
+        </h3>
+      </section>
+
+      <section>
+        <h2>RS Impl Landscape as of v1.0.0</h2>
+        <img class="fragment" style="width:70%" src="img/landscape0.svg" alt="Implementation Landscape">
+        <img class="fragment" style="position: absolute; width:70%; margin-left: -70%" src="img/landscape1.svg" alt="Implementation Landscape">
+        <img class="fragment" style="position: absolute; width:70%; margin-left: -70%" src="img/landscape2.svg" alt="Implementation Landscape">
+			</section>
+
+      <section>
+        <h2>Simple example: Monte Carlo Pie</h2>
+        <img style="width:80%" src="img/monte-carlo-pi.svg" alt="Monte Carclo Pi(e)">
+			</section>
+
+      <section>
+        <h2>"Complexified" example stream graph</h2>
+        <div style="height: 500px; overflow-y: scroll">
+        	<img style="width: 60%; max-height: none" src="img/example-graph.svg" alt="Monte Carclo Pi(e)">
+        </div>
+			</section>
+
+      <section>
+      	<h2>Akka Stream Implementation</h2>
+		    <p>[DEMO]</p>
+			</section>
+
+			<section>
+      	<h2>Akka Stream</h2>
+        <ul>
+          <li>Built from scratch on Reactive Streams Protocol</li>
+          <li>Java and Scala user APIs</li>
+          <li>"Blueprint"-style abstractions (Sources, Flows, Sinks)</li>
+          <li>Supports fully general stream-graphs</li>
+          <li>Number of pre-defined transformations still somewhat small</li>
+          <li>Not very optimized yet, still marked "experimental"</li>
+        </ul>
+			</section>
+
+			<section>
+      	<h2>RxScala Implementation</h2>
+		    <p>[DEMO]</p>
+			</section>
+
+			<section>
+      	<h2>Reactive Extensions</h2>
+        <ul>
+          <li>Mostly driven by Netflix Engineers</li>
+          <li>Broke the ground for Reactive Streams</li>
+          <li>Oldest, most known, most mature</li>
+          <li>Support for many different languages</li>
+          <li>Doesn't directly support RS yet,<br/>currently still needs adapter lib</li>
+          <li>Backpressure not fully supported yet,<br>will do so in version 2.0</li>
+        </ul>
+			</section>
+
+			<section>
+      	<h2>Reactor Implementation</h2>
+		    <p>[DEMO]</p>
+			</section>
+
+			<section>
+      	<h2>Reactor</h2>
+        <ul>
+          <li>RS implementation built from scratch</li>
+          <li>Java only</li>
+          <li>Internally based a lot on Disruptor</li>
+          <li>Focus: Performance</li>
+          <li>Current version (2.0.3) not very mature yet</li>
+          <li>Driven by Engineers from Pivotal</li>
+        </ul>
+			</section>
+
+      <section>
+      	<h2>Roadmap</h2>
+        <ul>
+          <li>RS Protocol and API V 1.0 done</li>
+          <li>Evolve and tune existing implementations</li>
+          <li>More infrastructure implementations!</li>
+          <li>More domain adapters!</li>
+          <li>Expand off the JVM (e.g. JavaScript)</li>
+          <li>Explore sub-standards (TCP, IO, ...)</li>
+        </ul>
+			</section>
+
+      <section>
+      	<h2>Resources</h2>
+				<ul>
+          <li>Main sites &amp; documentation:<br/>
+            <a href="http://www.reactive-streams.org/">http://www.reactive-streams.org/</a><br/>
+            <a href="http://akka.io/">http://akka.io/</a><br/>
+            <a href="http://reactivex.io/">http://reactivex.io/</a><br/>
+            <a href="http://projectreactor.io/">http://projectreactor.io/</a>
+          </li>
+          <li>Code from the talk:<br/>
+            <a href="https://github.com/sirthias/rs-comparison">https://github.com/sirthias/rs-comparison</a><br/>
+          </li>
+        </ul>
+			</section>
+
+      <section>
+		    <h2>THANK YOU!</h2>
+			</section>
+
+      <section>
+				<h2>Q &amp; A</h2>
+			</section>
+
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+
+			// Full list of configuration options available at:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: false,
+				history: true,
+
+				transition: 'fade',
+				transitionSpeed: 'fast',
+
+				// Optional reveal.js plugins
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
