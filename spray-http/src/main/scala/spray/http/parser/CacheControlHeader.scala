@@ -44,6 +44,8 @@ private[parser] trait CacheControlHeader {
       | "must-revalidate" ~ push(`must-revalidate`)
       | "proxy-revalidate" ~ push(`proxy-revalidate`)
       | "s-maxage=" ~ DeltaSeconds ~~> (`s-maxage`(_))
+      | "stale-while-revalidate=" ~ DeltaSeconds ~~> (`stale-while-revalidate`(_))
+      | "stale-if-error=" ~ DeltaSeconds ~~> (`stale-if-error`(_))
 
       | Token ~ optional("=" ~ (Token | QuotedString)) ~~> (CacheDirective.custom(_, _)))
 

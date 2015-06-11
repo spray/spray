@@ -41,14 +41,16 @@ object CacheDirective {
 object CacheDirectives {
   import CacheDirective._
 
+  trait ResponseDirectiveWithDeltaSeconds extends ResponseDirective with ValueRenderable with Product {
+    val deltaSeconds: Long
+    def render[R <: Rendering](r: R): r.type = r ~~ productPrefix ~~ '=' ~~ deltaSeconds
+  }
+
   /* Requests and Responses */
   case object `no-cache` extends SingletonValueRenderable with RequestDirective with ResponseDirective
   case object `no-store` extends SingletonValueRenderable with RequestDirective with ResponseDirective
   case object `no-transform` extends SingletonValueRenderable with RequestDirective with ResponseDirective
-
-  case class `max-age`(deltaSeconds: Long) extends RequestDirective with ResponseDirective with ValueRenderable {
-    def render[R <: Rendering](r: R): r.type = r ~~ productPrefix ~~ '=' ~~ deltaSeconds
-  }
+  case class `max-age`(deltaSeconds: Long) extends RequestDirective with ResponseDirectiveWithDeltaSeconds
 
   /* Requests only */
   case class `max-stale`(deltaSeconds: Option[Long]) extends RequestDirective with ValueRenderable {
@@ -64,7 +66,6 @@ object CacheDirectives {
 
   /* Responses only */
   case object `public` extends SingletonValueRenderable with ResponseDirective
-
   abstract class FieldNamesDirective extends Product with ValueRenderable {
     def fieldNames: Seq[String]
     def render[R <: Rendering](r: R): r.type =
@@ -83,7 +84,9 @@ object CacheDirectives {
   case class `no-cache`(fieldNames: String*) extends FieldNamesDirective with ResponseDirective
   case object `must-revalidate` extends SingletonValueRenderable with ResponseDirective
   case object `proxy-revalidate` extends SingletonValueRenderable with ResponseDirective
-  case class `s-maxage`(deltaSeconds: Long) extends ResponseDirective with ValueRenderable {
-    def render[R <: Rendering](r: R): r.type = r ~~ productPrefix ~~ '=' ~~ deltaSeconds
-  }
+  case class `s-maxage`(deltaSeconds: Long) extends ResponseDirectiveWithDeltaSeconds
+  /* The stale-while-revalidate Cache-Control Extension RFC-5861 http://tools.ietf.org/html/rfc5861#section-3 */
+  case class `stale-while-revalidate`(deltaSeconds: Long) extends ResponseDirectiveWithDeltaSeconds
+  /* The stale-if-error Cache-Control Extension RFC-5861 http://tools.ietf.org/html/rfc5861#section-4 */
+  case class `stale-if-error`(deltaSeconds: Long) extends ResponseDirectiveWithDeltaSeconds
 }
