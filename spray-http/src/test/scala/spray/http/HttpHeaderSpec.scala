@@ -167,6 +167,10 @@ class HttpHeaderSpec extends Specification {
         `Cache-Control`(`private`("a", "b"), `no-cache`)
       "Cache-Control: private, community=\"<UCI>\"" =!=
         `Cache-Control`(`private`(), CacheDirective.custom("community", Some("<UCI>")))
+      "Cache-Control: stale-while-revalidate=30" =!=
+        `Cache-Control`(`stale-while-revalidate`(30))
+      "Cache-Control: stale-if-error=30" =!=
+        `Cache-Control`(`stale-if-error`(30))
     }
 
     "Connection" in {
