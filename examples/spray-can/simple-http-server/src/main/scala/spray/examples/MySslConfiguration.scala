@@ -29,6 +29,12 @@ trait MySslConfiguration {
   // available here
   implicit def sslEngineProvider: ServerSSLEngineProvider = {
     ServerSSLEngineProvider { engine =>
+      // NOTE: The following lines are only meant as an example about how to change
+      //       Java's default configuration, not a recommendation about a secure or
+      //       otherwise reasonable Java default SSL configuration.
+      //
+      //       Security recommendations and TLS fixes are updated in a monthly fashion.
+      //       You need to inform yourself about what the current best practices are!
       engine.setEnabledCipherSuites(Array("TLS_RSA_WITH_AES_256_CBC_SHA"))
       engine.setEnabledProtocols(Array("SSLv3", "TLSv1"))
       engine
