@@ -177,10 +177,20 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor with Sea
   }
 
   def showRepoResponses(repo: String)(request: HttpRequest): HttpResponsePart ⇒ Option[LogEntry] = {
-    case HttpResponse(s @ (OK | NotModified), _, _, _) ⇒ Some(LogEntry(s"$repo  ${s.intValue}: ${request.uri}", InfoLevel))
-    case ChunkedResponseStart(HttpResponse(OK, _, _, _)) ⇒ Some(LogEntry(repo + " 200 (chunked): " + request.uri, InfoLevel))
-    case HttpResponse(NotFound, _, _, _) ⇒ Some(LogEntry(repo + " 404: " + request.uri))
+    case HttpResponse(s @ (OK | NotModified), _, _, _) ⇒
+      Some(LogEntry(repoResponseLogLine(repo, s.intValue.toString, request), InfoLevel))
+    case ChunkedResponseStart(HttpResponse(OK, _, _, _)) ⇒
+      Some(LogEntry(repoResponseLogLine(repo, "200 (chunked)", request), InfoLevel))
+    case HttpResponse(NotFound, _, _, _) ⇒
+      Some(LogEntry(repoResponseLogLine(repo, "404", request)))
     case _ ⇒ None
+  }
+
+  def repoResponseLogLine(repo: String, status: String, request: HttpRequest): String = {
+    import HttpHeaders._
+    val ip = request.header[`Remote-Address`].map(_.address.toString).getOrElse("n/a")
+    val userAgent = request.header[`User-Agent`].map(_.products.mkString(" ")).getOrElse("n/a")
+    s"$repo|:|$status|:|$ip|:|$userAgent|:|${request.uri}"
   }
 
   implicit val ListingMarshaller: Marshaller[DirectoryListing] =

@@ -4,7 +4,7 @@
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <target>System.out</target>
         <encoder>
-            <pattern>%date{MM/dd HH:mm:ss} %-5level[%.15thread] %logger{50} - %msg%n</pattern>
+            <pattern>%date{MM/dd HH:mm:ss} %-5level[%.15thread] %msg%n</pattern>
         </encoder>
     </appender>
 
