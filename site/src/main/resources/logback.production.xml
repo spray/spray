@@ -14,7 +14,7 @@
 
         <append>true</append>
         <encoder>
-            <pattern>%date{MM/dd HH:mm:ss} %-5level[%.15thread] %msg%n</pattern>
+            <pattern>%date{MM/dd HH:mm:ss.SSS} %-5level[%.15thread] %msg%n</pattern>
         </encoder>
     </appender>
 
