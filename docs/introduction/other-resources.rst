@@ -1,7 +1,14 @@
 Other Resources
 ===============
 
-June 2015: "Reactive Streams - The Now" talk from `ScalaDays 2015`__
+Oct 2015: "Reactive Streams & Akka HTTP - Behold the Flow!" talk from `Scala World 2015`__
+  | Video: https://www.youtube.com/watch?v=6VBn9V3S2aQ
+  | Code: https://github.com/jrudolph/scala-world-2015
+
+__ https://scala.world/
+
+Jun 2015: "Reactive Streams - The Now" talk from `ScalaDays 2015`__
+  | Video: https://www.parleys.com/tutorial/the-reactive-streams-implementation-landscape
   | Slides: `/scaladays/2015/`__
 
 __ http://scaladays.org/
@@ -22,6 +29,7 @@ __ /jfokus/
 
 
 Jan 2015: "*Akka HTTP — The What, Why and How*" at `NEScala 2015`__
+  | Video: https://www.youtube.com/watch?v=y_slPbktLr0
   | Slides: `/nescala2015/`__
 
 __ http://nescala.org/
@@ -79,7 +87,7 @@ __ http://www.meetup.com/Zurich-Scala/events/175778012/
 __ /zse/
 
 Dec 2013: Introductory live-coding session at `Scala eXchange 2013`__
-  | Recording: http://skillsmatter.com/podcast/scala/mathias-doenitz
+  | Video: http://skillsmatter.com/podcast/scala/mathias-doenitz
 
 __ http://skillsmatter.com/event/scala/scala-exchange-2013
 
