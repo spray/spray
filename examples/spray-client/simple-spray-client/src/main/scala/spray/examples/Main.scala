@@ -1,12 +1,14 @@
 package spray.examples
 
+import scala.concurrent.Future
 import scala.util.{Success, Failure}
 import scala.concurrent.duration._
 import akka.actor.ActorSystem
 import akka.pattern.ask
 import akka.event.Logging
 import akka.io.IO
-import spray.json.{JsonFormat, DefaultJsonProtocol}
+import spray.http.{HttpRequest, HttpResponse}
+import spray.json.{JsObject, JsonFormat, DefaultJsonProtocol}
 import spray.can.Http
 import spray.httpx.SprayJsonSupport
 import spray.client.pipelining._
