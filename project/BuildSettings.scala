@@ -21,8 +21,8 @@ object BuildSettings {
                              "web services on top of Akka",
     startYear             := Some(2011),
     licenses              := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-    scalaVersion          := "2.11.6",
-    crossScalaVersions    := Seq("2.11.6", "2.10.5"),
+    scalaVersion          := "2.11.8",
+    crossScalaVersions    := Seq("2.11.8", "2.10.6"),
     resolvers             ++= Dependencies.resolutionRepos,
     scalacOptions         := Seq(
       "-encoding", "utf8",
@@ -38,7 +38,6 @@ object BuildSettings {
   lazy val sprayModuleSettings =
     basicSettings ++ formatSettings ++
     NightlyBuildSupport.settings ++
-    net.virtualvoid.sbt.graph.Plugin.graphSettings ++
     SbtPgp.settings ++
     seq(
       // scaladoc settings
@@ -50,7 +49,7 @@ object BuildSettings {
       SbtPgp.useGpg := true,
       publishTo <<= version { version =>
         Some {
-          if (version.contains("-") || true) { // sonatype publishing currently disabled
+          if (version.contains("-")) {
             "spray nexus" at {
               // public uri is repo.spray.io, we use an SSH tunnel to the nexus here
               "http://localhost:42424/content/repositories/" + {

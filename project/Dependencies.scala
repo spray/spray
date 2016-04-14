@@ -56,10 +56,7 @@ object Dependencies {
   }
 
   val addShapeless2 = Seq(
-    libraryDependencies <+= scalaVersion {
-      case x if x startsWith "2.11." => "com.chuusai" %% "shapeless" % "2.1.0"
-      case "2.10.5" => "com.chuusai" % "shapeless_2.10.4" % "2.1.0"
-    },
+    libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.0",
     libraryDependencies ++= {
       if (scalaBinaryVersion.value startsWith "2.10") Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full)) else Nil
     }

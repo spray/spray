@@ -128,7 +128,7 @@ object Build extends Build {
 
   val sourceWithShapeless2Changes = Set("Prepender.scala", "ShapelessSupport.scala").map(_.toLowerCase)
   lazy val sprayRoutingShapeless2 =
-    sprayRoutingProject("spray-routing-shapeless2", file("spray-routing-shapeless2"))
+    sprayRoutingProject("spray-routing-shapeless23", file("spray-routing-shapeless2"))
       .settings(addShapeless2 :_*)
       .settings(
         managedSourceDirectories in Compile <<= managedSourceDirectories in Compile in sprayRouting,
