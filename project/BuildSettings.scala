@@ -37,7 +37,6 @@ object BuildSettings {
   lazy val sprayModuleSettings =
     basicSettings ++ formatSettings ++
     NightlyBuildSupport.settings ++
-    net.virtualvoid.sbt.graph.Plugin.graphSettings ++
     SbtPgp.settings ++
     seq(
       // scaladoc settings

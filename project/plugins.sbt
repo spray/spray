@@ -14,8 +14,6 @@ addSbtPlugin("io.spray" % "sbt-boilerplate" % "0.5.9")
 
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.11.2")
 
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.4")
-
 addSbtPlugin("com.typesafe.sbt" % "sbt-scalariform" % "1.3.0")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-osgi" % "0.7.0")
