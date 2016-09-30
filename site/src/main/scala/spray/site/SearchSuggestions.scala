@@ -110,7 +110,7 @@ trait SearchSuggestions { self: Directives ⇒
     </OpenSearchDescription>
   }
 
-  val documentationPages = allNodesBelow(Main.root.find("documentation/1.2.1/").get)
+  val documentationPages = allNodesBelow(Main.root.find("documentation/1.2.4/").get)
 
   def allNodesBelow(branch: ContentNode): Seq[ContentNode] =
     if (branch.isLeaf) Seq(branch)

@@ -276,7 +276,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   private final val binary = true          // compile-time constant
   private final val notBinary = false      // compile-time constant
 
-  // dummy value currently only used by ContentType.NoContentType
+  // dummy value currently only used by ContentTypes.NoContentType
   private[http] val NoMediaType = new NonMultipartMediaType("none", "none", false, false, Seq.empty) {}
 
   val `application/atom+xml`                                                      = app("atom+xml", compressible, notBinary, "atom")
