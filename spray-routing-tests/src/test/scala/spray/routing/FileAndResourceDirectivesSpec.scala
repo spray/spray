@@ -162,6 +162,72 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     }
   }
 
+  // need to serve from the src directory, when sbt copies the resource directory over to the
+  // target directory it will resolve symlinks in the process
+  val testRoot = new File("spray-routing-tests/src/test/resources")
+  "getFromDirectory" should {
+    def _getFromDirectory(directory: String) = getFromDirectory(new File(testRoot, directory).getCanonicalPath)
+
+    "reject non-GET requests" in {
+      Put() ~> _getFromDirectory("someDir") ~> check { handled shouldEqual false }
+    }
+    "reject requests to non-existing files" in {
+      Get("nonExistentFile") ~> _getFromDirectory("subDirectory") ~> check { handled shouldEqual false }
+    }
+    "reject requests to directories" in {
+      Get("sub") ~> _getFromDirectory("someDir") ~> check { handled shouldEqual false }
+    }
+    "reject path traversal attempts" in {
+      def route(uri: String) =
+        mapRequestContext(_.copy(unmatchedPath = Uri.Path("/" + uri))) { _getFromDirectory("someDir/sub") }
+
+      Get() ~> route("file.html") ~> check { handled shouldEqual true }
+
+      def shouldReject(prefix: String) =
+        Get() ~> route(prefix + "fileA.txt") ~> check { handled shouldEqual false }
+      shouldReject("../") // resolved
+      shouldReject("%5c../")
+      shouldReject("%2e%2e%2f")
+      shouldReject("%2e%2e/") // resolved
+      shouldReject("..%2f")
+      shouldReject("%2e%2e%5c")
+      shouldReject("%2e%2e\\")
+      shouldReject("..\\")
+      shouldReject("\\")
+      shouldReject("%5c")
+      shouldReject("..%5c")
+      shouldReject("..%255c")
+      shouldReject("..%c0%af")
+      shouldReject("..%c1%9c")
+    }
+    "return the file content with the MediaType matching the file extension" in {
+      Get("fileA.txt") ~> _getFromDirectory("someDir") ~> check {
+        mediaType shouldEqual `text/plain`
+        definedCharset shouldEqual Some(HttpCharsets.`UTF-8`)
+        responseAs[String] shouldEqual "123"
+        val lastModified = new File(testRoot, "someDir/fileA.txt").lastModified()
+        headers should contain(`Last-Modified`(DateTime(lastModified)))
+      }
+    }
+    "return the file content with the MediaType matching the file extension (unicode chars in filename)" in {
+      Get("sample%20sp%c3%a4ce.PDF") ~> _getFromDirectory("sübdir") ~> check {
+        mediaType shouldEqual `application/pdf`
+        definedCharset shouldEqual None
+        responseAs[String] shouldEqual "This is PDF"
+        val lastModified = new File(testRoot, "sübdir/sample späce.PDF").lastModified()
+        headers should contain(`Last-Modified`(DateTime(lastModified)))
+      }
+    }
+    "not follow symbolic links to find a file" in {
+      Get("linked-dir/empty.pdf") ~> _getFromDirectory("dirWithLink") ~> check {
+        handled shouldEqual false
+        /* TODO: resurrect following links under an option
+        responseAs[String] shouldEqual "123"
+        mediaType shouldEqual `application/pdf`*/
+      }
+    }
+  }
+
   "listDirectoryContents" should {
     val base = new File(getClass.getClassLoader.getResource("").toURI).getPath
     new File(base, "subDirectory/emptySub").mkdir()
@@ -328,6 +394,36 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     }
     "reject requests to file resources" in {
       Get() ~> listDirectoryContents(base + "subDirectory/empty.pdf") ~> check { handled must beFalse }
+    }
+    "reject path traversal attempts" in {
+      def _listDirectoryContents(directory: String) = listDirectoryContents(new File(testRoot, directory).getCanonicalPath)
+      def route(uri: String) =
+        mapRequestContext(_.copy(unmatchedPath = Uri.Path("/" + uri)).withRequestMapped(_.copy(uri = "/" + uri))) {
+          _listDirectoryContents("someDir/sub")
+        }
+
+      Get() ~> route("") ~> check {
+        handled shouldEqual true
+      }
+
+      def shouldReject(prefix: String) =
+        Get() ~> route(prefix) ~> check {
+          handled shouldEqual false
+        }
+      shouldReject("../") // resolved
+      shouldReject("%5c../")
+      shouldReject("%2e%2e%2f")
+      shouldReject("%2e%2e/") // resolved
+      shouldReject("..%2f")
+      shouldReject("%2e%2e%5c")
+      shouldReject("%2e%2e\\")
+      shouldReject("..\\")
+      shouldReject("\\")
+      shouldReject("%5c")
+      shouldReject("..%5c")
+      shouldReject("..%255c")
+      shouldReject("..%c0%af")
+      shouldReject("..%c1%9c")
     }
   }
 

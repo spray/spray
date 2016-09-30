@@ -18,10 +18,12 @@ package spray.routing
 package directives
 
 import java.io.File
+
 import org.parboiled.common.FileUtils
+
 import scala.annotation.tailrec
 import akka.actor.ActorRefFactory
-import spray.httpx.marshalling.{ Marshaller, BasicMarshallers }
+import spray.httpx.marshalling.{ BasicMarshallers, Marshaller }
 import spray.util._
 import spray.http._
 import HttpHeaders._
@@ -158,7 +160,7 @@ trait FileAndResourceDirectives {
                        refFactory: ActorRefFactory, log: LoggingContext): Route = {
     val base = withTrailingSlash(directoryName)
     unmatchedPath { path ⇒
-      fileSystemPath(base, path) match {
+      safeDirectoryChildPath(base, path) match {
         case ""       ⇒ reject
         case fileName ⇒ getFromFile(fileName)
       }
@@ -179,9 +181,9 @@ trait FileAndResourceDirectives {
           val matchedLength = fullPath.lastIndexOf(path.toString)
           require(matchedLength >= 0)
           val pathPrefix = fullPath.substring(0, matchedLength)
-          val pathString = withTrailingSlash(fileSystemPath("/", path, '/'))
+          val pathString = withTrailingSlash(safeJoinPaths("/", path, '/'))
           val dirs = directories flatMap { dir ⇒
-            fileSystemPath(withTrailingSlash(dir), path) match {
+            safeDirectoryChildPath(withTrailingSlash(dir), path) match {
               case "" ⇒ None
               case fileName ⇒
                 val file = new File(fileName)
@@ -221,7 +223,7 @@ trait FileAndResourceDirectives {
                               (implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory, log: LoggingContext): Route = {
     val base = if (directoryName.isEmpty) "" else withTrailingSlash(directoryName)
     unmatchedPath { path ⇒
-      fileSystemPath(base, path, separator = '/') match {
+      safeJoinPaths(base, path, separator = '/') match {
         case ""           ⇒ reject
         case resourceName ⇒ getFromResource(resourceName)
       }
@@ -233,20 +235,56 @@ trait FileAndResourceDirectives {
 
 object FileAndResourceDirectives extends FileAndResourceDirectives {
   private def withTrailingSlash(path: String): String = if (path endsWith "/") path else path + '/'
-  private def fileSystemPath(base: String, path: Uri.Path, separator: Char = File.separatorChar)(implicit log: LoggingContext): String = {
+  /**
+   * Given a base directory and a (Uri) path, returns a path to a location contained in the base directory,
+   * while checking that no path traversal is possible. Path traversal is prevented by two individual measures:
+   *  - A path segment must not be ".." and must not contain slashes or backslashes that may carry special meaning in
+   *    file-system paths. This logic is intentionally a bit conservative as it might also prevent legitimate access
+   *    to files containing one of those characters on a file-system that allows those characters in file names
+   *    (e.g. backslash on posix).
+   *  - Resulting paths are checked to be "contained" in the base directory. "Contained" means that the canonical location
+   *    of the file (according to File.getCanonicalPath) has the canonical version of the basePath as a prefix. The exact
+   *    semantics depend on the implementation of `File.getCanonicalPath` that may or may not resolve symbolic links and
+   *    similar structures depending on the OS and the JDK implementation of file system accesses.
+   */
+  private def safeDirectoryChildPath(basePath: String, path: Uri.Path, separator: Char = File.separatorChar)(implicit log: LoggingContext): String =
+    safeJoinPaths(basePath, path, separator) match {
+      case ""   ⇒ ""
+      case path ⇒ checkIsSafeDescendant(basePath, path)
+    }
+
+  private def safeJoinPaths(base: String, path: Uri.Path, separator: Char = File.separatorChar)(implicit log: LoggingContext): String = {
     import java.lang.StringBuilder
     @tailrec def rec(p: Uri.Path, result: StringBuilder = new StringBuilder(base)): String =
       p match {
         case Uri.Path.Empty       ⇒ result.toString
         case Uri.Path.Slash(tail) ⇒ rec(tail, result.append(separator))
         case Uri.Path.Segment(head, tail) ⇒
-          if (head.indexOf('/') >= 0 || head == "..") {
+          if (head.indexOf('/') >= 0 || head.indexOf('\\') >= 0 || head == "..") {
             log.warning("File-system path for base [{}] and Uri.Path [{}] contains suspicious path segment [{}], " +
               "GET access was disallowed", base, path, head)
             ""
           } else rec(tail, result.append(head))
       }
     rec(if (path.startsWithSlash) path.tail else path)
+  }
+
+  /**
+   * Check against directory traversal attempts by making sure that the final is a "true child"
+   * of the given base directory.
+   *
+   * Returns "" if the finalPath is suspicious and the canonical path otherwise.
+   */
+  private def checkIsSafeDescendant(basePath: String, finalPath: String)(implicit log: LoggingContext): String = {
+    val baseFile = new File(basePath)
+    val finalFile = new File(finalPath)
+    val canonicalFinalPath = finalFile.getCanonicalPath
+
+    if (!canonicalFinalPath.startsWith(baseFile.getCanonicalPath)) {
+      log.warning(s"[$finalFile] points to a location that is not part of [$baseFile]. This might be a directory " +
+        "traversal attempt.")
+      ""
+    } else canonicalFinalPath
   }
 }
 
