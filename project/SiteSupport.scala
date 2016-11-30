@@ -51,10 +51,10 @@ object SiteSupport {
       val jarName = artifactPath.getName
       runCommands(siteHost, state,
         createFile("%s/%s.new".format(deployDir, jarName), CommandInput.fromFile(artifactPath)),
-        "%s/tf stop" format deployDir,
+        "sudo service spray.io stop",
         "mv %s/%s.new %s/%s".format(deployDir, jarName, deployDir, jarName),
         "sleep 1", // wait for the shutdown to complete
-        "%s/tf start" format deployDir
+        "sudo service spray.io start"
       )
     }
   }

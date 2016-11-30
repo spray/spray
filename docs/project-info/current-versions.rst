@@ -56,8 +56,8 @@ If you want to use shapeless_ as well as :ref:`spray-routing` in your applicatio
 
 - For shapeless_ 1.2.4 you should use *spray* |1.1|, |1.2| or |1.3| and the *spray-routing* module.
 - shapeless_ 2.0.0 is not supported any more.
-- For shapeless_ 2.1.0 you should use *spray* **1.3.4** (Scala 2.10 or Scala 2.11) and
-  the *spray-routing-shapeless2* module instead of *spray-routing*.
+- For shapeless_ 2.3.0 you should use *spray* **1.3.4** (Scala 2.10 or Scala 2.11) and
+  the *spray-routing-shapeless23* module instead of *spray-routing*.
 
 .. _shapeless: https://github.com/milessabin/shapeless
 
