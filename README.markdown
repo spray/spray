@@ -1,7 +1,9 @@
 # Superseded by Akka HTTP
 
 *spray* is no longer maintained and has been superseded by [Akka HTTP](http://doc.akka.io/docs/akka-http/current/scala.html).
+
 Please check out the [migration guide](http://doc.akka.io/docs/akka-http/current/scala/http/migration-guide/migration-from-spray.html) for help with the upgrade.
+
 Commercial support is available from [Lightbend](http://www.lightbend.com/).
 
 ------- 
