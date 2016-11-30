@@ -163,3 +163,19 @@ span.twitter-typeahead input[type=text] { width: 200px; margin: -5px 46px 0 0; }
     #talk-link { display: none; }
 }
 
+#deprecation-note {
+    position: fixed;
+    width: 100%;
+    bottom: 0;
+    left: 0;
+    margin: 0;
+    padding: 0;
+    z-index: 99999;
+    background-color: #2f96b4;
+    text-align: center;
+}
+
+#deprecation-note p { padding: 1.5em; margin:0; font-size: 150%; line-height: 1.2; color: #fff; }
+#deprecation-note p a { color: gold; font-weight: bold }
+#deprecation-note p a:hover { color: yellow }
+#deprecation-note button { position: absolute; top: 1em; right: 1em; font-weight: normal; text-decoration: none; }

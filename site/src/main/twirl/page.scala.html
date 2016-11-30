@@ -38,6 +38,7 @@
     <script type="text/javascript" src="/js/typeahead.bundle.min.js"></script>
     <script type="text/javascript" src="/js/directives-map.js"></script>
     <script type="text/javascript" src="/js/highlight-directives.js"></script>
+    <script type="text/javascript" src="/js/custom.js"></script>
     @node.doc.meta.scriptList.map { script =>
       <script type="text/javascript" src="@script" charset="utf-8"></script>
     }
@@ -75,6 +76,18 @@
 
 <!--back to top button-->
 <a href="#top" id="peBackToTop" class="label btt disabled"><span class="icon-chevron-up icon-white"></span></a>
+
+<div id="deprecation-note" style="display: none">
+    <p>
+        <em>spray</em> is no longer maintained and has been superseded by
+        <a href="http://doc.akka.io/docs/akka-http/current/scala.html">Akka HTTP</a>.<br/>
+        Please check out
+        <a href="http://doc.akka.io/docs/akka-http/current/scala/http/migration-guide/migration-from-spray.html">migration guide</a>
+        for help with the upgrade.<br/>
+        Commercial support is available from <a href="http://www.lightbend.com/">Lightbend</a>.
+    </p>
+    <button>Dismiss for a Day</button>
+</div>
 
 </body>
 </html>
